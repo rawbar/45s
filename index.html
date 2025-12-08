@@ -17,18 +17,10 @@
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
 
-// ============================================
-// CONSTANTS & CARD DATA
-// ============================================
-
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 const PLAYER_NAMES = ['You', 'Player 2', 'Partner', 'Player 4'];
 const getTeam = (player) => player % 2 === 0 ? 0 : 1;
-
-// ============================================
-// CARD RANKING FUNCTIONS
-// ============================================
 
 function getTrumpRank(card, trumpSuit) {
   if (!card || !trumpSuit) return -1;
@@ -86,10 +78,6 @@ function isTrump(card, trumpSuit) {
   return card.suit === trumpSuit;
 }
 
-// ============================================
-// DECK FUNCTIONS
-// ============================================
-
 function createDeck() {
   const deck = [];
   for (const suit of SUITS) {
@@ -109,33 +97,20 @@ function shuffleDeck(deck) {
   return shuffled;
 }
 
-// ============================================
-// GAME LOGIC FUNCTIONS
-// ============================================
-
 function getPlayableCards(hand, trumpSuit, ledCard, ledSuit) {
   if (!hand || hand.length === 0) return [];
   if (!ledCard) return hand;
-  
   const ledIsTrump = isTrump(ledCard, trumpSuit);
-  
   if (ledIsTrump) {
     const trumpCards = hand.filter(c => isTrump(c, trumpSuit));
     if (trumpCards.length === 0) return hand;
-    
     const ledTrumpRank = getTrumpRank(ledCard, trumpSuit);
-    const mustPlay = [];
-    const canRenege = [];
-    
+    const mustPlay = [], canRenege = [];
     for (const card of trumpCards) {
       const cardTrumpRank = getTrumpRank(card, trumpSuit);
-      if (isTopThreeTrump(card, trumpSuit) && cardTrumpRank > ledTrumpRank) {
-        canRenege.push(card);
-      } else {
-        mustPlay.push(card);
-      }
+      if (isTopThreeTrump(card, trumpSuit) && cardTrumpRank > ledTrumpRank) canRenege.push(card);
+      else mustPlay.push(card);
     }
-    
     if (mustPlay.length > 0) return [...mustPlay, ...canRenege];
     return hand;
   } else {
@@ -149,20 +124,12 @@ function getPlayableCards(hand, trumpSuit, ledCard, ledSuit) {
 function determineTrickWinner(trick, trumpSuit, startPlayer) {
   if (trick.length !== 4) return null;
   const ledSuit = trick[0].suit;
-  let winningIdx = 0;
-  let winningCard = trick[0];
+  let winningIdx = 0, winningCard = trick[0];
   for (let i = 1; i < 4; i++) {
-    if (cardBeats(trick[i], winningCard, trumpSuit, ledSuit)) {
-      winningIdx = i;
-      winningCard = trick[i];
-    }
+    if (cardBeats(trick[i], winningCard, trumpSuit, ledSuit)) { winningIdx = i; winningCard = trick[i]; }
   }
   return (startPlayer + winningIdx) % 4;
 }
-
-// ============================================
-// HAND ANALYSIS FUNCTIONS
-// ============================================
 
 function hasCard(hand, rank, suit) { return hand.some(c => c.rank === rank && c.suit === suit); }
 function hasFiveOfTrump(hand, trumpSuit) { return hasCard(hand, '5', trumpSuit); }
@@ -170,7 +137,6 @@ function hasJackOfTrump(hand, trumpSuit) { return hasCard(hand, 'J', trumpSuit);
 function hasAceOfHearts(hand) { return hasCard(hand, 'A', '♥'); }
 function countTrumps(hand, trumpSuit) { return hand.filter(c => isTrump(c, trumpSuit)).length; }
 function countHighTrumps(hand, trumpSuit) { return hand.filter(c => getTrumpRank(c, trumpSuit) >= 97).length; }
-function countOffSuitKings(hand, trumpSuit) { return hand.filter(c => c.rank === 'K' && !isTrump(c, trumpSuit)).length; }
 
 function findBestTrumpSuit(hand) {
   let bestSuit = '♠', bestTrumpCount = 0, bestHas5 = false, bestHasJ = false;
@@ -185,19 +151,13 @@ function findBestTrumpSuit(hand) {
   return { suit: bestSuit, trumpCount: bestTrumpCount, has5: bestHas5, hasJ: bestHasJ };
 }
 
-// ============================================
-// AI BIDDING
-// ============================================
-
 function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, opponentScores) {
   const { suit: bestSuit, trumpCount, has5, hasJ } = findBestTrumpSuit(hand);
   const hasAH = hasAceOfHearts(hand);
   const highTrumps = countHighTrumps(hand, bestSuit);
   const theyWouldWinWith = (bid) => opponentScores + bid >= 120;
   const weFarAhead = teamScores >= 100 && teamScores - opponentScores >= 30;
-  
   let bid = 0;
-  
   if (has5 && hasJ && hasAH && trumpCount >= 4) bid = 30;
   else if (has5 && hasJ && trumpCount >= 3) bid = 25;
   else if (has5 && hasAH && trumpCount >= 4) bid = 25;
@@ -208,7 +168,6 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppone
   else if (hasJ && trumpCount >= 3) bid = 15;
   else if (hasAH && trumpCount >= 3) bid = 15;
   else if (trumpCount >= 4 && highTrumps >= 2) bid = 15;
-  
   if (theyWouldWinWith(20) && bid < 20) {
     if (has5 && trumpCount >= 2) bid = Math.max(bid, 20);
     else if (hasJ && trumpCount >= 3) bid = Math.max(bid, 20);
@@ -218,7 +177,6 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppone
     else if (has5 && trumpCount >= 4) bid = 25;
   }
   if (weFarAhead && !has5 && !hasJ) bid = 0;
-  
   if (bid <= currentHighBid) {
     if (playerIndex === dealer && currentHighBid === 0) return { bid: 15, suit: bestSuit };
     return { bid: 0, suit: null };
@@ -226,20 +184,14 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppone
   return { bid, suit: bestSuit };
 }
 
-// ============================================
-// AI DISCARD
-// ============================================
-
 function decideDiscard(hand, trumpSuit, isBidWinner) {
   const trumpCards = hand.filter(c => isTrump(c, trumpSuit));
   const offSuitCards = hand.filter(c => !isTrump(c, trumpSuit));
   let keep = [...trumpCards];
-  
   if (isBidWinner) {
     const offSuitKings = offSuitCards.filter(c => c.rank === 'K');
     if (offSuitKings.length > 0 && trumpCards.length >= 3) keep.push(offSuitKings[0]);
   }
-  
   if (keep.length === 0 && hand.length > 0) {
     const sorted = [...hand].sort((a, b) => {
       const aRank = isTrump(a, trumpSuit) ? getTrumpRank(a, trumpSuit) + 100 : getOffSuitRank(a);
@@ -248,7 +200,6 @@ function decideDiscard(hand, trumpSuit, isBidWinner) {
     });
     keep = [sorted[0]];
   }
-  
   const discard = hand.filter(c => !keep.some(k => k.id === c.id));
   return { keep, discard, discardCount: discard.length };
 }
@@ -259,35 +210,27 @@ function getDefaultDiscardSelection(hand, trumpSuit) {
   return indices;
 }
 
-// ============================================
-// AI CARD PLAY
-// ============================================
-
 function chooseCardToPlay(hand, trumpSuit, currentTrick, trickLeader, playerIndex, bidWinner, highBid, cardsDrawn, tricksWonByTeam) {
   const ledCard = currentTrick.length > 0 ? currentTrick[0] : null;
   const ledSuit = ledCard ? ledCard.suit : null;
   const playable = getPlayableCards(hand, trumpSuit, ledCard, ledSuit);
-  
   if (playable.length === 0) return hand[0];
   if (playable.length === 1) return playable[0];
-  
   const myTeam = getTeam(playerIndex);
   const bidWinnerTeam = getTeam(bidWinner);
   const myTeamBid = myTeam === bidWinnerTeam;
   const partnerIndex = (playerIndex + 2) % 4;
   const partnerIsBidWinner = partnerIndex === bidWinner;
-  
   const opponent1Drawn = cardsDrawn[(playerIndex + 1) % 4] || 0;
   const opponent2Drawn = cardsDrawn[(playerIndex + 3) % 4] || 0;
   const opponentsLikelyWeak = opponent1Drawn >= 4 && opponent2Drawn >= 4;
   const partnerDrawn = cardsDrawn[partnerIndex] || 0;
   const partnerLikelyWeak = partnerDrawn >= 4;
-  
+
   if (!ledCard) {
     const trumps = playable.filter(c => isTrump(c, trumpSuit));
     const nonTrumps = playable.filter(c => !isTrump(c, trumpSuit));
     const has5 = playable.some(c => c.rank === '5' && c.suit === trumpSuit);
-    
     if (myTeamBid && trumps.length >= 2) {
       if (has5 && opponentsLikelyWeak) return playable.find(c => c.rank === '5' && c.suit === trumpSuit);
       if (trumps.length > 0) return trumps.reduce((best, c) => getTrumpRank(c, trumpSuit) > getTrumpRank(best, trumpSuit) ? c : best);
@@ -301,22 +244,21 @@ function chooseCardToPlay(hand, trumpSuit, currentTrick, trickLeader, playerInde
       return cRank < lowRank ? c : lowest;
     });
   }
-  
+
   let currentWinnerIdx = 0, winningCard = currentTrick[0];
   for (let i = 1; i < currentTrick.length; i++) {
     if (cardBeats(currentTrick[i], winningCard, trumpSuit, ledSuit)) { currentWinnerIdx = i; winningCard = currentTrick[i]; }
   }
   const currentWinnerPlayer = (trickLeader + currentWinnerIdx) % 4;
   const partnerWinning = getTeam(currentWinnerPlayer) === myTeam;
-  
   const bidderLedOffsuit = bidWinner === trickLeader && !isTrump(ledCard, trumpSuit);
   const iAmThirdMan = currentTrick.length === 2 && partnerIndex === bidWinner;
-  
+
   if (iAmThirdMan && bidderLedOffsuit && myTeamBid) {
     const trumps = playable.filter(c => isTrump(c, trumpSuit));
     if (trumps.length > 0) return trumps.reduce((best, c) => getTrumpRank(c, trumpSuit) > getTrumpRank(best, trumpSuit) ? c : best);
   }
-  
+
   if (partnerWinning) {
     return playable.reduce((lowest, c) => {
       const cRank = isTrump(c, trumpSuit) ? getTrumpRank(c, trumpSuit) + 200 : getOffSuitRank(c);
@@ -324,7 +266,7 @@ function chooseCardToPlay(hand, trumpSuit, currentTrick, trickLeader, playerInde
       return cRank < lowRank ? c : lowest;
     });
   }
-  
+
   const canWin = playable.filter(c => cardBeats(c, winningCard, trumpSuit, ledSuit));
   if (canWin.length > 0) {
     return canWin.reduce((lowest, c) => {
@@ -333,19 +275,20 @@ function chooseCardToPlay(hand, trumpSuit, currentTrick, trickLeader, playerInde
       return cRank < lowRank ? c : lowest;
     });
   }
-  
+
+  // Can't win - throw lowest card, but STRONGLY prefer offsuit over trump
+  const nonTrumpPlayable = playable.filter(c => !isTrump(c, trumpSuit));
+  if (nonTrumpPlayable.length > 0) {
+    return nonTrumpPlayable.reduce((lowest, c) => getOffSuitRank(c) < getOffSuitRank(lowest) ? c : lowest);
+  }
   return playable.reduce((lowest, c) => {
-    const cRank = isTrump(c, trumpSuit) ? getTrumpRank(c, trumpSuit) + 200 : getOffSuitRank(c);
-    const lowRank = isTrump(lowest, trumpSuit) ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
+    const cRank = getTrumpRank(c, trumpSuit);
+    const lowRank = getTrumpRank(lowest, trumpSuit);
     return cRank < lowRank ? c : lowest;
   });
 }
 
 function chooseTrumpSuit(hand) { return findBestTrumpSuit(hand).suit; }
-
-// ============================================
-// UI COMPONENTS
-// ============================================
 
 function CircledNumber({ value, size = 'normal' }) {
   const absValue = Math.abs(value);
@@ -381,11 +324,9 @@ function DealerBadge() {
 function Card({ card, onClick, disabled, selected, small, faceDown, playable }) {
   const isRed = card && (card.suit === '♥' || card.suit === '♦');
   const baseStyle = { width: small ? '40px' : '60px', height: small ? '56px' : '84px', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: disabled ? 'default' : 'pointer', transition: 'all 0.15s ease', fontFamily: 'Georgia, serif', userSelect: 'none', position: 'relative', boxSizing: 'border-box' };
-  
   if (faceDown) {
     return (<div style={{ ...baseStyle, background: 'linear-gradient(135deg, #1e3a5f 0%, #0d1b2a 100%)', border: '2px solid #2d5a87', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}><div style={{ width: '80%', height: '80%', border: '1px solid #3d7ab7', borderRadius: '4px', background: 'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(61,122,183,0.1) 3px, rgba(61,122,183,0.1) 6px)' }} /></div>);
   }
-  
   return (
     <div onClick={disabled ? undefined : onClick} style={{ ...baseStyle, background: selected ? '#fffde7' : '#ffffff', border: playable ? '3px solid #2196f3' : selected ? '3px solid #ffc107' : '2px solid #ccc', boxShadow: selected ? '0 4px 12px rgba(255,193,7,0.4)' : playable ? '0 4px 12px rgba(33,150,243,0.3)' : '0 2px 8px rgba(0,0,0,0.15)', transform: (selected || playable) && !disabled ? 'translateY(-4px)' : 'none', opacity: disabled && !playable ? 0.6 : 1 }}>
       <div style={{ color: isRed ? '#c62828' : '#212121', fontSize: small ? '14px' : '18px', fontWeight: 'bold', lineHeight: 1 }}>{card.rank}</div>
@@ -399,32 +340,12 @@ function ScoreTable({ roundHistory, totalScores }) {
   return (
     <div style={{ marginTop: '16px', background: 'rgba(0,0,0,0.4)', borderRadius: '8px', padding: '12px', fontSize: '14px' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
-        <thead>
-          <tr>
-            <th style={{ padding: '4px 8px', borderBottom: '1px solid rgba(255,255,255,0.3)' }}>Round</th>
-            <th colSpan="2" style={{ padding: '4px 8px', borderBottom: '1px solid rgba(255,255,255,0.3)', color: '#4caf50' }}>US</th>
-            <th colSpan="2" style={{ padding: '4px 8px', borderBottom: '1px solid rgba(255,255,255,0.3)', color: '#f44336' }}>THEM</th>
-          </tr>
-        </thead>
-        <tbody>
-          {roundHistory.map((round, idx) => (
-            <tr key={idx}>
-              <td style={{ padding: '4px 8px' }}>{idx + 1}</td>
-              <td style={{ padding: '4px 8px', color: '#4caf50' }}>{round.usRoundScore < 0 ? <CircledNumber value={round.usRoundScore} size="small" /> : round.usRoundScore}</td>
-              <td style={{ padding: '4px 8px', color: '#4caf50', fontWeight: 'bold' }}><ScoreDisplay value={round.usTotal} size="small" /></td>
-              <td style={{ padding: '4px 8px', color: '#f44336' }}>{round.themRoundScore < 0 ? <CircledNumber value={round.themRoundScore} size="small" /> : round.themRoundScore}</td>
-              <td style={{ padding: '4px 8px', color: '#f44336', fontWeight: 'bold' }}><ScoreDisplay value={round.themTotal} size="small" /></td>
-            </tr>
-          ))}
-        </tbody>
+        <thead><tr><th style={{ padding: '4px 8px', borderBottom: '1px solid rgba(255,255,255,0.3)' }}>Round</th><th colSpan="2" style={{ padding: '4px 8px', borderBottom: '1px solid rgba(255,255,255,0.3)', color: '#4caf50' }}>US</th><th colSpan="2" style={{ padding: '4px 8px', borderBottom: '1px solid rgba(255,255,255,0.3)', color: '#f44336' }}>THEM</th></tr></thead>
+        <tbody>{roundHistory.map((round, idx) => (<tr key={idx}><td style={{ padding: '4px 8px' }}>{idx + 1}</td><td style={{ padding: '4px 8px', color: '#4caf50' }}>{round.usRoundScore < 0 ? <CircledNumber value={round.usRoundScore} size="small" /> : round.usRoundScore}</td><td style={{ padding: '4px 8px', color: '#4caf50', fontWeight: 'bold' }}><ScoreDisplay value={round.usTotal} size="small" /></td><td style={{ padding: '4px 8px', color: '#f44336' }}>{round.themRoundScore < 0 ? <CircledNumber value={round.themRoundScore} size="small" /> : round.themRoundScore}</td><td style={{ padding: '4px 8px', color: '#f44336', fontWeight: 'bold' }}><ScoreDisplay value={round.themTotal} size="small" /></td></tr>))}</tbody>
       </table>
     </div>
   );
 }
-
-// ============================================
-// MAIN GAME COMPONENT
-// ============================================
 
 function FortyFivesGame() {
   const [phase, setPhase] = useState('dealing');
@@ -453,51 +374,36 @@ function FortyFivesGame() {
   const [roundHistory, setRoundHistory] = useState([]);
   const [cardsDrawn, setCardsDrawn] = useState([0, 0, 0, 0]);
   const [animatingTrick, setAnimatingTrick] = useState(null);
-  
   const timerRef = useRef(null);
   useEffect(() => { return () => { if (timerRef.current) clearTimeout(timerRef.current); }; }, []);
-  
-  const startNewGame = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setTotalScores([0, 0]); setRoundHistory([]); setDealer(0);
-    dealNewRound(0, [0, 0]);
-  }, []);
-  
+
+  const startNewGame = useCallback(() => { if (timerRef.current) clearTimeout(timerRef.current); setTotalScores([0, 0]); setRoundHistory([]); setDealer(0); dealNewRound(0, [0, 0]); }, []);
+
   const dealNewRound = useCallback((currentDealer, currentTotalScores) => {
     const deck = shuffleDeck(createDeck());
     const newHands = [deck.slice(0, 5), deck.slice(5, 10), deck.slice(10, 15), deck.slice(15, 20)];
-    const newKitty = deck.slice(20, 23);
-    const remaining = deck.slice(23);
-    
+    const newKitty = deck.slice(20, 23); const remaining = deck.slice(23);
     setHands(newHands); setKitty(newKitty); setRemainingDeck(remaining);
     setBids([null, null, null, null]); setHighBid(0); setBidWinner(null); setTrumpSuit(null);
     setCurrentTrick([]); setTrickCards([]); setTricksWon([0, 0]); setPlayerTricksWon([0, 0, 0, 0]);
     setRoundPoints([0, 0]); setTrickNumber(0); setSelectedCards([]); setLastTrick(null);
     setAiTrumpChoice(null); setTrickLeader(null); setHighTrumpInfo({ rank: -1, team: -1 });
     setCardsDrawn([0, 0, 0, 0]); setAnimatingTrick(null); setPhase('bidding');
-    
-    const firstBidder = (currentDealer + 1) % 4;
-    setCurrentPlayer(firstBidder);
-    if (firstBidder !== 0) {
-      setMessage(`${PLAYER_NAMES[firstBidder]} is bidding...`);
-      timerRef.current = setTimeout(() => processBid(firstBidder, newHands, currentDealer, [null, null, null, null], 0, currentTotalScores), 1000);
-    } else { setMessage('Your turn to bid'); }
+    const firstBidder = (currentDealer + 1) % 4; setCurrentPlayer(firstBidder);
+    if (firstBidder !== 0) { setMessage(`${PLAYER_NAMES[firstBidder]} is bidding...`); timerRef.current = setTimeout(() => processBid(firstBidder, newHands, currentDealer, [null, null, null, null], 0, currentTotalScores), 1000); }
+    else { setMessage('Your turn to bid'); }
   }, []);
-  
+
   const processBid = useCallback((player, currentHands, currentDealer, currentBids, currentHighBid, currentTotalScores) => {
     if (player === 0) return;
-    const teamScores = currentTotalScores[getTeam(player)];
-    const opponentScores = currentTotalScores[1 - getTeam(player)];
+    const teamScores = currentTotalScores[getTeam(player)]; const opponentScores = currentTotalScores[1 - getTeam(player)];
     const decision = decideBid(currentHands[player], currentHighBid, player, currentDealer, teamScores, opponentScores);
-    
     const newBids = [...currentBids]; newBids[player] = decision.bid; setBids(newBids);
     let newHighBid = currentHighBid, winner = null;
     if (decision.bid > currentHighBid) { newHighBid = decision.bid; setHighBid(decision.bid); setAiTrumpChoice(decision.suit); winner = player; }
-    
     const biddingComplete = newBids.every(b => b !== null);
     if (biddingComplete) {
-      let finalWinner = winner;
-      if (!finalWinner) { let maxBid = 0; for (let i = 0; i < 4; i++) { if (newBids[i] > maxBid) { maxBid = newBids[i]; finalWinner = i; } } }
+      let finalWinner = winner; if (!finalWinner) { let maxBid = 0; for (let i = 0; i < 4; i++) { if (newBids[i] > maxBid) { maxBid = newBids[i]; finalWinner = i; } } }
       if (newHighBid === 0) { finalWinner = currentDealer; newBids[currentDealer] = 15; setBids(newBids); setHighBid(15); newHighBid = 15; }
       setBidWinner(finalWinner);
       if (finalWinner === 0) { setPhase('trump-select'); setMessage('Select trump suit'); }
@@ -508,57 +414,48 @@ function FortyFivesGame() {
       else { setMessage(`${PLAYER_NAMES[nextPlayer]} is bidding...`); timerRef.current = setTimeout(() => processBid(nextPlayer, currentHands, currentDealer, newBids, newHighBid, currentTotalScores), 1000); }
     }
   }, [aiTrumpChoice]);
-  
+
   const handleHumanBid = useCallback((amount) => {
     const newBids = [...bids]; newBids[0] = amount; setBids(newBids);
     let newHighBid = highBid; if (amount > highBid) { newHighBid = amount; setHighBid(amount); }
     const biddingComplete = newBids.every(b => b !== null);
     if (biddingComplete) {
-      let winner = null, maxBid = 0;
-      for (let i = 0; i < 4; i++) { if (newBids[i] > maxBid) { maxBid = newBids[i]; winner = i; } }
+      let winner = null, maxBid = 0; for (let i = 0; i < 4; i++) { if (newBids[i] > maxBid) { maxBid = newBids[i]; winner = i; } }
       if (maxBid === 0) { winner = dealer; newBids[dealer] = 15; setBids(newBids); setHighBid(15); newHighBid = 15; }
       setBidWinner(winner);
       if (winner === 0) { setPhase('trump-select'); setMessage('Select trump suit'); }
       else { const trump = aiTrumpChoice || chooseTrumpSuit(hands[winner]); finishBidding(winner, trump, hands, newHighBid, totalScores, dealer); }
-    } else {
-      setCurrentPlayer(1); setMessage(`${PLAYER_NAMES[1]} is bidding...`);
-      timerRef.current = setTimeout(() => processBid(1, hands, dealer, newBids, newHighBid, totalScores), 1000);
-    }
+    } else { setCurrentPlayer(1); setMessage(`${PLAYER_NAMES[1]} is bidding...`); timerRef.current = setTimeout(() => processBid(1, hands, dealer, newBids, newHighBid, totalScores), 1000); }
   }, [bids, highBid, dealer, hands, aiTrumpChoice, totalScores]);
-  
+
   const handleTrumpSelect = useCallback((suit) => { finishBidding(0, suit, hands, highBid, totalScores, dealer); }, [hands, highBid, totalScores, dealer]);
-  
+
   const finishBidding = useCallback((winner, trump, currentHands, winningBid, currentTotalScores, currentDealer) => {
     setTrumpSuit(trump); setBidWinner(winner); setHighBid(winningBid);
     const newHands = currentHands.map((hand, i) => i === winner ? [...hand, ...kitty] : [...hand]);
     setHands(newHands); setKitty([]);
-    const defaultSelection = getDefaultDiscardSelection(newHands[0], trump);
-    setSelectedCards(defaultSelection);
-    const firstDiscarder = (currentDealer + 1) % 4;
-    setPhase('discarding'); setCurrentPlayer(firstDiscarder);
+    const defaultSelection = getDefaultDiscardSelection(newHands[0], trump); setSelectedCards(defaultSelection);
+    const firstDiscarder = (currentDealer + 1) % 4; setPhase('discarding'); setCurrentPlayer(firstDiscarder);
     if (firstDiscarder === 0) { setMessage('Select cards to discard - you must keep at least 1 card'); }
     else { setMessage(`${PLAYER_NAMES[firstDiscarder]} is discarding...`); timerRef.current = setTimeout(() => processAIDiscard(firstDiscarder, newHands, trump, winner, winningBid, currentTotalScores, currentDealer, [0, 0, 0, 0], remainingDeck), 800); }
   }, [kitty, remainingDeck]);
-  
+
   const processAIDiscard = useCallback((player, currentHands, trump, roundBidWinner, roundHighBid, currentTotalScores, currentDealer, currentCardsDrawn, currentDeck) => {
     const isBidWinner = player === roundBidWinner;
     const { keep } = decideDiscard(currentHands[player], trump, isBidWinner);
     const newHands = [...currentHands.map(h => [...h])]; newHands[player] = keep;
-    let deck = [...currentDeck];
-    const drawCount = 5 - keep.length;
+    let deck = [...currentDeck]; const drawCount = 5 - keep.length;
     if (drawCount > 0 && deck.length >= drawCount) { const drawn = deck.splice(0, drawCount); newHands[player] = [...newHands[player], ...drawn]; }
     const newCardsDrawn = [...currentCardsDrawn]; newCardsDrawn[player] = drawCount;
     setHands(newHands); setRemainingDeck(deck); setCardsDrawn(newCardsDrawn);
-    const nextDiscarder = (player + 1) % 4;
-    const startPlayer = (currentDealer + 1) % 4;
+    const nextDiscarder = (player + 1) % 4; const startPlayer = (currentDealer + 1) % 4;
     if (nextDiscarder === startPlayer) { startPlayPhase(roundBidWinner, newHands, trump, roundHighBid, roundBidWinner, currentTotalScores, newCardsDrawn); }
-    else {
-      setCurrentPlayer(nextDiscarder);
+    else { setCurrentPlayer(nextDiscarder);
       if (nextDiscarder === 0) { const defaultSelection = getDefaultDiscardSelection(newHands[0], trump); setSelectedCards(defaultSelection); setMessage('Select cards to discard - you must keep at least 1 card'); }
       else { setMessage(`${PLAYER_NAMES[nextDiscarder]} is discarding...`); timerRef.current = setTimeout(() => processAIDiscard(nextDiscarder, newHands, trump, roundBidWinner, roundHighBid, currentTotalScores, currentDealer, newCardsDrawn, deck), 800); }
     }
   }, []);
-  
+
   const handleDiscard = useCallback(() => {
     const keep = hands[0].filter((_, idx) => !selectedCards.includes(idx));
     if (keep.length === 0) { setMessage('You must keep at least 1 card!'); return; }
@@ -571,22 +468,21 @@ function FortyFivesGame() {
     if (nextDiscarder === startPlayer) { startPlayPhase(bidWinner, newHands, trumpSuit, highBid, bidWinner, totalScores, newCardsDrawn); }
     else { setCurrentPlayer(nextDiscarder); setMessage(`${PLAYER_NAMES[nextDiscarder]} is discarding...`); timerRef.current = setTimeout(() => processAIDiscard(nextDiscarder, newHands, trumpSuit, bidWinner, highBid, totalScores, dealer, newCardsDrawn, deck), 800); }
   }, [hands, selectedCards, remainingDeck, trumpSuit, bidWinner, highBid, totalScores, dealer, cardsDrawn]);
-  
+
   const startPlayPhase = useCallback((leader, currentHands, trump, winningBid, roundBidWinner, currentTotalScores, currentCardsDrawn) => {
     setPhase('playing'); setCurrentTrick([]); setTrickCards([]); setTrickLeader(leader);
     setCurrentPlayer(leader); setTrickNumber(1); setPlayerTricksWon([0, 0, 0, 0]); setHighTrumpInfo({ rank: -1, team: -1 });
     if (leader === 0) { setMessage('Your lead'); }
     else { setMessage(`${PLAYER_NAMES[leader]} leads...`); timerRef.current = setTimeout(() => playAICard(leader, currentHands, [], trump, leader, 1, [0, 0], [0, 0], { rank: -1, team: -1 }, roundBidWinner, winningBid, currentTotalScores, currentCardsDrawn, [0, 0, 0, 0]), 1000); }
   }, []);
-  
+
   const playAICard = useCallback((player, currentHands, currentTrickCards, trump, leader, trickNum, currentTricksWon, currentRoundPoints, currentHighTrumpInfo, roundBidWinner, roundHighBid, currentTotalScores, currentCardsDrawn, currentPlayerTricks) => {
     const hand = currentHands[player]; if (!hand || hand.length === 0) return;
     const trick = currentTrickCards.map(tc => tc.card);
     const cardToPlay = chooseCardToPlay(hand, trump, trick, leader, player, roundBidWinner, roundHighBid, currentCardsDrawn, currentTricksWon);
     const cardIndex = hand.findIndex(c => c.id === cardToPlay.id);
     const newHands = currentHands.map((h, i) => i === player ? h.filter((_, idx) => idx !== cardIndex) : [...h]);
-    const newTrickCards = [...currentTrickCards, { card: cardToPlay, player }];
-    const newTrick = newTrickCards.map(tc => tc.card);
+    const newTrickCards = [...currentTrickCards, { card: cardToPlay, player }]; const newTrick = newTrickCards.map(tc => tc.card);
     setHands(newHands); setTrickCards(newTrickCards); setCurrentTrick(newTrick);
     if (newTrickCards.length === 4) { timerRef.current = setTimeout(() => evaluateTrick(newTrick, newTrickCards, trump, leader, newHands, trickNum, currentTricksWon, currentRoundPoints, currentHighTrumpInfo, roundBidWinner, roundHighBid, currentTotalScores, currentCardsDrawn, currentPlayerTricks), 600); }
     else { const nextPlayer = (player + 1) % 4; setCurrentPlayer(nextPlayer);
@@ -594,25 +490,22 @@ function FortyFivesGame() {
       else { setMessage(`${PLAYER_NAMES[nextPlayer]} is playing...`); timerRef.current = setTimeout(() => playAICard(nextPlayer, newHands, newTrickCards, trump, leader, trickNum, currentTricksWon, currentRoundPoints, currentHighTrumpInfo, roundBidWinner, roundHighBid, currentTotalScores, currentCardsDrawn, currentPlayerTricks), 800); }
     }
   }, []);
-  
+
   const handlePlayCard = useCallback((cardIndex) => {
     if (phase !== 'playing' || currentPlayer !== 0) return;
     const hand = hands[0]; const card = hand[cardIndex];
-    const ledCard = currentTrick.length > 0 ? currentTrick[0] : null;
-    const ledSuit = ledCard ? ledCard.suit : null;
+    const ledCard = currentTrick.length > 0 ? currentTrick[0] : null; const ledSuit = ledCard ? ledCard.suit : null;
     const playable = getPlayableCards(hand, trumpSuit, ledCard, ledSuit);
     if (!playable.some(c => c.id === card.id)) { setMessage('You must follow suit or play trump!'); return; }
     const newHands = hands.map((h, i) => i === 0 ? h.filter((_, idx) => idx !== cardIndex) : [...h]);
-    const newTrickCards = [...trickCards, { card, player: 0 }];
-    const newTrick = newTrickCards.map(tc => tc.card);
+    const newTrickCards = [...trickCards, { card, player: 0 }]; const newTrick = newTrickCards.map(tc => tc.card);
     setHands(newHands); setTrickCards(newTrickCards); setCurrentTrick(newTrick);
     if (newTrickCards.length === 4) { timerRef.current = setTimeout(() => evaluateTrick(newTrick, newTrickCards, trumpSuit, trickLeader, newHands, trickNumber, tricksWon, roundPoints, highTrumpInfo, bidWinner, highBid, totalScores, cardsDrawn, playerTricksWon), 600); }
     else { setCurrentPlayer(1); setMessage(`${PLAYER_NAMES[1]} is playing...`); timerRef.current = setTimeout(() => playAICard(1, newHands, newTrickCards, trumpSuit, trickLeader, trickNumber, tricksWon, roundPoints, highTrumpInfo, bidWinner, highBid, totalScores, cardsDrawn, playerTricksWon), 800); }
   }, [phase, currentPlayer, hands, currentTrick, trickCards, trumpSuit, trickLeader, trickNumber, tricksWon, roundPoints, highTrumpInfo, bidWinner, highBid, totalScores, cardsDrawn, playerTricksWon]);
-  
+
   const evaluateTrick = useCallback((trick, trickCardsWithPlayers, trump, leader, currentHands, trickNum, currentTricksWon, currentRoundPoints, currentHighTrumpInfo, roundBidWinner, roundHighBid, currentTotalScores, currentCardsDrawn, currentPlayerTricks) => {
-    const winner = determineTrickWinner(trick, trump, leader);
-    const winningTeam = getTeam(winner); const points = 5;
+    const winner = determineTrickWinner(trick, trump, leader); const winningTeam = getTeam(winner); const points = 5;
     let highestTrumpInTrick = -1;
     for (const card of trick) { const trumpRank = getTrumpRank(card, trump); if (trumpRank > highestTrumpInTrick) highestTrumpInTrick = trumpRank; }
     let newHighTrumpInfo = currentHighTrumpInfo;
@@ -633,10 +526,9 @@ function FortyFivesGame() {
       }
     }, 1500);
   }, []);
-  
+
   const finishRound = useCallback((finalPoints, currentHands, roundBidWinner, roundHighBid, currentTotalScores) => {
-    const biddingTeam = getTeam(roundBidWinner); const bidAmount = roundHighBid;
-    const newTotalScores = [...currentTotalScores];
+    const biddingTeam = getTeam(roundBidWinner); const bidAmount = roundHighBid; const newTotalScores = [...currentTotalScores];
     let usRoundScore = 0, themRoundScore = 0;
     if (finalPoints[biddingTeam] >= bidAmount) { newTotalScores[biddingTeam] += finalPoints[biddingTeam]; if (biddingTeam === 0) usRoundScore = finalPoints[0]; else themRoundScore = finalPoints[1]; }
     else { newTotalScores[biddingTeam] -= bidAmount; if (biddingTeam === 0) usRoundScore = -bidAmount; else themRoundScore = -bidAmount; }
@@ -647,26 +539,15 @@ function FortyFivesGame() {
     if (newTotalScores[0] >= 120 || newTotalScores[1] >= 120) { let winner = (newTotalScores[0] >= 120 && newTotalScores[1] >= 120) ? biddingTeam : (newTotalScores[0] >= 120 ? 0 : 1); setPhase('game-over'); setMessage(`${winner === 0 ? 'Your team' : 'Opponents'} wins!`); }
     else { setPhase('round-end'); const madeIt = finalPoints[biddingTeam] >= bidAmount; const biddingTeamName = biddingTeam === 0 ? 'Your team' : 'Opponents'; setMessage(`Round over! ${biddingTeamName} ${madeIt ? 'made' : 'missed'} their ${bidAmount} bid (got ${finalPoints[biddingTeam]}).`); }
   }, []);
-  
+
   const startNextRound = useCallback(() => { const newDealer = (dealer + 1) % 4; setDealer(newDealer); dealNewRound(newDealer, totalScores); }, [dealer, totalScores]);
   const toggleCardSelection = useCallback((cardIndex) => { setSelectedCards(prev => prev.includes(cardIndex) ? prev.filter(i => i !== cardIndex) : [...prev, cardIndex]); }, []);
-  
-  const getPlayableIndices = () => {
-    if (phase !== 'playing' || currentPlayer !== 0) return [];
-    const ledCard = currentTrick.length > 0 ? currentTrick[0] : null;
-    const ledSuit = ledCard ? ledCard.suit : null;
-    const playable = getPlayableCards(hands[0], trumpSuit, ledCard, ledSuit);
-    return hands[0].map((card, idx) => playable.some(c => c.id === card.id) ? idx : -1).filter(i => i >= 0);
-  };
+  const getPlayableIndices = () => { if (phase !== 'playing' || currentPlayer !== 0) return []; const ledCard = currentTrick.length > 0 ? currentTrick[0] : null; const ledSuit = ledCard ? ledCard.suit : null; const playable = getPlayableCards(hands[0], trumpSuit, ledCard, ledSuit); return hands[0].map((card, idx) => playable.some(c => c.id === card.id) ? idx : -1).filter(i => i >= 0); };
   const playableIndices = getPlayableIndices();
   const showAllBids = phase === 'bidding';
-  
-  const renderBidIndicator = (playerIdx) => {
-    if (showAllBids) { if (bids[playerIdx] === null) return null; return (<div style={{ padding: '4px 8px', background: bids[playerIdx] > 0 ? '#2196f3' : 'rgba(0,0,0,0.5)', borderRadius: '4px', fontSize: '14px' }}>{bids[playerIdx] > 0 ? bids[playerIdx] : 'Pass'}</div>); }
-    else { if (bidWinner !== playerIdx || !trumpSuit) return null; return (<div style={{ padding: '4px 8px', background: '#2196f3', borderRadius: '4px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '4px' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span></div>); }
-  };
+  const renderBidIndicator = (playerIdx) => { if (showAllBids) { if (bids[playerIdx] === null) return null; return (<div style={{ padding: '4px 8px', background: bids[playerIdx] > 0 ? '#2196f3' : 'rgba(0,0,0,0.5)', borderRadius: '4px', fontSize: '14px' }}>{bids[playerIdx] > 0 ? bids[playerIdx] : 'Pass'}</div>); } else { if (bidWinner !== playerIdx || !trumpSuit) return null; return (<div style={{ padding: '4px 8px', background: '#2196f3', borderRadius: '4px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '4px' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span></div>); } };
   const getWinnerPosition = (winner) => ({ 0: { x: 0, y: 150 }, 1: { x: -150, y: 0 }, 2: { x: 0, y: -150 }, 3: { x: 150, y: 0 } }[winner]);
-  
+
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 50%, #0a1f12 100%)', padding: '16px', fontFamily: '"Palatino Linotype", Palatino, Georgia, serif', color: '#e8e4d9' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', padding: '12px 16px', background: 'rgba(0,0,0,0.3)', borderRadius: '12px', border: '1px solid rgba(212,175,55,0.3)' }}>
