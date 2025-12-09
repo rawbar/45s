@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 1.2
+// 45s Card Game - Version 1.3
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '1.2';
+const VERSION = '1.3';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -238,7 +238,7 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
 
 const chooseTrumpSuit = (hand) => findBestTrumpSuit(hand).suit;
 
-// UI Components - COMPACT for mobile
+// UI Components
 function TrickMarker({ isHighTrump }) {
   return (<div style={{ width: '14px', height: '18px', borderRadius: '2px', background: isHighTrump ? 'linear-gradient(135deg, #8b0000 0%, #5c0000 100%)' : 'linear-gradient(135deg, #1e3a5f 0%, #0d1b2a 100%)', border: isHighTrump ? '1px solid #ff6666' : '1px solid #2d5a87' }} />);
 }
@@ -249,12 +249,12 @@ function TricksWonDisplay({ count, hasHighTrump }) {
 }
 
 function CardsDrawnIndicator({ count }) {
-  if (count === 0) return null;
+  if (count <= 0) return null;
   return (<span style={{ fontSize: '9px', color: '#aaa' }}>+{count}</span>);
 }
 
 function DealerBadge() {
-  return (<span style={{ padding: '1px 4px', background: '#d4af37', color: '#000', borderRadius: '2px', fontSize: '8px', fontWeight: 'bold' }}>D</span>);
+  return (<span style={{ padding: '1px 3px', background: '#d4af37', color: '#000', borderRadius: '2px', fontSize: '8px', fontWeight: 'bold' }}>DEALER</span>);
 }
 
 function Card({ card, onClick, disabled, selected, small, faceDown, playable }) {
@@ -316,6 +316,7 @@ function FortyFivesGame() {
   const [history, setHistory] = useState([]);
   const [drawn, setDrawn] = useState([0,0,0,0]);
   const [animating, setAnimating] = useState(null);
+  const [wasBagged, setWasBagged] = useState(false);
   const timer = useRef(null);
   
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
@@ -334,7 +335,7 @@ function FortyFivesGame() {
     setTrick([]); setTrickCards([]); setTricksWon([0,0]); setPlayerTricks([0,0,0,0]);
     setRoundPts([0,0]); setTrickNum(0); setSelected([]); setLastTrick(null);
     setAiTrump(null); setTrickLeader(null); setHighTrumpInfo({ rank: -1, player: -1 });
-    setDrawn([0,0,0,0]); setAnimating(null); setPhase('bidding');
+    setDrawn([0,0,0,0]); setAnimating(null); setWasBagged(false); setPhase('bidding');
     const first = (dlr + 1) % 4; setCurrentPlayer(first);
     if (first !== 0) { setMsg(`${PLAYER_NAMES[first]} bidding...`); timer.current = setTimeout(() => doBid(first, h, dlr, [null,null,null,null], 0, totals), 800); }
     else setMsg('Your bid');
@@ -349,10 +350,12 @@ function FortyFivesGame() {
     if (dec.bid > curHigh) { newHigh = dec.bid; setHighBid(dec.bid); setAiTrump(dec.suit); winner = p; }
     if (newBids.every(b => b !== null)) {
       let fw = winner; if (!fw) { let m = 0; for (let i = 0; i < 4; i++) if (newBids[i] > m) { m = newBids[i]; fw = i; } }
-      if (newHigh === 0) { fw = dlr; newBids[dlr] = 15; setBids(newBids); setHighBid(15); newHigh = 15; }
+      let bagged = false;
+      if (newHigh === 0) { fw = dlr; newBids[dlr] = 15; setBids(newBids); setHighBid(15); newHigh = 15; bagged = true; }
+      setWasBagged(bagged);
       setBidWinner(fw);
-      if (fw === 0) { setPhase('trump-select'); setMsg('Pick trump'); }
-      else { const t = aiTrump || chooseTrumpSuit(h[fw]); finishBid(fw, t, h, newHigh, totals, dlr); }
+      if (fw === 0) { setPhase('trump-select'); setMsg(bagged ? 'You were BAGGED! Pick trump' : 'Pick trump'); }
+      else { const t = aiTrump || chooseTrumpSuit(h[fw]); finishBid(fw, t, h, newHigh, totals, dlr, bagged); }
     } else {
       const next = (p + 1) % 4; setCurrentPlayer(next);
       if (next === 0) setMsg('Your bid');
@@ -365,29 +368,32 @@ function FortyFivesGame() {
     let newHigh = highBid; if (amt > highBid) { newHigh = amt; setHighBid(amt); }
     if (newBids.every(b => b !== null)) {
       let w = null, m = 0; for (let i = 0; i < 4; i++) if (newBids[i] > m) { m = newBids[i]; w = i; }
-      if (m === 0) { w = dealer; newBids[dealer] = 15; setBids(newBids); setHighBid(15); newHigh = 15; }
+      let bagged = false;
+      if (m === 0) { w = dealer; newBids[dealer] = 15; setBids(newBids); setHighBid(15); newHigh = 15; bagged = true; }
+      setWasBagged(bagged);
       setBidWinner(w);
-      if (w === 0) { setPhase('trump-select'); setMsg('Pick trump'); }
-      else { const t = aiTrump || chooseTrumpSuit(hands[w]); finishBid(w, t, hands, newHigh, scores, dealer); }
+      if (w === 0) { setPhase('trump-select'); setMsg(bagged ? 'You were BAGGED! Pick trump' : 'Pick trump'); }
+      else { const t = aiTrump || chooseTrumpSuit(hands[w]); finishBid(w, t, hands, newHigh, scores, dealer, bagged); }
     } else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]} bidding...`); timer.current = setTimeout(() => doBid(1, hands, dealer, newBids, newHigh, scores), 800); }
   }, [bids, highBid, dealer, hands, aiTrump, scores]);
 
-  const selectTrump = useCallback((s) => finishBid(0, s, hands, highBid, scores, dealer), [hands, highBid, scores, dealer]);
+  const selectTrump = useCallback((s) => finishBid(0, s, hands, highBid, scores, dealer, wasBagged), [hands, highBid, scores, dealer, wasBagged]);
 
-  const finishBid = useCallback((w, t, h, hb, totals, dlr) => {
+  const finishBid = useCallback((w, t, h, hb, totals, dlr, bagged) => {
     setTrumpSuit(t); setBidWinner(w); setHighBid(hb);
     const newH = h.map((hand, i) => i === w ? [...hand, ...kitty] : [...hand]);
     setHands(newH); setKitty([]);
     setSelected(getDefaultDiscardSelection(newH[0], t));
     const first = (dlr + 1) % 4; setPhase('discarding'); setCurrentPlayer(first);
-    if (first === 0) setMsg('Discard (keep 1+)');
-    else { setMsg(`${PLAYER_NAMES[first]} discarding...`); timer.current = setTimeout(() => aiDiscard(first, newH, t, w, hb, totals, dlr, [0,0,0,0], deck), 500); }
+    const bagMsg = bagged ? ' (BAGGED)' : '';
+    if (first === 0) setMsg(`Discard (keep 1+)${bagMsg}`);
+    else { setMsg(`${PLAYER_NAMES[first]} discarding...${bagMsg}`); timer.current = setTimeout(() => aiDiscard(first, newH, t, w, hb, totals, dlr, [0,0,0,0], deck), 500); }
   }, [kitty, deck]);
 
   const aiDiscard = useCallback((p, h, t, bw, hb, totals, dlr, curDrawn, curDeck) => {
     const { keep } = decideDiscard(h[p], t, p === bw);
     const newH = h.map(x => [...x]); newH[p] = keep;
-    let d = [...curDeck]; const dc = 5 - keep.length;
+    let d = [...curDeck]; const dc = Math.max(0, 5 - keep.length);
     if (dc > 0 && d.length >= dc) { newH[p] = [...newH[p], ...d.splice(0, dc)]; }
     const newDrawn = [...curDrawn]; newDrawn[p] = dc;
     setHands(newH); setDeck(d); setDrawn(newDrawn);
@@ -403,7 +409,7 @@ function FortyFivesGame() {
     const keep = hands[0].filter((_, i) => !selected.includes(i));
     if (keep.length === 0) { setMsg('Keep at least 1!'); return; }
     const newH = hands.map(x => [...x]); newH[0] = keep;
-    let d = [...deck]; const dc = 5 - keep.length;
+    let d = [...deck]; const dc = Math.max(0, 5 - keep.length);
     if (dc > 0 && d.length >= dc) { newH[0] = [...newH[0], ...d.splice(0, dc)]; }
     const newDrawn = [...drawn]; newDrawn[0] = dc;
     setHands(newH); setDeck(d); setDrawn(newDrawn); setSelected([]);
@@ -494,10 +500,15 @@ function FortyFivesGame() {
     return hands[0].map((c, i) => p.some(x => x.id === c.id) ? i : -1).filter(i => i >= 0);
   })() : [];
 
+  // Bid indicator with BAGGED support
   const bidInd = (pi) => {
-    if (phase === 'bidding') { if (bids[pi] === null) return null; return <span style={{ padding: '2px 4px', background: bids[pi] > 0 ? '#2196f3' : 'rgba(0,0,0,0.5)', borderRadius: '3px', fontSize: '10px', marginLeft: '4px' }}>{bids[pi] > 0 ? bids[pi] : 'P'}</span>; }
+    if (phase === 'bidding') { 
+      if (bids[pi] === null) return null; 
+      return <span style={{ padding: '2px 4px', background: bids[pi] > 0 ? '#2196f3' : 'rgba(0,0,0,0.5)', borderRadius: '3px', fontSize: '10px', marginLeft: '4px' }}>{bids[pi] > 0 ? bids[pi] : 'Pass'}</span>; 
+    }
     if (bidWinner !== pi || !trumpSuit) return null;
-    return <span style={{ padding: '2px 4px', background: '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span></span>;
+    const isBagged = wasBagged && bidWinner === pi;
+    return <span style={{ padding: '2px 4px', background: isBagged ? '#c62828' : '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span>{isBagged && <span style={{ marginLeft: '2px' }}>BAG</span>}</span>;
   };
 
   const winPos = (w) => ({ 0: { x: 0, y: 80 }, 1: { x: -80, y: 0 }, 2: { x: 0, y: -80 }, 3: { x: 80, y: 0 } }[w]);
@@ -510,43 +521,53 @@ function FortyFivesGame() {
         <div style={{ fontSize: '12px' }}><span style={{ color: '#4caf50' }}>Us:{scores[0]}</span> | <span style={{ color: '#f44336' }}>Them:{scores[1]}</span></div>
       </div>
       {/* Message */}
-      <div style={{ textAlign: 'center', padding: '4px', background: 'rgba(0,0,0,0.4)', borderRadius: '4px', fontSize: '12px', color: '#ffd700', marginBottom: '4px' }}>{msg}{trumpSuit && <span style={{ marginLeft: '8px' }}>Trump: <span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff' }}>{trumpSuit}</span></span>}</div>
+      <div style={{ textAlign: 'center', padding: '4px', background: 'rgba(0,0,0,0.4)', borderRadius: '4px', fontSize: '12px', color: '#ffd700', marginBottom: '4px' }}>{msg}</div>
       {/* Game */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {/* North */}
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', padding: '2px 0' }}>
-          <span style={{ fontSize: '10px', color: '#aaa' }}>{PLAYER_NAMES[2]}</span>
-          {dealer === 2 && <DealerBadge />}
-          {bidInd(2)}
-          <CardsDrawnIndicator count={drawn[2]} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', padding: '2px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '11px', color: '#aaa' }}>{PLAYER_NAMES[2]}</span>
+            {dealer === 2 && <DealerBadge />}
+            <CardsDrawnIndicator count={drawn[2]} />
+          </div>
           <div style={{ display: 'flex', gap: '1px' }}>{hands[2].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
-          <TricksWonDisplay count={playerTricks[2]} hasHighTrump={highTrumpInfo.player === 2} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {bidInd(2)}
+            <TricksWonDisplay count={playerTricks[2]} hasHighTrump={highTrumpInfo.player === 2} />
+          </div>
         </div>
         {/* Middle row */}
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', minHeight: 0 }}>
           {/* West */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '50px' }}>
-            <div style={{ fontSize: '9px', color: '#aaa', display: 'flex', alignItems: 'center', gap: '2px' }}>{PLAYER_NAMES[1]}{dealer === 1 && <DealerBadge />}{bidInd(1)}</div>
+            <div style={{ fontSize: '10px', color: '#aaa', textAlign: 'center' }}>{PLAYER_NAMES[1]}</div>
+            {dealer === 1 && <DealerBadge />}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>{hands[1].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
             <CardsDrawnIndicator count={drawn[1]} />
+            {bidInd(1)}
             <TricksWonDisplay count={playerTricks[1]} hasHighTrump={highTrumpInfo.player === 1} />
           </div>
           {/* Center */}
           <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <div style={{ width: '110px', height: '110px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '50%', border: '1px solid rgba(212,175,55,0.3)', position: 'relative' }}>
+            <div style={{ width: '130px', height: '130px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '50%', border: '2px solid rgba(212,175,55,0.3)', position: 'relative' }}>
+              {/* Trump suit in center */}
+              {trumpSuit && trickCards.length === 0 && <div style={{ fontSize: '48px', color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff', opacity: 0.6 }}>{trumpSuit}</div>}
               {trickCards.map((tc, i) => {
                 const pos = [{ bottom: '4px', left: '50%', transform: 'translateX(-50%)' }, { left: '4px', top: '50%', transform: 'translateY(-50%)' }, { top: '4px', left: '50%', transform: 'translateX(-50%)' }, { right: '4px', top: '50%', transform: 'translateY(-50%)' }][tc.player];
                 const ani = animating !== null, wp = ani ? winPos(animating) : null;
                 return <div key={i} style={{ position: 'absolute', ...pos, zIndex: 1, transition: ani ? 'all 0.4s ease' : 'none', transform: ani ? `translate(${wp.x}px, ${wp.y}px) scale(0.2)` : pos.transform, opacity: ani ? 0 : 1 }}><Card card={tc.card} small disabled /></div>;
               })}
-              {(phase === 'playing' || phase === 'trick-end') && <div style={{ position: 'absolute', bottom: '-16px', fontSize: '9px', color: '#aaa' }}>{roundPts[0]}-{roundPts[1]}</div>}
+              {(phase === 'playing' || phase === 'trick-end') && <div style={{ position: 'absolute', bottom: '-16px', fontSize: '10px', color: '#aaa' }}>{roundPts[0]}-{roundPts[1]}</div>}
             </div>
           </div>
           {/* East */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '50px' }}>
-            <div style={{ fontSize: '9px', color: '#aaa', display: 'flex', alignItems: 'center', gap: '2px' }}>{PLAYER_NAMES[3]}{dealer === 3 && <DealerBadge />}{bidInd(3)}</div>
+            <div style={{ fontSize: '10px', color: '#aaa', textAlign: 'center' }}>{PLAYER_NAMES[3]}</div>
+            {dealer === 3 && <DealerBadge />}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>{hands[3].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
             <CardsDrawnIndicator count={drawn[3]} />
+            {bidInd(3)}
             <TricksWonDisplay count={playerTricks[3]} hasHighTrump={highTrumpInfo.player === 3} />
           </div>
         </div>
@@ -554,7 +575,7 @@ function FortyFivesGame() {
         <div style={{ padding: '4px 0' }}>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
             <TricksWonDisplay count={playerTricks[0]} hasHighTrump={highTrumpInfo.player === 0} />
-            <span style={{ fontSize: '10px', color: '#aaa' }}>{PLAYER_NAMES[0]}</span>
+            <span style={{ fontSize: '11px', color: '#aaa' }}>{PLAYER_NAMES[0]}</span>
             {dealer === 0 && <DealerBadge />}
             {bidInd(0)}
             <CardsDrawnIndicator count={drawn[0]} />
@@ -573,7 +594,7 @@ function FortyFivesGame() {
           {phase === 'dealing' && <button onClick={startGame} style={{ padding: '10px 24px', fontSize: '14px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>Start</button>}
         </div>
         {/* Last Trick - compact */}
-        {lastTrick && phase !== 'trick-end' && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '2px', padding: '2px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}><span style={{ fontSize: '8px', color: '#aaa' }}>Last:</span>{lastTrick.cards.map((tc, i) => <Card key={i} card={tc.card} small disabled />)}</div>}
+        {lastTrick && phase !== 'trick-end' && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '2px', padding: '2px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}><span style={{ fontSize: '9px', color: '#aaa' }}>Last:</span>{lastTrick.cards.map((tc, i) => <Card key={i} card={tc.card} small disabled />)}</div>}
         {/* Score table */}
         <ScoreTable roundHistory={history} />
       </div>
