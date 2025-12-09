@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 1.4
+// 45s Card Game - Version 1.5
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '1.4';
+const VERSION = '1.5';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -163,10 +163,27 @@ function decideDiscard(hand, trumpSuit, isBidWinner) {
   const trumps = hand.filter(c => isTrump(c, trumpSuit));
   const offsuit = hand.filter(c => !isTrump(c, trumpSuit));
   let keep = [...trumps];
-  if (isBidWinner) {
-    const kings = offsuit.filter(c => c.rank === 'K');
-    if (kings.length > 0 && trumps.length >= 3) keep.push(kings[0]);
+  
+  if (isBidWinner && offsuit.length > 0) {
+    // Group offsuit by suit and keep best card from each suit (diversify)
+    const bySuit = {};
+    for (const c of offsuit) {
+      if (!bySuit[c.suit]) bySuit[c.suit] = [];
+      bySuit[c.suit].push(c);
+    }
+    // Sort each suit by rank (highest first) and pick the best from each
+    const bestPerSuit = [];
+    for (const suit of Object.keys(bySuit)) {
+      bySuit[suit].sort((a, b) => getOffSuitRank(b) - getOffSuitRank(a));
+      bestPerSuit.push(bySuit[suit][0]);
+    }
+    // Only keep kings or aces if we have enough trump
+    const strongOffsuit = bestPerSuit.filter(c => c.rank === 'K' || c.rank === 'A');
+    if (strongOffsuit.length > 0 && trumps.length >= 3) {
+      keep.push(strongOffsuit[0]);
+    }
   }
+  
   if (keep.length === 0 && hand.length > 0) {
     const sorted = [...hand].sort((a,b) => {
       const ar = isTrump(a,trumpSuit) ? getTrumpRank(a,trumpSuit)+100 : getOffSuitRank(a);
