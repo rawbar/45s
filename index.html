@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 1.5
+// 45s Card Game - Version 1.6
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '1.5';
+const VERSION = '1.6';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -199,15 +199,19 @@ function getDefaultDiscardSelection(hand, trumpSuit) {
   return hand.map((c, i) => isTrump(c, trumpSuit) ? -1 : i).filter(i => i >= 0);
 }
 
-function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, highBid, cardsDrawn, knownOutOfTrump) {
+function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, highBid, cardsDrawn, knownOutOfTrump, trickNum, bidderHasLostTrick) {
   const led = trick[0] || null, ledSuit = led?.suit;
   const playable = getPlayableCards(hand, trumpSuit, led, ledSuit);
   if (playable.length <= 1) return playable[0] || hand[0];
   
   const myTeam = getTeam(player), partnerIdx = (player + 2) % 4;
   const myTeamBid = myTeam === getTeam(bidWinner);
+  const iAmBidWinner = player === bidWinner;
   const partnerIsBidder = partnerIdx === bidWinner;
-  const oppWeak = (cardsDrawn[(player+1)%4]||0) >= 4 && (cardsDrawn[(player+3)%4]||0) >= 4;
+  const opp1Drawn = cardsDrawn[(player+1)%4] || 0;
+  const opp2Drawn = cardsDrawn[(player+3)%4] || 0;
+  const oppWeak = opp1Drawn >= 4 && opp2Drawn >= 4;
+  const atLeastOneOppStrong = opp1Drawn < 4 || opp2Drawn < 4;
   const partnerWeak = (cardsDrawn[partnerIdx]||0) >= 4;
   const partnerOutOfTrump = knownOutOfTrump && knownOutOfTrump[partnerIdx];
 
@@ -218,8 +222,31 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   if (!led) {
     const trumps = playable.filter(c => isTrump(c, trumpSuit));
     const nonTrumps = playable.filter(c => !isTrump(c, trumpSuit));
+    const has5 = trumps.some(c => c.rank === '5' && c.suit === trumpSuit);
+    
+    // Bid winner leading logic
+    if (iAmBidWinner && trumps.length > 0) {
+      // For 25 bids (non-desperation): come out swinging with strongest trump until we lose a trick
+      if (highBid >= 25 && !bidderHasLostTrick) {
+        // Lead strongest trump - bang them out one after another
+        return trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
+      }
+      
+      // For 15/20 bids or after losing a trick on 25: lead the 5 aggressively
+      // Exception: partner weak, at least one opponent strong, and we need partner's help
+      if (has5) {
+        const needPartnerHelp = partnerWeak && atLeastOneOppStrong && trumps.length < 4;
+        if (!needPartnerHelp) {
+          return trumps.find(c => c.rank === '5' && c.suit === trumpSuit);
+        }
+      }
+      
+      // Otherwise lead strongest trump
+      return trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
+    }
+    
+    // Non-bid-winner teammate leading
     if (myTeamBid && trumps.length >= 2) {
-      const has5 = trumps.some(c => c.rank === '5' && c.suit === trumpSuit);
       if (has5 && oppWeak) return trumps.find(c => c.rank === '5' && c.suit === trumpSuit);
       // If holding A♥ + A of trump, play A of trump first
       if (hasAH && hasATrump) {
@@ -362,7 +389,7 @@ function HelpModal({ isOpen, onClose }) {
             
             <p style={{ marginBottom: '12px' }}><strong style={{ color: '#d4af37' }}>Feedback & Bug Reports</strong></p>
             <p style={{ marginBottom: '12px' }}>To report bugs, UI suggestions and strategy suggestions, please email me at <a href="mailto:rrothberg@gmail.com?subject=45s%20Feedback" style={{ color: '#4caf50' }}>rrothberg@gmail.com</a></p>
-            <p style={{ marginBottom: '16px' }}>Please include screenshots, version # and be VERY specific about what happened and what you would have expected to happen. Walk through it step by step unless the screenshot makes it obvious.</p>
+            <p style={{ marginBottom: '16px' }}>Please include screenshots, version number and be VERY specific about what happened and what you would have expected to happen. Walk through it step by step unless the screenshot makes it obvious.</p>
             
             <p style={{ marginBottom: '12px' }}><strong style={{ color: '#d4af37' }}>About This Game</strong></p>
             <p style={{ marginBottom: '12px' }}>I developed this game in December 2025 to gain experience with using AI to code as well as to learn its capabilities and limitations. For training the AI players, I built an ML neural net simulator with a number of strategic parameters, and had it run 500,000 iterations. The statistics were pretty interesting to see.</p>
@@ -471,6 +498,7 @@ function FortyFivesGame() {
   const [wasBagged, setWasBagged] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [knownOutOfTrump, setKnownOutOfTrump] = useState([false, false, false, false]);
+  const [bidderLostTrick, setBidderLostTrick] = useState(false);
   const timer = useRef(null);
   
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
@@ -491,6 +519,7 @@ function FortyFivesGame() {
     setAiTrump(null); setTrickLeader(null); setHighTrumpInfo({ rank: -1, player: -1 });
     setDrawn([0,0,0,0]); setAnimating(null); setWasBagged(false); 
     setKnownOutOfTrump([false, false, false, false]);
+    setBidderLostTrick(false);
     setPhase('bidding');
     const first = (dlr + 1) % 4; setCurrentPlayer(first);
     if (first !== 0) { setMsg(`${PLAYER_NAMES[first]} bidding...`); timer.current = setTimeout(() => doBid(first, h, dlr, [null,null,null,null], 0, totals), 800); }
@@ -578,22 +607,23 @@ function FortyFivesGame() {
     setPhase('playing'); setTrick([]); setTrickCards([]); setTrickLeader(leader);
     setCurrentPlayer(leader); setTrickNum(1); setPlayerTricks([0,0,0,0]); setHighTrumpInfo({ rank: -1, player: -1 });
     setKnownOutOfTrump([false, false, false, false]);
+    setBidderLostTrick(false);
     if (leader === 0) setMsg('Your lead');
-    else { setMsg(`${PLAYER_NAMES[leader]} leads...`); timer.current = setTimeout(() => aiPlay(leader, h, [], t, leader, 1, [0,0], [0,0], { rank: -1, player: -1 }, bidWinner, hb, totals, dr, [0,0,0,0], [false,false,false,false]), 700); }
+    else { setMsg(`${PLAYER_NAMES[leader]} leads...`); timer.current = setTimeout(() => aiPlay(leader, h, [], t, leader, 1, [0,0], [0,0], { rank: -1, player: -1 }, bidWinner, hb, totals, dr, [0,0,0,0], [false,false,false,false], false), 700); }
   }, [bidWinner]);
 
-  const aiPlay = useCallback((p, h, tc, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot) => {
+  const aiPlay = useCallback((p, h, tc, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt) => {
     const hand = h[p]; if (!hand || !hand.length) return;
     const trk = tc.map(x => x.card);
-    const card = chooseCardToPlay(hand, t, trk, lead, p, bw, hb, dr, koot);
+    const card = chooseCardToPlay(hand, t, trk, lead, p, bw, hb, dr, koot, tn, blt);
     const idx = hand.findIndex(c => c.id === card.id);
     const newH = h.map((x, i) => i === p ? x.filter((_, j) => j !== idx) : [...x]);
     const newTC = [...tc, { card, player: p }], newTrk = newTC.map(x => x.card);
     setHands(newH); setTrickCards(newTC); setTrick(newTrk);
-    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, t, lead, newH, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot), 500);
+    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, t, lead, newH, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt), 500);
     else { const next = (p + 1) % 4; setCurrentPlayer(next);
       if (next === 0) setMsg('Your turn');
-      else { setMsg(`${PLAYER_NAMES[next]}...`); timer.current = setTimeout(() => aiPlay(next, newH, newTC, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot), 600); }
+      else { setMsg(`${PLAYER_NAMES[next]}...`); timer.current = setTimeout(() => aiPlay(next, newH, newTC, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt), 600); }
     }
   }, []);
 
@@ -606,11 +636,11 @@ function FortyFivesGame() {
     const newH = hands.map((x, i) => i === 0 ? x.filter((_, j) => j !== ci) : [...x]);
     const newTC = [...trickCards, { card, player: 0 }], newTrk = newTC.map(x => x.card);
     setHands(newH); setTrickCards(newTC); setTrick(newTrk);
-    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, trumpSuit, trickLeader, newH, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump), 500);
-    else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]}...`); timer.current = setTimeout(() => aiPlay(1, newH, newTC, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump), 600); }
-  }, [phase, currentPlayer, hands, trick, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump]);
+    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, trumpSuit, trickLeader, newH, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump, bidderLostTrick), 500);
+    else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]}...`); timer.current = setTimeout(() => aiPlay(1, newH, newTC, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump, bidderLostTrick), 600); }
+  }, [phase, currentPlayer, hands, trick, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump, bidderLostTrick]);
 
-  const evalTrick = useCallback((trk, tc, t, lead, h, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot) => {
+  const evalTrick = useCallback((trk, tc, t, lead, h, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt) => {
     const winner = determineTrickWinner(trk, t, lead), team = getTeam(winner);
     let highT = -1; for (const c of trk) { const r = getTrumpRank(c, t); if (r > highT) highT = r; }
     let newHTI = hti; if (highT > hti.rank) newHTI = { rank: highT, player: winner };
@@ -619,6 +649,13 @@ function FortyFivesGame() {
     const newPT = [...pt]; newPT[winner]++;
     const newRP = [...rp]; newRP[team] += 5;
     setTricksWon(newTW); setPlayerTricks(newPT); setRoundPts(newRP);
+    
+    // Track if bidder lost a trick
+    let newBLT = blt;
+    if (winner !== bw && getTeam(winner) !== getTeam(bw)) {
+      newBLT = true;
+      setBidderLostTrick(true);
+    }
     
     // Track who is out of trump based on plays
     const ledCard = trk[0];
@@ -646,7 +683,7 @@ function FortyFivesGame() {
       }
       else { setTrick([]); setTrickCards([]); setTrickLeader(winner); setCurrentPlayer(winner); setTrickNum(tn + 1); setPhase('playing');
         if (winner === 0) setMsg('Your lead');
-        else { setMsg(`${PLAYER_NAMES[winner]} leads...`); timer.current = setTimeout(() => aiPlay(winner, h, [], t, winner, tn + 1, newTW, newRP, newHTI, bw, hb, totals, dr, newPT, newKOOT), 700); }
+        else { setMsg(`${PLAYER_NAMES[winner]} leads...`); timer.current = setTimeout(() => aiPlay(winner, h, [], t, winner, tn + 1, newTW, newRP, newHTI, bw, hb, totals, dr, newPT, newKOOT, newBLT), 700); }
       }
     }, 1200);
   }, []);
@@ -689,8 +726,8 @@ function FortyFivesGame() {
       return <span style={{ padding: '2px 4px', background: bids[pi] > 0 ? '#2196f3' : '#c9a227', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: bids[pi] > 0 ? '#fff' : '#000' }}>{bids[pi] > 0 ? bids[pi] : 'Pass'}</span>; 
     }
     if (bidWinner !== pi || !trumpSuit) return null;
-    const isBagged = wasBagged && bidWinner === pi;
-    return <span style={{ padding: '2px 4px', background: isBagged ? '#c62828' : '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span>{isBagged && <span style={{ marginLeft: '2px' }}>BAGGED</span>}</span>;
+    const showBagged = wasBagged && pi === bidWinner;
+    return <span style={{ padding: '2px 4px', background: showBagged ? '#c62828' : '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span>{showBagged && <span style={{ marginLeft: '2px' }}>BAGGED</span>}</span>;
   };
 
   const winPos = (w) => ({ 0: { x: 0, y: 80 }, 1: { x: -80, y: 0 }, 2: { x: 0, y: -80 }, 3: { x: 80, y: 0 } }[w]);
