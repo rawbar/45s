@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 1.3
+// 45s Card Game - Version 1.4
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '1.3';
+const VERSION = '1.4';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -115,6 +115,7 @@ const hasCard = (hand, rank, suit) => hand.some(c => c.rank === rank && c.suit =
 const hasFive = (hand, trump) => hasCard(hand, '5', trump);
 const hasJack = (hand, trump) => hasCard(hand, 'J', trump);
 const hasAceHearts = (hand) => hasCard(hand, 'A', '♥');
+const hasAceTrump = (hand, trump) => hasCard(hand, 'A', trump);
 const countTrumps = (hand, trump) => hand.filter(c => isTrump(c, trump)).length;
 const countHighTrumps = (hand, trump) => hand.filter(c => getTrumpRank(c, trump) >= 97).length;
 
@@ -148,6 +149,12 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   if (theyWin(20) && bid < 20 && ((has5 && trumpCount >= 2) || (hasJ && trumpCount >= 3))) bid = 20;
   if (theyWin(20) && currentHighBid >= 20 && bid < 25 && ((has5 && hasJ) || (has5 && trumpCount >= 4))) bid = 25;
   if (farAhead && !has5 && !hasJ) bid = 0;
+  
+  // Bid minimum necessary when last to bid (highBid + 5, not full hand strength)
+  if (bid > currentHighBid && playerIndex === dealer && currentHighBid > 0) {
+    bid = Math.min(bid, currentHighBid + 5);
+  }
+  
   if (bid <= currentHighBid) return playerIndex === dealer && currentHighBid === 0 ? { bid: 15, suit } : { bid: 0, suit: null };
   return { bid, suit };
 }
@@ -175,7 +182,7 @@ function getDefaultDiscardSelection(hand, trumpSuit) {
   return hand.map((c, i) => isTrump(c, trumpSuit) ? -1 : i).filter(i => i >= 0);
 }
 
-function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, highBid, cardsDrawn) {
+function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, highBid, cardsDrawn, knownOutOfTrump) {
   const led = trick[0] || null, ledSuit = led?.suit;
   const playable = getPlayableCards(hand, trumpSuit, led, ledSuit);
   if (playable.length <= 1) return playable[0] || hand[0];
@@ -185,6 +192,11 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   const partnerIsBidder = partnerIdx === bidWinner;
   const oppWeak = (cardsDrawn[(player+1)%4]||0) >= 4 && (cardsDrawn[(player+3)%4]||0) >= 4;
   const partnerWeak = (cardsDrawn[partnerIdx]||0) >= 4;
+  const partnerOutOfTrump = knownOutOfTrump && knownOutOfTrump[partnerIdx];
+
+  // Check if we have A♥ and A of trump - if so, prefer playing A trump first when appropriate
+  const hasAH = playable.some(c => c.rank === 'A' && c.suit === '♥');
+  const hasATrump = playable.some(c => c.rank === 'A' && c.suit === trumpSuit && trumpSuit !== '♥');
 
   if (!led) {
     const trumps = playable.filter(c => isTrump(c, trumpSuit));
@@ -192,6 +204,10 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     if (myTeamBid && trumps.length >= 2) {
       const has5 = trumps.some(c => c.rank === '5' && c.suit === trumpSuit);
       if (has5 && oppWeak) return trumps.find(c => c.rank === '5' && c.suit === trumpSuit);
+      // If holding A♥ + A of trump, play A of trump first
+      if (hasAH && hasATrump) {
+        return trumps.find(c => c.rank === 'A' && c.suit === trumpSuit);
+      }
       return trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
     }
     if (partnerIsBidder && !partnerWeak && nonTrumps.length > 0) {
@@ -209,9 +225,29 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   const winPlayer = (leader + winIdx) % 4;
   const partnerWinning = getTeam(winPlayer) === myTeam;
 
+  // 2nd man low: when opponent leads offsuit and we're 2nd to play
+  const positionInTrick = trick.length;
+  if (positionInTrick === 1 && !isTrump(led, trumpSuit) && getTeam(leader) !== myTeam) {
+    // We're 2nd to play after opponent led offsuit
+    // Exception: if partner is known to be out of trump, we should try to win
+    if (!partnerOutOfTrump) {
+      const offsuit = playable.filter(c => !isTrump(c, trumpSuit));
+      if (offsuit.length > 0) {
+        // Throw lowest offsuit to give partner (4th position) the opportunity
+        return offsuit.reduce((l,c) => getOffSuitRank(c) < getOffSuitRank(l) ? c : l);
+      }
+    }
+  }
+
   if (trick.length === 2 && partnerIdx === bidWinner && bidWinner === leader && !isTrump(led, trumpSuit) && myTeamBid) {
     const trumps = playable.filter(c => isTrump(c, trumpSuit));
-    if (trumps.length > 0) return trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
+    if (trumps.length > 0) {
+      // If holding A♥ + A of trump, play A of trump first
+      if (hasAH && hasATrump) {
+        return trumps.find(c => c.rank === 'A' && c.suit === trumpSuit) || trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
+      }
+      return trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
+    }
   }
 
   if (partnerWinning) {
@@ -249,8 +285,8 @@ function TricksWonDisplay({ count, hasHighTrump }) {
 }
 
 function CardsDrawnIndicator({ count }) {
-  if (count <= 0) return null;
-  return (<span style={{ fontSize: '9px', color: '#aaa' }}>+{count}</span>);
+  const displayCount = Math.max(0, count || 0);
+  return (<span style={{ fontSize: '9px', color: '#ffd700' }}>+{displayCount}</span>);
 }
 
 function DealerBadge() {
@@ -289,6 +325,105 @@ function ScoreTable({ roundHistory }) {
   );
 }
 
+function HelpModal({ isOpen, onClose }) {
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  
+  if (!isOpen) return null;
+  
+  return (
+    <>
+      {/* Main Help Modal */}
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px' }}>
+        <div style={{ background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '2px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '400px', maxHeight: '95%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Modal Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid rgba(212,175,55,0.3)' }}>
+            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#d4af37' }}>Info & Help</span>
+            <div onClick={onClose} style={{ width: '24px', height: '24px', border: '1px solid #aaa', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '16px', cursor: 'pointer' }}>✕</div>
+          </div>
+          {/* Modal Content - Scrollable */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px', fontSize: '13px', lineHeight: 1.5, color: '#e8e4d9' }}>
+            
+            <p style={{ marginBottom: '12px' }}><strong style={{ color: '#d4af37' }}>Feedback & Bug Reports</strong></p>
+            <p style={{ marginBottom: '12px' }}>To report bugs, UI suggestions and strategy suggestions, please email me at <a href="mailto:rrothberg@gmail.com?subject=45s%20Feedback" style={{ color: '#4caf50' }}>rrothberg@gmail.com</a></p>
+            <p style={{ marginBottom: '16px' }}>Please include screenshots and be VERY specific about what happened and what you would have expected to happen. Walk through it step by step unless the screenshot makes it obvious.</p>
+            
+            <p style={{ marginBottom: '12px' }}><strong style={{ color: '#d4af37' }}>About This Game</strong></p>
+            <p style={{ marginBottom: '12px' }}>I developed this game in December 2025 to gain experience with using AI to code as well as to learn its capabilities and limitations. For training the AI players, I built an ML neural net simulator with a number of strategic parameters, and had it run 500,000 iterations. The statistics were pretty interesting to see.</p>
+            <p style={{ marginBottom: '12px' }}>Here were the stats from my early 20,000 test simulator run. It bid 30 a lot at this early point, but the AI eventually learned that bidding 30 too aggressively generally results in getting set.</p>
+            
+            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px', marginBottom: '16px', whiteSpace: 'pre-wrap' }}>
+{`--- BID SUCCESS RATES ---
+15:  24339 attempts,  21213 made (87.2%)
+20:  62328 attempts,  45645 made (73.2%)
+25: 142015 attempts,  73908 made (52.0%)
+30: 416045 attempts, 100988 made (24.3%)
+
+--- KEY CARD IMPACT ---
+With 5 of trump: 154728 bids, 51.5% success
+Without:       489999 bids, 33.1% success
+With J of trump: 146256 bids, 45.9% success
+Without:       498471 bids, 35.0% success`}
+            </div>
+            
+            <p style={{ marginBottom: '16px' }}>The AI used this data to learn how to bid much more effectively, and take into consideration that it will receive help from the kitty, draw and partner.</p>
+            
+            <p style={{ marginBottom: '12px' }}><strong style={{ color: '#d4af37' }}>AI Features</strong></p>
+            <p style={{ marginBottom: '8px' }}>The AI players feature some pretty robust logic and strategy such as:</p>
+            <ul style={{ marginLeft: '16px', marginBottom: '16px' }}>
+              <li>Tracking estimated trump left for each player based on number of cards drawn</li>
+              <li>Track trump remaining for each player based on card play (lead a 5, they throw offsuit, AI knows that player is out of trump)</li>
+              <li>Change playing behavior as other players run out of trump</li>
+              <li>Avoid pulling trump from partner when possible</li>
+              <li>If only holding A♥ and A trump, on third man high or other situational play, play A trump</li>
+              <li>Desperation bidding - if opponent will win game on 15 or 20 bid, consider overbidding</li>
+              <li>2nd man low strategy</li>
+              <li>Focus first on setting opponents, if that fails, switch to maximize points</li>
+            </ul>
+            
+            <p style={{ marginBottom: '12px' }}><strong style={{ color: '#d4af37' }}>Possible Future Plans</strong></p>
+            <ul style={{ marginLeft: '16px', marginBottom: '16px' }}>
+              <li>Single player cutthroat</li>
+              <li>Multiplayer partners over internet</li>
+              <li>Multiplayer cutthroat over internet</li>
+              <li>Optional rules such as allow drawing of 5 cards and flipping over the 5th</li>
+              <li>Improvements to 2nd man low logic</li>
+            </ul>
+            
+            <p style={{ marginBottom: '12px' }}><strong style={{ color: '#d4af37' }}>UI Guide</strong></p>
+            <p style={{ marginBottom: '8px' }}>Tap the image below to view full screen:</p>
+            <img 
+              src="45s_table_diagram.jpeg" 
+              onClick={() => setImageModalOpen(true)}
+              style={{ width: '100%', borderRadius: '4px', border: '1px solid rgba(212,175,55,0.3)', cursor: 'pointer' }} 
+              alt="UI Guide"
+            />
+          </div>
+        </div>
+      </div>
+      
+      {/* Full-screen Image Modal */}
+      {imageModalOpen && (
+        <div 
+          onClick={() => setImageModalOpen(false)}
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 200, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px', cursor: 'pointer' }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', maxWidth: '100%', maxHeight: '100%' }}>
+            <div 
+              onClick={() => setImageModalOpen(false)}
+              style={{ position: 'absolute', top: '-30px', right: '0', width: '24px', height: '24px', border: '1px solid #aaa', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '16px', cursor: 'pointer', background: 'rgba(0,0,0,0.5)' }}
+            >✕</div>
+            <img 
+              src="45s_table_diagram.jpeg" 
+              style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 40px)', objectFit: 'contain' }} 
+              alt="UI Guide Full Screen"
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function FortyFivesGame() {
   const [phase, setPhase] = useState('dealing');
   const [hands, setHands] = useState([[],[],[],[]]);
@@ -317,6 +452,8 @@ function FortyFivesGame() {
   const [drawn, setDrawn] = useState([0,0,0,0]);
   const [animating, setAnimating] = useState(null);
   const [wasBagged, setWasBagged] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [knownOutOfTrump, setKnownOutOfTrump] = useState([false, false, false, false]);
   const timer = useRef(null);
   
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
@@ -335,7 +472,9 @@ function FortyFivesGame() {
     setTrick([]); setTrickCards([]); setTricksWon([0,0]); setPlayerTricks([0,0,0,0]);
     setRoundPts([0,0]); setTrickNum(0); setSelected([]); setLastTrick(null);
     setAiTrump(null); setTrickLeader(null); setHighTrumpInfo({ rank: -1, player: -1 });
-    setDrawn([0,0,0,0]); setAnimating(null); setWasBagged(false); setPhase('bidding');
+    setDrawn([0,0,0,0]); setAnimating(null); setWasBagged(false); 
+    setKnownOutOfTrump([false, false, false, false]);
+    setPhase('bidding');
     const first = (dlr + 1) % 4; setCurrentPlayer(first);
     if (first !== 0) { setMsg(`${PLAYER_NAMES[first]} bidding...`); timer.current = setTimeout(() => doBid(first, h, dlr, [null,null,null,null], 0, totals), 800); }
     else setMsg('Your bid');
@@ -421,22 +560,23 @@ function FortyFivesGame() {
   const startPlay = useCallback((leader, h, t, hb, totals, dr) => {
     setPhase('playing'); setTrick([]); setTrickCards([]); setTrickLeader(leader);
     setCurrentPlayer(leader); setTrickNum(1); setPlayerTricks([0,0,0,0]); setHighTrumpInfo({ rank: -1, player: -1 });
+    setKnownOutOfTrump([false, false, false, false]);
     if (leader === 0) setMsg('Your lead');
-    else { setMsg(`${PLAYER_NAMES[leader]} leads...`); timer.current = setTimeout(() => aiPlay(leader, h, [], t, leader, 1, [0,0], [0,0], { rank: -1, player: -1 }, bidWinner, hb, totals, dr, [0,0,0,0]), 700); }
+    else { setMsg(`${PLAYER_NAMES[leader]} leads...`); timer.current = setTimeout(() => aiPlay(leader, h, [], t, leader, 1, [0,0], [0,0], { rank: -1, player: -1 }, bidWinner, hb, totals, dr, [0,0,0,0], [false,false,false,false]), 700); }
   }, [bidWinner]);
 
-  const aiPlay = useCallback((p, h, tc, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt) => {
+  const aiPlay = useCallback((p, h, tc, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot) => {
     const hand = h[p]; if (!hand || !hand.length) return;
     const trk = tc.map(x => x.card);
-    const card = chooseCardToPlay(hand, t, trk, lead, p, bw, hb, dr);
+    const card = chooseCardToPlay(hand, t, trk, lead, p, bw, hb, dr, koot);
     const idx = hand.findIndex(c => c.id === card.id);
     const newH = h.map((x, i) => i === p ? x.filter((_, j) => j !== idx) : [...x]);
     const newTC = [...tc, { card, player: p }], newTrk = newTC.map(x => x.card);
     setHands(newH); setTrickCards(newTC); setTrick(newTrk);
-    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, t, lead, newH, tn, tw, rp, hti, bw, hb, totals, dr, pt), 500);
+    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, t, lead, newH, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot), 500);
     else { const next = (p + 1) % 4; setCurrentPlayer(next);
       if (next === 0) setMsg('Your turn');
-      else { setMsg(`${PLAYER_NAMES[next]}...`); timer.current = setTimeout(() => aiPlay(next, newH, newTC, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt), 600); }
+      else { setMsg(`${PLAYER_NAMES[next]}...`); timer.current = setTimeout(() => aiPlay(next, newH, newTC, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot), 600); }
     }
   }, []);
 
@@ -449,11 +589,11 @@ function FortyFivesGame() {
     const newH = hands.map((x, i) => i === 0 ? x.filter((_, j) => j !== ci) : [...x]);
     const newTC = [...trickCards, { card, player: 0 }], newTrk = newTC.map(x => x.card);
     setHands(newH); setTrickCards(newTC); setTrick(newTrk);
-    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, trumpSuit, trickLeader, newH, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks), 500);
-    else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]}...`); timer.current = setTimeout(() => aiPlay(1, newH, newTC, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks), 600); }
-  }, [phase, currentPlayer, hands, trick, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks]);
+    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, trumpSuit, trickLeader, newH, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump), 500);
+    else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]}...`); timer.current = setTimeout(() => aiPlay(1, newH, newTC, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump), 600); }
+  }, [phase, currentPlayer, hands, trick, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump]);
 
-  const evalTrick = useCallback((trk, tc, t, lead, h, tn, tw, rp, hti, bw, hb, totals, dr, pt) => {
+  const evalTrick = useCallback((trk, tc, t, lead, h, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot) => {
     const winner = determineTrickWinner(trk, t, lead), team = getTeam(winner);
     let highT = -1; for (const c of trk) { const r = getTrumpRank(c, t); if (r > highT) highT = r; }
     let newHTI = hti; if (highT > hti.rank) newHTI = { rank: highT, player: winner };
@@ -462,14 +602,34 @@ function FortyFivesGame() {
     const newPT = [...pt]; newPT[winner]++;
     const newRP = [...rp]; newRP[team] += 5;
     setTricksWon(newTW); setPlayerTricks(newPT); setRoundPts(newRP);
+    
+    // Track who is out of trump based on plays
+    const ledCard = trk[0];
+    const newKOOT = [...koot];
+    if (isTrump(ledCard, t)) {
+      // Trump was led - anyone who didn't play trump (and isn't holding top 3) is out
+      for (let i = 0; i < 4; i++) {
+        const playerIdx = (lead + i) % 4;
+        const playedCard = trk[i];
+        if (!isTrump(playedCard, t)) {
+          newKOOT[playerIdx] = true;
+        }
+      }
+    }
+    setKnownOutOfTrump(newKOOT);
+    
     setLastTrick({ cards: tc, winner }); setAnimating(winner); setPhase('trick-end');
     setMsg(`${PLAYER_NAMES[winner]} wins!`);
     timer.current = setTimeout(() => {
       setAnimating(null);
-      if (tn >= 5) { const fp = [...newRP]; if (newHTI.rank >= 0) fp[getTeam(newHTI.player)] += 5; endRound(fp, h, bw, hb, totals); }
+      if (tn >= 5) { 
+        const fp = [...newRP]; 
+        if (newHTI.rank >= 0) fp[getTeam(newHTI.player)] += 5; 
+        endRound(fp, h, bw, hb, totals); 
+      }
       else { setTrick([]); setTrickCards([]); setTrickLeader(winner); setCurrentPlayer(winner); setTrickNum(tn + 1); setPhase('playing');
         if (winner === 0) setMsg('Your lead');
-        else { setMsg(`${PLAYER_NAMES[winner]} leads...`); timer.current = setTimeout(() => aiPlay(winner, h, [], t, winner, tn + 1, newTW, newRP, newHTI, bw, hb, totals, dr, newPT), 700); }
+        else { setMsg(`${PLAYER_NAMES[winner]} leads...`); timer.current = setTimeout(() => aiPlay(winner, h, [], t, winner, tn + 1, newTW, newRP, newHTI, bw, hb, totals, dr, newPT, newKOOT), 700); }
       }
     }, 1200);
   }, []);
@@ -477,7 +637,8 @@ function FortyFivesGame() {
   const endRound = useCallback((fp, h, bw, hb, totals) => {
     const bt = getTeam(bw), newS = [...totals];
     let us = 0, them = 0;
-    if (fp[bt] >= hb) { newS[bt] += fp[bt]; bt === 0 ? us = fp[0] : them = fp[1]; }
+    const made = fp[bt] >= hb;
+    if (made) { newS[bt] += fp[bt]; bt === 0 ? us = fp[0] : them = fp[1]; }
     else { newS[bt] -= hb; bt === 0 ? us = -hb : them = -hb; }
     const ot = 1 - bt; newS[ot] += fp[ot]; ot === 0 ? us = fp[0] : them = fp[1];
     setScores(newS);
@@ -487,7 +648,10 @@ function FortyFivesGame() {
       setPhase('game-over'); setMsg(`${w === 0 ? 'You win!' : 'They win!'}`);
     } else {
       setPhase('round-end');
-      setMsg(`${bt === 0 ? 'We' : 'They'} ${fp[bt] >= hb ? 'made' : 'missed'} ${hb}`);
+      // Updated round end messages
+      const bidTeamName = bt === 0 ? 'We' : 'They';
+      const resultMsg = made ? `${bidTeamName} made our ${hb} bid` : `${bidTeamName} were set ${hb}`;
+      setMsg(resultMsg);
     }
   }, []);
 
@@ -500,24 +664,28 @@ function FortyFivesGame() {
     return hands[0].map((c, i) => p.some(x => x.id === c.id) ? i : -1).filter(i => i >= 0);
   })() : [];
 
-  // Bid indicator with BAGGED support
+  // Bid indicator with BAGGED support - yellow pass indicator, red background for bagged
   const bidInd = (pi) => {
     if (phase === 'bidding') { 
       if (bids[pi] === null) return null; 
-      return <span style={{ padding: '2px 4px', background: bids[pi] > 0 ? '#2196f3' : 'rgba(0,0,0,0.5)', borderRadius: '3px', fontSize: '10px', marginLeft: '4px' }}>{bids[pi] > 0 ? bids[pi] : 'Pass'}</span>; 
+      return <span style={{ padding: '2px 4px', background: bids[pi] > 0 ? '#2196f3' : '#c9a227', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: bids[pi] > 0 ? '#fff' : '#000' }}>{bids[pi] > 0 ? bids[pi] : 'Pass'}</span>; 
     }
     if (bidWinner !== pi || !trumpSuit) return null;
     const isBagged = wasBagged && bidWinner === pi;
-    return <span style={{ padding: '2px 4px', background: isBagged ? '#c62828' : '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span>{isBagged && <span style={{ marginLeft: '2px' }}>BAG</span>}</span>;
+    return <span style={{ padding: '2px 4px', background: isBagged ? '#c62828' : '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span>{isBagged && <span style={{ marginLeft: '2px' }}>BAGGED</span>}</span>;
   };
 
   const winPos = (w) => ({ 0: { x: 0, y: 80 }, 1: { x: -80, y: 0 }, 2: { x: 0, y: -80 }, 3: { x: 80, y: 0 } }[w]);
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 50%, #0a1f12 100%)', padding: '4px', fontFamily: 'Arial, sans-serif', color: '#e8e4d9' }}>
-      {/* Header */}
+      {/* Header with Help button */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', marginBottom: '4px' }}>
         <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#d4af37' }}>45s <span style={{ fontSize: '8px', color: '#666' }}>v{VERSION}</span></div>
+        <div 
+          onClick={() => setHelpOpen(true)} 
+          style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid #d4af37', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4af37', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}
+        >?</div>
         <div style={{ fontSize: '12px' }}><span style={{ color: '#4caf50' }}>Us:{scores[0]}</span> | <span style={{ color: '#f44336' }}>Them:{scores[1]}</span></div>
       </div>
       {/* Message */}
@@ -548,11 +716,11 @@ function FortyFivesGame() {
             {bidInd(1)}
             <TricksWonDisplay count={playerTricks[1]} hasHighTrump={highTrumpInfo.player === 1} />
           </div>
-          {/* Center */}
+          {/* Center - Larger table with always-visible trump */}
           <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <div style={{ width: '130px', height: '130px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '50%', border: '2px solid rgba(212,175,55,0.3)', position: 'relative' }}>
-              {/* Trump suit in center */}
-              {trumpSuit && trickCards.length === 0 && <div style={{ fontSize: '48px', color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff', opacity: 0.6 }}>{trumpSuit}</div>}
+            <div style={{ width: '150px', height: '150px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '50%', border: '2px solid rgba(212,175,55,0.3)', position: 'relative' }}>
+              {/* Trump suit always visible in center (behind cards) */}
+              {trumpSuit && <div style={{ position: 'absolute', fontSize: '64px', color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff', opacity: 0.3, zIndex: 0 }}>{trumpSuit}</div>}
               {trickCards.map((tc, i) => {
                 const pos = [{ bottom: '4px', left: '50%', transform: 'translateX(-50%)' }, { left: '4px', top: '50%', transform: 'translateY(-50%)' }, { top: '4px', left: '50%', transform: 'translateX(-50%)' }, { right: '4px', top: '50%', transform: 'translateY(-50%)' }][tc.player];
                 const ani = animating !== null, wp = ani ? winPos(animating) : null;
@@ -584,11 +752,11 @@ function FortyFivesGame() {
             {hands[0].map((c, i) => <Card key={c.id} card={c} onClick={() => phase === 'discarding' && currentPlayer === 0 ? toggle(i) : phase === 'playing' && currentPlayer === 0 ? humanPlay(i) : null} selected={selected.includes(i)} playable={playable.includes(i)} disabled={(phase !== 'discarding' || currentPlayer !== 0) && (phase !== 'playing' || currentPlayer !== 0 || !playable.includes(i))} />)}
           </div>
         </div>
-        {/* Buttons */}
+        {/* Buttons - yellow Pass button, "Discard (x)" text */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', flexWrap: 'wrap', padding: '4px 0' }}>
-          {phase === 'bidding' && currentPlayer === 0 && <>{[15,20,25,30].map(b => <button key={b} onClick={() => humanBid(b)} disabled={b <= highBid} style={{ padding: '6px 12px', fontSize: '12px', background: b <= highBid ? '#555' : '#2196f3', color: '#fff', border: 'none', borderRadius: '4px', opacity: b <= highBid ? 0.5 : 1 }}>{b}</button>)}<button onClick={() => humanBid(0)} style={{ padding: '6px 12px', fontSize: '12px', background: '#666', color: '#fff', border: 'none', borderRadius: '4px' }}>Pass</button></>}
+          {phase === 'bidding' && currentPlayer === 0 && <>{[15,20,25,30].map(b => <button key={b} onClick={() => humanBid(b)} disabled={b <= highBid} style={{ padding: '6px 12px', fontSize: '12px', background: b <= highBid ? '#555' : '#2196f3', color: '#fff', border: 'none', borderRadius: '4px', opacity: b <= highBid ? 0.5 : 1 }}>{b}</button>)}<button onClick={() => humanBid(0)} style={{ padding: '6px 12px', fontSize: '12px', background: '#c9a227', color: '#000', border: 'none', borderRadius: '4px' }}>Pass</button></>}
           {phase === 'trump-select' && SUITS.map(s => <button key={s} onClick={() => selectTrump(s)} style={{ padding: '6px 14px', fontSize: '18px', background: 'rgba(0,0,0,0.5)', color: (s === '♥' || s === '♦') ? '#f44336' : '#fff', border: '1px solid #d4af37', borderRadius: '4px' }}>{s}</button>)}
-          {phase === 'discarding' && currentPlayer === 0 && <button onClick={humanDiscard} style={{ padding: '6px 16px', fontSize: '12px', background: '#4caf50', color: '#fff', border: 'none', borderRadius: '4px' }}>Done ({hands[0].length - selected.length})</button>}
+          {phase === 'discarding' && currentPlayer === 0 && <button onClick={humanDiscard} style={{ padding: '6px 16px', fontSize: '12px', background: '#4caf50', color: '#fff', border: 'none', borderRadius: '4px' }}>Discard ({selected.length})</button>}
           {phase === 'round-end' && <button onClick={nextRound} style={{ padding: '6px 16px', fontSize: '12px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '4px' }}>Next</button>}
           {phase === 'game-over' && <button onClick={startGame} style={{ padding: '6px 16px', fontSize: '12px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '4px' }}>New Game</button>}
           {phase === 'dealing' && <button onClick={startGame} style={{ padding: '10px 24px', fontSize: '14px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>Start</button>}
@@ -598,6 +766,8 @@ function FortyFivesGame() {
         {/* Score table */}
         <ScoreTable roundHistory={history} />
       </div>
+      {/* Help Modal */}
+      <HelpModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }
