@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 1.7
+// 45s Card Game - Version 1.8
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '1.7';
+const VERSION = '1.8';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -768,7 +768,7 @@ function FortyFivesGame() {
             {dealer === 1 && <DealerBadge />}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>{hands[1].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
             <CardsDrawnIndicator count={drawn[1]} />
-            {bidInd(1)}
+            <div style={{ height: '18px', display: 'flex', alignItems: 'center' }}>{bidInd(1)}</div>
             <TricksWonDisplay count={playerTricks[1]} hasHighTrump={highTrumpInfo.player === 1} />
           </div>
           {/* Center - Larger table with always-visible trump */}
@@ -790,7 +790,7 @@ function FortyFivesGame() {
             {dealer === 3 && <DealerBadge />}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>{hands[3].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
             <CardsDrawnIndicator count={drawn[3]} />
-            {bidInd(3)}
+            <div style={{ height: '18px', display: 'flex', alignItems: 'center' }}>{bidInd(3)}</div>
             <TricksWonDisplay count={playerTricks[3]} hasHighTrump={highTrumpInfo.player === 3} />
           </div>
         </div>
