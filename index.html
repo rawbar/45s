@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 1.8
+// 45s Card Game - Version 1.9
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '1.8';
+const VERSION = '1.9';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -749,15 +749,15 @@ function FortyFivesGame() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {/* North */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', padding: '2px 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '16px' }}>
             <span style={{ fontSize: '11px', color: '#aaa' }}>{PLAYER_NAMES[2]}</span>
-            {dealer === 2 && <DealerBadge />}
+            <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>{dealer === 2 && <DealerBadge />}</div>
             <CardsDrawnIndicator count={drawn[2]} />
           </div>
           <div style={{ display: 'flex', gap: '1px' }}>{hands[2].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {bidInd(2)}
-            <TricksWonDisplay count={playerTricks[2]} hasHighTrump={highTrumpInfo.player === 2} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '20px' }}>
+            <div style={{ minWidth: '40px', display: 'flex', justifyContent: 'center' }}>{bidInd(2)}</div>
+            <div style={{ minWidth: '60px', display: 'flex', justifyContent: 'center' }}><TricksWonDisplay count={playerTricks[2]} hasHighTrump={highTrumpInfo.player === 2} /></div>
           </div>
         </div>
         {/* Middle row */}
@@ -765,11 +765,11 @@ function FortyFivesGame() {
           {/* West */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '50px' }}>
             <div style={{ fontSize: '10px', color: '#aaa', textAlign: 'center' }}>{PLAYER_NAMES[1]}</div>
-            {dealer === 1 && <DealerBadge />}
+            <div style={{ height: '14px', display: 'flex', alignItems: 'center' }}>{dealer === 1 && <DealerBadge />}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>{hands[1].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
             <CardsDrawnIndicator count={drawn[1]} />
             <div style={{ height: '18px', display: 'flex', alignItems: 'center' }}>{bidInd(1)}</div>
-            <TricksWonDisplay count={playerTricks[1]} hasHighTrump={highTrumpInfo.player === 1} />
+            <div style={{ height: '20px', display: 'flex', alignItems: 'center' }}><TricksWonDisplay count={playerTricks[1]} hasHighTrump={highTrumpInfo.player === 1} /></div>
           </div>
           {/* Center - Larger table with always-visible trump */}
           <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -787,20 +787,20 @@ function FortyFivesGame() {
           {/* East */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '50px' }}>
             <div style={{ fontSize: '10px', color: '#aaa', textAlign: 'center' }}>{PLAYER_NAMES[3]}</div>
-            {dealer === 3 && <DealerBadge />}
+            <div style={{ height: '14px', display: 'flex', alignItems: 'center' }}>{dealer === 3 && <DealerBadge />}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>{hands[3].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
             <CardsDrawnIndicator count={drawn[3]} />
             <div style={{ height: '18px', display: 'flex', alignItems: 'center' }}>{bidInd(3)}</div>
-            <TricksWonDisplay count={playerTricks[3]} hasHighTrump={highTrumpInfo.player === 3} />
+            <div style={{ height: '20px', display: 'flex', alignItems: 'center' }}><TricksWonDisplay count={playerTricks[3]} hasHighTrump={highTrumpInfo.player === 3} /></div>
           </div>
         </div>
         {/* South */}
         <div style={{ padding: '4px 0' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-            <TricksWonDisplay count={playerTricks[0]} hasHighTrump={highTrumpInfo.player === 0} />
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', marginBottom: '4px', height: '20px' }}>
+            <div style={{ minWidth: '60px', display: 'flex', justifyContent: 'center' }}><TricksWonDisplay count={playerTricks[0]} hasHighTrump={highTrumpInfo.player === 0} /></div>
             <span style={{ fontSize: '11px', color: '#aaa' }}>{PLAYER_NAMES[0]}</span>
-            {dealer === 0 && <DealerBadge />}
-            {bidInd(0)}
+            <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>{dealer === 0 && <DealerBadge />}</div>
+            <div style={{ minWidth: '50px', display: 'flex', justifyContent: 'center' }}>{bidInd(0)}</div>
             <CardsDrawnIndicator count={drawn[0]} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '2px', minHeight: '68px' }}>
