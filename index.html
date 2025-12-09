@@ -9,16 +9,16 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Palatino Linotype', Palatino, Georgia, serif; overflow: hidden; }
+    body { font-family: 'Palatino Linotype', Palatino, Georgia, serif; overflow: hidden; position: fixed; width: 100%; height: 100%; }
     html, body, #root { height: 100%; }
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 1.1
+// 45s Card Game - Version 1.2
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '1.1';
+const VERSION = '1.2';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -209,7 +209,6 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   const winPlayer = (leader + winIdx) % 4;
   const partnerWinning = getTeam(winPlayer) === myTeam;
 
-  // Third man high
   if (trick.length === 2 && partnerIdx === bidWinner && bidWinner === leader && !isTrump(led, trumpSuit) && myTeamBid) {
     const trumps = playable.filter(c => isTrump(c, trumpSuit));
     if (trumps.length > 0) return trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
@@ -232,7 +231,6 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     });
   }
 
-  // Can't win - prefer offsuit over trump
   const nonTrump = playable.filter(c => !isTrump(c, trumpSuit));
   if (nonTrump.length > 0) return nonTrump.reduce((l,c) => getOffSuitRank(c) < getOffSuitRank(l) ? c : l);
   return playable.reduce((l,c) => getTrumpRank(c,trumpSuit) < getTrumpRank(l,trumpSuit) ? c : l);
@@ -240,34 +238,34 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
 
 const chooseTrumpSuit = (hand) => findBestTrumpSuit(hand).suit;
 
-// UI Components
+// UI Components - COMPACT for mobile
 function TrickMarker({ isHighTrump }) {
-  return (<div style={{ width: '16px', height: '22px', borderRadius: '3px', background: isHighTrump ? 'linear-gradient(135deg, #8b0000 0%, #5c0000 100%)' : 'linear-gradient(135deg, #1e3a5f 0%, #0d1b2a 100%)', border: isHighTrump ? '1px solid #ff6666' : '1px solid #2d5a87', boxShadow: isHighTrump ? '0 1px 3px rgba(255,0,0,0.4)' : '0 1px 3px rgba(0,0,0,0.3)' }} />);
+  return (<div style={{ width: '14px', height: '18px', borderRadius: '2px', background: isHighTrump ? 'linear-gradient(135deg, #8b0000 0%, #5c0000 100%)' : 'linear-gradient(135deg, #1e3a5f 0%, #0d1b2a 100%)', border: isHighTrump ? '1px solid #ff6666' : '1px solid #2d5a87' }} />);
 }
 
 function TricksWonDisplay({ count, hasHighTrump }) {
-  if (count === 0) return <div style={{ minHeight: '26px' }} />;
-  return (<div style={{ display: 'flex', gap: '2px', minHeight: '26px' }}>{Array.from({ length: count }, (_, i) => <TrickMarker key={i} isHighTrump={hasHighTrump && i === 0} />)}</div>);
+  if (count === 0) return null;
+  return (<div style={{ display: 'flex', gap: '1px' }}>{Array.from({ length: count }, (_, i) => <TrickMarker key={i} isHighTrump={hasHighTrump && i === 0} />)}</div>);
 }
 
 function CardsDrawnIndicator({ count }) {
   if (count === 0) return null;
-  return (<div style={{ fontSize: '10px', color: '#aaa' }}>drew {count}</div>);
+  return (<span style={{ fontSize: '9px', color: '#aaa' }}>+{count}</span>);
 }
 
 function DealerBadge() {
-  return (<div style={{ padding: '1px 6px', background: '#d4af37', color: '#000', borderRadius: '3px', fontSize: '9px', fontWeight: 'bold' }}>DEALER</div>);
+  return (<span style={{ padding: '1px 4px', background: '#d4af37', color: '#000', borderRadius: '2px', fontSize: '8px', fontWeight: 'bold' }}>D</span>);
 }
 
 function Card({ card, onClick, disabled, selected, small, faceDown, playable }) {
   const isRed = card && (card.suit === '♥' || card.suit === '♦');
-  const w = small ? '36px' : '56px', h = small ? '50px' : '78px';
-  const base = { width: w, height: h, borderRadius: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: disabled ? 'default' : 'pointer', transition: 'all 0.15s', fontFamily: 'Georgia, serif', userSelect: 'none', flexShrink: 0 };
-  if (faceDown) return (<div style={{ ...base, background: 'linear-gradient(135deg, #1e3a5f 0%, #0d1b2a 100%)', border: '2px solid #2d5a87' }}><div style={{ width: '75%', height: '75%', border: '1px solid #3d7ab7', borderRadius: '3px', background: 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(61,122,183,0.1) 2px, rgba(61,122,183,0.1) 4px)' }} /></div>);
+  const w = small ? '28px' : '48px', h = small ? '38px' : '68px';
+  const base = { width: w, height: h, borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: disabled ? 'default' : 'pointer', transition: 'all 0.1s', fontFamily: 'Georgia, serif', userSelect: 'none', flexShrink: 0 };
+  if (faceDown) return (<div style={{ ...base, background: 'linear-gradient(135deg, #1e3a5f 0%, #0d1b2a 100%)', border: '1px solid #2d5a87' }} />);
   return (
-    <div onClick={disabled ? undefined : onClick} style={{ ...base, background: selected ? '#fffde7' : '#fff', border: playable ? '3px solid #2196f3' : selected ? '3px solid #ffc107' : '2px solid #ccc', boxShadow: selected ? '0 3px 10px rgba(255,193,7,0.4)' : playable ? '0 3px 10px rgba(33,150,243,0.3)' : '0 2px 6px rgba(0,0,0,0.15)', transform: (selected || playable) && !disabled ? 'translateY(-3px)' : 'none', opacity: disabled && !playable ? 0.6 : 1 }}>
-      <div style={{ color: isRed ? '#c62828' : '#212121', fontSize: small ? '13px' : '17px', fontWeight: 'bold', lineHeight: 1 }}>{card.rank}</div>
-      <div style={{ color: isRed ? '#c62828' : '#212121', fontSize: small ? '18px' : '26px', lineHeight: 1 }}>{card.suit}</div>
+    <div onClick={disabled ? undefined : onClick} style={{ ...base, background: selected ? '#fffde7' : '#fff', border: playable ? '2px solid #2196f3' : selected ? '2px solid #ffc107' : '1px solid #ccc', boxShadow: selected || playable ? '0 2px 6px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.15)', transform: (selected || playable) && !disabled ? 'translateY(-2px)' : 'none', opacity: disabled && !playable ? 0.6 : 1 }}>
+      <div style={{ color: isRed ? '#c62828' : '#212121', fontSize: small ? '11px' : '15px', fontWeight: 'bold', lineHeight: 1 }}>{card.rank}</div>
+      <div style={{ color: isRed ? '#c62828' : '#212121', fontSize: small ? '14px' : '22px', lineHeight: 1 }}>{card.suit}</div>
     </div>
   );
 }
@@ -275,18 +273,16 @@ function Card({ card, onClick, disabled, selected, small, faceDown, playable }) 
 function ScoreTable({ roundHistory }) {
   const [expanded, setExpanded] = useState(false);
   if (roundHistory.length === 0) return null;
-  const maxVis = 3, needsCollapse = roundHistory.length > maxVis;
+  const maxVis = 2, needsCollapse = roundHistory.length > maxVis;
   const visible = (!needsCollapse || expanded) ? roundHistory : roundHistory.slice(-maxVis);
-  const hidden = roundHistory.length - maxVis;
   return (
-    <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '6px', padding: '8px', fontSize: '12px' }}>
-      {needsCollapse && !expanded && <div onClick={() => setExpanded(true)} style={{ textAlign: 'center', marginBottom: '4px', color: '#aaa', cursor: 'pointer', fontSize: '10px' }}>▲ Show {hidden} more ▲</div>}
-      {needsCollapse && expanded && <div onClick={() => setExpanded(false)} style={{ textAlign: 'center', marginBottom: '4px', color: '#aaa', cursor: 'pointer', fontSize: '10px' }}>▼ Show less ▼</div>}
+    <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '4px', padding: '4px', fontSize: '10px' }}>
+      {needsCollapse && <div onClick={() => setExpanded(!expanded)} style={{ textAlign: 'center', color: '#aaa', cursor: 'pointer', fontSize: '9px' }}>{expanded ? '▼ less' : `▲ +${roundHistory.length - maxVis}`}</div>}
       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
-        <thead><tr><th style={{ padding: '2px 4px', borderBottom: '1px solid rgba(255,255,255,0.3)', fontSize: '10px' }}>Rnd</th><th colSpan="2" style={{ padding: '2px 4px', borderBottom: '1px solid rgba(255,255,255,0.3)', color: '#4caf50', fontSize: '10px' }}>US</th><th colSpan="2" style={{ padding: '2px 4px', borderBottom: '1px solid rgba(255,255,255,0.3)', color: '#f44336', fontSize: '10px' }}>THEM</th></tr></thead>
+        <thead><tr><th style={{ padding: '1px 2px', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>R</th><th colSpan="2" style={{ padding: '1px 2px', borderBottom: '1px solid rgba(255,255,255,0.2)', color: '#4caf50' }}>US</th><th colSpan="2" style={{ padding: '1px 2px', borderBottom: '1px solid rgba(255,255,255,0.2)', color: '#f44336' }}>THEM</th></tr></thead>
         <tbody>{visible.map((r, i) => {
           const rn = expanded || !needsCollapse ? i + 1 : roundHistory.length - maxVis + i + 1;
-          return (<tr key={i}><td style={{ padding: '2px 4px' }}>{rn}</td><td style={{ padding: '2px 4px', color: '#4caf50' }}>{r.usRoundScore < 0 ? `(${Math.abs(r.usRoundScore)})` : r.usRoundScore}</td><td style={{ padding: '2px 4px', color: '#4caf50', fontWeight: 'bold' }}>{r.usTotal < 0 ? `(${Math.abs(r.usTotal)})` : r.usTotal}</td><td style={{ padding: '2px 4px', color: '#f44336' }}>{r.themRoundScore < 0 ? `(${Math.abs(r.themRoundScore)})` : r.themRoundScore}</td><td style={{ padding: '2px 4px', color: '#f44336', fontWeight: 'bold' }}>{r.themTotal < 0 ? `(${Math.abs(r.themTotal)})` : r.themTotal}</td></tr>);
+          return (<tr key={i}><td style={{ padding: '1px 2px' }}>{rn}</td><td style={{ padding: '1px 2px', color: '#4caf50' }}>{r.usRoundScore < 0 ? `(${Math.abs(r.usRoundScore)})` : r.usRoundScore}</td><td style={{ padding: '1px 2px', color: '#4caf50', fontWeight: 'bold' }}>{r.usTotal}</td><td style={{ padding: '1px 2px', color: '#f44336' }}>{r.themRoundScore < 0 ? `(${Math.abs(r.themRoundScore)})` : r.themRoundScore}</td><td style={{ padding: '1px 2px', color: '#f44336', fontWeight: 'bold' }}>{r.themTotal}</td></tr>);
         })}</tbody>
       </table>
     </div>
@@ -340,8 +336,8 @@ function FortyFivesGame() {
     setAiTrump(null); setTrickLeader(null); setHighTrumpInfo({ rank: -1, player: -1 });
     setDrawn([0,0,0,0]); setAnimating(null); setPhase('bidding');
     const first = (dlr + 1) % 4; setCurrentPlayer(first);
-    if (first !== 0) { setMsg(`${PLAYER_NAMES[first]} is bidding...`); timer.current = setTimeout(() => doBid(first, h, dlr, [null,null,null,null], 0, totals), 1000); }
-    else setMsg('Your turn to bid');
+    if (first !== 0) { setMsg(`${PLAYER_NAMES[first]} bidding...`); timer.current = setTimeout(() => doBid(first, h, dlr, [null,null,null,null], 0, totals), 800); }
+    else setMsg('Your bid');
   }, []);
 
   const doBid = useCallback((p, h, dlr, curBids, curHigh, totals) => {
@@ -355,12 +351,12 @@ function FortyFivesGame() {
       let fw = winner; if (!fw) { let m = 0; for (let i = 0; i < 4; i++) if (newBids[i] > m) { m = newBids[i]; fw = i; } }
       if (newHigh === 0) { fw = dlr; newBids[dlr] = 15; setBids(newBids); setHighBid(15); newHigh = 15; }
       setBidWinner(fw);
-      if (fw === 0) { setPhase('trump-select'); setMsg('Select trump suit'); }
+      if (fw === 0) { setPhase('trump-select'); setMsg('Pick trump'); }
       else { const t = aiTrump || chooseTrumpSuit(h[fw]); finishBid(fw, t, h, newHigh, totals, dlr); }
     } else {
       const next = (p + 1) % 4; setCurrentPlayer(next);
-      if (next === 0) setMsg('Your turn to bid');
-      else { setMsg(`${PLAYER_NAMES[next]} is bidding...`); timer.current = setTimeout(() => doBid(next, h, dlr, newBids, newHigh, totals), 1000); }
+      if (next === 0) setMsg('Your bid');
+      else { setMsg(`${PLAYER_NAMES[next]} bidding...`); timer.current = setTimeout(() => doBid(next, h, dlr, newBids, newHigh, totals), 800); }
     }
   }, [aiTrump]);
 
@@ -371,9 +367,9 @@ function FortyFivesGame() {
       let w = null, m = 0; for (let i = 0; i < 4; i++) if (newBids[i] > m) { m = newBids[i]; w = i; }
       if (m === 0) { w = dealer; newBids[dealer] = 15; setBids(newBids); setHighBid(15); newHigh = 15; }
       setBidWinner(w);
-      if (w === 0) { setPhase('trump-select'); setMsg('Select trump suit'); }
+      if (w === 0) { setPhase('trump-select'); setMsg('Pick trump'); }
       else { const t = aiTrump || chooseTrumpSuit(hands[w]); finishBid(w, t, hands, newHigh, scores, dealer); }
-    } else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]} is bidding...`); timer.current = setTimeout(() => doBid(1, hands, dealer, newBids, newHigh, scores), 1000); }
+    } else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]} bidding...`); timer.current = setTimeout(() => doBid(1, hands, dealer, newBids, newHigh, scores), 800); }
   }, [bids, highBid, dealer, hands, aiTrump, scores]);
 
   const selectTrump = useCallback((s) => finishBid(0, s, hands, highBid, scores, dealer), [hands, highBid, scores, dealer]);
@@ -384,8 +380,8 @@ function FortyFivesGame() {
     setHands(newH); setKitty([]);
     setSelected(getDefaultDiscardSelection(newH[0], t));
     const first = (dlr + 1) % 4; setPhase('discarding'); setCurrentPlayer(first);
-    if (first === 0) setMsg('Select cards to discard - keep at least 1');
-    else { setMsg(`${PLAYER_NAMES[first]} discarding...`); timer.current = setTimeout(() => aiDiscard(first, newH, t, w, hb, totals, dlr, [0,0,0,0], deck), 700); }
+    if (first === 0) setMsg('Discard (keep 1+)');
+    else { setMsg(`${PLAYER_NAMES[first]} discarding...`); timer.current = setTimeout(() => aiDiscard(first, newH, t, w, hb, totals, dlr, [0,0,0,0], deck), 500); }
   }, [kitty, deck]);
 
   const aiDiscard = useCallback((p, h, t, bw, hb, totals, dlr, curDrawn, curDeck) => {
@@ -398,14 +394,14 @@ function FortyFivesGame() {
     const next = (p + 1) % 4, start = (dlr + 1) % 4;
     if (next === start) startPlay(bw, newH, t, hb, totals, newDrawn);
     else { setCurrentPlayer(next);
-      if (next === 0) { setSelected(getDefaultDiscardSelection(newH[0], t)); setMsg('Select cards to discard - keep at least 1'); }
-      else { setMsg(`${PLAYER_NAMES[next]} discarding...`); timer.current = setTimeout(() => aiDiscard(next, newH, t, bw, hb, totals, dlr, newDrawn, d), 700); }
+      if (next === 0) { setSelected(getDefaultDiscardSelection(newH[0], t)); setMsg('Discard (keep 1+)'); }
+      else { setMsg(`${PLAYER_NAMES[next]} discarding...`); timer.current = setTimeout(() => aiDiscard(next, newH, t, bw, hb, totals, dlr, newDrawn, d), 500); }
     }
   }, []);
 
   const humanDiscard = useCallback(() => {
     const keep = hands[0].filter((_, i) => !selected.includes(i));
-    if (keep.length === 0) { setMsg('Must keep at least 1 card!'); return; }
+    if (keep.length === 0) { setMsg('Keep at least 1!'); return; }
     const newH = hands.map(x => [...x]); newH[0] = keep;
     let d = [...deck]; const dc = 5 - keep.length;
     if (dc > 0 && d.length >= dc) { newH[0] = [...newH[0], ...d.splice(0, dc)]; }
@@ -413,14 +409,14 @@ function FortyFivesGame() {
     setHands(newH); setDeck(d); setDrawn(newDrawn); setSelected([]);
     const next = 1, start = (dealer + 1) % 4;
     if (next === start) startPlay(bidWinner, newH, trumpSuit, highBid, scores, newDrawn);
-    else { setCurrentPlayer(next); setMsg(`${PLAYER_NAMES[next]} discarding...`); timer.current = setTimeout(() => aiDiscard(next, newH, trumpSuit, bidWinner, highBid, scores, dealer, newDrawn, d), 700); }
+    else { setCurrentPlayer(next); setMsg(`${PLAYER_NAMES[next]} discarding...`); timer.current = setTimeout(() => aiDiscard(next, newH, trumpSuit, bidWinner, highBid, scores, dealer, newDrawn, d), 500); }
   }, [hands, selected, deck, dealer, bidWinner, trumpSuit, highBid, scores, drawn]);
 
   const startPlay = useCallback((leader, h, t, hb, totals, dr) => {
     setPhase('playing'); setTrick([]); setTrickCards([]); setTrickLeader(leader);
     setCurrentPlayer(leader); setTrickNum(1); setPlayerTricks([0,0,0,0]); setHighTrumpInfo({ rank: -1, player: -1 });
     if (leader === 0) setMsg('Your lead');
-    else { setMsg(`${PLAYER_NAMES[leader]} leads...`); timer.current = setTimeout(() => aiPlay(leader, h, [], t, leader, 1, [0,0], [0,0], { rank: -1, player: -1 }, bidWinner, hb, totals, dr, [0,0,0,0]), 900); }
+    else { setMsg(`${PLAYER_NAMES[leader]} leads...`); timer.current = setTimeout(() => aiPlay(leader, h, [], t, leader, 1, [0,0], [0,0], { rank: -1, player: -1 }, bidWinner, hb, totals, dr, [0,0,0,0]), 700); }
   }, [bidWinner]);
 
   const aiPlay = useCallback((p, h, tc, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt) => {
@@ -431,10 +427,10 @@ function FortyFivesGame() {
     const newH = h.map((x, i) => i === p ? x.filter((_, j) => j !== idx) : [...x]);
     const newTC = [...tc, { card, player: p }], newTrk = newTC.map(x => x.card);
     setHands(newH); setTrickCards(newTC); setTrick(newTrk);
-    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, t, lead, newH, tn, tw, rp, hti, bw, hb, totals, dr, pt), 600);
+    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, t, lead, newH, tn, tw, rp, hti, bw, hb, totals, dr, pt), 500);
     else { const next = (p + 1) % 4; setCurrentPlayer(next);
       if (next === 0) setMsg('Your turn');
-      else { setMsg(`${PLAYER_NAMES[next]} playing...`); timer.current = setTimeout(() => aiPlay(next, newH, newTC, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt), 700); }
+      else { setMsg(`${PLAYER_NAMES[next]}...`); timer.current = setTimeout(() => aiPlay(next, newH, newTC, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt), 600); }
     }
   }, []);
 
@@ -443,12 +439,12 @@ function FortyFivesGame() {
     const hand = hands[0], card = hand[ci];
     const led = trick[0] || null, ls = led?.suit;
     const playable = getPlayableCards(hand, trumpSuit, led, ls);
-    if (!playable.some(c => c.id === card.id)) { setMsg('Must follow suit or play trump!'); return; }
+    if (!playable.some(c => c.id === card.id)) { setMsg('Must follow suit!'); return; }
     const newH = hands.map((x, i) => i === 0 ? x.filter((_, j) => j !== ci) : [...x]);
     const newTC = [...trickCards, { card, player: 0 }], newTrk = newTC.map(x => x.card);
     setHands(newH); setTrickCards(newTC); setTrick(newTrk);
-    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, trumpSuit, trickLeader, newH, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks), 600);
-    else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]} playing...`); timer.current = setTimeout(() => aiPlay(1, newH, newTC, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks), 700); }
+    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, trumpSuit, trickLeader, newH, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks), 500);
+    else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]}...`); timer.current = setTimeout(() => aiPlay(1, newH, newTC, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks), 600); }
   }, [phase, currentPlayer, hands, trick, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks]);
 
   const evalTrick = useCallback((trk, tc, t, lead, h, tn, tw, rp, hti, bw, hb, totals, dr, pt) => {
@@ -467,9 +463,9 @@ function FortyFivesGame() {
       if (tn >= 5) { const fp = [...newRP]; if (newHTI.rank >= 0) fp[getTeam(newHTI.player)] += 5; endRound(fp, h, bw, hb, totals); }
       else { setTrick([]); setTrickCards([]); setTrickLeader(winner); setCurrentPlayer(winner); setTrickNum(tn + 1); setPhase('playing');
         if (winner === 0) setMsg('Your lead');
-        else { setMsg(`${PLAYER_NAMES[winner]} leads...`); timer.current = setTimeout(() => aiPlay(winner, h, [], t, winner, tn + 1, newTW, newRP, newHTI, bw, hb, totals, dr, newPT), 800); }
+        else { setMsg(`${PLAYER_NAMES[winner]} leads...`); timer.current = setTimeout(() => aiPlay(winner, h, [], t, winner, tn + 1, newTW, newRP, newHTI, bw, hb, totals, dr, newPT), 700); }
       }
-    }, 1400);
+    }, 1200);
   }, []);
 
   const endRound = useCallback((fp, h, bw, hb, totals) => {
@@ -482,11 +478,10 @@ function FortyFivesGame() {
     setHistory(p => [...p, { usRoundScore: us, themRoundScore: them, usTotal: newS[0], themTotal: newS[1] }]);
     if (newS[0] >= 120 || newS[1] >= 120) {
       const w = (newS[0] >= 120 && newS[1] >= 120) ? bt : (newS[0] >= 120 ? 0 : 1);
-      setPhase('game-over'); setMsg(`${w === 0 ? 'Your team' : 'Opponents'} wins!`);
+      setPhase('game-over'); setMsg(`${w === 0 ? 'You win!' : 'They win!'}`);
     } else {
       setPhase('round-end');
-      const made = fp[bt] >= hb;
-      setMsg(`${bt === 0 ? 'Your team' : 'Opponents'} ${made ? 'made' : 'missed'} ${hb} (got ${fp[bt]})`);
+      setMsg(`${bt === 0 ? 'We' : 'They'} ${fp[bt] >= hb ? 'made' : 'missed'} ${hb}`);
     }
   }, []);
 
@@ -500,82 +495,86 @@ function FortyFivesGame() {
   })() : [];
 
   const bidInd = (pi) => {
-    if (phase === 'bidding') { if (bids[pi] === null) return null; return <div style={{ padding: '3px 6px', background: bids[pi] > 0 ? '#2196f3' : 'rgba(0,0,0,0.5)', borderRadius: '4px', fontSize: '12px' }}>{bids[pi] > 0 ? bids[pi] : 'Pass'}</div>; }
+    if (phase === 'bidding') { if (bids[pi] === null) return null; return <span style={{ padding: '2px 4px', background: bids[pi] > 0 ? '#2196f3' : 'rgba(0,0,0,0.5)', borderRadius: '3px', fontSize: '10px', marginLeft: '4px' }}>{bids[pi] > 0 ? bids[pi] : 'P'}</span>; }
     if (bidWinner !== pi || !trumpSuit) return null;
-    return <div style={{ padding: '3px 6px', background: '#2196f3', borderRadius: '4px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '3px' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span></div>;
+    return <span style={{ padding: '2px 4px', background: '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span></span>;
   };
 
-  const winPos = (w) => ({ 0: { x: 0, y: 120 }, 1: { x: -120, y: 0 }, 2: { x: 0, y: -120 }, 3: { x: 120, y: 0 } }[w]);
+  const winPos = (w) => ({ 0: { x: 0, y: 80 }, 1: { x: -80, y: 0 }, 2: { x: 0, y: -80 }, 3: { x: 80, y: 0 } }[w]);
 
   return (
-    <div style={{ height: '100vh', maxHeight: '100vh', overflow: 'hidden', background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 50%, #0a1f12 100%)', padding: '6px', fontFamily: '"Palatino Linotype", Palatino, Georgia, serif', color: '#e8e4d9', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 50%, #0a1f12 100%)', padding: '4px', fontFamily: 'Arial, sans-serif', color: '#e8e4d9' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px solid rgba(212,175,55,0.3)', marginBottom: '6px', flexShrink: 0 }}>
-        <div><div style={{ fontSize: '18px', fontWeight: 'bold', color: '#d4af37' }}>45s</div><div style={{ fontSize: '8px', color: '#666' }}>v{VERSION}</div></div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '14px', display: 'flex', gap: '6px' }}><span style={{ color: '#4caf50' }}>Us: {scores[0] < 0 ? `(${Math.abs(scores[0])})` : scores[0]}</span><span>|</span><span style={{ color: '#f44336' }}>Them: {scores[1] < 0 ? `(${Math.abs(scores[1])})` : scores[1]}</span></div>
-          {trumpSuit && <div style={{ fontSize: '11px' }}>Trump: <span style={{ fontSize: '16px', color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff' }}>{trumpSuit}</span>{bidWinner !== null && <span style={{ marginLeft: '6px' }}>({PLAYER_NAMES[bidWinner]} {highBid})</span>}</div>}
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', marginBottom: '4px' }}>
+        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#d4af37' }}>45s <span style={{ fontSize: '8px', color: '#666' }}>v{VERSION}</span></div>
+        <div style={{ fontSize: '12px' }}><span style={{ color: '#4caf50' }}>Us:{scores[0]}</span> | <span style={{ color: '#f44336' }}>Them:{scores[1]}</span></div>
       </div>
       {/* Message */}
-      <div style={{ textAlign: 'center', padding: '6px', background: 'rgba(0,0,0,0.4)', borderRadius: '6px', fontSize: '13px', color: '#ffd700', marginBottom: '6px', flexShrink: 0, minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{msg}</div>
-      {/* Game Area */}
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: '4px' }}>
+      <div style={{ textAlign: 'center', padding: '4px', background: 'rgba(0,0,0,0.4)', borderRadius: '4px', fontSize: '12px', color: '#ffd700', marginBottom: '4px' }}>{msg}{trumpSuit && <span style={{ marginLeft: '8px' }}>Trump: <span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff' }}>{trumpSuit}</span></span>}</div>
+      {/* Game */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {/* North */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ fontSize: '11px', color: '#aaa' }}>{PLAYER_NAMES[2]}</span>{dealer === 2 && <DealerBadge />}</div>
-          <div style={{ display: 'flex', gap: '2px', minHeight: '50px' }}>{Array.from({ length: 5 }, (_, i) => i < hands[2].length ? <Card key={i} card={{}} faceDown small /> : <div key={i} style={{ width: '36px' }} />)}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>{bidInd(2)}<CardsDrawnIndicator count={drawn[2]} /></div>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', padding: '2px 0' }}>
+          <span style={{ fontSize: '10px', color: '#aaa' }}>{PLAYER_NAMES[2]}</span>
+          {dealer === 2 && <DealerBadge />}
+          {bidInd(2)}
+          <CardsDrawnIndicator count={drawn[2]} />
+          <div style={{ display: 'flex', gap: '1px' }}>{hands[2].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
           <TricksWonDisplay count={playerTricks[2]} hasHighTrump={highTrumpInfo.player === 2} />
         </div>
-        {/* Middle */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flex: 1, minHeight: 0 }}>
+        {/* Middle row */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', minHeight: 0 }}>
           {/* West */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '60px', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', justifyContent: 'center' }}><span style={{ fontSize: '10px', color: '#aaa' }}>{PLAYER_NAMES[1]}</span>{dealer === 1 && <DealerBadge />}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>{Array.from({ length: 5 }, (_, i) => i < hands[1].length ? <Card key={i} card={{}} faceDown small /> : <div key={i} style={{ height: '50px' }} />)}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>{bidInd(1)}<CardsDrawnIndicator count={drawn[1]} /></div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '50px' }}>
+            <div style={{ fontSize: '9px', color: '#aaa', display: 'flex', alignItems: 'center', gap: '2px' }}>{PLAYER_NAMES[1]}{dealer === 1 && <DealerBadge />}{bidInd(1)}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>{hands[1].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
+            <CardsDrawnIndicator count={drawn[1]} />
             <TricksWonDisplay count={playerTricks[1]} hasHighTrump={highTrumpInfo.player === 1} />
           </div>
           {/* Center */}
-          <div style={{ width: '140px', height: '140px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '50%', border: '2px solid rgba(212,175,55,0.3)', position: 'relative', flexShrink: 0 }}>
-            {trumpSuit && (phase === 'playing' || phase === 'trick-end') && <div style={{ fontSize: '36px', color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff', opacity: 0.3, position: 'absolute' }}>{trumpSuit}</div>}
-            {trickCards.map((tc, i) => {
-              const pos = [{ bottom: '6px', left: '50%', transform: 'translateX(-50%)' }, { left: '6px', top: '50%', transform: 'translateY(-50%)' }, { top: '6px', left: '50%', transform: 'translateX(-50%)' }, { right: '6px', top: '50%', transform: 'translateY(-50%)' }][tc.player];
-              const ani = animating !== null, wp = ani ? winPos(animating) : null;
-              return <div key={i} style={{ position: 'absolute', ...pos, zIndex: 1, transition: ani ? 'all 0.5s ease' : 'none', transform: ani ? `translate(${wp.x}px, ${wp.y}px) scale(0.3)` : pos.transform, opacity: ani ? 0 : 1 }}><Card card={tc.card} small disabled /></div>;
-            })}
-            {trumpSuit && trickCards.length === 0 && phase !== 'playing' && phase !== 'trick-end' && <div style={{ fontSize: '36px', color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff', opacity: 0.5 }}>{trumpSuit}</div>}
-            {(phase === 'playing' || phase === 'trick-end') && <div style={{ position: 'absolute', bottom: '-20px', fontSize: '10px', color: '#aaa' }}>Round: {roundPts[0]}-{roundPts[1]}</div>}
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ width: '110px', height: '110px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '50%', border: '1px solid rgba(212,175,55,0.3)', position: 'relative' }}>
+              {trickCards.map((tc, i) => {
+                const pos = [{ bottom: '4px', left: '50%', transform: 'translateX(-50%)' }, { left: '4px', top: '50%', transform: 'translateY(-50%)' }, { top: '4px', left: '50%', transform: 'translateX(-50%)' }, { right: '4px', top: '50%', transform: 'translateY(-50%)' }][tc.player];
+                const ani = animating !== null, wp = ani ? winPos(animating) : null;
+                return <div key={i} style={{ position: 'absolute', ...pos, zIndex: 1, transition: ani ? 'all 0.4s ease' : 'none', transform: ani ? `translate(${wp.x}px, ${wp.y}px) scale(0.2)` : pos.transform, opacity: ani ? 0 : 1 }}><Card card={tc.card} small disabled /></div>;
+              })}
+              {(phase === 'playing' || phase === 'trick-end') && <div style={{ position: 'absolute', bottom: '-16px', fontSize: '9px', color: '#aaa' }}>{roundPts[0]}-{roundPts[1]}</div>}
+            </div>
           </div>
           {/* East */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '60px', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', justifyContent: 'center' }}><span style={{ fontSize: '10px', color: '#aaa' }}>{PLAYER_NAMES[3]}</span>{dealer === 3 && <DealerBadge />}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>{Array.from({ length: 5 }, (_, i) => i < hands[3].length ? <Card key={i} card={{}} faceDown small /> : <div key={i} style={{ height: '50px' }} />)}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>{bidInd(3)}<CardsDrawnIndicator count={drawn[3]} /></div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '50px' }}>
+            <div style={{ fontSize: '9px', color: '#aaa', display: 'flex', alignItems: 'center', gap: '2px' }}>{PLAYER_NAMES[3]}{dealer === 3 && <DealerBadge />}{bidInd(3)}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>{hands[3].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
+            <CardsDrawnIndicator count={drawn[3]} />
             <TricksWonDisplay count={playerTricks[3]} hasHighTrump={highTrumpInfo.player === 3} />
           </div>
         </div>
         {/* South */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
-          <TricksWonDisplay count={playerTricks[0]} hasHighTrump={highTrumpInfo.player === 0} />
-          <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '3px', minHeight: '78px' }}>
-            {hands[0].map((c, i) => <Card key={c.id} card={c} onClick={() => phase === 'discarding' && currentPlayer === 0 ? toggle(i) : phase === 'playing' && currentPlayer === 0 ? humanPlay(i) : null} selected={selected.includes(i)} playable={playable.includes(i)} disabled={(phase !== 'discarding' || currentPlayer !== 0) && (phase !== 'playing' || currentPlayer !== 0 || !playable.includes(i))} />)}
+        <div style={{ padding: '4px 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+            <TricksWonDisplay count={playerTricks[0]} hasHighTrump={highTrumpInfo.player === 0} />
+            <span style={{ fontSize: '10px', color: '#aaa' }}>{PLAYER_NAMES[0]}</span>
+            {dealer === 0 && <DealerBadge />}
             {bidInd(0)}
+            <CardsDrawnIndicator count={drawn[0]} />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ fontSize: '11px', color: '#aaa' }}>{PLAYER_NAMES[0]}</span>{dealer === 0 && <DealerBadge />}{drawn[0] > 0 && <span style={{ fontSize: '10px', color: '#aaa' }}>drew {drawn[0]}</span>}</div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '2px', minHeight: '68px' }}>
+            {hands[0].map((c, i) => <Card key={c.id} card={c} onClick={() => phase === 'discarding' && currentPlayer === 0 ? toggle(i) : phase === 'playing' && currentPlayer === 0 ? humanPlay(i) : null} selected={selected.includes(i)} playable={playable.includes(i)} disabled={(phase !== 'discarding' || currentPlayer !== 0) && (phase !== 'playing' || currentPlayer !== 0 || !playable.includes(i))} />)}
+          </div>
         </div>
         {/* Buttons */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', flexWrap: 'wrap', flexShrink: 0, minHeight: '44px', alignItems: 'center' }}>
-          {phase === 'bidding' && currentPlayer === 0 && <>{[15,20,25,30].map(b => <button key={b} onClick={() => humanBid(b)} disabled={b <= highBid} style={{ padding: '8px 16px', fontSize: '14px', background: b <= highBid ? '#555' : '#2196f3', color: '#fff', border: 'none', borderRadius: '6px', cursor: b <= highBid ? 'not-allowed' : 'pointer', opacity: b <= highBid ? 0.5 : 1 }}>{b}</button>)}<button onClick={() => humanBid(0)} style={{ padding: '8px 16px', fontSize: '14px', background: '#666', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Pass</button></>}
-          {phase === 'trump-select' && SUITS.map(s => <button key={s} onClick={() => selectTrump(s)} style={{ padding: '8px 16px', fontSize: '22px', background: 'rgba(0,0,0,0.5)', color: (s === '♥' || s === '♦') ? '#f44336' : '#fff', border: '2px solid #d4af37', borderRadius: '6px', cursor: 'pointer' }}>{s}</button>)}
-          {phase === 'discarding' && currentPlayer === 0 && <button onClick={humanDiscard} disabled={hands[0].length - selected.length === 0} style={{ padding: '8px 20px', fontSize: '14px', background: hands[0].length - selected.length === 0 ? '#555' : '#4caf50', color: '#fff', border: 'none', borderRadius: '6px', cursor: hands[0].length - selected.length === 0 ? 'not-allowed' : 'pointer' }}>Done ({hands[0].length - selected.length} kept)</button>}
-          {phase === 'round-end' && <button onClick={nextRound} style={{ padding: '8px 20px', fontSize: '14px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Next Round</button>}
-          {phase === 'game-over' && <button onClick={startGame} style={{ padding: '8px 20px', fontSize: '14px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>New Game</button>}
-          {phase === 'dealing' && <button onClick={startGame} style={{ padding: '12px 32px', fontSize: '18px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>Start Game</button>}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', flexWrap: 'wrap', padding: '4px 0' }}>
+          {phase === 'bidding' && currentPlayer === 0 && <>{[15,20,25,30].map(b => <button key={b} onClick={() => humanBid(b)} disabled={b <= highBid} style={{ padding: '6px 12px', fontSize: '12px', background: b <= highBid ? '#555' : '#2196f3', color: '#fff', border: 'none', borderRadius: '4px', opacity: b <= highBid ? 0.5 : 1 }}>{b}</button>)}<button onClick={() => humanBid(0)} style={{ padding: '6px 12px', fontSize: '12px', background: '#666', color: '#fff', border: 'none', borderRadius: '4px' }}>Pass</button></>}
+          {phase === 'trump-select' && SUITS.map(s => <button key={s} onClick={() => selectTrump(s)} style={{ padding: '6px 14px', fontSize: '18px', background: 'rgba(0,0,0,0.5)', color: (s === '♥' || s === '♦') ? '#f44336' : '#fff', border: '1px solid #d4af37', borderRadius: '4px' }}>{s}</button>)}
+          {phase === 'discarding' && currentPlayer === 0 && <button onClick={humanDiscard} style={{ padding: '6px 16px', fontSize: '12px', background: '#4caf50', color: '#fff', border: 'none', borderRadius: '4px' }}>Done ({hands[0].length - selected.length})</button>}
+          {phase === 'round-end' && <button onClick={nextRound} style={{ padding: '6px 16px', fontSize: '12px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '4px' }}>Next</button>}
+          {phase === 'game-over' && <button onClick={startGame} style={{ padding: '6px 16px', fontSize: '12px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '4px' }}>New Game</button>}
+          {phase === 'dealing' && <button onClick={startGame} style={{ padding: '10px 24px', fontSize: '14px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>Start</button>}
         </div>
-        {/* Last Trick */}
-        {lastTrick && phase !== 'trick-end' && <div style={{ padding: '6px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', textAlign: 'center', flexShrink: 0 }}><div style={{ fontSize: '10px', marginBottom: '3px', color: '#aaa' }}>Last Trick:</div><div style={{ display: 'flex', justifyContent: 'center', gap: '3px' }}>{lastTrick.cards.map((tc, i) => <div key={i} style={{ textAlign: 'center' }}><Card card={tc.card} small disabled /><div style={{ fontSize: '8px', marginTop: '1px', color: tc.player === lastTrick.winner ? '#4caf50' : '#aaa', fontWeight: tc.player === lastTrick.winner ? 'bold' : 'normal' }}>{PLAYER_NAMES[tc.player]}</div></div>)}</div></div>}
+        {/* Last Trick - compact */}
+        {lastTrick && phase !== 'trick-end' && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '2px', padding: '2px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}><span style={{ fontSize: '8px', color: '#aaa' }}>Last:</span>{lastTrick.cards.map((tc, i) => <Card key={i} card={tc.card} small disabled />)}</div>}
+        {/* Score table */}
         <ScoreTable roundHistory={history} />
       </div>
     </div>
