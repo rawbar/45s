@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 1.6
+// 45s Card Game - Version 1.7
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '1.6';
+const VERSION = '1.7';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -816,8 +816,10 @@ function FortyFivesGame() {
           {phase === 'game-over' && <button onClick={startGame} style={{ padding: '6px 16px', fontSize: '12px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '4px' }}>New Game</button>}
           {phase === 'dealing' && <button onClick={startGame} style={{ padding: '10px 24px', fontSize: '14px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>Start</button>}
         </div>
-        {/* Last Trick - compact */}
-        {lastTrick && phase !== 'trick-end' && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '2px', padding: '2px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}><span style={{ fontSize: '9px', color: '#aaa' }}>Last:</span>{lastTrick.cards.map((tc, i) => <Card key={i} card={tc.card} small disabled />)}</div>}
+        {/* Last Trick - fixed height container to prevent layout shift */}
+        <div style={{ height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {lastTrick && phase !== 'trick-end' && <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '2px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}><span style={{ fontSize: '9px', color: '#aaa' }}>Last:</span>{lastTrick.cards.map((tc, i) => <Card key={i} card={tc.card} small disabled />)}</div>}
+        </div>
         {/* Score table */}
         <ScoreTable roundHistory={history} />
       </div>
