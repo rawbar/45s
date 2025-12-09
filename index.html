@@ -650,7 +650,8 @@ function FortyFivesGame() {
       setPhase('round-end');
       // Updated round end messages
       const bidTeamName = bt === 0 ? 'We' : 'They';
-      const resultMsg = made ? `${bidTeamName} made our ${hb} bid` : `${bidTeamName} were set ${hb}`;
+      const possessive = bt === 0 ? 'our' : 'their';
+      const resultMsg = made ? `${bidTeamName} made ${possessive} ${hb} bid` : `${bidTeamName} were set ${hb}`;
       setMsg(resultMsg);
     }
   }, []);
