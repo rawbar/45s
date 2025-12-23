@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 1.9
+// 45s Card Game - Version 2.0
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '1.9';
+const VERSION = '2.0';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -73,7 +73,16 @@ function isTrump(card, trumpSuit) {
 
 function createDeck() {
   const deck = [];
-  for (const suit of SUITS) for (const rank of RANKS) deck.push({ rank, suit, id: `${rank}${suit}` });
+  const usedIds = new Set();
+  for (const suit of SUITS) {
+    for (const rank of RANKS) {
+      const id = `${rank}${suit}`;
+      if (!usedIds.has(id)) {
+        usedIds.add(id);
+        deck.push({ rank, suit, id });
+      }
+    }
+  }
   return deck;
 }
 
@@ -115,9 +124,20 @@ const hasCard = (hand, rank, suit) => hand.some(c => c.rank === rank && c.suit =
 const hasFive = (hand, trump) => hasCard(hand, '5', trump);
 const hasJack = (hand, trump) => hasCard(hand, 'J', trump);
 const hasAceHearts = (hand) => hasCard(hand, 'A', '♥');
-const hasAceTrump = (hand, trump) => hasCard(hand, 'A', trump);
+const hasAceTrump = (hand, trump) => trump !== '♥' && hasCard(hand, 'A', trump);
 const countTrumps = (hand, trump) => hand.filter(c => isTrump(c, trump)).length;
 const countHighTrumps = (hand, trump) => hand.filter(c => getTrumpRank(c, trump) >= 97).length;
+
+// Check if hand is guaranteed to win (holds all top trump)
+function isGuaranteedHand(hand, trumpSuit) {
+  const has5 = hasFive(hand, trumpSuit);
+  const hasJ = hasJack(hand, trumpSuit);
+  const hasAH = hasAceHearts(hand);
+  const hasAT = hasAceTrump(hand, trumpSuit);
+  if (has5 && hasJ && hasAH && hasAT) return true;
+  if (has5 && hasJ && hasAH && countTrumps(hand, trumpSuit) >= 4) return true;
+  return false;
+}
 
 function findBestTrumpSuit(hand) {
   let best = '♠', bestCount = 0, best5 = false, bestJ = false;
@@ -130,54 +150,118 @@ function findBestTrumpSuit(hand) {
   return { suit: best, trumpCount: bestCount, has5: best5, hasJ: bestJ };
 }
 
-function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores) {
+function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid) {
   const { suit, trumpCount, has5, hasJ } = findBestTrumpSuit(hand);
-  const hasAH = hasAceHearts(hand), highT = countHighTrumps(hand, suit);
-  const theyWin = (b) => oppScores + b >= 120;
-  const farAhead = teamScores >= 100 && teamScores - oppScores >= 30;
+  const hasAH = hasAceHearts(hand), hasAT = hasAceTrump(hand, suit);
+  const highT = countHighTrumps(hand, suit);
+  
+  // Game state analysis
+  const weNeed = 120 - teamScores;
+  const theyNeed = 120 - oppScores;
+  const weClose = weNeed <= 30;
+  const theyClose = theyNeed <= 20;
+  const desperation = theyClose && weNeed > 15;
+  const theyAboutToWin = theyNeed <= 10;
+  const dealerIsOpponent = getTeam(dealer) !== getTeam(playerIndex);
+  
+  // Guaranteed hand - always bid it
+  if (isGuaranteedHand(hand, suit)) {
+    if (has5 && hasJ && hasAH && hasAT) return { bid: 30, suit };
+    return { bid: 25, suit };
+  }
+  
+  // Bag the dealer strategy
+  if (theyAboutToWin && dealerIsOpponent && weNeed >= 25) {
+    const canMake25 = has5 && hasJ && trumpCount >= 4;
+    if (!canMake25) return { bid: 0, suit: null };
+  }
+  
+  // When close to winning - be smart
+  if (weClose && weNeed <= 15) {
+    if (has5 && hasJ) {
+      if (currentHighBid < 20) return { bid: 20, suit };
+    } else if (has5 || (hasJ && trumpCount >= 3)) {
+      if (currentHighBid < 15) return { bid: 15, suit };
+    }
+    if (!has5 && !hasJ && trumpCount < 4) return { bid: 0, suit: null };
+  }
+  
+  // Don't overbid partner's 20 unless overwhelming hand
+  if (partnerBid === 20 && currentHighBid === 20) {
+    const dominated = (has5 && hasJ && hasAH) || (has5 && hasJ && trumpCount >= 4 && highT >= 3);
+    if (!dominated) return { bid: 0, suit: null };
+  }
+  
+  // Standard bidding - tighter 25 requirements per simulation data
   let bid = 0;
-  if (has5 && hasJ && hasAH && trumpCount >= 4) bid = 30;
-  else if (has5 && hasJ && trumpCount >= 3) bid = 25;
-  else if (has5 && hasAH && trumpCount >= 4) bid = 25;
+  
+  // 30 bid - need near-guaranteed
+  if (has5 && hasJ && hasAH && (hasAT || trumpCount >= 5)) bid = 30;
+  
+  // 25 bid - MUST have 5 (without 5: only 33% success per simulation)
+  else if (has5 && hasJ && hasAH && trumpCount >= 4) bid = 25;
+  else if (has5 && hasJ && trumpCount >= 4 && highT >= 3) bid = 25;
+  
+  // 20 bid
   else if (has5 && trumpCount >= 3) bid = 20;
   else if (has5 && trumpCount >= 2 && highT >= 2) bid = 20;
-  else if (hasJ && trumpCount >= 4 && highT >= 3) bid = 20;
+  else if (hasJ && hasAH && trumpCount >= 4) bid = 20;
+  
+  // 15 bid
   else if (has5) bid = 15;
   else if (hasJ && trumpCount >= 3) bid = 15;
   else if (hasAH && trumpCount >= 3) bid = 15;
   else if (trumpCount >= 4 && highT >= 2) bid = 15;
-  if (theyWin(20) && bid < 20 && ((has5 && trumpCount >= 2) || (hasJ && trumpCount >= 3))) bid = 20;
-  if (theyWin(20) && currentHighBid >= 20 && bid < 25 && ((has5 && hasJ) || (has5 && trumpCount >= 4))) bid = 25;
-  if (farAhead && !has5 && !hasJ) bid = 0;
   
-  // Bid minimum necessary when last to bid (highBid + 5, not full hand strength)
+  // Desperation bidding
+  if (desperation && bid < 20) {
+    if ((has5 && trumpCount >= 2) || (hasJ && trumpCount >= 3) || (hasAH && trumpCount >= 3)) {
+      bid = Math.max(bid, 20);
+    }
+  }
+  if (desperation && currentHighBid >= 20 && bid < 25) {
+    if ((has5 && hasJ) || (has5 && trumpCount >= 4)) bid = 25;
+  }
+  
+  // Bid minimum when dealer (last to bid)
   if (bid > currentHighBid && playerIndex === dealer && currentHighBid > 0) {
     bid = Math.min(bid, currentHighBid + 5);
   }
   
-  if (bid <= currentHighBid) return playerIndex === dealer && currentHighBid === 0 ? { bid: 15, suit } : { bid: 0, suit: null };
+  if (bid <= currentHighBid) {
+    if (playerIndex === dealer && currentHighBid === 0) return { bid: 15, suit };
+    return { bid: 0, suit: null };
+  }
   return { bid, suit };
 }
 
-function decideDiscard(hand, trumpSuit, isBidWinner) {
+function decideDiscard(hand, trumpSuit, isBidWinner, bidAmount) {
   const trumps = hand.filter(c => isTrump(c, trumpSuit));
   const offsuit = hand.filter(c => !isTrump(c, trumpSuit));
   let keep = [...trumps];
   
-  if (isBidWinner && offsuit.length > 0) {
-    // Group offsuit by suit and keep best card from each suit (diversify)
+  // For 25+ bids, keep ALL trump - you need them all
+  if (isBidWinner && bidAmount >= 25) {
+    // Only keep 1 offsuit king/ace if we have 4+ trump
+    if (trumps.length >= 4 && offsuit.length > 0) {
+      const strongOffsuit = offsuit.filter(c => c.rank === 'K' || c.rank === 'A');
+      if (strongOffsuit.length > 0) {
+        keep.push(strongOffsuit[0]);
+      }
+    }
+  }
+  // For 15/20 bids, can keep a bit more offsuit
+  else if (isBidWinner && offsuit.length > 0) {
     const bySuit = {};
     for (const c of offsuit) {
       if (!bySuit[c.suit]) bySuit[c.suit] = [];
       bySuit[c.suit].push(c);
     }
-    // Sort each suit by rank (highest first) and pick the best from each
     const bestPerSuit = [];
-    for (const suit of Object.keys(bySuit)) {
-      bySuit[suit].sort((a, b) => getOffSuitRank(b) - getOffSuitRank(a));
-      bestPerSuit.push(bySuit[suit][0]);
+    for (const s of Object.keys(bySuit)) {
+      bySuit[s].sort((a, b) => getOffSuitRank(b) - getOffSuitRank(a));
+      bestPerSuit.push(bySuit[s][0]);
     }
-    // Only keep kings or aces if we have enough trump
     const strongOffsuit = bestPerSuit.filter(c => c.rank === 'K' || c.rank === 'A');
     if (strongOffsuit.length > 0 && trumps.length >= 3) {
       keep.push(strongOffsuit[0]);
@@ -283,14 +367,25 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     }
   }
 
+  // 3rd man high: when partner bid and we're 3rd to play, play high trump to support
+  const trumps = playable.filter(c => isTrump(c, trumpSuit));
+  if (positionInTrick === 2 && partnerIsBidder && myTeamBid && trumps.length > 0) {
+    // Play our highest trump to help partner
+    // Exception: if holding A♥, might keep it for flexibility and play A of trump instead
+    if (hasAH && hasATrump) {
+      return trumps.find(c => c.rank === 'A' && c.suit === trumpSuit) || trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
+    }
+    return trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
+  }
+
   if (trick.length === 2 && partnerIdx === bidWinner && bidWinner === leader && !isTrump(led, trumpSuit) && myTeamBid) {
-    const trumps = playable.filter(c => isTrump(c, trumpSuit));
-    if (trumps.length > 0) {
+    const trumps2 = playable.filter(c => isTrump(c, trumpSuit));
+    if (trumps2.length > 0) {
       // If holding A♥ + A of trump, play A of trump first
       if (hasAH && hasATrump) {
-        return trumps.find(c => c.rank === 'A' && c.suit === trumpSuit) || trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
+        return trumps2.find(c => c.rank === 'A' && c.suit === trumpSuit) || trumps2.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
       }
-      return trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
+      return trumps2.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
     }
   }
 
@@ -468,6 +563,57 @@ Without:       498471 bids, 35.0% success`}
   );
 }
 
+// Show Hands Modal for debugging
+function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, wasBagged }) {
+  if (!isOpen || !hands) return null;
+  
+  const renderHand = (playerIdx, label) => {
+    const hand = hands[playerIdx] || [];
+    const isDealer = dealer === playerIdx;
+    const isBidder = bidWinner === playerIdx;
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#aaa' }}>
+          <span>{label}</span>
+          {isDealer && <span style={{ padding: '1px 3px', background: '#d4af37', color: '#000', borderRadius: '2px', fontSize: '8px', fontWeight: 'bold' }}>DEALER</span>}
+          <span style={{ color: '#ffd700' }}>+{drawn[playerIdx] || 0}</span>
+        </div>
+        {isBidder && (
+          <span style={{ padding: '2px 4px', background: wasBagged ? '#c62828' : '#2196f3', borderRadius: '3px', fontSize: '10px', color: '#fff' }}>
+            {highBid}{trumpSuit && <span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span>}
+            {wasBagged && <span style={{ marginLeft: '2px' }}>BAGGED</span>}
+          </span>
+        )}
+        <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          {hand.map((c, i) => <Card key={i} card={c} small disabled />)}
+        </div>
+      </div>
+    );
+  };
+  
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px' }}>
+      <div style={{ background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '2px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '400px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#d4af37' }}>Hands After Draw</span>
+          <div onClick={onClose} style={{ width: '24px', height: '24px', border: '1px solid #aaa', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '16px', cursor: 'pointer' }}>✕</div>
+        </div>
+        {trumpSuit && (
+          <div style={{ textAlign: 'center', fontSize: '12px', color: '#aaa' }}>
+            Trump: <span style={{ fontSize: '18px', color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff' }}>{trumpSuit}</span>
+          </div>
+        )}
+        {renderHand(2, 'Partner (N)')}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {renderHand(1, 'P2 (W)')}
+          {renderHand(3, 'P4 (E)')}
+        </div>
+        {renderHand(0, 'You (S)')}
+      </div>
+    </div>
+  );
+}
+
 function FortyFivesGame() {
   const [phase, setPhase] = useState('dealing');
   const [hands, setHands] = useState([[],[],[],[]]);
@@ -499,6 +645,10 @@ function FortyFivesGame() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [knownOutOfTrump, setKnownOutOfTrump] = useState([false, false, false, false]);
   const [bidderLostTrick, setBidderLostTrick] = useState(false);
+  const [postDrawHands, setPostDrawHands] = useState(null);
+  const [showHandsOpen, setShowHandsOpen] = useState(false);
+  const [roundDealer, setRoundDealer] = useState(0);
+  const [roundDrawn, setRoundDrawn] = useState([0,0,0,0]);
   const timer = useRef(null);
   
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
@@ -520,16 +670,21 @@ function FortyFivesGame() {
     setDrawn([0,0,0,0]); setAnimating(null); setWasBagged(false); 
     setKnownOutOfTrump([false, false, false, false]);
     setBidderLostTrick(false);
+    setPostDrawHands(null);
+    setShowHandsOpen(false);
+    setRoundDealer(dlr);
     setPhase('bidding');
     const first = (dlr + 1) % 4; setCurrentPlayer(first);
-    if (first !== 0) { setMsg(`${PLAYER_NAMES[first]} bidding...`); timer.current = setTimeout(() => doBid(first, h, dlr, [null,null,null,null], 0, totals), 800); }
+    if (first !== 0) { setMsg(`${PLAYER_NAMES[first]} bidding...`); timer.current = setTimeout(() => doBid(first, h, dlr, [null,null,null,null], 0, totals, null), 800); }
     else setMsg('Your bid');
   }, []);
 
-  const doBid = useCallback((p, h, dlr, curBids, curHigh, totals) => {
+  const doBid = useCallback((p, h, dlr, curBids, curHigh, totals, lastBidAmt) => {
     if (p === 0) return;
     const team = totals[getTeam(p)], opp = totals[1-getTeam(p)];
-    const dec = decideBid(h[p], curHigh, p, dlr, team, opp);
+    const partnerIdx = (p + 2) % 4;
+    const partnerBid = curBids[partnerIdx];
+    const dec = decideBid(h[p], curHigh, p, dlr, team, opp, partnerBid);
     const newBids = [...curBids]; newBids[p] = dec.bid; setBids(newBids);
     let newHigh = curHigh, winner = null;
     if (dec.bid > curHigh) { newHigh = dec.bid; setHighBid(dec.bid); setAiTrump(dec.suit); winner = p; }
@@ -544,7 +699,7 @@ function FortyFivesGame() {
     } else {
       const next = (p + 1) % 4; setCurrentPlayer(next);
       if (next === 0) setMsg('Your bid');
-      else { setMsg(`${PLAYER_NAMES[next]} bidding...`); timer.current = setTimeout(() => doBid(next, h, dlr, newBids, newHigh, totals), 800); }
+      else { setMsg(`${PLAYER_NAMES[next]} bidding...`); timer.current = setTimeout(() => doBid(next, h, dlr, newBids, newHigh, totals, dec.bid > 0 ? dec.bid : lastBidAmt), 800); }
     }
   }, [aiTrump]);
 
@@ -559,7 +714,7 @@ function FortyFivesGame() {
       setBidWinner(w);
       if (w === 0) { setPhase('trump-select'); setMsg(bagged ? 'You were BAGGED! Pick trump' : 'Pick trump'); }
       else { const t = aiTrump || chooseTrumpSuit(hands[w]); finishBid(w, t, hands, newHigh, scores, dealer, bagged); }
-    } else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]} bidding...`); timer.current = setTimeout(() => doBid(1, hands, dealer, newBids, newHigh, scores), 800); }
+    } else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]} bidding...`); timer.current = setTimeout(() => doBid(1, hands, dealer, newBids, newHigh, scores, amt > 0 ? amt : null), 800); }
   }, [bids, highBid, dealer, hands, aiTrump, scores]);
 
   const selectTrump = useCallback((s) => finishBid(0, s, hands, highBid, scores, dealer, wasBagged), [hands, highBid, scores, dealer, wasBagged]);
@@ -576,7 +731,7 @@ function FortyFivesGame() {
   }, [kitty, deck]);
 
   const aiDiscard = useCallback((p, h, t, bw, hb, totals, dlr, curDrawn, curDeck) => {
-    const { keep } = decideDiscard(h[p], t, p === bw);
+    const { keep } = decideDiscard(h[p], t, p === bw, hb);
     const newH = h.map(x => [...x]); newH[p] = keep;
     let d = [...curDeck]; const dc = Math.max(0, 5 - keep.length);
     if (dc > 0 && d.length >= dc) { newH[p] = [...newH[p], ...d.splice(0, dc)]; }
@@ -604,6 +759,10 @@ function FortyFivesGame() {
   }, [hands, selected, deck, dealer, bidWinner, trumpSuit, highBid, scores, drawn]);
 
   const startPlay = useCallback((leader, h, t, hb, totals, dr) => {
+    // Save hands after draw for Show Hands feature
+    setPostDrawHands(h.map(hand => [...hand]));
+    setRoundDrawn([...dr]);
+    
     setPhase('playing'); setTrick([]); setTrickCards([]); setTrickLeader(leader);
     setCurrentPlayer(leader); setTrickNum(1); setPlayerTricks([0,0,0,0]); setHighTrumpInfo({ rank: -1, player: -1 });
     setKnownOutOfTrump([false, false, false, false]);
@@ -743,8 +902,8 @@ function FortyFivesGame() {
         >?</div>
         <div style={{ fontSize: '12px' }}><span style={{ color: '#4caf50' }}>Us:{scores[0]}</span> | <span style={{ color: '#f44336' }}>Them:{scores[1]}</span></div>
       </div>
-      {/* Message */}
-      <div style={{ textAlign: 'center', padding: '4px', background: 'rgba(0,0,0,0.4)', borderRadius: '4px', fontSize: '12px', color: '#ffd700', marginBottom: '4px' }}>{msg}</div>
+      {/* Message - fixed height to prevent layout shift */}
+      <div style={{ height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', borderRadius: '4px', fontSize: '12px', color: '#ffd700', marginBottom: '4px' }}>{msg}</div>
       {/* Game */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {/* North */}
@@ -808,10 +967,11 @@ function FortyFivesGame() {
           </div>
         </div>
         {/* Buttons - yellow Pass button, "Discard (x)" text */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', flexWrap: 'wrap', padding: '4px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', flexWrap: 'wrap', padding: '4px 0', minHeight: '36px' }}>
           {phase === 'bidding' && currentPlayer === 0 && <>{[15,20,25,30].map(b => <button key={b} onClick={() => humanBid(b)} disabled={b <= highBid} style={{ padding: '6px 12px', fontSize: '12px', background: b <= highBid ? '#555' : '#2196f3', color: '#fff', border: 'none', borderRadius: '4px', opacity: b <= highBid ? 0.5 : 1 }}>{b}</button>)}<button onClick={() => humanBid(0)} style={{ padding: '6px 12px', fontSize: '12px', background: '#c9a227', color: '#000', border: 'none', borderRadius: '4px' }}>Pass</button></>}
           {phase === 'trump-select' && SUITS.map(s => <button key={s} onClick={() => selectTrump(s)} style={{ padding: '6px 14px', fontSize: '18px', background: 'rgba(0,0,0,0.5)', color: (s === '♥' || s === '♦') ? '#f44336' : '#fff', border: '1px solid #d4af37', borderRadius: '4px' }}>{s}</button>)}
           {phase === 'discarding' && currentPlayer === 0 && <button onClick={humanDiscard} style={{ padding: '6px 16px', fontSize: '12px', background: '#4caf50', color: '#fff', border: 'none', borderRadius: '4px' }}>Discard ({selected.length})</button>}
+          {(phase === 'round-end' || phase === 'game-over') && postDrawHands && <button onClick={() => setShowHandsOpen(true)} style={{ padding: '6px 16px', fontSize: '12px', background: '#666', color: '#fff', border: 'none', borderRadius: '4px' }}>Show Hands</button>}
           {phase === 'round-end' && <button onClick={nextRound} style={{ padding: '6px 16px', fontSize: '12px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '4px' }}>Next</button>}
           {phase === 'game-over' && <button onClick={startGame} style={{ padding: '6px 16px', fontSize: '12px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '4px' }}>New Game</button>}
           {phase === 'dealing' && <button onClick={startGame} style={{ padding: '10px 24px', fontSize: '14px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>Start</button>}
@@ -825,6 +985,18 @@ function FortyFivesGame() {
       </div>
       {/* Help Modal */}
       <HelpModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
+      {/* Show Hands Modal */}
+      <ShowHandsModal 
+        isOpen={showHandsOpen} 
+        onClose={() => setShowHandsOpen(false)} 
+        hands={postDrawHands}
+        dealer={roundDealer}
+        bidWinner={bidWinner}
+        highBid={highBid}
+        trumpSuit={trumpSuit}
+        drawn={roundDrawn}
+        wasBagged={wasBagged}
+      />
     </div>
   );
 }
