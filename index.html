@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 2.0
+// 45s Card Game - Version 2.1
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.0';
+const VERSION = '2.1';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -368,6 +368,7 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   }
 
   // 3rd man high: when partner bid and we're 3rd to play, play high trump to support
+  // This must come BEFORE partnerWinning check so we secure the trick
   const trumps = playable.filter(c => isTrump(c, trumpSuit));
   if (positionInTrick === 2 && partnerIsBidder && myTeamBid && trumps.length > 0) {
     // Play our highest trump to help partner
@@ -376,17 +377,6 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
       return trumps.find(c => c.rank === 'A' && c.suit === trumpSuit) || trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
     }
     return trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
-  }
-
-  if (trick.length === 2 && partnerIdx === bidWinner && bidWinner === leader && !isTrump(led, trumpSuit) && myTeamBid) {
-    const trumps2 = playable.filter(c => isTrump(c, trumpSuit));
-    if (trumps2.length > 0) {
-      // If holding A♥ + A of trump, play A of trump first
-      if (hasAH && hasATrump) {
-        return trumps2.find(c => c.rank === 'A' && c.suit === trumpSuit) || trumps2.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
-      }
-      return trumps2.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
-    }
   }
 
   if (partnerWinning) {
