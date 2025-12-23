@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 2.1
+// 45s Card Game - Version 2.2
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.1';
+const VERSION = '2.2';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -283,7 +283,7 @@ function getDefaultDiscardSelection(hand, trumpSuit) {
   return hand.map((c, i) => isTrump(c, trumpSuit) ? -1 : i).filter(i => i >= 0);
 }
 
-function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, highBid, cardsDrawn, knownOutOfTrump, trickNum, bidderHasLostTrick) {
+function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, highBid, cardsDrawn, knownOutOfTrump, trickNum, bidderHasLostTrick, cardsPlayed) {
   const led = trick[0] || null, ledSuit = led?.suit;
   const playable = getPlayableCards(hand, trumpSuit, led, ledSuit);
   if (playable.length <= 1) return playable[0] || hand[0];
@@ -298,6 +298,9 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   const atLeastOneOppStrong = opp1Drawn < 4 || opp2Drawn < 4;
   const partnerWeak = (cardsDrawn[partnerIdx]||0) >= 4;
   const partnerOutOfTrump = knownOutOfTrump && knownOutOfTrump[partnerIdx];
+  
+  // Get highest remaining trump for smart decisions
+  const highestRemainingTrumpRank = getHighestRemainingTrump(cardsPlayed || [], trumpSuit);
 
   // Check if we have A♥ and A of trump - if so, prefer playing A trump first when appropriate
   const hasAH = playable.some(c => c.rank === 'A' && c.suit === '♥');
@@ -310,6 +313,12 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     
     // Bid winner leading logic
     if (iAmBidWinner && trumps.length > 0) {
+      // Check if we have a boss trump (highest remaining) - lead it!
+      const bossTrump = trumps.find(c => getTrumpRank(c, trumpSuit) >= highestRemainingTrumpRank);
+      if (bossTrump) {
+        return bossTrump;
+      }
+      
       // For 25 bids (non-desperation): come out swinging with strongest trump until we lose a trick
       if (highBid >= 25 && !bidderHasLostTrick) {
         // Lead strongest trump - bang them out one after another
@@ -369,9 +378,20 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
 
   // 3rd man high: when partner bid and we're 3rd to play, play high trump to support
   // This must come BEFORE partnerWinning check so we secure the trick
+  // BUT only if partner's card could be beaten - if partner has boss trump, throw low
   const trumps = playable.filter(c => isTrump(c, trumpSuit));
   if (positionInTrick === 2 && partnerIsBidder && myTeamBid && trumps.length > 0) {
-    // Play our highest trump to help partner
+    // Check if partner's card (the lead) is already boss
+    const partnerCard = trick[0]; // Partner led, so their card is first
+    const partnerCardRank = getTrumpRank(partnerCard, trumpSuit);
+    const partnerHasBoss = partnerCardRank >= 0 && partnerCardRank >= highestRemainingTrumpRank;
+    
+    if (partnerHasBoss) {
+      // Partner's card can't be beaten - throw lowest trump to save our high cards
+      return trumps.reduce((l,c) => getTrumpRank(c,trumpSuit) < getTrumpRank(l,trumpSuit) ? c : l);
+    }
+    
+    // Partner's card could be beaten - play high to help
     // Exception: if holding A♥, might keep it for flexibility and play A of trump instead
     if (hasAH && hasATrump) {
       return trumps.find(c => c.rank === 'A' && c.suit === trumpSuit) || trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
@@ -402,6 +422,42 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
 }
 
 const chooseTrumpSuit = (hand) => findBestTrumpSuit(hand).suit;
+
+// Card tracking helpers
+function getHighestRemainingTrump(cardsPlayed, trumpSuit) {
+  // Returns the rank value of the highest trump not yet played
+  const playedIds = new Set(cardsPlayed.map(c => c.id));
+  
+  // Check in order: 5, J, A♥, A of trump, K, Q, then lower cards
+  if (!playedIds.has(`5${trumpSuit}`)) return 102; // 5 of trump
+  if (!playedIds.has(`J${trumpSuit}`)) return 101; // J of trump
+  if (!playedIds.has('A♥')) return 100; // A of hearts
+  if (trumpSuit !== '♥' && !playedIds.has(`A${trumpSuit}`)) return 99; // A of trump
+  if (!playedIds.has(`K${trumpSuit}`)) return 98;
+  if (!playedIds.has(`Q${trumpSuit}`)) return 97;
+  
+  // Check lower trump cards
+  const lowerRanks = trumpSuit === '♥' || trumpSuit === '♦' 
+    ? ['10','9','8','7','6','4','3','2'] 
+    : ['2','3','4','6','7','8','9','10'];
+  for (let i = lowerRanks.length - 1; i >= 0; i--) {
+    if (!playedIds.has(`${lowerRanks[i]}${trumpSuit}`)) {
+      return 80 + i;
+    }
+  }
+  return -1; // All trump played
+}
+
+function isCardBoss(card, cardsPlayed, trumpSuit) {
+  // Returns true if this card is currently the highest remaining of its type
+  if (!card || !trumpSuit) return false;
+  const cardRank = getTrumpRank(card, trumpSuit);
+  if (cardRank >= 0) {
+    // It's a trump - check if it's the highest remaining
+    return cardRank >= getHighestRemainingTrump(cardsPlayed, trumpSuit);
+  }
+  return false;
+}
 
 // UI Components
 function TrickMarker({ isHighTrump }) {
@@ -553,14 +609,31 @@ Without:       498471 bids, 35.0% success`}
   );
 }
 
-// Show Hands Modal for debugging
-function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, wasBagged }) {
+// Show Hands Modal for debugging - shows cards in play order
+function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, wasBagged, playHistory }) {
   if (!isOpen || !hands) return null;
   
   const renderHand = (playerIdx, label) => {
     const hand = hands[playerIdx] || [];
     const isDealer = dealer === playerIdx;
     const isBidder = bidWinner === playerIdx;
+    
+    // Sort cards by play order if playHistory exists
+    let sortedHand = [...hand];
+    if (playHistory && playHistory.length > 0) {
+      const playOrder = {};
+      playHistory.forEach((play, idx) => {
+        if (play.player === playerIdx) {
+          playOrder[play.card.id] = idx;
+        }
+      });
+      sortedHand.sort((a, b) => {
+        const orderA = playOrder[a.id] !== undefined ? playOrder[a.id] : 999;
+        const orderB = playOrder[b.id] !== undefined ? playOrder[b.id] : 999;
+        return orderA - orderB;
+      });
+    }
+    
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#aaa' }}>
@@ -575,7 +648,17 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
           </span>
         )}
         <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', justifyContent: 'center' }}>
-          {hand.map((c, i) => <Card key={i} card={c} small disabled />)}
+          {sortedHand.map((c, i) => {
+            // Show play order number on each card
+            const playIdx = playHistory ? playHistory.findIndex(p => p.player === playerIdx && p.card.id === c.id) : -1;
+            const trickNum = playIdx >= 0 ? playHistory[playIdx].trick : null;
+            return (
+              <div key={i} style={{ position: 'relative' }}>
+                <Card card={c} small disabled />
+                {trickNum && <div style={{ position: 'absolute', top: '-6px', right: '-6px', width: '14px', height: '14px', borderRadius: '50%', background: '#d4af37', color: '#000', fontSize: '9px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{trickNum}</div>}
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -593,6 +676,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             Trump: <span style={{ fontSize: '18px', color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff' }}>{trumpSuit}</span>
           </div>
         )}
+        <div style={{ textAlign: 'center', fontSize: '9px', color: '#888' }}>Cards shown in play order (number = trick #)</div>
         {renderHand(2, 'Partner (N)')}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {renderHand(1, 'P2 (W)')}
@@ -639,6 +723,8 @@ function FortyFivesGame() {
   const [showHandsOpen, setShowHandsOpen] = useState(false);
   const [roundDealer, setRoundDealer] = useState(0);
   const [roundDrawn, setRoundDrawn] = useState([0,0,0,0]);
+  const [cardsPlayed, setCardsPlayed] = useState([]); // Track all cards played this round
+  const [playHistory, setPlayHistory] = useState([]); // Track order of plays: [{player, card, trick}]
   const timer = useRef(null);
   
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
@@ -663,6 +749,8 @@ function FortyFivesGame() {
     setPostDrawHands(null);
     setShowHandsOpen(false);
     setRoundDealer(dlr);
+    setCardsPlayed([]);
+    setPlayHistory([]);
     setPhase('bidding');
     const first = (dlr + 1) % 4; setCurrentPlayer(first);
     if (first !== 0) { setMsg(`${PLAYER_NAMES[first]} bidding...`); timer.current = setTimeout(() => doBid(first, h, dlr, [null,null,null,null], 0, totals, null), 800); }
@@ -752,27 +840,32 @@ function FortyFivesGame() {
     // Save hands after draw for Show Hands feature
     setPostDrawHands(h.map(hand => [...hand]));
     setRoundDrawn([...dr]);
+    setCardsPlayed([]);
+    setPlayHistory([]);
     
     setPhase('playing'); setTrick([]); setTrickCards([]); setTrickLeader(leader);
     setCurrentPlayer(leader); setTrickNum(1); setPlayerTricks([0,0,0,0]); setHighTrumpInfo({ rank: -1, player: -1 });
     setKnownOutOfTrump([false, false, false, false]);
     setBidderLostTrick(false);
     if (leader === 0) setMsg('Your lead');
-    else { setMsg(`${PLAYER_NAMES[leader]} leads...`); timer.current = setTimeout(() => aiPlay(leader, h, [], t, leader, 1, [0,0], [0,0], { rank: -1, player: -1 }, bidWinner, hb, totals, dr, [0,0,0,0], [false,false,false,false], false), 700); }
+    else { setMsg(`${PLAYER_NAMES[leader]} leads...`); timer.current = setTimeout(() => aiPlay(leader, h, [], t, leader, 1, [0,0], [0,0], { rank: -1, player: -1 }, bidWinner, hb, totals, dr, [0,0,0,0], [false,false,false,false], false, [], []), 700); }
   }, [bidWinner]);
 
-  const aiPlay = useCallback((p, h, tc, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt) => {
+  const aiPlay = useCallback((p, h, tc, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt, cp, ph) => {
     const hand = h[p]; if (!hand || !hand.length) return;
     const trk = tc.map(x => x.card);
-    const card = chooseCardToPlay(hand, t, trk, lead, p, bw, hb, dr, koot, tn, blt);
+    const card = chooseCardToPlay(hand, t, trk, lead, p, bw, hb, dr, koot, tn, blt, cp);
     const idx = hand.findIndex(c => c.id === card.id);
     const newH = h.map((x, i) => i === p ? x.filter((_, j) => j !== idx) : [...x]);
     const newTC = [...tc, { card, player: p }], newTrk = newTC.map(x => x.card);
+    const newCP = [...cp, card]; // Track this card as played
+    const newPH = [...ph, { player: p, card, trick: tn }]; // Track play history
     setHands(newH); setTrickCards(newTC); setTrick(newTrk);
-    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, t, lead, newH, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt), 500);
+    setCardsPlayed(newCP); setPlayHistory(newPH);
+    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, t, lead, newH, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt, newCP, newPH), 500);
     else { const next = (p + 1) % 4; setCurrentPlayer(next);
       if (next === 0) setMsg('Your turn');
-      else { setMsg(`${PLAYER_NAMES[next]}...`); timer.current = setTimeout(() => aiPlay(next, newH, newTC, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt), 600); }
+      else { setMsg(`${PLAYER_NAMES[next]}...`); timer.current = setTimeout(() => aiPlay(next, newH, newTC, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt, newCP, newPH), 600); }
     }
   }, []);
 
@@ -784,12 +877,15 @@ function FortyFivesGame() {
     if (!playable.some(c => c.id === card.id)) { setMsg('Must follow suit!'); return; }
     const newH = hands.map((x, i) => i === 0 ? x.filter((_, j) => j !== ci) : [...x]);
     const newTC = [...trickCards, { card, player: 0 }], newTrk = newTC.map(x => x.card);
+    const newCP = [...cardsPlayed, card];
+    const newPH = [...playHistory, { player: 0, card, trick: trickNum }];
     setHands(newH); setTrickCards(newTC); setTrick(newTrk);
-    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, trumpSuit, trickLeader, newH, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump, bidderLostTrick), 500);
-    else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]}...`); timer.current = setTimeout(() => aiPlay(1, newH, newTC, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump, bidderLostTrick), 600); }
-  }, [phase, currentPlayer, hands, trick, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump, bidderLostTrick]);
+    setCardsPlayed(newCP); setPlayHistory(newPH);
+    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, trumpSuit, trickLeader, newH, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump, bidderLostTrick, newCP, newPH), 500);
+    else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]}...`); timer.current = setTimeout(() => aiPlay(1, newH, newTC, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump, bidderLostTrick, newCP, newPH), 600); }
+  }, [phase, currentPlayer, hands, trick, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump, bidderLostTrick, cardsPlayed, playHistory]);
 
-  const evalTrick = useCallback((trk, tc, t, lead, h, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt) => {
+  const evalTrick = useCallback((trk, tc, t, lead, h, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt, cp, ph) => {
     const winner = determineTrickWinner(trk, t, lead), team = getTeam(winner);
     let highT = -1; for (const c of trk) { const r = getTrumpRank(c, t); if (r > highT) highT = r; }
     let newHTI = hti; if (highT > hti.rank) newHTI = { rank: highT, player: winner };
@@ -832,7 +928,7 @@ function FortyFivesGame() {
       }
       else { setTrick([]); setTrickCards([]); setTrickLeader(winner); setCurrentPlayer(winner); setTrickNum(tn + 1); setPhase('playing');
         if (winner === 0) setMsg('Your lead');
-        else { setMsg(`${PLAYER_NAMES[winner]} leads...`); timer.current = setTimeout(() => aiPlay(winner, h, [], t, winner, tn + 1, newTW, newRP, newHTI, bw, hb, totals, dr, newPT, newKOOT, newBLT), 700); }
+        else { setMsg(`${PLAYER_NAMES[winner]} leads...`); timer.current = setTimeout(() => aiPlay(winner, h, [], t, winner, tn + 1, newTW, newRP, newHTI, bw, hb, totals, dr, newPT, newKOOT, newBLT, cp, ph), 700); }
       }
     }, 1200);
   }, []);
@@ -914,11 +1010,11 @@ function FortyFivesGame() {
           {/* West */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '50px' }}>
             <div style={{ fontSize: '10px', color: '#aaa', textAlign: 'center' }}>{PLAYER_NAMES[1]}</div>
-            <div style={{ height: '14px', display: 'flex', alignItems: 'center' }}>{dealer === 1 && <DealerBadge />}</div>
+            <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{dealer === 1 && <DealerBadge />}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>{hands[1].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
-            <CardsDrawnIndicator count={drawn[1]} />
-            <div style={{ height: '18px', display: 'flex', alignItems: 'center' }}>{bidInd(1)}</div>
-            <div style={{ height: '20px', display: 'flex', alignItems: 'center' }}><TricksWonDisplay count={playerTricks[1]} hasHighTrump={highTrumpInfo.player === 1} /></div>
+            <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CardsDrawnIndicator count={drawn[1]} /></div>
+            <div style={{ height: '18px', minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{bidInd(1)}</div>
+            <div style={{ height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><TricksWonDisplay count={playerTricks[1]} hasHighTrump={highTrumpInfo.player === 1} /></div>
           </div>
           {/* Center - Larger table with always-visible trump */}
           <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -936,11 +1032,11 @@ function FortyFivesGame() {
           {/* East */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '50px' }}>
             <div style={{ fontSize: '10px', color: '#aaa', textAlign: 'center' }}>{PLAYER_NAMES[3]}</div>
-            <div style={{ height: '14px', display: 'flex', alignItems: 'center' }}>{dealer === 3 && <DealerBadge />}</div>
+            <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{dealer === 3 && <DealerBadge />}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>{hands[3].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
-            <CardsDrawnIndicator count={drawn[3]} />
-            <div style={{ height: '18px', display: 'flex', alignItems: 'center' }}>{bidInd(3)}</div>
-            <div style={{ height: '20px', display: 'flex', alignItems: 'center' }}><TricksWonDisplay count={playerTricks[3]} hasHighTrump={highTrumpInfo.player === 3} /></div>
+            <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CardsDrawnIndicator count={drawn[3]} /></div>
+            <div style={{ height: '18px', minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{bidInd(3)}</div>
+            <div style={{ height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><TricksWonDisplay count={playerTricks[3]} hasHighTrump={highTrumpInfo.player === 3} /></div>
           </div>
         </div>
         {/* South */}
@@ -986,6 +1082,7 @@ function FortyFivesGame() {
         trumpSuit={trumpSuit}
         drawn={roundDrawn}
         wasBagged={wasBagged}
+        playHistory={playHistory}
       />
     </div>
   );
