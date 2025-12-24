@@ -18,7 +18,7 @@
   <script type="text/babel">
 // 45s Card Game - Version 2.3
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.3';
+const VERSION = '2.4';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -656,10 +656,14 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             // Show play order number on each card
             const playIdx = playHistory ? playHistory.findIndex(p => p.player === playerIdx && p.card.id === c.id) : -1;
             const trickNum = playIdx >= 0 ? playHistory[playIdx].trick : null;
+            // Check if this card led its trick (positions 0,4,8,12,16 in playHistory are leads)
+            const ledTrick = playIdx >= 0 && playIdx % 4 === 0;
             return (
               <div key={i} style={{ position: 'relative' }}>
-                <Card card={c} small disabled />
-                {trickNum && <div style={{ position: 'absolute', top: '-6px', right: '-6px', width: '14px', height: '14px', borderRadius: '50%', background: '#d4af37', color: '#000', fontSize: '9px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{trickNum}</div>}
+                <div style={{ border: ledTrick ? '2px solid #d4af37' : 'none', borderRadius: '4px' }}>
+                  <Card card={c} small disabled />
+                </div>
+                {trickNum && <div style={{ position: 'absolute', top: '-6px', right: '-6px', width: '14px', height: '14px', borderRadius: '50%', background: ledTrick ? '#d4af37' : '#666', color: ledTrick ? '#000' : '#fff', fontSize: '9px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{trickNum}</div>}
               </div>
             );
           })}
