@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 2.2
+// 45s Card Game - Version 2.3
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.2';
+const VERSION = '2.3';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -376,22 +376,26 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     }
   }
 
-  // 3rd man high: when partner bid and we're 3rd to play, play high trump to support
+  // 3rd man high: when partner bid AND LED, and we're 3rd to play, play high trump to support
   // This must come BEFORE partnerWinning check so we secure the trick
   // BUT only if partner's card could be beaten - if partner has boss trump, throw low
   const trumps = playable.filter(c => isTrump(c, trumpSuit));
-  if (positionInTrick === 2 && partnerIsBidder && myTeamBid && trumps.length > 0) {
-    // Check if partner's card (the lead) is already boss
-    const partnerCard = trick[0]; // Partner led, so their card is first
+  const partnerLed = leader === partnerIdx;
+  if (positionInTrick === 2 && partnerIsBidder && partnerLed && trumps.length > 0) {
+    // Partner (bidder) led - check if their card is boss
+    const partnerCard = trick[0];
     const partnerCardRank = getTrumpRank(partnerCard, trumpSuit);
-    const partnerHasBoss = partnerCardRank >= 0 && partnerCardRank >= highestRemainingTrumpRank;
     
-    if (partnerHasBoss) {
-      // Partner's card can't be beaten - throw lowest trump to save our high cards
-      return trumps.reduce((l,c) => getTrumpRank(c,trumpSuit) < getTrumpRank(l,trumpSuit) ? c : l);
+    // If partner led trump, check if it's boss
+    if (partnerCardRank >= 0) {
+      const partnerHasBoss = partnerCardRank >= highestRemainingTrumpRank;
+      if (partnerHasBoss) {
+        // Partner's trump can't be beaten - throw lowest trump
+        return trumps.reduce((l,c) => getTrumpRank(c,trumpSuit) < getTrumpRank(l,trumpSuit) ? c : l);
+      }
     }
     
-    // Partner's card could be beaten - play high to help
+    // Partner led (trump or offsuit) and could be beaten - play high trump to secure
     // Exception: if holding A♥, might keep it for flexibility and play A of trump instead
     if (hasAH && hasATrump) {
       return trumps.find(c => c.rank === 'A' && c.suit === trumpSuit) || trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
