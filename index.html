@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 2.3
+// 45s Card Game - Version 2.7
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.5';
+const VERSION = '2.7';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -617,6 +617,20 @@ Without:       498471 bids, 35.0% success`}
 function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, wasBagged, playHistory, bids }) {
   if (!isOpen || !hands) return null;
   
+  // Check for duplicate cards across all hands
+  const allCards = hands.flat();
+  const cardIds = allCards.map(c => c.id);
+  const uniqueIds = new Set(cardIds);
+  const hasDuplicates = cardIds.length !== uniqueIds.size;
+  let duplicateInfo = null;
+  
+  if (hasDuplicates) {
+    const counts = {};
+    cardIds.forEach(id => counts[id] = (counts[id] || 0) + 1);
+    const dupes = Object.entries(counts).filter(([_, count]) => count > 1);
+    duplicateInfo = dupes.map(([id, count]) => `${id} (x${count})`).join(', ');
+  }
+  
   const renderHand = (playerIdx, label) => {
     const hand = hands[playerIdx] || [];
     const isDealer = dealer === playerIdx;
@@ -668,7 +682,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             // Check if this card led its trick (positions 0,4,8,12,16 in playHistory are leads)
             const ledTrick = playIdx >= 0 && playIdx % 4 === 0;
             return (
-              <div key={i} style={{ position: 'relative' }}>
+              <div key={c.id} style={{ position: 'relative' }}>
                 <div style={{ border: ledTrick ? '2px solid #d4af37' : 'none', borderRadius: '4px' }}>
                   <Card card={c} small disabled />
                 </div>
@@ -688,6 +702,13 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
           <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#d4af37' }}>Hands After Draw</span>
           <div onClick={onClose} style={{ width: '24px', height: '24px', border: '1px solid #aaa', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '16px', cursor: 'pointer' }}>✕</div>
         </div>
+        {hasDuplicates && (
+          <div style={{ padding: '8px', background: '#c62828', borderRadius: '4px', fontSize: '11px', color: '#fff' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>⚠️ DUPLICATE CARDS DETECTED!</div>
+            <div style={{ fontSize: '10px' }}>{duplicateInfo}</div>
+            <div style={{ fontSize: '9px', marginTop: '4px', opacity: 0.9 }}>Total: {cardIds.length} cards, Unique: {uniqueIds.size}</div>
+          </div>
+        )}
         {trumpSuit && (
           <div style={{ textAlign: 'center', fontSize: '12px', color: '#aaa' }}>
             Trump: <span style={{ fontSize: '18px', color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff' }}>{trumpSuit}</span>
@@ -754,6 +775,19 @@ function FortyFivesGame() {
 
   const dealRound = useCallback((dlr, totals) => {
     const d = shuffleDeck(createDeck());
+    
+    // DEBUG: Verify deck has no duplicates
+    const deckIds = d.map(c => c.id);
+    const uniqueIds = new Set(deckIds);
+    if (deckIds.length !== uniqueIds.size) {
+      console.error('DUPLICATE CARDS IN INITIAL DECK!');
+      console.error('Total cards:', deckIds.length, 'Unique cards:', uniqueIds.size);
+      const counts = {};
+      deckIds.forEach(id => counts[id] = (counts[id] || 0) + 1);
+      const dupes = Object.entries(counts).filter(([_, count]) => count > 1);
+      console.error('Duplicates:', dupes);
+    }
+    
     const h = [d.slice(0,5), d.slice(5,10), d.slice(10,15), d.slice(15,20)];
     const k = d.slice(20,23), rem = d.slice(23);
     setHands(h); setKitty(k); setDeck(rem);
@@ -861,6 +895,22 @@ function FortyFivesGame() {
     setRoundDrawn([...dr]);
     setCardsPlayed([]);
     setPlayHistory([]);
+    
+    // DEBUG: Check for duplicate cards across all hands
+    const allCards = h.flat();
+    const cardIds = allCards.map(c => c.id);
+    const uniqueIds = new Set(cardIds);
+    if (cardIds.length !== uniqueIds.size) {
+      console.error('DUPLICATE CARDS DETECTED!');
+      console.error('Total cards:', cardIds.length, 'Unique cards:', uniqueIds.size);
+      const counts = {};
+      cardIds.forEach(id => counts[id] = (counts[id] || 0) + 1);
+      const dupes = Object.entries(counts).filter(([_, count]) => count > 1);
+      console.error('Duplicates:', dupes);
+      h.forEach((hand, i) => {
+        console.error(`Player ${i} hand:`, hand.map(c => c.id));
+      });
+    }
     
     setPhase('playing'); setTrick([]); setTrickCards([]); setTrickLeader(leader);
     setCurrentPlayer(leader); setTrickNum(1); setPlayerTricks([0,0,0,0]); setHighTrumpInfo({ rank: -1, player: -1 });
