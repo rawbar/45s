@@ -18,7 +18,7 @@
   <script type="text/babel">
 // 45s Card Game - Version 2.3
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.4';
+const VERSION = '2.5';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -614,13 +614,14 @@ Without:       498471 bids, 35.0% success`}
 }
 
 // Show Hands Modal for debugging - shows cards in play order
-function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, wasBagged, playHistory }) {
+function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, wasBagged, playHistory, bids }) {
   if (!isOpen || !hands) return null;
   
   const renderHand = (playerIdx, label) => {
     const hand = hands[playerIdx] || [];
     const isDealer = dealer === playerIdx;
     const isBidder = bidWinner === playerIdx;
+    const playerBid = bids ? bids[playerIdx] : null;
     
     // Sort cards by play order if playHistory exists
     let sortedHand = [...hand];
@@ -645,10 +646,18 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
           {isDealer && <span style={{ padding: '1px 3px', background: '#d4af37', color: '#000', borderRadius: '2px', fontSize: '8px', fontWeight: 'bold' }}>DEALER</span>}
           <span style={{ color: '#ffd700' }}>+{drawn[playerIdx] || 0}</span>
         </div>
-        {isBidder && (
-          <span style={{ padding: '2px 4px', background: wasBagged ? '#c62828' : '#2196f3', borderRadius: '3px', fontSize: '10px', color: '#fff' }}>
-            {highBid}{trumpSuit && <span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span>}
-            {wasBagged && <span style={{ marginLeft: '2px' }}>BAGGED</span>}
+        {/* Show bid - gray for non-winners, blue for winner, red if bagged */}
+        {playerBid !== null && (
+          <span style={{ 
+            padding: '2px 4px', 
+            background: isBidder ? (wasBagged ? '#c62828' : '#2196f3') : '#555', 
+            borderRadius: '3px', 
+            fontSize: '10px', 
+            color: isBidder ? '#fff' : '#aaa'
+          }}>
+            {playerBid === 0 ? 'Pass' : playerBid}
+            {isBidder && trumpSuit && <span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span>}
+            {isBidder && wasBagged && <span style={{ marginLeft: '2px' }}>BAGGED</span>}
           </span>
         )}
         <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -684,13 +693,13 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             Trump: <span style={{ fontSize: '18px', color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff' }}>{trumpSuit}</span>
           </div>
         )}
-        <div style={{ textAlign: 'center', fontSize: '9px', color: '#888' }}>Cards shown in play order (number = trick #)</div>
-        {renderHand(2, 'Partner (N)')}
+        <div style={{ textAlign: 'center', fontSize: '9px', color: '#888' }}>Cards in play order • Gold border = led trick</div>
+        {renderHand(2, 'Partner')}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {renderHand(1, 'P2 (W)')}
-          {renderHand(3, 'P4 (E)')}
+          {renderHand(1, 'P2')}
+          {renderHand(3, 'P4')}
         </div>
-        {renderHand(0, 'You (S)')}
+        {renderHand(0, 'You')}
       </div>
     </div>
   );
@@ -733,6 +742,7 @@ function FortyFivesGame() {
   const [roundDrawn, setRoundDrawn] = useState([0,0,0,0]);
   const [cardsPlayed, setCardsPlayed] = useState([]); // Track all cards played this round
   const [playHistory, setPlayHistory] = useState([]); // Track order of plays: [{player, card, trick}]
+  const [roundBids, setRoundBids] = useState([null,null,null,null]); // Save bids for modal
   const timer = useRef(null);
   
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
@@ -807,6 +817,7 @@ function FortyFivesGame() {
 
   const finishBid = useCallback((w, t, h, hb, totals, dlr, bagged) => {
     setTrumpSuit(t); setBidWinner(w); setHighBid(hb);
+    setRoundBids([...bids]); // Save bids for modal
     const newH = h.map((hand, i) => i === w ? [...hand, ...kitty] : [...hand]);
     setHands(newH); setKitty([]);
     setSelected(getDefaultDiscardSelection(newH[0], t));
@@ -814,7 +825,7 @@ function FortyFivesGame() {
     const bagMsg = bagged ? ' (BAGGED)' : '';
     if (first === 0) setMsg(`Discard (keep 1+)${bagMsg}`);
     else { setMsg(`${PLAYER_NAMES[first]} discarding...${bagMsg}`); timer.current = setTimeout(() => aiDiscard(first, newH, t, w, hb, totals, dlr, [0,0,0,0], deck), 500); }
-  }, [kitty, deck]);
+  }, [kitty, deck, bids]);
 
   const aiDiscard = useCallback((p, h, t, bw, hb, totals, dlr, curDrawn, curDeck) => {
     const { keep } = decideDiscard(h[p], t, p === bw, hb);
@@ -1091,6 +1102,7 @@ function FortyFivesGame() {
         drawn={roundDrawn}
         wasBagged={wasBagged}
         playHistory={playHistory}
+        bids={roundBids}
       />
     </div>
   );
