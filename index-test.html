@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>45s Card Game</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Palatino Linotype', Palatino, Georgia, serif; overflow: hidden; position: fixed; width: 100%; height: 100%; }
+    html, body, #root { height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+// 45s Card Game - Version 2.9
+const { useState, useCallback, useRef, useEffect } = React;
+
+// ============================================================================
+// GAME SIMULATOR - Monte Carlo rollouts for complex decisions
+// ============================================================================
+
+class GameSimulator {
+  constructor(gameState) {
+    // gameState includes: hands (with unknowns), trumpSuit, bidWinner, highBid, 
+    // cardsDrawn, currentTrick, trickNum, tricksWon, knownOutOfTrump, cardsPlayed
+    this.gameState = gameState;
+  }
+  
+  // Sample plausible opponent hands based on what we know
+  sampleOpponentHands(knownInfo) {
+    // knownInfo: { myHand, myPlayer, cardsPlayed, cardsDrawn, knownOutOfTrump }
+    const { myHand, myPlayer, cardsPlayed, cardsDrawn } = knownInfo;
+    const playedIds = new Set(cardsPlayed.map(c => c.id));
+    const myHandIds = new Set(myHand.map(c => c.id));
+    
+    // Build deck of unknown cards
+    const allCards = createDeck();
+    const unknownCards = allCards.filter(c => !playedIds.has(c.id) && !myHandIds.has(c.id));
+    
+    // Shuffle unknown cards
+    const shuffled = shuffleDeck(unknownCards);
+    
+    // Deal to other 3 players based on their hand sizes
+    const sampledHands = [[], [], [], []];
+    sampledHands[myPlayer] = [...myHand];
+    
+    let idx = 0;
+    for (let p = 0; p < 4; p++) {
+      if (p === myPlayer) continue;
+      const handSize = 5 - Math.floor(cardsPlayed.length / 4); // Estimate remaining cards
+      for (let i = 0; i < handSize && idx < shuffled.length; i++) {
+        sampledHands[p].push(shuffled[idx++]);
+      }
+    }
+    
+    return sampledHands;
+  }
+  
+  // Simulate one complete game from current state
+  simulateGame(hands, trumpSuit, bidWinner, highBid, trickNum, tricksWon, cardsDrawn, knownOutOfTrump, cardsPlayed) {
+    let currentTricksWon = [...tricksWon];
+    let currentHands = hands.map(h => [...h]);
+    let currentTrickNum = trickNum;
+    let currentKnownOutOfTrump = [...knownOutOfTrump];
+    let currentCardsPlayed = [...cardsPlayed];
+    let leader = bidWinner; // Simplified - track actual leader in real version
+    let bidderLostTrick = tricksWon[getTeam(bidWinner)] < tricksWon[1 - getTeam(bidWinner)];
+    
+    // Play out remaining tricks
+    while (currentTrickNum <= 5 && currentHands.some(h => h.length > 0)) {
+      const trickResult = this.simulateTrick(
+        currentHands, 
+        trumpSuit, 
+        bidWinner, 
+        highBid, 
+        leader, 
+        currentTrickNum, 
+        cardsDrawn, 
+        currentKnownOutOfTrump, 
+        bidderLostTrick,
+        currentCardsPlayed
+      );
+      
+      currentTricksWon[getTeam(trickResult.winner)]++;
+      leader = trickResult.winner;
+      currentHands = trickResult.hands;
+      currentCardsPlayed = trickResult.cardsPlayed;
+      currentKnownOutOfTrump = trickResult.knownOutOfTrump;
+      bidderLostTrick = tricksWon[getTeam(bidWinner)] < tricksWon[1 - getTeam(bidWinner)];
+      currentTrickNum++;
+    }
+    
+    return {
+      tricksWon: currentTricksWon,
+      bidderTeam: getTeam(bidWinner),
+      points: this.calculatePoints(currentTricksWon, getTeam(bidWinner), highBid)
+    };
+  }
+  
+  // Simulate one trick
+  simulateTrick(hands, trumpSuit, bidWinner, highBid, leader, trickNum, cardsDrawn, knownOutOfTrump, bidderLostTrick, cardsPlayed) {
+    const trick = [];
+    let currentPlayer = leader;
+    const newHands = hands.map(h => [...h]);
+    const newCardsPlayed = [...cardsPlayed];
+    const newKnownOutOfTrump = [...knownOutOfTrump];
+    
+    for (let i = 0; i < 4; i++) {
+      if (newHands[currentPlayer].length === 0) break;
+      
+      const card = chooseCardToPlay(
+        newHands[currentPlayer],
+        trumpSuit,
+        trick,
+        leader,
+        currentPlayer,
+        bidWinner,
+        highBid,
+        cardsDrawn,
+        newKnownOutOfTrump,
+        trickNum,
+        bidderLostTrick,
+        newCardsPlayed
+      );
+      
+      trick.push(card);
+      newCardsPlayed.push(card);
+      
+      // Remove card from hand
+      const cardIdx = newHands[currentPlayer].findIndex(c => c.id === card.id);
+      if (cardIdx >= 0) {
+        newHands[currentPlayer].splice(cardIdx, 1);
+      }
+      
+      // Update knownOutOfTrump tracking
+      const led = trick[0];
+      if (led && isTrump(led, trumpSuit) && !isTrump(card, trumpSuit)) {
+        newKnownOutOfTrump[currentPlayer] = true;
+      }
+      
+      currentPlayer = (currentPlayer + 1) % 4;
+    }
+    
+    // Determine winner
+    let winIdx = 0, winCard = trick[0];
+    const ledSuit = trick[0]?.suit;
+    for (let i = 1; i < trick.length; i++) {
+      if (cardBeats(trick[i], winCard, trumpSuit, ledSuit)) {
+        winIdx = i;
+        winCard = trick[i];
+      }
+    }
+    const winner = (leader + winIdx) % 4;
+    
+    return { 
+      winner, 
+      hands: newHands, 
+      cardsPlayed: newCardsPlayed,
+      knownOutOfTrump: newKnownOutOfTrump
+    };
+  }
+  
+  // Calculate points from trick results
+  calculatePoints(tricksWon, bidderTeam, highBid) {
+    const bidderTricks = tricksWon[bidderTeam];
+    const defenderTricks = tricksWon[1 - bidderTeam];
+    
+    const bidderPoints = bidderTricks * 5;
+    const defenderPoints = defenderTricks * 5;
+    
+    // Check if bidder made bid
+    const madeIt = bidderPoints >= highBid;
+    
+    return {
+      bidderTeam,
+      bidderTricks,
+      defenderTricks,
+      bidderPoints,
+      defenderPoints,
+      madeIt,
+      bidderScore: madeIt ? bidderPoints : -highBid,
+      defenderScore: defenderPoints
+    };
+  }
+  
+  // Run N rollouts and return aggregated results
+  runRollouts(n, myPlayer, myHand, trumpSuit, bidWinner, highBid, trickNum, tricksWon, cardsDrawn, knownOutOfTrump, cardsPlayed) {
+    const results = [];
+    
+    for (let i = 0; i < n; i++) {
+      // Sample opponent hands
+      const hands = this.sampleOpponentHands({
+        myHand,
+        myPlayer,
+        cardsPlayed,
+        cardsDrawn
+      });
+      
+      // Simulate game
+      const result = this.simulateGame(
+        hands,
+        trumpSuit,
+        bidWinner,
+        highBid,
+        trickNum,
+        tricksWon,
+        cardsDrawn,
+        knownOutOfTrump,
+        cardsPlayed
+      );
+      
+      results.push(result);
+    }
+    
+    // Aggregate results
+    const myTeam = getTeam(myPlayer);
+    const avgMyTeamTricks = results.reduce((sum, r) => sum + r.tricksWon[myTeam], 0) / n;
+    const avgMyTeamPoints = results.reduce((sum, r) => {
+      return sum + (myTeam === r.bidderTeam ? r.bidderScore : r.defenderScore);
+    }, 0) / n;
+    const winRate = results.filter(r => {
+      const myPoints = myTeam === r.bidderTeam ? r.bidderScore : r.defenderScore;
+      const oppPoints = myTeam === r.bidderTeam ? r.defenderScore : r.bidderScore;
+      return myPoints > oppPoints;
+    }).length / n;
+    
+    return {
+      avgTricks: avgMyTeamTricks,
+      avgPoints: avgMyTeamPoints,
+      winRate,
+      sampleSize: n
+    };
+  }
+}
+
+// Helper function to evaluate a specific card choice via simulation
+function evaluateCardChoice(card, gameContext, numRollouts = 100) {
+  // gameContext includes all state needed for simulation
+  const { myHand, myPlayer, trumpSuit, bidWinner, highBid, trick, trickNum, tricksWon, cardsDrawn, knownOutOfTrump, cardsPlayed, leader } = gameContext;
+  
+  // Create hypothetical game state after playing this card
+  const newTrick = [...trick, card];
+  const newHand = myHand.filter(c => c.id !== card.id);
+  const newCardsPlayed = [...cardsPlayed, card];
+  
+  const simulator = new GameSimulator();
+  
+  // Run rollouts from this state
+  const results = simulator.runRollouts(
+    numRollouts,
+    myPlayer,
+    newHand,
+    trumpSuit,
+    bidWinner,
+    highBid,
+    trickNum,
+    tricksWon,
+    cardsDrawn,
+    knownOutOfTrump,
+    newCardsPlayed
+  );
+  
+  return results;
+}
+
+// Choose best card using Monte Carlo simulation
+function chooseBestCardViaMC(playableCards, gameContext, numRollouts = 100) {
+  if (playableCards.length === 1) return playableCards[0];
+  
+  const evaluations = playableCards.map(card => ({
+    card,
+    results: evaluateCardChoice(card, gameContext, numRollouts)
+  }));
+  
+  // Sort by average points (or win rate for critical situations)
+  evaluations.sort((a, b) => b.results.avgPoints - a.results.avgPoints);
+  
+  console.log('MC Evaluations:', evaluations.map(e => ({
+    card: `${e.card.rank}${e.card.suit}`,
+    avgPoints: e.results.avgPoints.toFixed(2),
+    winRate: (e.results.winRate * 100).toFixed(1) + '%'
+  })));
+  
+  return evaluations[0].card;
+}
+
+// Simulation config - can be toggled for testing
+const SIMULATION_CONFIG = {
+  enabled: true, // Set to true to enable MC simulation
+  numRollouts: 100,
+  // Situations where we use simulation vs heuristics
+  useFor: {
+    renege: true,      // Should I renege with this trump?
+    sacrifice: true,   // Should I sacrifice this trump?
+    leadChoice: true,  // Trump vs offsuit leading decision
+    complexTrick: true // Multiple playable options with unclear best choice
+  }
+};
+
+// ============================================================================
+// END SIMULATOR
+// ============================================================================
+
+const VERSION = '2.9';
+
+const SUITS = ['♠', '♥', '♦', '♣'];
+const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+const PLAYER_NAMES = ['You', 'Player 2', 'Partner', 'Player 4'];
+const getTeam = (player) => player % 2 === 0 ? 0 : 1;
+
+function getTrumpRank(card, trumpSuit) {
+  if (!card || !trumpSuit) return -1;
+  const { rank, suit } = card;
+  if (rank === 'A' && suit === '♥') return 100;
+  if (suit !== trumpSuit) return -1;
+  if (rank === '5') return 102;
+  if (rank === 'J') return 101;
+  if (rank === 'A') return 99;
+  if (rank === 'K') return 98;
+  if (rank === 'Q') return 97;
+  if (suit === '♥' || suit === '♦') {
+    return 80 + ['2','3','4','6','7','8','9','10'].indexOf(rank);
+  } else {
+    return 80 + ['10','9','8','7','6','4','3','2'].indexOf(rank);
+  }
+}
+
+function getOffSuitRank(card) {
+  if (!card) return -1;
+  const { rank, suit } = card;
+  if (suit === '♥' || suit === '♦') {
+    return ['A','2','3','4','5','6','7','8','9','10','J','Q','K'].indexOf(rank);
+  }
+  return ['10','9','8','7','6','5','4','3','2','A','J','Q','K'].indexOf(rank);
+}
+
+function cardBeats(c1, c2, trumpSuit, ledSuit) {
+  const t1 = getTrumpRank(c1, trumpSuit), t2 = getTrumpRank(c2, trumpSuit);
+  if (t1 >= 0 && t2 >= 0) return t1 > t2;
+  if (t1 >= 0) return true;
+  if (t2 >= 0) return false;
+  if (c1.suit !== ledSuit) return false;
+  if (c2.suit !== ledSuit) return true;
+  return getOffSuitRank(c1) > getOffSuitRank(c2);
+}
+
+function isTopThreeTrump(card, trumpSuit) {
+  if (!card || !trumpSuit) return false;
+  return (card.rank === '5' && card.suit === trumpSuit) || (card.rank === 'J' && card.suit === trumpSuit) || (card.rank === 'A' && card.suit === '♥');
+}
+
+function isTrump(card, trumpSuit) {
+  if (!card || !trumpSuit) return false;
+  return (card.rank === 'A' && card.suit === '♥') || card.suit === trumpSuit;
+}
+
+function createDeck() {
+  const deck = [];
+  const usedIds = new Set();
+  for (const suit of SUITS) {
+    for (const rank of RANKS) {
+      const id = `${rank}${suit}`;
+      if (!usedIds.has(id)) {
+        usedIds.add(id);
+        deck.push({ rank, suit, id });
+      }
+    }
+  }
+  return deck;
+}
+
+function shuffleDeck(deck) {
+  const s = [...deck];
+  for (let i = s.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [s[i], s[j]] = [s[j], s[i]]; }
+  return s;
+}
+
+function getPlayableCards(hand, trumpSuit, ledCard, ledSuit) {
+  if (!hand || hand.length === 0) return [];
+  if (!ledCard) return hand;
+  if (isTrump(ledCard, trumpSuit)) {
+    const trumpCards = hand.filter(c => isTrump(c, trumpSuit));
+    if (trumpCards.length === 0) return hand;
+    const ledRank = getTrumpRank(ledCard, trumpSuit);
+    const must = [], canRenege = [];
+    for (const c of trumpCards) {
+      if (isTopThreeTrump(c, trumpSuit) && getTrumpRank(c, trumpSuit) > ledRank) canRenege.push(c);
+      else must.push(c);
+    }
+    return must.length > 0 ? [...must, ...canRenege] : hand;
+  } else {
+    const follow = hand.filter(c => c.suit === ledSuit && !isTrump(c, trumpSuit));
+    const trumps = hand.filter(c => isTrump(c, trumpSuit));
+    return follow.length === 0 ? hand : [...follow, ...trumps];
+  }
+}
+
+function determineTrickWinner(trick, trumpSuit, startPlayer) {
+  if (trick.length !== 4) return null;
+  const ledSuit = trick[0].suit;
+  let winIdx = 0, winCard = trick[0];
+  for (let i = 1; i < 4; i++) { if (cardBeats(trick[i], winCard, trumpSuit, ledSuit)) { winIdx = i; winCard = trick[i]; } }
+  return (startPlayer + winIdx) % 4;
+}
+
+const hasCard = (hand, rank, suit) => hand.some(c => c.rank === rank && c.suit === suit);
+const hasFive = (hand, trump) => hasCard(hand, '5', trump);
+const hasJack = (hand, trump) => hasCard(hand, 'J', trump);
+const hasAceHearts = (hand) => hasCard(hand, 'A', '♥');
+const hasAceTrump = (hand, trump) => trump !== '♥' && hasCard(hand, 'A', trump);
+const countTrumps = (hand, trump) => hand.filter(c => isTrump(c, trump)).length;
+const countHighTrumps = (hand, trump) => hand.filter(c => getTrumpRank(c, trump) >= 97).length;
+
+// Check if hand is guaranteed to win (holds all top trump)
+function isGuaranteedHand(hand, trumpSuit) {
+  const has5 = hasFive(hand, trumpSuit);
+  const hasJ = hasJack(hand, trumpSuit);
+  const hasAH = hasAceHearts(hand);
+  const hasAT = hasAceTrump(hand, trumpSuit);
+  if (has5 && hasJ && hasAH && hasAT) return true;
+  if (has5 && hasJ && hasAH && countTrumps(hand, trumpSuit) >= 4) return true;
+  return false;
+}
+
+function findBestTrumpSuit(hand) {
+  let best = '♠', bestCount = 0, best5 = false, bestJ = false;
+  for (const suit of SUITS) {
+    const count = countTrumps(hand, suit), h5 = hasFive(hand, suit), hJ = hasJack(hand, suit);
+    const score = (h5?1000:0) + (hJ?500:0) + count*10;
+    const bestScore = (best5?1000:0) + (bestJ?500:0) + bestCount*10;
+    if (score > bestScore) { best = suit; bestCount = count; best5 = h5; bestJ = hJ; }
+  }
+  return { suit: best, trumpCount: bestCount, has5: best5, hasJ: bestJ };
+}
+
+function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid) {
+  const { suit, trumpCount, has5, hasJ } = findBestTrumpSuit(hand);
+  const hasAH = hasAceHearts(hand), hasAT = hasAceTrump(hand, suit);
+  const highT = countHighTrumps(hand, suit);
+  
+  // Game state analysis
+  const weNeed = 120 - teamScores;
+  const theyNeed = 120 - oppScores;
+  const weClose = weNeed <= 30;
+  const theyClose = theyNeed <= 20;
+  const desperation = theyClose && weNeed > 15;
+  const theyAboutToWin = theyNeed <= 10;
+  const dealerIsOpponent = getTeam(dealer) !== getTeam(playerIndex);
+  
+  // Guaranteed hand - always bid it
+  if (isGuaranteedHand(hand, suit)) {
+    if (has5 && hasJ && hasAH && hasAT) return { bid: 30, suit };
+    return { bid: 25, suit };
+  }
+  
+  // Bag the dealer strategy
+  if (theyAboutToWin && dealerIsOpponent && weNeed >= 25) {
+    const canMake25 = has5 && hasJ && trumpCount >= 4;
+    if (!canMake25) return { bid: 0, suit: null };
+  }
+  
+  // When close to winning - be smart
+  if (weClose && weNeed <= 15) {
+    if (has5 && hasJ) {
+      if (currentHighBid < 20) return { bid: 20, suit };
+    } else if (has5 || (hasJ && trumpCount >= 3)) {
+      if (currentHighBid < 15) return { bid: 15, suit };
+    }
+    if (!has5 && !hasJ && trumpCount < 4) return { bid: 0, suit: null };
+  }
+  
+  // Don't overbid partner's 20 unless overwhelming hand
+  if (partnerBid === 20 && currentHighBid === 20) {
+    const dominated = (has5 && hasJ && hasAH) || (has5 && hasJ && trumpCount >= 4 && highT >= 3);
+    if (!dominated) return { bid: 0, suit: null };
+  }
+  
+  // Standard bidding - tighter 25 requirements per simulation data
+  let bid = 0;
+  
+  // 30 bid - need near-guaranteed
+  if (has5 && hasJ && hasAH && (hasAT || trumpCount >= 5)) bid = 30;
+  
+  // 25 bid - MUST have 5 (without 5: only 33% success per simulation)
+  else if (has5 && hasJ && hasAH && trumpCount >= 4) bid = 25;
+  else if (has5 && hasJ && trumpCount >= 4 && highT >= 3) bid = 25;
+  
+  // 20 bid
+  else if (has5 && trumpCount >= 3) bid = 20;
+  else if (has5 && trumpCount >= 2 && highT >= 2) bid = 20;
+  else if (hasJ && hasAH && trumpCount >= 4) bid = 20;
+  
+  // 15 bid
+  else if (has5) bid = 15;
+  else if (hasJ && trumpCount >= 3) bid = 15;
+  else if (hasAH && trumpCount >= 3) bid = 15;
+  else if (trumpCount >= 4 && highT >= 2) bid = 15;
+  
+  // Desperation bidding
+  if (desperation && bid < 20) {
+    if ((has5 && trumpCount >= 2) || (hasJ && trumpCount >= 3) || (hasAH && trumpCount >= 3)) {
+      bid = Math.max(bid, 20);
+    }
+  }
+  if (desperation && currentHighBid >= 20 && bid < 25) {
+    if ((has5 && hasJ) || (has5 && trumpCount >= 4)) bid = 25;
+  }
+  
+  // Bid minimum when dealer (last to bid)
+  if (bid > currentHighBid && playerIndex === dealer && currentHighBid > 0) {
+    bid = Math.min(bid, currentHighBid + 5);
+  }
+  
+  if (bid <= currentHighBid) {
+    if (playerIndex === dealer && currentHighBid === 0) return { bid: 15, suit };
+    return { bid: 0, suit: null };
+  }
+  return { bid, suit };
+}
+
+function decideDiscard(hand, trumpSuit, isBidWinner, bidAmount) {
+  const trumps = hand.filter(c => isTrump(c, trumpSuit));
+  const offsuit = hand.filter(c => !isTrump(c, trumpSuit));
+  let keep = [...trumps];
+  
+  // For 25+ bids, keep ALL trump - you need them all
+  if (isBidWinner && bidAmount >= 25) {
+    // Only keep 1 offsuit king/ace if we have 4+ trump
+    if (trumps.length >= 4 && offsuit.length > 0) {
+      const strongOffsuit = offsuit.filter(c => c.rank === 'K' || c.rank === 'A');
+      if (strongOffsuit.length > 0) {
+        keep.push(strongOffsuit[0]);
+      }
+    }
+  }
+  // For 15/20 bids, can keep a bit more offsuit
+  else if (isBidWinner && offsuit.length > 0) {
+    const bySuit = {};
+    for (const c of offsuit) {
+      if (!bySuit[c.suit]) bySuit[c.suit] = [];
+      bySuit[c.suit].push(c);
+    }
+    const bestPerSuit = [];
+    for (const s of Object.keys(bySuit)) {
+      bySuit[s].sort((a, b) => getOffSuitRank(b) - getOffSuitRank(a));
+      bestPerSuit.push(bySuit[s][0]);
+    }
+    const strongOffsuit = bestPerSuit.filter(c => c.rank === 'K' || c.rank === 'A');
+    if (strongOffsuit.length > 0 && trumps.length >= 3) {
+      keep.push(strongOffsuit[0]);
+    }
+  }
+  
+  if (keep.length === 0 && hand.length > 0) {
+    const sorted = [...hand].sort((a,b) => {
+      const ar = isTrump(a,trumpSuit) ? getTrumpRank(a,trumpSuit)+100 : getOffSuitRank(a);
+      const br = isTrump(b,trumpSuit) ? getTrumpRank(b,trumpSuit)+100 : getOffSuitRank(b);
+      return br - ar;
+    });
+    keep = [sorted[0]];
+  }
+  return { keep, discard: hand.filter(c => !keep.some(k => k.id === c.id)) };
+}
+
+function getDefaultDiscardSelection(hand, trumpSuit) {
+  return hand.map((c, i) => isTrump(c, trumpSuit) ? -1 : i).filter(i => i >= 0);
+}
+
+function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, highBid, cardsDrawn, knownOutOfTrump, trickNum, bidderHasLostTrick, cardsPlayed) {
+  const led = trick[0] || null, ledSuit = led?.suit;
+  const playable = getPlayableCards(hand, trumpSuit, led, ledSuit);
+  if (playable.length <= 1) return playable[0] || hand[0];
+  
+  // MONTE CARLO SIMULATION CHECKPOINT
+  // If simulation is enabled and we're in a complex situation, use MC to choose
+  if (SIMULATION_CONFIG.enabled && playable.length >= 2) {
+    // Determine if this is a complex decision worth simulating
+    const isComplexDecision = 
+      (SIMULATION_CONFIG.useFor.complexTrick && playable.length >= 3) ||
+      (SIMULATION_CONFIG.useFor.leadChoice && !led && playable.length >= 2);
+    
+    if (isComplexDecision) {
+      const gameContext = {
+        myHand: hand,
+        myPlayer: player,
+        trumpSuit,
+        bidWinner,
+        highBid,
+        trick,
+        trickNum,
+        tricksWon: [0, 0], // Would need to pass this in
+        cardsDrawn,
+        knownOutOfTrump,
+        cardsPlayed,
+        leader
+      };
+      
+      try {
+        return chooseBestCardViaMC(playable, gameContext, SIMULATION_CONFIG.numRollouts);
+      } catch (err) {
+        console.error('MC simulation failed, falling back to heuristics:', err);
+        // Fall through to heuristic logic below
+      }
+    }
+  }
+  
+  const myTeam = getTeam(player), partnerIdx = (player + 2) % 4;
+  const myTeamBid = myTeam === getTeam(bidWinner);
+  const iAmBidWinner = player === bidWinner;
+  const partnerIsBidder = partnerIdx === bidWinner;
+  const opp1Drawn = cardsDrawn[(player+1)%4] || 0;
+  const opp2Drawn = cardsDrawn[(player+3)%4] || 0;
+  const oppWeak = opp1Drawn >= 4 && opp2Drawn >= 4;
+  const atLeastOneOppStrong = opp1Drawn < 4 || opp2Drawn < 4;
+  const partnerWeak = (cardsDrawn[partnerIdx]||0) >= 4;
+  const partnerOutOfTrump = knownOutOfTrump && knownOutOfTrump[partnerIdx];
+  
+  // Get highest remaining trump for smart decisions
+  const highestRemainingTrumpRank = getHighestRemainingTrump(cardsPlayed || [], trumpSuit);
+
+  // Check if we have A♥ and A of trump - if so, prefer playing A trump first when appropriate
+  const hasAH = playable.some(c => c.rank === 'A' && c.suit === '♥');
+  const hasATrump = playable.some(c => c.rank === 'A' && c.suit === trumpSuit && trumpSuit !== '♥');
+
+  if (!led) {
+    const trumps = playable.filter(c => isTrump(c, trumpSuit));
+    const nonTrumps = playable.filter(c => !isTrump(c, trumpSuit));
+    const has5 = trumps.some(c => c.rank === '5' && c.suit === trumpSuit);
+    
+    // Bid winner leading logic
+    if (iAmBidWinner && trumps.length > 0) {
+      // Check if we have a boss trump (highest remaining) - lead it!
+      const bossTrump = trumps.find(c => getTrumpRank(c, trumpSuit) >= highestRemainingTrumpRank);
+      if (bossTrump) {
+        return bossTrump;
+      }
+      
+      // For 25 bids (non-desperation): come out swinging with strongest trump until we lose a trick
+      if (highBid >= 25 && !bidderHasLostTrick) {
+        // Lead strongest trump - bang them out one after another
+        return trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
+      }
+      
+      // For 15/20 bids or after losing a trick on 25: lead the 5 aggressively
+      // Exception: partner weak, at least one opponent strong, and we need partner's help
+      if (has5) {
+        const needPartnerHelp = partnerWeak && atLeastOneOppStrong && trumps.length < 4;
+        if (!needPartnerHelp) {
+          return trumps.find(c => c.rank === '5' && c.suit === trumpSuit);
+        }
+      }
+      
+      // Otherwise lead strongest trump
+      return trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
+    }
+    
+    // Non-bid-winner teammate leading
+    if (myTeamBid && trumps.length >= 2) {
+      if (has5 && oppWeak) return trumps.find(c => c.rank === '5' && c.suit === trumpSuit);
+      // If holding A♥ + A of trump, play A of trump first
+      if (hasAH && hasATrump) {
+        return trumps.find(c => c.rank === 'A' && c.suit === trumpSuit);
+      }
+      return trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
+    }
+    
+    // Partner is bidder - use sophisticated support strategy
+    if (partnerIsBidder && !partnerWeak && nonTrumps.length > 0) {
+      // Check if both opponents are out of trump
+      const opp1Idx = (player + 1) % 4;
+      const opp2Idx = (player + 3) % 4;
+      const bothOppsOutOfTrump = knownOutOfTrump && knownOutOfTrump[opp1Idx] && knownOutOfTrump[opp2Idx];
+      
+      // Count how many trump partner has played so far (from cardsPlayed which is passed in)
+      const allCardsPlayed = cardsPlayed || [];
+      // Since cardsPlayed is just cards without player info, estimate based on trick count
+      // Partner started with at least (3 - cardsDrawn[partner]) trump after drawing
+      const partnerDrawn = cardsDrawn[partnerIdx] || 0;
+      const minInitialTrump = Math.max(1, 3 - partnerDrawn); // At least 1, likely 3-drawn
+      
+      // Estimate tricks played so far (each trick = 4 cards played)
+      const tricksCompleted = Math.floor(allCardsPlayed.length / 4);
+      
+      // Conservative estimate: partner probably has 1+ trump left if opponents are out
+      const partnerLikelyHasTrump = bothOppsOutOfTrump && minInitialTrump > tricksCompleted;
+      
+      // OPTIMAL STRATEGY: If opponents are out of trump AND partner likely has trump left
+      // Lead offsuit to preserve partner's trump for later tricks
+      if (partnerLikelyHasTrump && trumps.length <= 2 && trickNum >= 3) {
+        // Lead lowest offsuit to let partner keep trump dominance
+        return nonTrumps.reduce((l,c) => getOffSuitRank(c) < getOffSuitRank(l) ? c : l);
+      }
+      
+      // Standard case: lead low offsuit
+      return nonTrumps.reduce((l,c) => getOffSuitRank(c) < getOffSuitRank(l) ? c : l);
+    }
+    return playable.reduce((l,c) => {
+      const cr = isTrump(c,trumpSuit) ? getTrumpRank(c,trumpSuit)+100 : getOffSuitRank(c);
+      const lr = isTrump(l,trumpSuit) ? getTrumpRank(l,trumpSuit)+100 : getOffSuitRank(l);
+      return cr < lr ? c : l;
+    });
+  }
+
+  let winIdx = 0, winCard = trick[0];
+  for (let i = 1; i < trick.length; i++) { if (cardBeats(trick[i], winCard, trumpSuit, ledSuit)) { winIdx = i; winCard = trick[i]; } }
+  const winPlayer = (leader + winIdx) % 4;
+  const partnerWinning = getTeam(winPlayer) === myTeam;
+
+  // 2nd man low: when opponent leads offsuit and we're 2nd to play
+  const positionInTrick = trick.length;
+  if (positionInTrick === 1 && !isTrump(led, trumpSuit) && getTeam(leader) !== myTeam) {
+    // We're 2nd to play after opponent led offsuit
+    // Exception: if partner is known to be out of trump, we should try to win
+    if (!partnerOutOfTrump) {
+      const offsuit = playable.filter(c => !isTrump(c, trumpSuit));
+      if (offsuit.length > 0) {
+        // Throw lowest offsuit to give partner (4th position) the opportunity
+        return offsuit.reduce((l,c) => getOffSuitRank(c) < getOffSuitRank(l) ? c : l);
+      }
+    }
+  }
+
+  // 3rd man high: when partner bid AND LED, and we're 3rd to play, play high trump to support
+  // This must come BEFORE partnerWinning check so we secure the trick
+  // BUT only if partner's card could be beaten - if partner has boss trump, throw low
+  const trumps = playable.filter(c => isTrump(c, trumpSuit));
+  const partnerLed = leader === partnerIdx;
+  if (positionInTrick === 2 && partnerIsBidder && partnerLed && trumps.length > 0) {
+    // Partner (bidder) led - check if their card is boss
+    const partnerCard = trick[0];
+    const partnerCardRank = getTrumpRank(partnerCard, trumpSuit);
+    
+    // If partner led trump, check if it's boss
+    if (partnerCardRank >= 0) {
+      const partnerHasBoss = partnerCardRank >= highestRemainingTrumpRank;
+      if (partnerHasBoss) {
+        // Partner's trump can't be beaten - throw lowest trump
+        return trumps.reduce((l,c) => getTrumpRank(c,trumpSuit) < getTrumpRank(l,trumpSuit) ? c : l);
+      }
+    }
+    
+    // Partner led (trump or offsuit) and could be beaten - play high trump to secure
+    // Exception: if holding A♥, might keep it for flexibility and play A of trump instead
+    if (hasAH && hasATrump) {
+      return trumps.find(c => c.rank === 'A' && c.suit === trumpSuit) || trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
+    }
+    return trumps.reduce((b,c) => getTrumpRank(c,trumpSuit) > getTrumpRank(b,trumpSuit) ? c : b);
+  }
+
+  if (partnerWinning) {
+    return playable.reduce((l,c) => {
+      const cr = isTrump(c,trumpSuit) ? getTrumpRank(c,trumpSuit)+200 : getOffSuitRank(c);
+      const lr = isTrump(l,trumpSuit) ? getTrumpRank(l,trumpSuit)+200 : getOffSuitRank(l);
+      return cr < lr ? c : l;
+    });
+  }
+
+  const canWin = playable.filter(c => cardBeats(c, winCard, trumpSuit, ledSuit));
+  if (canWin.length > 0) {
+    return canWin.reduce((l,c) => {
+      const cr = isTrump(c,trumpSuit) ? getTrumpRank(c,trumpSuit) : getOffSuitRank(c);
+      const lr = isTrump(l,trumpSuit) ? getTrumpRank(l,trumpSuit) : getOffSuitRank(l);
+      return cr < lr ? c : l;
+    });
+  }
+
+  const nonTrump = playable.filter(c => !isTrump(c, trumpSuit));
+  if (nonTrump.length > 0) return nonTrump.reduce((l,c) => getOffSuitRank(c) < getOffSuitRank(l) ? c : l);
+  return playable.reduce((l,c) => getTrumpRank(c,trumpSuit) < getTrumpRank(l,trumpSuit) ? c : l);
+}
+
+const chooseTrumpSuit = (hand) => findBestTrumpSuit(hand).suit;
+
+// Card tracking helpers
+function getHighestRemainingTrump(cardsPlayed, trumpSuit) {
+  // Returns the rank value of the highest trump not yet played
+  const playedIds = new Set(cardsPlayed.map(c => c.id));
+  
+  // Check in order: 5, J, A♥, A of trump, K, Q, then lower cards
+  if (!playedIds.has(`5${trumpSuit}`)) return 102; // 5 of trump
+  if (!playedIds.has(`J${trumpSuit}`)) return 101; // J of trump
+  if (!playedIds.has('A♥')) return 100; // A of hearts
+  if (trumpSuit !== '♥' && !playedIds.has(`A${trumpSuit}`)) return 99; // A of trump
+  if (!playedIds.has(`K${trumpSuit}`)) return 98;
+  if (!playedIds.has(`Q${trumpSuit}`)) return 97;
+  
+  // Check lower trump cards
+  const lowerRanks = trumpSuit === '♥' || trumpSuit === '♦' 
+    ? ['10','9','8','7','6','4','3','2'] 
+    : ['2','3','4','6','7','8','9','10'];
+  for (let i = lowerRanks.length - 1; i >= 0; i--) {
+    if (!playedIds.has(`${lowerRanks[i]}${trumpSuit}`)) {
+      return 80 + i;
+    }
+  }
+  return -1; // All trump played
+}
+
+function isCardBoss(card, cardsPlayed, trumpSuit) {
+  // Returns true if this card is currently the highest remaining of its type
+  if (!card || !trumpSuit) return false;
+  const cardRank = getTrumpRank(card, trumpSuit);
+  if (cardRank >= 0) {
+    // It's a trump - check if it's the highest remaining
+    return cardRank >= getHighestRemainingTrump(cardsPlayed, trumpSuit);
+  }
+  return false;
+}
+
+// UI Components
+function TrickMarker({ isHighTrump }) {
+  return (<div style={{ width: '14px', height: '18px', borderRadius: '2px', background: isHighTrump ? 'linear-gradient(135deg, #8b0000 0%, #5c0000 100%)' : 'linear-gradient(135deg, #1e3a5f 0%, #0d1b2a 100%)', border: isHighTrump ? '1px solid #ff6666' : '1px solid #2d5a87' }} />);
+}
+
+function TricksWonDisplay({ count, hasHighTrump }) {
+  if (count === 0) return null;
+  return (<div style={{ display: 'flex', gap: '1px' }}>{Array.from({ length: count }, (_, i) => <TrickMarker key={i} isHighTrump={hasHighTrump && i === 0} />)}</div>);
+}
+
+function CardsDrawnIndicator({ count }) {
+  const displayCount = Math.max(0, count || 0);
+  return (<span style={{ fontSize: '9px', color: '#ffd700' }}>+{displayCount}</span>);
+}
+
+function DealerBadge() {
+  return (<span style={{ padding: '1px 3px', background: '#d4af37', color: '#000', borderRadius: '2px', fontSize: '8px', fontWeight: 'bold' }}>DEALER</span>);
+}
+
+function Card({ card, onClick, disabled, selected, small, faceDown, playable }) {
+  const isRed = card && (card.suit === '♥' || card.suit === '♦');
+  const w = small ? '28px' : '48px', h = small ? '38px' : '68px';
+  const base = { width: w, height: h, borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: disabled ? 'default' : 'pointer', transition: 'all 0.1s', fontFamily: 'Georgia, serif', userSelect: 'none', flexShrink: 0 };
+  if (faceDown) return (<div style={{ ...base, background: 'linear-gradient(135deg, #1e3a5f 0%, #0d1b2a 100%)', border: '1px solid #2d5a87' }} />);
+  return (
+    <div onClick={disabled ? undefined : onClick} style={{ ...base, background: selected ? '#fffde7' : '#fff', border: playable ? '2px solid #2196f3' : selected ? '2px solid #ffc107' : '1px solid #ccc', boxShadow: selected || playable ? '0 2px 6px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.15)', transform: (selected || playable) && !disabled ? 'translateY(-2px)' : 'none', opacity: disabled && !playable ? 0.6 : 1 }}>
+      <div style={{ color: isRed ? '#c62828' : '#212121', fontSize: small ? '11px' : '15px', fontWeight: 'bold', lineHeight: 1 }}>{card.rank}</div>
+      <div style={{ color: isRed ? '#c62828' : '#212121', fontSize: small ? '14px' : '22px', lineHeight: 1 }}>{card.suit}</div>
+    </div>
+  );
+}
+
+function ScoreTable({ roundHistory }) {
+  const [expanded, setExpanded] = useState(false);
+  if (roundHistory.length === 0) return null;
+  const maxVis = 2, needsCollapse = roundHistory.length > maxVis;
+  const visible = (!needsCollapse || expanded) ? roundHistory : roundHistory.slice(-maxVis);
+  return (
+    <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '4px', padding: '4px', fontSize: '10px' }}>
+      {needsCollapse && <div onClick={() => setExpanded(!expanded)} style={{ textAlign: 'center', color: '#aaa', cursor: 'pointer', fontSize: '9px' }}>{expanded ? '▼ less' : `▲ +${roundHistory.length - maxVis}`}</div>}
+      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
+        <thead><tr><th style={{ padding: '1px 2px', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>R</th><th colSpan="2" style={{ padding: '1px 2px', borderBottom: '1px solid rgba(255,255,255,0.2)', color: '#4caf50' }}>US</th><th colSpan="2" style={{ padding: '1px 2px', borderBottom: '1px solid rgba(255,255,255,0.2)', color: '#f44336' }}>THEM</th></tr></thead>
+        <tbody>{visible.map((r, i) => {
+          const rn = expanded || !needsCollapse ? i + 1 : roundHistory.length - maxVis + i + 1;
+          return (<tr key={i}><td style={{ padding: '1px 2px' }}>{rn}</td><td style={{ padding: '1px 2px', color: '#4caf50' }}>{r.usRoundScore < 0 ? `(${Math.abs(r.usRoundScore)})` : r.usRoundScore}</td><td style={{ padding: '1px 2px', color: '#4caf50', fontWeight: 'bold' }}>{r.usTotal}</td><td style={{ padding: '1px 2px', color: '#f44336' }}>{r.themRoundScore < 0 ? `(${Math.abs(r.themRoundScore)})` : r.themRoundScore}</td><td style={{ padding: '1px 2px', color: '#f44336', fontWeight: 'bold' }}>{r.themTotal}</td></tr>);
+        })}</tbody>
+      </table>
+    </div>
+  );
+}
+
+function HelpModal({ isOpen, onClose }) {
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  
+  if (!isOpen) return null;
+  
+  return (
+    <>
+      {/* Main Help Modal */}
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px' }}>
+        <div style={{ background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '2px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '400px', maxHeight: '95%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Modal Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid rgba(212,175,55,0.3)' }}>
+            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#d4af37' }}>Info & Help</span>
+            <div onClick={onClose} style={{ width: '24px', height: '24px', border: '1px solid #aaa', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '16px', cursor: 'pointer' }}>✕</div>
+          </div>
+          {/* Modal Content - Scrollable */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px', fontSize: '13px', lineHeight: 1.5, color: '#e8e4d9' }}>
+            
+            <p style={{ marginBottom: '12px' }}><strong style={{ color: '#d4af37' }}>Feedback & Bug Reports</strong></p>
+            <p style={{ marginBottom: '12px' }}>To report bugs, UI suggestions and strategy suggestions, please email me at <a href="mailto:rrothberg@gmail.com?subject=45s%20Feedback" style={{ color: '#4caf50' }}>rrothberg@gmail.com</a></p>
+            <p style={{ marginBottom: '16px' }}>Please include screenshots, version number and be VERY specific about what happened and what you would have expected to happen. Walk through it step by step unless the screenshot makes it obvious.</p>
+            
+            <p style={{ marginBottom: '12px' }}><strong style={{ color: '#d4af37' }}>About This Game</strong></p>
+            <p style={{ marginBottom: '12px' }}>I developed this game in December 2025 to gain experience with using AI to code as well as to learn its capabilities and limitations. For training the AI players, I built an ML neural net simulator with a number of strategic parameters, and had it run 500,000 iterations. The statistics were pretty interesting to see.</p>
+            <p style={{ marginBottom: '12px' }}>Here were the stats from my early 20,000 test simulator run. It bid 30 a lot at this early point, but the AI eventually learned that bidding 30 too aggressively generally results in getting set.</p>
+            
+            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px', marginBottom: '16px', whiteSpace: 'pre-wrap' }}>
+{`--- BID SUCCESS RATES ---
+15:  24339 attempts,  21213 made (87.2%)
+20:  62328 attempts,  45645 made (73.2%)
+25: 142015 attempts,  73908 made (52.0%)
+30: 416045 attempts, 100988 made (24.3%)
+
+--- KEY CARD IMPACT ---
+With 5 of trump: 154728 bids, 51.5% success
+Without:       489999 bids, 33.1% success
+With J of trump: 146256 bids, 45.9% success
+Without:       498471 bids, 35.0% success`}
+            </div>
+            
+            <p style={{ marginBottom: '16px' }}>The AI used this data to learn how to bid much more effectively, and take into consideration that it will receive help from the kitty, draw and partner.</p>
+            
+            <p style={{ marginBottom: '12px' }}><strong style={{ color: '#d4af37' }}>AI Features</strong></p>
+            <p style={{ marginBottom: '8px' }}>The AI players feature some pretty robust logic and strategy such as:</p>
+            <ul style={{ marginLeft: '16px', marginBottom: '16px' }}>
+              <li>Tracking estimated trump left for each player based on number of cards drawn</li>
+              <li>Track trump remaining for each player based on card play (lead a 5, they throw offsuit, AI knows that player is out of trump)</li>
+              <li>Change playing behavior as other players run out of trump</li>
+              <li>Avoid pulling trump from partner when possible</li>
+              <li>If only holding A♥ and A trump, on third man high or other situational play, play A trump</li>
+              <li>Desperation bidding - if opponent will win game on 15 or 20 bid, consider overbidding</li>
+              <li>2nd man low strategy</li>
+              <li>Focus first on setting opponents, if that fails, switch to maximize points</li>
+            </ul>
+            
+            <p style={{ marginBottom: '12px' }}><strong style={{ color: '#d4af37' }}>Possible Future Plans</strong></p>
+            <ul style={{ marginLeft: '16px', marginBottom: '16px' }}>
+              <li>Single player cutthroat</li>
+              <li>Multiplayer partners over internet</li>
+              <li>Multiplayer cutthroat over internet</li>
+              <li>Optional rules such as allow drawing of 5 cards and flipping over the 5th</li>
+              <li>Improvements to 2nd man low logic</li>
+            </ul>
+            
+            <p style={{ marginBottom: '12px' }}><strong style={{ color: '#d4af37' }}>UI Guide</strong></p>
+            <p style={{ marginBottom: '8px' }}>Tap the image below to view full screen:</p>
+            <img 
+              src="45s_table_diagram.jpeg" 
+              onClick={() => setImageModalOpen(true)}
+              style={{ width: '100%', borderRadius: '4px', border: '1px solid rgba(212,175,55,0.3)', cursor: 'pointer' }} 
+              alt="UI Guide"
+            />
+          </div>
+        </div>
+      </div>
+      
+      {/* Full-screen Image Modal */}
+      {imageModalOpen && (
+        <div 
+          onClick={() => setImageModalOpen(false)}
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 200, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px', cursor: 'pointer' }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', maxWidth: '100%', maxHeight: '100%' }}>
+            <div 
+              onClick={() => setImageModalOpen(false)}
+              style={{ position: 'absolute', top: '-30px', right: '0', width: '24px', height: '24px', border: '1px solid #aaa', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '16px', cursor: 'pointer', background: 'rgba(0,0,0,0.5)' }}
+            >✕</div>
+            <img 
+              src="45s_table_diagram.jpeg" 
+              style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 40px)', objectFit: 'contain' }} 
+              alt="UI Guide Full Screen"
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// Show Hands Modal for debugging - shows cards in play order
+function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, wasBagged, playHistory, bids }) {
+  if (!isOpen || !hands) return null;
+  
+  // Check for duplicate cards across all hands
+  const allCards = hands.flat();
+  const cardIds = allCards.map(c => c.id);
+  const uniqueIds = new Set(cardIds);
+  const hasDuplicates = cardIds.length !== uniqueIds.size;
+  let duplicateInfo = null;
+  
+  if (hasDuplicates) {
+    const counts = {};
+    cardIds.forEach(id => counts[id] = (counts[id] || 0) + 1);
+    const dupes = Object.entries(counts).filter(([_, count]) => count > 1);
+    duplicateInfo = dupes.map(([id, count]) => `${id} (x${count})`).join(', ');
+  }
+  
+  const renderHand = (playerIdx, label) => {
+    const hand = hands[playerIdx] || [];
+    const isDealer = dealer === playerIdx;
+    const isBidder = bidWinner === playerIdx;
+    const playerBid = bids ? bids[playerIdx] : null;
+    
+    // Sort cards by play order if playHistory exists
+    let sortedHand = [...hand];
+    if (playHistory && playHistory.length > 0) {
+      const playOrder = {};
+      playHistory.forEach((play, idx) => {
+        if (play.player === playerIdx) {
+          playOrder[play.card.id] = idx;
+        }
+      });
+      sortedHand.sort((a, b) => {
+        const orderA = playOrder[a.id] !== undefined ? playOrder[a.id] : 999;
+        const orderB = playOrder[b.id] !== undefined ? playOrder[b.id] : 999;
+        return orderA - orderB;
+      });
+    }
+    
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#aaa' }}>
+          <span>{label}</span>
+          {isDealer && <span style={{ padding: '1px 3px', background: '#d4af37', color: '#000', borderRadius: '2px', fontSize: '8px', fontWeight: 'bold' }}>DEALER</span>}
+          <span style={{ color: '#ffd700' }}>+{drawn[playerIdx] || 0}</span>
+        </div>
+        {/* Show bid - gray for non-winners, blue for winner, red if bagged */}
+        {playerBid !== null && (
+          <span style={{ 
+            padding: '2px 4px', 
+            background: isBidder ? (wasBagged ? '#c62828' : '#2196f3') : '#555', 
+            borderRadius: '3px', 
+            fontSize: '10px', 
+            color: isBidder ? '#fff' : '#aaa'
+          }}>
+            {playerBid === 0 ? 'Pass' : playerBid}
+            {isBidder && trumpSuit && <span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span>}
+            {isBidder && wasBagged && <span style={{ marginLeft: '2px' }}>BAGGED</span>}
+          </span>
+        )}
+        <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          {sortedHand.map((c, i) => {
+            // Show play order number on each card
+            const playIdx = playHistory ? playHistory.findIndex(p => p.player === playerIdx && p.card.id === c.id) : -1;
+            const trickNum = playIdx >= 0 ? playHistory[playIdx].trick : null;
+            // Check if this card led its trick (positions 0,4,8,12,16 in playHistory are leads)
+            const ledTrick = playIdx >= 0 && playIdx % 4 === 0;
+            return (
+              <div key={c.id} style={{ position: 'relative' }}>
+                <div style={{ border: ledTrick ? '2px solid #d4af37' : 'none', borderRadius: '4px' }}>
+                  <Card card={c} small disabled />
+                </div>
+                {trickNum && <div style={{ position: 'absolute', top: '-6px', right: '-6px', width: '14px', height: '14px', borderRadius: '50%', background: ledTrick ? '#d4af37' : '#666', color: ledTrick ? '#000' : '#fff', fontSize: '9px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{trickNum}</div>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+  
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px' }}>
+      <div style={{ background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '2px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '400px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#d4af37' }}>Hands After Draw</span>
+          <div onClick={onClose} style={{ width: '24px', height: '24px', border: '1px solid #aaa', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '16px', cursor: 'pointer' }}>✕</div>
+        </div>
+        {hasDuplicates && (
+          <div style={{ padding: '8px', background: '#c62828', borderRadius: '4px', fontSize: '11px', color: '#fff' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>⚠️ DUPLICATE CARDS DETECTED!</div>
+            <div style={{ fontSize: '10px' }}>{duplicateInfo}</div>
+            <div style={{ fontSize: '9px', marginTop: '4px', opacity: 0.9 }}>Total: {cardIds.length} cards, Unique: {uniqueIds.size}</div>
+          </div>
+        )}
+        {trumpSuit && (
+          <div style={{ textAlign: 'center', fontSize: '12px', color: '#aaa' }}>
+            Trump: <span style={{ fontSize: '18px', color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff' }}>{trumpSuit}</span>
+          </div>
+        )}
+        <div style={{ textAlign: 'center', fontSize: '9px', color: '#888' }}>Cards in play order • Gold border = led trick</div>
+        {renderHand(2, 'Partner')}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {renderHand(1, 'P2')}
+          {renderHand(3, 'P4')}
+        </div>
+        {renderHand(0, 'You')}
+      </div>
+    </div>
+  );
+}
+
+function FortyFivesGame() {
+  const [phase, setPhase] = useState('dealing');
+  const [hands, setHands] = useState([[],[],[],[]]);
+  const [kitty, setKitty] = useState([]);
+  const [deck, setDeck] = useState([]);
+  const [dealer, setDealer] = useState(0);
+  const [currentPlayer, setCurrentPlayer] = useState(1);
+  const [bids, setBids] = useState([null,null,null,null]);
+  const [highBid, setHighBid] = useState(0);
+  const [bidWinner, setBidWinner] = useState(null);
+  const [trumpSuit, setTrumpSuit] = useState(null);
+  const [trick, setTrick] = useState([]);
+  const [trickCards, setTrickCards] = useState([]);
+  const [trickLeader, setTrickLeader] = useState(null);
+  const [tricksWon, setTricksWon] = useState([0,0]);
+  const [playerTricks, setPlayerTricks] = useState([0,0,0,0]);
+  const [roundPts, setRoundPts] = useState([0,0]);
+  const [scores, setScores] = useState([0,0]);
+  const [trickNum, setTrickNum] = useState(0);
+  const [selected, setSelected] = useState([]);
+  const [msg, setMsg] = useState('');
+  const [lastTrick, setLastTrick] = useState(null);
+  const [aiTrump, setAiTrump] = useState(null);
+  const [highTrumpInfo, setHighTrumpInfo] = useState({ rank: -1, player: -1 });
+  const [history, setHistory] = useState([]);
+  const [drawn, setDrawn] = useState([0,0,0,0]);
+  const [animating, setAnimating] = useState(null);
+  const [wasBagged, setWasBagged] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [knownOutOfTrump, setKnownOutOfTrump] = useState([false, false, false, false]);
+  const [bidderLostTrick, setBidderLostTrick] = useState(false);
+  const [postDrawHands, setPostDrawHands] = useState(null);
+  const [showHandsOpen, setShowHandsOpen] = useState(false);
+  const [roundDealer, setRoundDealer] = useState(0);
+  const [roundDrawn, setRoundDrawn] = useState([0,0,0,0]);
+  const [cardsPlayed, setCardsPlayed] = useState([]); // Track all cards played this round
+  const [playHistory, setPlayHistory] = useState([]); // Track order of plays: [{player, card, trick}]
+  const [roundBids, setRoundBids] = useState([null,null,null,null]); // Save bids for modal
+  const timer = useRef(null);
+  
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  const startGame = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    setScores([0,0]); setHistory([]); setDealer(0); dealRound(0, [0,0]);
+  }, []);
+
+  const dealRound = useCallback((dlr, totals) => {
+    const d = shuffleDeck(createDeck());
+    
+    // DEBUG: Verify deck has no duplicates
+    const deckIds = d.map(c => c.id);
+    const uniqueIds = new Set(deckIds);
+    if (deckIds.length !== uniqueIds.size) {
+      console.error('DUPLICATE CARDS IN INITIAL DECK!');
+      console.error('Total cards:', deckIds.length, 'Unique cards:', uniqueIds.size);
+      const counts = {};
+      deckIds.forEach(id => counts[id] = (counts[id] || 0) + 1);
+      const dupes = Object.entries(counts).filter(([_, count]) => count > 1);
+      console.error('Duplicates:', dupes);
+    }
+    
+    const h = [d.slice(0,5), d.slice(5,10), d.slice(10,15), d.slice(15,20)];
+    const k = d.slice(20,23), rem = d.slice(23);
+    setHands(h); setKitty(k); setDeck(rem);
+    setBids([null,null,null,null]); setHighBid(0); setBidWinner(null); setTrumpSuit(null);
+    setTrick([]); setTrickCards([]); setTricksWon([0,0]); setPlayerTricks([0,0,0,0]);
+    setRoundPts([0,0]); setTrickNum(0); setSelected([]); setLastTrick(null);
+    setAiTrump(null); setTrickLeader(null); setHighTrumpInfo({ rank: -1, player: -1 });
+    setDrawn([0,0,0,0]); setAnimating(null); setWasBagged(false); 
+    setKnownOutOfTrump([false, false, false, false]);
+    setBidderLostTrick(false);
+    setPostDrawHands(null);
+    setShowHandsOpen(false);
+    setRoundDealer(dlr);
+    setCardsPlayed([]);
+    setPlayHistory([]);
+    setPhase('bidding');
+    const first = (dlr + 1) % 4; setCurrentPlayer(first);
+    if (first !== 0) { setMsg(`${PLAYER_NAMES[first]} bidding...`); timer.current = setTimeout(() => doBid(first, h, dlr, [null,null,null,null], 0, totals, null), 800); }
+    else setMsg('Your bid');
+  }, []);
+
+  const doBid = useCallback((p, h, dlr, curBids, curHigh, totals, lastBidAmt) => {
+    if (p === 0) return;
+    const team = totals[getTeam(p)], opp = totals[1-getTeam(p)];
+    const partnerIdx = (p + 2) % 4;
+    const partnerBid = curBids[partnerIdx];
+    const dec = decideBid(h[p], curHigh, p, dlr, team, opp, partnerBid);
+    const newBids = [...curBids]; newBids[p] = dec.bid; setBids(newBids);
+    let newHigh = curHigh, winner = null;
+    if (dec.bid > curHigh) { newHigh = dec.bid; setHighBid(dec.bid); setAiTrump(dec.suit); winner = p; }
+    if (newBids.every(b => b !== null)) {
+      let fw = winner; if (!fw) { let m = 0; for (let i = 0; i < 4; i++) if (newBids[i] > m) { m = newBids[i]; fw = i; } }
+      let bagged = false;
+      if (newHigh === 0) { fw = dlr; newBids[dlr] = 15; setBids(newBids); setHighBid(15); newHigh = 15; bagged = true; }
+      setWasBagged(bagged);
+      setBidWinner(fw);
+      if (fw === 0) { setPhase('trump-select'); setMsg(bagged ? 'You were BAGGED! Pick trump' : 'Pick trump'); }
+      else { const t = aiTrump || chooseTrumpSuit(h[fw]); finishBid(fw, t, h, newHigh, totals, dlr, bagged); }
+    } else {
+      const next = (p + 1) % 4; setCurrentPlayer(next);
+      if (next === 0) setMsg('Your bid');
+      else { setMsg(`${PLAYER_NAMES[next]} bidding...`); timer.current = setTimeout(() => doBid(next, h, dlr, newBids, newHigh, totals, dec.bid > 0 ? dec.bid : lastBidAmt), 800); }
+    }
+  }, [aiTrump]);
+
+  const humanBid = useCallback((amt) => {
+    const newBids = [...bids]; newBids[0] = amt; setBids(newBids);
+    let newHigh = highBid; if (amt > highBid) { newHigh = amt; setHighBid(amt); }
+    if (newBids.every(b => b !== null)) {
+      let w = null, m = 0; for (let i = 0; i < 4; i++) if (newBids[i] > m) { m = newBids[i]; w = i; }
+      let bagged = false;
+      if (m === 0) { w = dealer; newBids[dealer] = 15; setBids(newBids); setHighBid(15); newHigh = 15; bagged = true; }
+      setWasBagged(bagged);
+      setBidWinner(w);
+      if (w === 0) { setPhase('trump-select'); setMsg(bagged ? 'You were BAGGED! Pick trump' : 'Pick trump'); }
+      else { const t = aiTrump || chooseTrumpSuit(hands[w]); finishBid(w, t, hands, newHigh, scores, dealer, bagged); }
+    } else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]} bidding...`); timer.current = setTimeout(() => doBid(1, hands, dealer, newBids, newHigh, scores, amt > 0 ? amt : null), 800); }
+  }, [bids, highBid, dealer, hands, aiTrump, scores]);
+
+  const selectTrump = useCallback((s) => finishBid(0, s, hands, highBid, scores, dealer, wasBagged), [hands, highBid, scores, dealer, wasBagged]);
+
+  const finishBid = useCallback((w, t, h, hb, totals, dlr, bagged) => {
+    setTrumpSuit(t); setBidWinner(w); setHighBid(hb);
+    setRoundBids([...bids]); // Save bids for modal
+    const newH = h.map((hand, i) => i === w ? [...hand, ...kitty] : [...hand]);
+    setHands(newH); setKitty([]);
+    setSelected(getDefaultDiscardSelection(newH[0], t));
+    const first = (dlr + 1) % 4; setPhase('discarding'); setCurrentPlayer(first);
+    const bagMsg = bagged ? ' (BAGGED)' : '';
+    if (first === 0) setMsg(`Discard (keep 1+)${bagMsg}`);
+    else { setMsg(`${PLAYER_NAMES[first]} discarding...${bagMsg}`); timer.current = setTimeout(() => aiDiscard(first, newH, t, w, hb, totals, dlr, [0,0,0,0], deck), 500); }
+  }, [kitty, deck, bids]);
+
+  const aiDiscard = useCallback((p, h, t, bw, hb, totals, dlr, curDrawn, curDeck) => {
+    const { keep } = decideDiscard(h[p], t, p === bw, hb);
+    const newH = h.map(x => [...x]); newH[p] = keep;
+    let d = [...curDeck]; const dc = Math.max(0, 5 - keep.length);
+    if (dc > 0 && d.length >= dc) { newH[p] = [...newH[p], ...d.splice(0, dc)]; }
+    const newDrawn = [...curDrawn]; newDrawn[p] = dc;
+    setHands(newH); setDeck(d); setDrawn(newDrawn);
+    const next = (p + 1) % 4, start = (dlr + 1) % 4;
+    if (next === start) startPlay(bw, newH, t, hb, totals, newDrawn);
+    else { setCurrentPlayer(next);
+      if (next === 0) { setSelected(getDefaultDiscardSelection(newH[0], t)); setMsg('Discard (keep 1+)'); }
+      else { setMsg(`${PLAYER_NAMES[next]} discarding...`); timer.current = setTimeout(() => aiDiscard(next, newH, t, bw, hb, totals, dlr, newDrawn, d), 500); }
+    }
+  }, []);
+
+  const humanDiscard = useCallback(() => {
+    const keep = hands[0].filter((_, i) => !selected.includes(i));
+    if (keep.length === 0) { setMsg('Keep at least 1!'); return; }
+    const newH = hands.map(x => [...x]); newH[0] = keep;
+    let d = [...deck]; const dc = Math.max(0, 5 - keep.length);
+    if (dc > 0 && d.length >= dc) { newH[0] = [...newH[0], ...d.splice(0, dc)]; }
+    const newDrawn = [...drawn]; newDrawn[0] = dc;
+    setHands(newH); setDeck(d); setDrawn(newDrawn); setSelected([]);
+    const next = 1, start = (dealer + 1) % 4;
+    if (next === start) startPlay(bidWinner, newH, trumpSuit, highBid, scores, newDrawn);
+    else { setCurrentPlayer(next); setMsg(`${PLAYER_NAMES[next]} discarding...`); timer.current = setTimeout(() => aiDiscard(next, newH, trumpSuit, bidWinner, highBid, scores, dealer, newDrawn, d), 500); }
+  }, [hands, selected, deck, dealer, bidWinner, trumpSuit, highBid, scores, drawn]);
+
+  const startPlay = useCallback((leader, h, t, hb, totals, dr) => {
+    // Save hands after draw for Show Hands feature
+    setPostDrawHands(h.map(hand => [...hand]));
+    setRoundDrawn([...dr]);
+    setCardsPlayed([]);
+    setPlayHistory([]);
+    
+    // DEBUG: Check for duplicate cards across all hands
+    const allCards = h.flat();
+    const cardIds = allCards.map(c => c.id);
+    const uniqueIds = new Set(cardIds);
+    if (cardIds.length !== uniqueIds.size) {
+      console.error('DUPLICATE CARDS DETECTED!');
+      console.error('Total cards:', cardIds.length, 'Unique cards:', uniqueIds.size);
+      const counts = {};
+      cardIds.forEach(id => counts[id] = (counts[id] || 0) + 1);
+      const dupes = Object.entries(counts).filter(([_, count]) => count > 1);
+      console.error('Duplicates:', dupes);
+      h.forEach((hand, i) => {
+        console.error(`Player ${i} hand:`, hand.map(c => c.id));
+      });
+    }
+    
+    setPhase('playing'); setTrick([]); setTrickCards([]); setTrickLeader(leader);
+    setCurrentPlayer(leader); setTrickNum(1); setPlayerTricks([0,0,0,0]); setHighTrumpInfo({ rank: -1, player: -1 });
+    setKnownOutOfTrump([false, false, false, false]);
+    setBidderLostTrick(false);
+    if (leader === 0) setMsg('Your lead');
+    else { setMsg(`${PLAYER_NAMES[leader]} leads...`); timer.current = setTimeout(() => aiPlay(leader, h, [], t, leader, 1, [0,0], [0,0], { rank: -1, player: -1 }, bidWinner, hb, totals, dr, [0,0,0,0], [false,false,false,false], false, [], []), 700); }
+  }, [bidWinner]);
+
+  const aiPlay = useCallback((p, h, tc, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt, cp, ph) => {
+    const hand = h[p]; if (!hand || !hand.length) return;
+    const trk = tc.map(x => x.card);
+    const card = chooseCardToPlay(hand, t, trk, lead, p, bw, hb, dr, koot, tn, blt, cp);
+    const idx = hand.findIndex(c => c.id === card.id);
+    const newH = h.map((x, i) => i === p ? x.filter((_, j) => j !== idx) : [...x]);
+    const newTC = [...tc, { card, player: p }], newTrk = newTC.map(x => x.card);
+    const newCP = [...cp, card]; // Track this card as played
+    const newPH = [...ph, { player: p, card, trick: tn }]; // Track play history
+    setHands(newH); setTrickCards(newTC); setTrick(newTrk);
+    setCardsPlayed(newCP); setPlayHistory(newPH);
+    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, t, lead, newH, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt, newCP, newPH), 500);
+    else { const next = (p + 1) % 4; setCurrentPlayer(next);
+      if (next === 0) setMsg('Your turn');
+      else { setMsg(`${PLAYER_NAMES[next]}...`); timer.current = setTimeout(() => aiPlay(next, newH, newTC, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt, newCP, newPH), 600); }
+    }
+  }, []);
+
+  const humanPlay = useCallback((ci) => {
+    if (phase !== 'playing' || currentPlayer !== 0) return;
+    const hand = hands[0], card = hand[ci];
+    const led = trick[0] || null, ls = led?.suit;
+    const playable = getPlayableCards(hand, trumpSuit, led, ls);
+    if (!playable.some(c => c.id === card.id)) { setMsg('Must follow suit!'); return; }
+    const newH = hands.map((x, i) => i === 0 ? x.filter((_, j) => j !== ci) : [...x]);
+    const newTC = [...trickCards, { card, player: 0 }], newTrk = newTC.map(x => x.card);
+    const newCP = [...cardsPlayed, card];
+    const newPH = [...playHistory, { player: 0, card, trick: trickNum }];
+    setHands(newH); setTrickCards(newTC); setTrick(newTrk);
+    setCardsPlayed(newCP); setPlayHistory(newPH);
+    if (newTC.length === 4) timer.current = setTimeout(() => evalTrick(newTrk, newTC, trumpSuit, trickLeader, newH, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump, bidderLostTrick, newCP, newPH), 500);
+    else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]}...`); timer.current = setTimeout(() => aiPlay(1, newH, newTC, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump, bidderLostTrick, newCP, newPH), 600); }
+  }, [phase, currentPlayer, hands, trick, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, roundPts, highTrumpInfo, bidWinner, highBid, scores, drawn, playerTricks, knownOutOfTrump, bidderLostTrick, cardsPlayed, playHistory]);
+
+  const evalTrick = useCallback((trk, tc, t, lead, h, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt, cp, ph) => {
+    const winner = determineTrickWinner(trk, t, lead), team = getTeam(winner);
+    let highT = -1; for (const c of trk) { const r = getTrumpRank(c, t); if (r > highT) highT = r; }
+    let newHTI = hti; if (highT > hti.rank) newHTI = { rank: highT, player: winner };
+    setHighTrumpInfo(newHTI);
+    const newTW = [...tw]; newTW[team]++;
+    const newPT = [...pt]; newPT[winner]++;
+    const newRP = [...rp]; newRP[team] += 5;
+    setTricksWon(newTW); setPlayerTricks(newPT); setRoundPts(newRP);
+    
+    // Track if bidder lost a trick
+    let newBLT = blt;
+    if (winner !== bw && getTeam(winner) !== getTeam(bw)) {
+      newBLT = true;
+      setBidderLostTrick(true);
+    }
+    
+    // Track who is out of trump based on plays
+    const ledCard = trk[0];
+    const newKOOT = [...koot];
+    if (isTrump(ledCard, t)) {
+      // Trump was led - anyone who didn't play trump (and isn't holding top 3) is out
+      for (let i = 0; i < 4; i++) {
+        const playerIdx = (lead + i) % 4;
+        const playedCard = trk[i];
+        if (!isTrump(playedCard, t)) {
+          newKOOT[playerIdx] = true;
+        }
+      }
+    }
+    setKnownOutOfTrump(newKOOT);
+    
+    setLastTrick({ cards: tc, winner }); setAnimating(winner); setPhase('trick-end');
+    setMsg(`${PLAYER_NAMES[winner]} wins!`);
+    timer.current = setTimeout(() => {
+      setAnimating(null);
+      if (tn >= 5) { 
+        const fp = [...newRP]; 
+        if (newHTI.rank >= 0) fp[getTeam(newHTI.player)] += 5; 
+        endRound(fp, h, bw, hb, totals); 
+      }
+      else { setTrick([]); setTrickCards([]); setTrickLeader(winner); setCurrentPlayer(winner); setTrickNum(tn + 1); setPhase('playing');
+        if (winner === 0) setMsg('Your lead');
+        else { setMsg(`${PLAYER_NAMES[winner]} leads...`); timer.current = setTimeout(() => aiPlay(winner, h, [], t, winner, tn + 1, newTW, newRP, newHTI, bw, hb, totals, dr, newPT, newKOOT, newBLT, cp, ph), 700); }
+      }
+    }, 1200);
+  }, []);
+
+  const endRound = useCallback((fp, h, bw, hb, totals) => {
+    const bt = getTeam(bw), newS = [...totals];
+    let us = 0, them = 0;
+    const made = fp[bt] >= hb;
+    if (made) { newS[bt] += fp[bt]; bt === 0 ? us = fp[0] : them = fp[1]; }
+    else { newS[bt] -= hb; bt === 0 ? us = -hb : them = -hb; }
+    const ot = 1 - bt; newS[ot] += fp[ot]; ot === 0 ? us = fp[0] : them = fp[1];
+    setScores(newS);
+    setHistory(p => [...p, { usRoundScore: us, themRoundScore: them, usTotal: newS[0], themTotal: newS[1] }]);
+    if (newS[0] >= 120 || newS[1] >= 120) {
+      const w = (newS[0] >= 120 && newS[1] >= 120) ? bt : (newS[0] >= 120 ? 0 : 1);
+      setPhase('game-over'); setMsg(`${w === 0 ? 'You win!' : 'They win!'}`);
+    } else {
+      setPhase('round-end');
+      // Updated round end messages
+      const bidTeamName = bt === 0 ? 'We' : 'They';
+      const possessive = bt === 0 ? 'our' : 'their';
+      const resultMsg = made ? `${bidTeamName} made ${possessive} ${hb} bid` : `${bidTeamName} were set ${hb}`;
+      setMsg(resultMsg);
+    }
+  }, []);
+
+  const nextRound = useCallback(() => { const nd = (dealer + 1) % 4; setDealer(nd); dealRound(nd, scores); }, [dealer, scores]);
+  const toggle = useCallback((i) => setSelected(p => p.includes(i) ? p.filter(x => x !== i) : [...p, i]), []);
+
+  const playable = phase === 'playing' && currentPlayer === 0 ? (() => {
+    const led = trick[0] || null, ls = led?.suit;
+    const p = getPlayableCards(hands[0], trumpSuit, led, ls);
+    return hands[0].map((c, i) => p.some(x => x.id === c.id) ? i : -1).filter(i => i >= 0);
+  })() : [];
+
+  // Bid indicator with BAGGED support - yellow pass indicator, red background for bagged
+  const bidInd = (pi) => {
+    if (phase === 'bidding') { 
+      if (bids[pi] === null) return null; 
+      return <span style={{ padding: '2px 4px', background: bids[pi] > 0 ? '#2196f3' : '#c9a227', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: bids[pi] > 0 ? '#fff' : '#000' }}>{bids[pi] > 0 ? bids[pi] : 'Pass'}</span>; 
+    }
+    if (bidWinner !== pi || !trumpSuit) return null;
+    const showBagged = wasBagged && pi === bidWinner;
+    return <span style={{ padding: '2px 4px', background: showBagged ? '#c62828' : '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span>{showBagged && <span style={{ marginLeft: '2px' }}>BAGGED</span>}</span>;
+  };
+
+  const winPos = (w) => ({ 0: { x: 0, y: 80 }, 1: { x: -80, y: 0 }, 2: { x: 0, y: -80 }, 3: { x: 80, y: 0 } }[w]);
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 50%, #0a1f12 100%)', padding: '4px', fontFamily: 'Arial, sans-serif', color: '#e8e4d9' }}>
+      {/* Header with Help button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', marginBottom: '4px' }}>
+        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#d4af37' }}>45s <span style={{ fontSize: '8px', color: '#666' }}>v{VERSION}</span></div>
+        <div 
+          onClick={() => setHelpOpen(true)} 
+          style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid #d4af37', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d4af37', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}
+        >?</div>
+        <div style={{ fontSize: '12px' }}><span style={{ color: '#4caf50' }}>Us:{scores[0]}</span> | <span style={{ color: '#f44336' }}>Them:{scores[1]}</span></div>
+      </div>
+      {/* Message - fixed height to prevent layout shift */}
+      <div style={{ height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', borderRadius: '4px', fontSize: '12px', color: '#ffd700', marginBottom: '4px' }}>{msg}</div>
+      {/* Game */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        {/* North */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', padding: '2px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '16px' }}>
+            <span style={{ fontSize: '11px', color: '#aaa' }}>{PLAYER_NAMES[2]}</span>
+            <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>{dealer === 2 && <DealerBadge />}</div>
+            <CardsDrawnIndicator count={drawn[2]} />
+          </div>
+          <div style={{ display: 'flex', gap: '1px' }}>{hands[2].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '20px' }}>
+            <div style={{ minWidth: '40px', display: 'flex', justifyContent: 'center' }}>{bidInd(2)}</div>
+            <div style={{ minWidth: '60px', display: 'flex', justifyContent: 'center' }}><TricksWonDisplay count={playerTricks[2]} hasHighTrump={highTrumpInfo.player === 2} /></div>
+          </div>
+        </div>
+        {/* Middle row */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', minHeight: 0 }}>
+          {/* West */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '50px' }}>
+            <div style={{ fontSize: '10px', color: '#aaa', textAlign: 'center' }}>{PLAYER_NAMES[1]}</div>
+            <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{dealer === 1 && <DealerBadge />}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>{hands[1].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
+            <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CardsDrawnIndicator count={drawn[1]} /></div>
+            <div style={{ height: '18px', minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{bidInd(1)}</div>
+            <div style={{ height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><TricksWonDisplay count={playerTricks[1]} hasHighTrump={highTrumpInfo.player === 1} /></div>
+          </div>
+          {/* Center - Larger table with always-visible trump */}
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ width: '150px', height: '150px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '50%', border: '2px solid rgba(212,175,55,0.3)', position: 'relative' }}>
+              {/* Trump suit always visible in center (behind cards) */}
+              {trumpSuit && <div style={{ position: 'absolute', fontSize: '64px', color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff', opacity: 0.3, zIndex: 0 }}>{trumpSuit}</div>}
+              {trickCards.map((tc, i) => {
+                const pos = [{ bottom: '4px', left: '50%', transform: 'translateX(-50%)' }, { left: '4px', top: '50%', transform: 'translateY(-50%)' }, { top: '4px', left: '50%', transform: 'translateX(-50%)' }, { right: '4px', top: '50%', transform: 'translateY(-50%)' }][tc.player];
+                const ani = animating !== null, wp = ani ? winPos(animating) : null;
+                return <div key={i} style={{ position: 'absolute', ...pos, zIndex: 1, transition: ani ? 'all 0.4s ease' : 'none', transform: ani ? `translate(${wp.x}px, ${wp.y}px) scale(0.2)` : pos.transform, opacity: ani ? 0 : 1 }}><Card card={tc.card} small disabled /></div>;
+              })}
+              {(phase === 'playing' || phase === 'trick-end') && <div style={{ position: 'absolute', bottom: '-16px', fontSize: '10px', color: '#aaa' }}>{roundPts[0]}-{roundPts[1]}</div>}
+            </div>
+          </div>
+          {/* East */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '50px' }}>
+            <div style={{ fontSize: '10px', color: '#aaa', textAlign: 'center' }}>{PLAYER_NAMES[3]}</div>
+            <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{dealer === 3 && <DealerBadge />}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>{hands[3].map((_, i) => <Card key={i} card={{}} faceDown small />)}</div>
+            <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CardsDrawnIndicator count={drawn[3]} /></div>
+            <div style={{ height: '18px', minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{bidInd(3)}</div>
+            <div style={{ height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><TricksWonDisplay count={playerTricks[3]} hasHighTrump={highTrumpInfo.player === 3} /></div>
+          </div>
+        </div>
+        {/* South */}
+        <div style={{ padding: '4px 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', marginBottom: '4px', height: '20px' }}>
+            <div style={{ minWidth: '60px', display: 'flex', justifyContent: 'center' }}><TricksWonDisplay count={playerTricks[0]} hasHighTrump={highTrumpInfo.player === 0} /></div>
+            <span style={{ fontSize: '11px', color: '#aaa' }}>{PLAYER_NAMES[0]}</span>
+            <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>{dealer === 0 && <DealerBadge />}</div>
+            <div style={{ minWidth: '50px', display: 'flex', justifyContent: 'center' }}>{bidInd(0)}</div>
+            <CardsDrawnIndicator count={drawn[0]} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '2px', minHeight: '68px' }}>
+            {hands[0].map((c, i) => <Card key={c.id} card={c} onClick={() => phase === 'discarding' && currentPlayer === 0 ? toggle(i) : phase === 'playing' && currentPlayer === 0 ? humanPlay(i) : null} selected={selected.includes(i)} playable={playable.includes(i)} disabled={(phase !== 'discarding' || currentPlayer !== 0) && (phase !== 'playing' || currentPlayer !== 0 || !playable.includes(i))} />)}
+          </div>
+        </div>
+        {/* Buttons - yellow Pass button, "Discard (x)" text */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', flexWrap: 'wrap', padding: '4px 0', minHeight: '36px' }}>
+          {phase === 'bidding' && currentPlayer === 0 && <>{[15,20,25,30].map(b => <button key={b} onClick={() => humanBid(b)} disabled={b <= highBid} style={{ padding: '6px 12px', fontSize: '12px', background: b <= highBid ? '#555' : '#2196f3', color: '#fff', border: 'none', borderRadius: '4px', opacity: b <= highBid ? 0.5 : 1 }}>{b}</button>)}<button onClick={() => humanBid(0)} style={{ padding: '6px 12px', fontSize: '12px', background: '#c9a227', color: '#000', border: 'none', borderRadius: '4px' }}>Pass</button></>}
+          {phase === 'trump-select' && SUITS.map(s => <button key={s} onClick={() => selectTrump(s)} style={{ padding: '6px 14px', fontSize: '18px', background: 'rgba(0,0,0,0.5)', color: (s === '♥' || s === '♦') ? '#f44336' : '#fff', border: '1px solid #d4af37', borderRadius: '4px' }}>{s}</button>)}
+          {phase === 'discarding' && currentPlayer === 0 && <button onClick={humanDiscard} style={{ padding: '6px 16px', fontSize: '12px', background: '#4caf50', color: '#fff', border: 'none', borderRadius: '4px' }}>Discard ({selected.length})</button>}
+          {(phase === 'round-end' || phase === 'game-over') && postDrawHands && <button onClick={() => setShowHandsOpen(true)} style={{ padding: '6px 16px', fontSize: '12px', background: '#666', color: '#fff', border: 'none', borderRadius: '4px' }}>Show Hands</button>}
+          {phase === 'round-end' && <button onClick={nextRound} style={{ padding: '6px 16px', fontSize: '12px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '4px' }}>Next</button>}
+          {phase === 'game-over' && <button onClick={startGame} style={{ padding: '6px 16px', fontSize: '12px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '4px' }}>New Game</button>}
+          {phase === 'dealing' && <button onClick={startGame} style={{ padding: '10px 24px', fontSize: '14px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 'bold' }}>Start</button>}
+        </div>
+        {/* Last Trick - fixed height container to prevent layout shift */}
+        <div style={{ height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {lastTrick && phase !== 'trick-end' && <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '2px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}><span style={{ fontSize: '9px', color: '#aaa' }}>Last:</span>{lastTrick.cards.map((tc, i) => <Card key={i} card={tc.card} small disabled />)}</div>}
+        </div>
+        {/* Score table */}
+        <ScoreTable roundHistory={history} />
+      </div>
+      {/* Help Modal */}
+      <HelpModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
+      {/* Show Hands Modal */}
+      <ShowHandsModal 
+        isOpen={showHandsOpen} 
+        onClose={() => setShowHandsOpen(false)} 
+        hands={postDrawHands}
+        dealer={roundDealer}
+        bidWinner={bidWinner}
+        highBid={highBid}
+        trumpSuit={trumpSuit}
+        drawn={roundDrawn}
+        wasBagged={wasBagged}
+        playHistory={playHistory}
+        bids={roundBids}
+      />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<FortyFivesGame />);
+  </script>
+</body>
+</html>
