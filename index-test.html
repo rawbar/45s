@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.1 - Improved Monte Carlo AI
+// 45s Card Game - Version 3.1.1 - Bug Fixes
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.1';
+const VERSION = '3.1.1';
 
 // ============================================================================
 // ============================================================================
@@ -185,8 +185,8 @@ class GameSimulator {
       );
     }
     const ledCard = state.currentTrick[0].card;
-    const winnerIdx = this.evaluateTrick(state.currentTrick, state.trumpSuit, state.trickLeader);
-    const winnerTeam = (state.trickLeader + winnerIdx) % 2;
+    const winnerPlayer = this.evaluateTrick(state.currentTrick, state.trumpSuit, state.trickLeader);
+    const winnerTeam = winnerPlayer % 2;
     const partnerWinning = winnerTeam === myTeam;
     const position = state.currentTrick.length;
     if (position === 1 && !isTrump(ledCard) && nonTrumps.length > 0) {
@@ -914,6 +914,7 @@ function FortyFivesGame() {
   const [highTrumpInfo, setHighTrumpInfo] = useState({ rank: -1, player: -1 });
   const [history, setHistory] = useState([]);
   const [drawn, setDrawn] = useState([0,0,0,0]);
+  const [drawnCards, setDrawnCards] = useState(new Set());
   const [animating, setAnimating] = useState(null);
   const [wasBagged, setWasBagged] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -944,7 +945,7 @@ function FortyFivesGame() {
     setTrick([]); setTrickCards([]); setTricksWon([0,0]); setPlayerTricks([0,0,0,0]);
     setRoundPts([0,0]); setTrickNum(0); setSelected([]); setLastTrick(null);
     setAiTrump(null); setTrickLeader(null); setHighTrumpInfo({ rank: -1, player: -1 });
-    setDrawn([0,0,0,0]); setAnimating(null); setWasBagged(false); 
+    setDrawn([0,0,0,0]); setDrawnCards(new Set()); setAnimating(null); setWasBagged(false); 
     setKnownOutOfTrump([false, false, false, false]);
     setBidderLostTrick(false);
     setPostDrawHands(null);
@@ -1014,8 +1015,13 @@ function FortyFivesGame() {
     const { keep } = decideDiscard(h[p], t, p === bw, hb);
     const newH = h.map(x => [...x]); newH[p] = keep;
     let d = [...curDeck]; const dc = Math.max(0, 5 - keep.length);
-    if (dc > 0 && d.length >= dc) { newH[p] = [...newH[p], ...d.splice(0, dc)]; }
+    const cardsDrawn = [];
+    if (dc > 0 && d.length >= dc) { 
+      cardsDrawn.push(...d.slice(0, dc));
+      newH[p] = [...newH[p], ...d.splice(0, dc)]; 
+    }
     const newDrawn = [...curDrawn]; newDrawn[p] = dc;
+    setDrawnCards(prev => new Set([...prev, ...cardsDrawn.map(c => c.id)]));
     setHands(newH); setDeck(d); setDrawn(newDrawn);
     const next = (p + 1) % 4, start = (dlr + 1) % 4;
     if (next === start) startPlay(bw, newH, t, hb, totals, newDrawn);
@@ -1030,8 +1036,13 @@ function FortyFivesGame() {
     if (keep.length === 0) { setMsg('Keep at least 1!'); return; }
     const newH = hands.map(x => [...x]); newH[0] = keep;
     let d = [...deck]; const dc = Math.max(0, 5 - keep.length);
-    if (dc > 0 && d.length >= dc) { newH[0] = [...newH[0], ...d.splice(0, dc)]; }
+    const cardsDrawn = [];
+    if (dc > 0 && d.length >= dc) { 
+      cardsDrawn.push(...d.slice(0, dc));
+      newH[0] = [...newH[0], ...d.splice(0, dc)]; 
+    }
     const newDrawn = [...drawn]; newDrawn[0] = dc;
+    setDrawnCards(prev => new Set([...prev, ...cardsDrawn.map(c => c.id)]));
     setHands(newH); setDeck(d); setDrawn(newDrawn); setSelected([]);
     const next = 1, start = (dealer + 1) % 4;
     if (next === start) startPlay(bidWinner, newH, trumpSuit, highBid, scores, newDrawn);
@@ -1251,7 +1262,7 @@ function FortyFivesGame() {
             <CardsDrawnIndicator count={drawn[0]} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '2px', minHeight: '68px' }}>
-            {hands[0].map((c, i) => <Card key={c.id} card={c} onClick={() => phase === 'discarding' && currentPlayer === 0 ? toggle(i) : phase === 'playing' && currentPlayer === 0 ? humanPlay(i) : null} selected={selected.includes(i)} playable={playable.includes(i)} disabled={(phase !== 'discarding' || currentPlayer !== 0) && (phase !== 'playing' || currentPlayer !== 0 || !playable.includes(i))} />)}
+            {hands[0].map((c, i) => <Card key={c.id} card={c} onClick={() => phase === 'discarding' && currentPlayer === 0 ? toggle(i) : phase === 'playing' && currentPlayer === 0 ? humanPlay(i) : null} selected={selected.includes(i)} playable={playable.includes(i)} disabled={(phase !== 'discarding' || currentPlayer !== 0) && (phase !== 'playing' || currentPlayer !== 0 || !playable.includes(i))} wasDrawn={drawnCards.has(c.id)} />)}
           </div>
         </div>
         {/* Buttons - yellow Pass button, "Discard (x)" text */}
