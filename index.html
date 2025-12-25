@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.1.2 - UI Fixes
+// 45s Card Game - Version 3.1.3 - Critical Fixes
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.1.2';
+const VERSION = '3.1.3';
 
 // ============================================================================
 // ============================================================================
@@ -225,7 +225,7 @@ class GameSimulator {
     if (card.rank === 'A') return 99;
     if (card.rank === 'K') return 98;
     if (card.rank === 'Q') return 97;
-    const order = (trumpSuit === '♥' || trumpSuit === '♦') ? ['10','9','8','7','6','4','3','2'] : ['2','3','4','6','7','8','9','10'];
+    const order = (trumpSuit === '♥' || trumpSuit === '♦') ? ['10','9','8','7','6','4','3','2'] : ['10','9','8','7','6','4','3','2'];
     const idx = order.indexOf(card.rank);
     return idx >= 0 ? 80 + idx : -1;
   }
@@ -234,6 +234,8 @@ class GameSimulator {
     const trumpRank = this.getTrumpRank(card, trumpSuit);
     if (trumpRank >= 0) return trumpRank + 200;
     const isRed = card.suit === '♥' || card.suit === '♦';
+    // Special case: A♦ is lowest in diamonds when offsuit
+    if (card.rank === 'A' && card.suit === '♦') return -1;
     const order = isRed ? ['A','2','3','4','5','6','7','8','9','10','J','Q','K'] : ['10','9','8','7','6','5','4','3','2','A','J','Q','K'];
     return order.indexOf(card.rank);
   }
@@ -797,7 +799,7 @@ Without:       498471 bids, 35.0% success`}
 }
 
 // Show Hands Modal for debugging - shows cards in play order
-function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, wasBagged, playHistory, bids }) {
+function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, drawnCards, wasBagged, playHistory, bids }) {
   if (!isOpen || !hands) return null;
   
   const renderHand = (playerIdx, label) => {
@@ -853,7 +855,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             return (
               <div key={i} style={{ position: 'relative' }}>
                 <div style={{ border: ledTrick ? '2px solid #d4af37' : 'none', borderRadius: '4px' }}>
-                  <Card card={c} small disabled />
+                  <Card card={c} small disabled wasDrawn={drawnCards && drawnCards.has(c.id)} />
                 </div>
                 {trickNum && <div style={{ position: 'absolute', top: '-6px', right: '-6px', width: '14px', height: '14px', borderRadius: '50%', background: ledTrick ? '#d4af37' : '#666', color: ledTrick ? '#000' : '#fff', fontSize: '9px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{trickNum}</div>}
               </div>
@@ -1311,6 +1313,7 @@ function FortyFivesGame() {
         highBid={highBid}
         trumpSuit={trumpSuit}
         drawn={roundDrawn}
+        drawnCards={drawnCards}
         wasBagged={wasBagged}
         playHistory={playHistory}
         bids={roundBids}
