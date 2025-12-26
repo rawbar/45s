@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.2.2 - Bidder & Defense Leading Strategy
+// 45s Card Game - Version 3.2.3 - Display Fixes + Advanced Bidder Strategy
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.2.2';
+const VERSION = '3.2.3';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -674,13 +674,38 @@ function DealerBadge() {
 
 function Card({ card, onClick, disabled, selected, small, faceDown, playable, wasDrawn }) {
   const isRed = card && (card.suit === '♥' || card.suit === '♦');
-  const w = small ? '28px' : '48px', h = small ? '38px' : '68px';
-  const base = { width: w, height: h, borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: disabled ? 'default' : 'pointer', transition: 'all 0.1s', fontFamily: 'Georgia, serif', userSelect: 'none', flexShrink: 0, position: 'relative' };
+  const w = small ? '34px' : '48px', h = small ? '46px' : '68px';  // Increased modal card size
+  const base = { 
+    width: w, 
+    height: h, 
+    borderRadius: '4px', 
+    display: 'flex', 
+    flexDirection: 'column', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    cursor: disabled ? 'default' : 'pointer', 
+    transition: 'all 0.1s', 
+    fontFamily: 'Arial, sans-serif',  // Changed from Georgia for clearer suit symbols
+    userSelect: 'none', 
+    flexShrink: 0, 
+    position: 'relative' 
+  };
   if (faceDown) return (<div style={{ ...base, background: 'linear-gradient(135deg, #1e3a5f 0%, #0d1b2a 100%)', border: '1px solid #2d5a87' }} />);
+  
+  // Subtle background tint for red suits (barely visible to humans, helpful for AI)
+  const bgTint = isRed ? 'rgba(255, 235, 238, 0.3)' : 'rgba(0, 0, 0, 0)';
+  
   return (
-    <div onClick={disabled ? undefined : onClick} style={{ ...base, background: selected ? '#fffde7' : '#fff', border: playable ? '2px solid #2196f3' : selected ? '2px solid #ffc107' : '1px solid #ccc', boxShadow: selected || playable ? '0 2px 6px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.15)', transform: (selected || playable) && !disabled ? 'translateY(-2px)' : 'none', opacity: disabled && !playable ? 0.6 : 1 }}>
-      <div style={{ color: isRed ? '#c62828' : '#212121', fontSize: small ? '11px' : '15px', fontWeight: 'bold', lineHeight: 1 }}>{card.rank}</div>
-      <div style={{ color: isRed ? '#c62828' : '#212121', fontSize: small ? '14px' : '22px', lineHeight: 1 }}>{card.suit}</div>
+    <div onClick={disabled ? undefined : onClick} style={{ 
+      ...base, 
+      background: selected ? '#fffde7' : `linear-gradient(to bottom, #fff, ${bgTint})`, 
+      border: playable ? '2px solid #2196f3' : selected ? '2px solid #ffc107' : '1px solid #ccc', 
+      boxShadow: selected || playable ? '0 2px 6px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.15)', 
+      transform: (selected || playable) && !disabled ? 'translateY(-2px)' : 'none', 
+      opacity: disabled && !playable ? 0.6 : 1 
+    }}>
+      <div style={{ color: isRed ? '#c62828' : '#212121', fontSize: small ? '13px' : '15px', fontWeight: 'bold', lineHeight: 1 }}>{card.rank}</div>
+      <div style={{ color: isRed ? '#c62828' : '#212121', fontSize: small ? '18px' : '22px', lineHeight: 1 }}>{card.suit}</div>
       {wasDrawn && <div style={{ position: 'absolute', bottom: '2px', right: '2px', width: '5px', height: '5px', borderRadius: '50%', background: '#1565c0' }} />}
     </div>
   );
