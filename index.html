@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.2.1 - Add "Can't Win" Logic
+// 45s Card Game - Version 3.2.2 - Bidder & Defense Leading Strategy
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.2.1';
+const VERSION = '3.2.2';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -113,6 +113,40 @@ class GameSimulator {
   }
 
   static chooseCardSimple(playable, state, playerIdx) {
+    const isTrump = (c) => this.getTrumpRank(c, state.trumpSuit) >= 0;
+    const trumps = playable.filter(c => isTrump(c));
+    const nonTrumps = playable.filter(c => !isTrump(c));
+    const isBidder = playerIdx === state.bidWinner;
+    
+    // LEADING LOGIC
+    if (state.currentTrick.length === 0) {
+      // Bidder with 3+ trump: lead HIGHEST trump
+      if (isBidder && trumps.length >= 3) {
+        return trumps.reduce((highest, card) => {
+          const rank1 = this.getTrumpRank(highest, state.trumpSuit);
+          const rank2 = this.getTrumpRank(card, state.trumpSuit);
+          return rank1 > rank2 ? highest : card;
+        });
+      }
+      
+      // Defense (non-bidder): NEVER lead trump, always lead offsuit
+      if (!isBidder && nonTrumps.length > 0) {
+        return nonTrumps.reduce((lowest, card) => {
+          const rank1 = this.getCardRank(lowest, state.trumpSuit);
+          const rank2 = this.getCardRank(card, state.trumpSuit);
+          return rank1 < rank2 ? lowest : card;
+        });
+      }
+      
+      // Fallback: play highest card
+      return playable.reduce((highest, card) => {
+        const rank1 = this.getCardRank(highest, state.trumpSuit);
+        const rank2 = this.getCardRank(card, state.trumpSuit);
+        return rank1 > rank2 ? highest : card;
+      });
+    }
+    
+    // FOLLOWING LOGIC
     if (state.currentTrick.length > 0) {
       const winnerPlayer = this.evaluateTrick(state.currentTrick, state.trumpSuit, state.trickLeader);
       const winnerTeam = winnerPlayer % 2;
@@ -141,7 +175,7 @@ class GameSimulator {
       }
     }
     
-    // Leading or can beat current winner - play highest
+    // Can beat current winner - play highest
     return playable.reduce((highest, card) => {
       const rank1 = this.getCardRank(highest, state.trumpSuit);
       const rank2 = this.getCardRank(card, state.trumpSuit);
