@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.2 - Stable Base with Essential Fixes
+// 45s Card Game - Version 3.2.1 - Add "Can't Win" Logic
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.2';
+const VERSION = '3.2.1';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -118,6 +118,21 @@ class GameSimulator {
       const winnerTeam = winnerPlayer % 2;
       const myTeam = playerIdx % 2;
       if (winnerTeam === myTeam) {
+        // Partner winning - play lowest
+        return playable.reduce((lowest, card) => {
+          const rank1 = this.getCardRank(lowest, state.trumpSuit);
+          const rank2 = this.getCardRank(card, state.trumpSuit);
+          return rank1 < rank2 ? lowest : card;
+        });
+      }
+      
+      // Opponent winning - check if we can beat them
+      const currentWinningCard = state.currentTrick[winnerPlayer - state.trickLeader].card;
+      const ledSuit = state.currentTrick[0].card.suit;
+      const canBeat = playable.some(card => this.cardBeats(card, currentWinningCard, state.trumpSuit, ledSuit));
+      
+      if (!canBeat) {
+        // Can't win - play lowest
         return playable.reduce((lowest, card) => {
           const rank1 = this.getCardRank(lowest, state.trumpSuit);
           const rank2 = this.getCardRank(card, state.trumpSuit);
@@ -125,6 +140,8 @@ class GameSimulator {
         });
       }
     }
+    
+    // Leading or can beat current winner - play highest
     return playable.reduce((highest, card) => {
       const rank1 = this.getCardRank(highest, state.trumpSuit);
       const rank2 = this.getCardRank(card, state.trumpSuit);
