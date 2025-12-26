@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.2.10 - Bidder Leading Fix (for real this time)
+// 45s Card Game - Version 3.2.11 - Bidder Leading Fix (for real this time)
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.2.10';
+const VERSION = '3.2.11';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -340,11 +340,12 @@ const PLAYER_NAMES = ['You', 'Player 2', 'Partner', 'Player 4'];
 const getTeam = (player) => player % 2 === 0 ? 0 : 1;
 
 function getTrumpRank(card, trumpSuit) {
+  if (card.rank === '5') console.log('DEBUG ANY 5:', {cardId: card.id, trumpSuit, rank: card.rank, suit: card.suit, rankType: typeof card.rank});
   if (!card || !trumpSuit) return -1;
   const { rank, suit } = card;
   if (rank === 'A' && suit === '♥') return 100;
   if (suit !== trumpSuit) return -1;
-  if (rank === '5') return 102;
+  if (rank === '5' || rank === 5) return 102;
   if (rank === 'J') return 101;
   if (rank === 'A') return 99;
   if (rank === 'K') return 98;
