@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.3.7 DEBUG - CRITICAL FIX: partner winning detection
+// 45s Card Game - Version 3.3.8 DEBUG - FIX: canBeat with incomplete tricks
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.3.7 DEBUG';
+const VERSION = '3.3.8 DEBUG';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -696,6 +696,10 @@ if (trick.length > 0) {
   const canBeatResults = [];
   const canBeat = playable.some(card => {
     const testTrick = [...trick, card];
+    // determineTrickWinner needs exactly 4 cards, so add dummy cards if needed
+    while (testTrick.length < 4) {
+      testTrick.push({rank: '2', suit: '♣', id: 'dummy'});
+    }
     const winner = determineTrickWinner(testTrick, trumpSuit, leader);
     const didWin = winner === player;
     canBeatResults.push({card: card.id, winner, didWin});
