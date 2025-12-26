@@ -16,19 +16,16 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.1.7 - Fix "Can't Win" Logic
+// 45s Card Game - Version 3.2 - Stable Base with Essential Fixes
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.1.7';
+const VERSION = '3.2';
 
 // ============================================================================
+// MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
 // ============================================================================
-// MONTE CARLO AI V3.1 - Improved Strategy
-// ============================================================================
-
 class GameSimulator {
-  static chooseBestCard(gameState, playableCards) {
+  static chooseBestCard(gameState, playableCards, numRollouts = 5) {
     if (playableCards.length === 1) return playableCards[0];
-    const numRollouts = this.getRolloutCount(gameState, playableCards);
     const cardScores = {};
     for (const card of playableCards) {
       let totalPoints = 0;
@@ -48,19 +45,9 @@ class GameSimulator {
     return bestCard;
   }
 
-  static getRolloutCount(state, playableCards) {
-    if (playableCards.length <= 2) return 3;
-    const isBidder = state.currentPlayer === state.bidWinner;
-    const isFirstLead = state.trickNum === 1 && state.currentTrick.length === 0;
-    const isEndgame = state.trickNum >= 4;
-    if (isBidder && isFirstLead) return 15;
-    if (isEndgame) return 15;
-    return 5;
-  }
-
   static simulateGameFromCard(gameState, card) {
     const simState = this.cloneGameState(gameState);
-    this.sampleOpponentHandsSmart(simState);
+    this.sampleOpponentHands(simState);
     const myPlayerIdx = simState.currentPlayer;
     simState.hands[myPlayerIdx] = simState.hands[myPlayerIdx].filter(c => c.id !== card.id);
     simState.currentTrick.push({ player: myPlayerIdx, card: card });
@@ -76,36 +63,6 @@ class GameSimulator {
     return this.calculateMyTeamScore(simState, myPlayerIdx);
   }
 
-  static sampleOpponentHandsSmart(state) {
-    const myPlayerIdx = state.currentPlayer;
-    const myHand = state.hands[myPlayerIdx];
-    const allCards = this.generateDeck();
-    const knownCards = new Set([...myHand.map(c => c.id), ...state.cardsPlayed.map(c => c.id)]);
-    const unknownCards = allCards.filter(c => !knownCards.has(c.id));
-    const unknownTrump = unknownCards.filter(c => this.getTrumpRank(c, state.trumpSuit) >= 0);
-    const unknownNonTrump = unknownCards.filter(c => this.getTrumpRank(c, state.trumpSuit) < 0);
-    this.shuffleArray(unknownTrump);
-    this.shuffleArray(unknownNonTrump);
-    let trumpIdx = 0, nonTrumpIdx = 0;
-    for (let p = 0; p < 4; p++) {
-      if (p === myPlayerIdx) continue;
-      const cardsDrawn = state.cardsDrawn ? state.cardsDrawn[p] : 0;
-      const handSize = myHand.length;
-      state.hands[p] = [];
-      const trumpToGive = cardsDrawn >= 4 ? Math.min(1, unknownTrump.length - trumpIdx) : 
-                         cardsDrawn <= 2 ? Math.min(3, unknownTrump.length - trumpIdx) : 2;
-      for (let i = 0; i < trumpToGive && trumpIdx < unknownTrump.length; i++) {
-        state.hands[p].push(unknownTrump[trumpIdx++]);
-      }
-      while (state.hands[p].length < handSize && nonTrumpIdx < unknownNonTrump.length) {
-        state.hands[p].push(unknownNonTrump[nonTrumpIdx++]);
-      }
-      while (state.hands[p].length < handSize && trumpIdx < unknownTrump.length) {
-        state.hands[p].push(unknownTrump[trumpIdx++]);
-      }
-    }
-  }
-
   static completeCurrentTrick(state) {
     while (state.currentTrick.length < 4) {
       const currentPlayer = (state.trickLeader + state.currentTrick.length) % 4;
@@ -113,7 +70,7 @@ class GameSimulator {
       const ledCard = state.currentTrick[0].card;
       const playable = this.getPlayableCards(hand, state.trumpSuit, ledCard);
       if (playable.length === 0) break;
-      const chosen = this.chooseCardSmart(playable, state, currentPlayer);
+      const chosen = this.chooseCardSimple(playable, state, currentPlayer);
       state.hands[currentPlayer] = hand.filter(c => c.id !== chosen.id);
       state.currentTrick.push({ player: currentPlayer, card: chosen });
       const trumpRank = this.getTrumpRank(chosen, state.trumpSuit);
@@ -138,7 +95,7 @@ class GameSimulator {
       const ledCard = i > 0 ? state.currentTrick[0].card : null;
       const playable = this.getPlayableCards(hand, state.trumpSuit, ledCard);
       if (playable.length === 0) break;
-      const chosen = this.chooseCardSmart(playable, state, currentPlayer);
+      const chosen = this.chooseCardSimple(playable, state, currentPlayer);
       state.hands[currentPlayer] = hand.filter(c => c.id !== chosen.id);
       state.currentTrick.push({ player: currentPlayer, card: chosen });
       const trumpRank = this.getTrumpRank(chosen, state.trumpSuit);
@@ -155,78 +112,45 @@ class GameSimulator {
     state.currentTrick = [];
   }
 
-  static chooseCardSmart(playable, state, playerIdx) {
-    const myTeam = playerIdx % 2;
-    const partnerIdx = (playerIdx + 2) % 4;
-    const isBidder = playerIdx === state.bidWinner;
-    const partnerIsBidder = partnerIdx === state.bidWinner;
-    const isTrump = (c) => this.getTrumpRank(c, state.trumpSuit) >= 0;
-    const trumps = playable.filter(c => isTrump(c));
-    const nonTrumps = playable.filter(c => !isTrump(c));
-    if (state.currentTrick.length === 0) {
-      if (isBidder) {
-        if (trumps.length >= 3) {
-          return trumps.reduce((best, card) => 
-            this.getTrumpRank(card, state.trumpSuit) > this.getTrumpRank(best, state.trumpSuit) ? card : best
-          );
-        } else if (trumps.length > 0 && trumps.length <= 2 && nonTrumps.length > 0) {
-          return nonTrumps.reduce((low, card) => 
-            this.getCardRank(card, state.trumpSuit) < this.getCardRank(low, state.trumpSuit) ? card : low
-          );
-        } else if (trumps.length > 0) {
-          // Have trump but <= 2 and no offsuit - lead highest trump
-          return trumps.reduce((best, card) => 
-            this.getTrumpRank(card, state.trumpSuit) > this.getTrumpRank(best, state.trumpSuit) ? card : best
-          );
-        }
+  static chooseCardSimple(playable, state, playerIdx) {
+    if (state.currentTrick.length > 0) {
+      const winnerPlayer = this.evaluateTrick(state.currentTrick, state.trumpSuit, state.trickLeader);
+      const winnerTeam = winnerPlayer % 2;
+      const myTeam = playerIdx % 2;
+      if (winnerTeam === myTeam) {
+        return playable.reduce((lowest, card) => {
+          const rank1 = this.getCardRank(lowest, state.trumpSuit);
+          const rank2 = this.getCardRank(card, state.trumpSuit);
+          return rank1 < rank2 ? lowest : card;
+        });
       }
-      if (partnerIsBidder && nonTrumps.length > 0) {
-        return nonTrumps.reduce((low, card) => 
-          this.getCardRank(card, state.trumpSuit) < this.getCardRank(low, state.trumpSuit) ? card : low
-        );
+    }
+    return playable.reduce((highest, card) => {
+      const rank1 = this.getCardRank(highest, state.trumpSuit);
+      const rank2 = this.getCardRank(card, state.trumpSuit);
+      return rank1 > rank2 ? highest : card;
+    });
+  }
+
+  static sampleOpponentHands(state) {
+    const myPlayerIdx = state.currentPlayer;
+    const myHand = state.hands[myPlayerIdx];
+    const allCards = this.generateDeck();
+    const knownCards = new Set([
+      ...myHand.map(c => c.id),
+      ...state.cardsPlayed.map(c => c.id)
+    ]);
+    const unknownCards = allCards.filter(c => !knownCards.has(c.id));
+    this.shuffleArray(unknownCards);
+    let idx = 0;
+    for (let p = 0; p < 4; p++) {
+      if (p === myPlayerIdx) continue;
+      const handSize = myHand.length;
+      state.hands[p] = [];
+      for (let i = 0; i < handSize && idx < unknownCards.length; i++) {
+        state.hands[p].push(unknownCards[idx++]);
       }
-      // Fallback: play highest card
-      return playable.reduce((best, card) => 
-        this.getCardRank(card, state.trumpSuit) > this.getCardRank(best, state.trumpSuit) ? card : best
-      );
     }
-    const ledCard = state.currentTrick[0].card;
-    const winnerPlayer = this.evaluateTrick(state.currentTrick, state.trumpSuit, state.trickLeader);
-    const winnerTeam = winnerPlayer % 2;
-    const partnerWinning = winnerTeam === myTeam;
-    const position = state.currentTrick.length;
-    if (position === 1 && !isTrump(ledCard) && nonTrumps.length > 0) {
-      return nonTrumps.reduce((low, card) => 
-        this.getCardRank(card, state.trumpSuit) < this.getCardRank(low, state.trumpSuit) ? card : low
-      );
-    }
-    if (partnerWinning) {
-      return playable.reduce((low, card) => 
-        this.getCardRank(card, state.trumpSuit) < this.getCardRank(low, state.trumpSuit) ? card : low
-      );
-    }
-    
-    // Check if we can actually beat the current winner
-    const currentWinningCard = state.currentTrick[this.evaluateTrick(state.currentTrick, state.trumpSuit, state.trickLeader) - state.trickLeader].card;
-    const canBeat = playable.some(card => this.cardBeats(card, currentWinningCard, state.trumpSuit, ledCard.suit));
-    
-    if (!canBeat) {
-      // Can't win - discard offsuit if possible, otherwise lowest trump
-      if (nonTrumps.length > 0) {
-        return nonTrumps.reduce((low, card) => 
-          this.getCardRank(card, state.trumpSuit) < this.getCardRank(low, state.trumpSuit) ? card : low
-        );
-      }
-      // No offsuit - play lowest trump
-      return playable.reduce((low, card) => 
-        this.getCardRank(card, state.trumpSuit) < this.getCardRank(low, state.trumpSuit) ? card : low
-      );
-    }
-    
-    // Can win - play highest card that can beat current winner
-    return playable.reduce((high, card) => 
-      this.getCardRank(card, state.trumpSuit) > this.getCardRank(high, state.trumpSuit) ? card : high
-    );
   }
 
   static calculateMyTeamScore(state, myPlayerIdx) {
@@ -250,7 +174,9 @@ class GameSimulator {
     if (card.rank === 'A') return 99;
     if (card.rank === 'K') return 98;
     if (card.rank === 'Q') return 97;
-    const order = (trumpSuit === '♥' || trumpSuit === '♦') ? ['2','3','4','6','7','8','9','10'] : ['10','9','8','7','6','4','3','2'];
+    const order = (trumpSuit === '♥' || trumpSuit === '♦') 
+      ? ['10','9','8','7','6','4','3','2']
+      : ['2','3','4','6','7','8','9','10'];
     const idx = order.indexOf(card.rank);
     return idx >= 0 ? 80 + idx : -1;
   }
@@ -259,9 +185,9 @@ class GameSimulator {
     const trumpRank = this.getTrumpRank(card, trumpSuit);
     if (trumpRank >= 0) return trumpRank + 200;
     const isRed = card.suit === '♥' || card.suit === '♦';
-    // Special case: A♦ is lowest in diamonds when offsuit
-    if (card.rank === 'A' && card.suit === '♦') return -1;
-    const order = isRed ? ['A','2','3','4','5','6','7','8','9','10','J','Q','K'] : ['10','9','8','7','6','5','4','3','2','A','J','Q','K'];
+    const order = isRed 
+      ? ['A','2','3','4','5','6','7','8','9','10','J','Q','K']
+      : ['10','9','8','7','6','5','4','3','2','A','J','Q','K'];
     return order.indexOf(card.rank);
   }
 
@@ -316,8 +242,7 @@ class GameSimulator {
       tricksWon: [...state.tricksWon],
       cardsPlayed: [...state.cardsPlayed],
       highTrumpRank: state.highTrumpRank,
-      highTrumpWinner: state.highTrumpWinner,
-      cardsDrawn: state.cardsDrawn ? [...state.cardsDrawn] : [0,0,0,0]
+      highTrumpWinner: state.highTrumpWinner
     };
   }
 
@@ -342,8 +267,13 @@ class GameSimulator {
 }
 
 function chooseCardMonteCarloAI(gameState, playableCards) {
-  return GameSimulator.chooseBestCard(gameState, playableCards);
+  return GameSimulator.chooseBestCard(gameState, playableCards, 5);
 }
+// ============================================================================
+// END MONTE CARLO AI
+// ============================================================================
+
+
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 const PLAYER_NAMES = ['You', 'Player 2', 'Partner', 'Player 4'];
@@ -700,7 +630,7 @@ function Card({ card, onClick, disabled, selected, small, faceDown, playable, wa
     <div onClick={disabled ? undefined : onClick} style={{ ...base, background: selected ? '#fffde7' : '#fff', border: playable ? '2px solid #2196f3' : selected ? '2px solid #ffc107' : '1px solid #ccc', boxShadow: selected || playable ? '0 2px 6px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.15)', transform: (selected || playable) && !disabled ? 'translateY(-2px)' : 'none', opacity: disabled && !playable ? 0.6 : 1 }}>
       <div style={{ color: isRed ? '#c62828' : '#212121', fontSize: small ? '11px' : '15px', fontWeight: 'bold', lineHeight: 1 }}>{card.rank}</div>
       <div style={{ color: isRed ? '#c62828' : '#212121', fontSize: small ? '14px' : '22px', lineHeight: 1 }}>{card.suit}</div>
-      {wasDrawn && <div style={{ position: 'absolute', top: '2px', right: '2px', width: '4px', height: '4px', borderRadius: '50%', background: '#2196f3' }} />}
+      {wasDrawn && <div style={{ position: 'absolute', bottom: '2px', right: '2px', width: '5px', height: '5px', borderRadius: '50%', background: '#1565c0' }} />}
     </div>
   );
 }
