@@ -463,7 +463,13 @@ function findBestTrumpSuit(hand) {
   }
   return { suit: best, trumpCount: bestCount, has5: best5, hasJ: bestJ };
 }
-
+    
+// FIXED: Add missing chooseTrumpSuit function
+function chooseTrumpSuit(hand) {
+  const { suit } = findBestTrumpSuit(hand);
+  return suit;
+}
+    
 function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid) {
   const { suit, trumpCount, has5, hasJ } = findBestTrumpSuit(hand);
   const hasAH = hasAceHearts(hand), hasAT = hasAceTrump(hand, suit);
