@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.2.12 - Bidder Leading Fix (for real this time)
+// 45s Card Game - Version 3.2.13 - Fixed BAGGED display and removed debug logs
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.2.12';
+const VERSION = '3.2.13';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -340,7 +340,6 @@ const PLAYER_NAMES = ['You', 'Player 2', 'Partner', 'Player 4'];
 const getTeam = (player) => player % 2 === 0 ? 0 : 1;
 
 function getTrumpRank(card, trumpSuit) {
-  if (card.rank === '5') console.log('DEBUG ANY 5:', {cardId: card.id, trumpSuit, rank: card.rank, suit: card.suit, rankType: typeof card.rank});
   if (!card || !trumpSuit) return -1;
   const { rank, suit } = card;
   if (rank === 'A' && suit === '♥') return 100;
@@ -615,7 +614,6 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
 const isBidder = player === bidWinner;
 const isLeading = trick.length === 0;
 if (isBidder && isLeading) {
-  console.log('DEBUG trumpSuit:', trumpSuit, 'player:', player, 'isBidder:', isBidder);
   const isTrump = (c) => getTrumpRank(c, trumpSuit) >= 0;
   const trumps = playable.filter(c => isTrump(c));
   const nonTrumps = playable.filter(c => !isTrump(c));
@@ -631,7 +629,6 @@ if (isBidder && isLeading) {
         bestRank = rank;
       }
     }
-    console.log('BIDDER LEADING DEBUG (3+ trump):', {player, trumpsCount: trumps.length, trumps: trumps.map(c => c.id), bestFound: best?.id, bestRank});
     return best;
   } else if (trumps.length >= 1) {
     // Weak trump (1-2): lead highest trump OR lowest offsuit
@@ -649,11 +646,9 @@ if (isBidder && isLeading) {
       });
       // 50/50 choice between highest trump or lowest offsuit
       const choice = Math.random() < 0.5 ? highestTrump : lowestOffsuit;
-      console.log('BIDDER LEADING (weak trump):', {player, count: trumps.length, leading: choice.id});
       return choice;
     }
     
-    console.log('BIDDER LEADING (trump only):', {player, count: trumps.length, leading: highestTrump.id});
     return highestTrump;
   }
 }
@@ -1354,8 +1349,12 @@ function FortyFivesGame() {
   // Bid indicator with BAGGED support - yellow pass indicator, red background for bagged
   const bidInd = (pi) => {
     if (phase === 'bidding') { 
-      if (bids[pi] === null) return null; 
-      return <span style={{ padding: '2px 4px', background: bids[pi] > 0 ? '#2196f3' : '#c9a227', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: bids[pi] > 0 ? '#fff' : '#000' }}>{bids[pi] > 0 ? bids[pi] : 'Pass'}</span>; 
+      if (bids[pi] === null) return null;
+      const showBagged = wasBagged && pi === bidWinner && bids[pi] === 15;
+      if (bids[pi] === 0) {
+        return <span style={{ padding: '2px 4px', background: '#c9a227', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#000' }}>Pass</span>;
+      }
+      return <span style={{ padding: '2px 4px', background: showBagged ? '#c62828' : '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{bids[pi]}{showBagged && <span style={{ marginLeft: '2px' }}>BAGGED</span>}</span>; 
     }
     if (bidWinner !== pi || !trumpSuit) return null;
     const showBagged = wasBagged && pi === bidWinner;
