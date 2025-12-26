@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.3.4 DEBUG - Persistent debug logging (KEEPING until fixed)
+// 45s Card Game - Version 3.3.5 DEBUG - Detailed canBeat diagnostics
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.3.4 DEBUG';
+const VERSION = '3.3.5 DEBUG';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -685,17 +685,21 @@ if (trick.length > 0) {
   }
   
   // Check if we can beat current winner
+  const canBeatResults = [];
   const canBeat = playable.some(card => {
     const testTrick = [...trick, card];
     const winner = determineTrickWinner(testTrick, trumpSuit, leader);
-    return winner === player; // Fixed: use player directly, not calculated position
+    const didWin = winner === player;
+    canBeatResults.push({card: card.id, winner, didWin});
+    return didWin;
   });
   
   console.log('CAN BEAT:', {
     player,
     myPosition,
     partnerWinning,
-    canBeat
+    canBeat,
+    testResults: canBeatResults
   });
   
   // RULE 2: Can't beat - play lowest
