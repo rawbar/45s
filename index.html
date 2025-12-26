@@ -169,9 +169,14 @@ class GameSimulator {
           return trumps.reduce((best, card) => 
             this.getTrumpRank(card, state.trumpSuit) > this.getTrumpRank(best, state.trumpSuit) ? card : best
           );
-        } else if (trumps.length <= 2 && nonTrumps.length > 0) {
+        } else if (trumps.length > 0 && trumps.length <= 2 && nonTrumps.length > 0) {
           return nonTrumps.reduce((low, card) => 
             this.getCardRank(card, state.trumpSuit) < this.getCardRank(low, state.trumpSuit) ? card : low
+          );
+        } else if (trumps.length > 0) {
+          // Have trump but <= 2 and no offsuit - lead highest trump
+          return trumps.reduce((best, card) => 
+            this.getTrumpRank(card, state.trumpSuit) > this.getTrumpRank(best, state.trumpSuit) ? card : best
           );
         }
       }
@@ -180,6 +185,7 @@ class GameSimulator {
           this.getCardRank(card, state.trumpSuit) < this.getCardRank(low, state.trumpSuit) ? card : low
         );
       }
+      // Fallback: play highest card
       return playable.reduce((best, card) => 
         this.getCardRank(card, state.trumpSuit) > this.getCardRank(best, state.trumpSuit) ? card : best
       );
