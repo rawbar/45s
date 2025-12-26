@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.3.6 DEBUG - Kitty/discard diagnostics
+// 45s Card Game - Version 3.3.7 DEBUG - CRITICAL FIX: partner winning detection
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.3.6 DEBUG';
+const VERSION = '3.3.7 DEBUG';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -670,8 +670,15 @@ if (trick.length > 0) {
     myOffsuit: myOffsuit.map(c => c.id)
   });
   
-  // Determine current winner
-  const currentWinner = determineTrickWinner([...trick, playable[0]], trumpSuit, leader);
+  // Determine current winner from the cards already played
+  let currentWinner = leader; // Start with leader
+  let winningCard = trick[0];
+  for (let i = 1; i < trick.length; i++) {
+    if (cardBeats(trick[i], winningCard, trumpSuit, trick[0].suit)) {
+      winningCard = trick[i];
+      currentWinner = (leader + i) % 4;
+    }
+  }
   const currentWinnerTeam = currentWinner % 2;
   const myTeam = player % 2;
   const partnerWinning = currentWinnerTeam === myTeam;
