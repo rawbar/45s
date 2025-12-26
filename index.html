@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.3.3 - CRITICAL FIX: canBeat check
+// 45s Card Game - Version 3.3.4 DEBUG - Persistent debug logging (KEEPING until fixed)
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.3.3';
+const VERSION = '3.3.4 DEBUG';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -661,6 +661,14 @@ if (trick.length > 0) {
   const myTrumps = playable.filter(c => isTrump(c));
   const myOffsuit = playable.filter(c => !isTrump(c));
   
+  console.log('FOLLOWING LOGIC:', {
+    player,
+    myPosition,
+    playable: playable.map(c => c.id),
+    myTrumps: myTrumps.map(c => c.id),
+    myOffsuit: myOffsuit.map(c => c.id)
+  });
+  
   // Determine current winner
   const currentWinner = determineTrickWinner([...trick, playable[0]], trumpSuit, leader);
   const currentWinnerTeam = currentWinner % 2;
@@ -681,6 +689,13 @@ if (trick.length > 0) {
     const testTrick = [...trick, card];
     const winner = determineTrickWinner(testTrick, trumpSuit, leader);
     return winner === player; // Fixed: use player directly, not calculated position
+  });
+  
+  console.log('CAN BEAT:', {
+    player,
+    myPosition,
+    partnerWinning,
+    canBeat
   });
   
   // RULE 2: Can't beat - play lowest
@@ -717,12 +732,19 @@ if (trick.length > 0) {
   
   // RULE 4: 3rd position - play high to win OR force 4th player to commit
   if (myPosition === 2) {
+    console.log('3RD POSITION:', {
+      player,
+      myTrumps: myTrumps.map(c => c.id),
+      myOffsuit: myOffsuit.map(c => c.id)
+    });
+    
     // Opponent is currently winning - we want to either:
     // 1. Win the trick ourselves, OR
     // 2. Force 4th player to use a high card
     
     // Prefer trump if we have it (more likely to win or force opponent trump)
     if (myTrumps.length > 0) {
+      console.log('→ Playing highest trump');
       // Play highest trump to maximize chance of winning
       return myTrumps.reduce((best, card) => {
         const r1 = getTrumpRank(best, trumpSuit);
