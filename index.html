@@ -651,10 +651,7 @@ if (isBidder && isLeading) {
       return choice;
     }
     
-    console.log('BIDDER LEADING DEBUG (trump only):', {player, trumpsCount: trumps.length, leading: highestTrump.id});
-    return highestTrump;
-  }
-}
+    
       console.log('BIDDER LEADING DEBUG:', {player, trumpsCount: trumps.length, trumps: trumps.map(c => c.id), bestFound: best?.id, bestRank});
       return best;
     }
