@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.2.13 - Fixed BAGGED display and removed debug logs
+// 45s Card Game - Version 3.2.14 DEBUG - Bidder leading diagnostics
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.2.13';
+const VERSION = '3.2.14 DEBUG';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -618,6 +618,16 @@ if (isBidder && isLeading) {
   const trumps = playable.filter(c => isTrump(c));
   const nonTrumps = playable.filter(c => !isTrump(c));
   
+  console.log('=== BIDDER LEADING ===', {
+    player,
+    trumpSuit,
+    playableCount: playable.length,
+    playableCards: playable.map(c => `${c.id}=${getTrumpRank(c, trumpSuit)}`),
+    trumpCount: trumps.length,
+    trumpCards: trumps.map(c => `${c.id}=rank${getTrumpRank(c, trumpSuit)}`),
+    nonTrumpCount: nonTrumps.length
+  });
+  
   if (trumps.length >= 3) {
     // Strong trump: lead HIGHEST trump
     let best = trumps[0];
@@ -629,6 +639,7 @@ if (isBidder && isLeading) {
         bestRank = rank;
       }
     }
+    console.log('→ Selected (3+ trump):', {card: best.id, rank: bestRank});
     return best;
   } else if (trumps.length >= 1) {
     // Weak trump (1-2): lead highest trump OR lowest offsuit
@@ -646,9 +657,11 @@ if (isBidder && isLeading) {
       });
       // 50/50 choice between highest trump or lowest offsuit
       const choice = Math.random() < 0.5 ? highestTrump : lowestOffsuit;
+      console.log('→ Selected (weak trump w/offsuit):', {card: choice.id});
       return choice;
     }
     
+    console.log('→ Selected (weak trump only):', {card: highestTrump.id});
     return highestTrump;
   }
 }
