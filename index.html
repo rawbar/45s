@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.3.1 DEBUG - Diagnosing 3rd man high
+// 45s Card Game - Version 3.3.2 DEBUG - Enhanced execution tracing
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.3.1 DEBUG';
+const VERSION = '3.3.2 DEBUG';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -661,6 +661,15 @@ if (trick.length > 0) {
   const myTrumps = playable.filter(c => isTrump(c));
   const myOffsuit = playable.filter(c => !isTrump(c));
   
+  console.log('FOLLOWING LOGIC ENTRY:', {
+    player,
+    myPosition,
+    trickLength: trick.length,
+    playableCount: playable.length,
+    myTrumpsCount: myTrumps.length,
+    myOffsuitCount: myOffsuit.length
+  });
+  
   // Determine current winner
   const currentWinner = determineTrickWinner([...trick, playable[0]], trumpSuit, leader);
   const currentWinnerTeam = currentWinner % 2;
@@ -681,6 +690,14 @@ if (trick.length > 0) {
     const testTrick = [...trick, card];
     const winner = determineTrickWinner(testTrick, trumpSuit, leader);
     return winner === ((leader + trick.length) % 4);
+  });
+  
+  console.log('CAN BEAT CHECK:', {
+    player,
+    myPosition,
+    partnerWinning,
+    canBeat,
+    willApplyPositionLogic: !partnerWinning && canBeat
   });
   
   // RULE 2: Can't beat - play lowest
