@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.2.6 - Bidder Leading Fix (for real this time)
+// 45s Card Game - Version 3.2.8 - Bidder Leading Fix (for real this time)
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.2.6';
+const VERSION = '3.2.8';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -631,6 +631,42 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
       return best;
     }
   }
+
+// FOLLOWING LOGIC - bypass Monte Carlo for obvious plays
+if (trick.length > 0) {
+  const ledCard = trick[0];
+  const currentWinner = determineTrickWinner([...trick, playable[0]], trumpSuit, leader);
+  const currentWinnerTeam = currentWinner % 2;
+  const myTeam = player % 2;
+  
+  // Partner winning - play lowest
+  if (currentWinnerTeam === myTeam) {
+    return playable.reduce((lowest, card) => {
+      const r1 = getTrumpRank(lowest, trumpSuit) >= 0 ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
+      const r2 = getTrumpRank(card, trumpSuit) >= 0 ? getTrumpRank(card, trumpSuit) + 200 : getOffSuitRank(card);
+      return r1 < r2 ? lowest : card;
+    });
+  }
+  
+  // Check if we can beat current winner
+  const canBeat = playable.some(card => {
+    const testTrick = [...trick, card];
+    const winner = determineTrickWinner(testTrick, trumpSuit, leader);
+    return winner === ((leader + trick.length) % 4); // Did we win?
+  });
+  
+  if (!canBeat) {
+    // Can't win - play lowest
+    return playable.reduce((lowest, card) => {
+      const r1 = getTrumpRank(lowest, trumpSuit) >= 0 ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
+      const r2 = getTrumpRank(card, trumpSuit) >= 0 ? getTrumpRank(card, trumpSuit) + 200 : getOffSuitRank(card);
+      return r1 < r2 ? lowest : card;
+    });
+  }
+}
+
+
+
   
   // Build game state for Monte Carlo AI
   const gameState = {
