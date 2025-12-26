@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.3.0 - Enhanced Strategic Heuristics
+// 45s Card Game - Version 3.3.1 DEBUG - Diagnosing 3rd man high
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.3.0';
+const VERSION = '3.3.1 DEBUG';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -717,12 +717,21 @@ if (trick.length > 0) {
   
   // RULE 4: 3rd position - play high to win OR force 4th player to commit
   if (myPosition === 2) {
+    console.log('3RD POSITION DEBUG:', {
+      player,
+      myTrumps: myTrumps.map(c => c.id),
+      myOffsuit: myOffsuit.map(c => c.id),
+      currentWinner,
+      canBeat
+    });
+    
     // Opponent is currently winning - we want to either:
     // 1. Win the trick ourselves, OR
     // 2. Force 4th player to use a high card
     
     // Prefer trump if we have it (more likely to win or force opponent trump)
     if (myTrumps.length > 0) {
+      console.log('→ Playing highest trump (3rd man high)');
       // Play highest trump to maximize chance of winning
       return myTrumps.reduce((best, card) => {
         const r1 = getTrumpRank(best, trumpSuit);
