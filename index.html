@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.1.4 - Trump Ranking Inversion Fix
+// 45s Card Game - Version 3.1.7 - Fix "Can't Win" Logic
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.1.4';
+const VERSION = '3.1.7';
 
 // ============================================================================
 // ============================================================================
@@ -199,6 +199,25 @@ class GameSimulator {
         this.getCardRank(card, state.trumpSuit) < this.getCardRank(low, state.trumpSuit) ? card : low
       );
     }
+    
+    // Check if we can actually beat the current winner
+    const currentWinningCard = state.currentTrick[this.evaluateTrick(state.currentTrick, state.trumpSuit, state.trickLeader) - state.trickLeader].card;
+    const canBeat = playable.some(card => this.cardBeats(card, currentWinningCard, state.trumpSuit, ledCard.suit));
+    
+    if (!canBeat) {
+      // Can't win - discard offsuit if possible, otherwise lowest trump
+      if (nonTrumps.length > 0) {
+        return nonTrumps.reduce((low, card) => 
+          this.getCardRank(card, state.trumpSuit) < this.getCardRank(low, state.trumpSuit) ? card : low
+        );
+      }
+      // No offsuit - play lowest trump
+      return playable.reduce((low, card) => 
+        this.getCardRank(card, state.trumpSuit) < this.getCardRank(low, state.trumpSuit) ? card : low
+      );
+    }
+    
+    // Can win - play highest card that can beat current winner
     return playable.reduce((high, card) => 
       this.getCardRank(card, state.trumpSuit) > this.getCardRank(high, state.trumpSuit) ? card : high
     );
