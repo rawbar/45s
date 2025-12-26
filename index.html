@@ -641,7 +641,7 @@ if (isBidder && isLeading) {
       return r2 > r1 ? card : best;
     });
     
-    if (nonTrumps.length > 0) {
+   if (nonTrumps.length > 0) {
       const lowestOffsuit = nonTrumps.reduce((lowest, card) => {
         const r1 = getOffSuitRank(lowest);
         const r2 = getOffSuitRank(card);
@@ -649,11 +649,14 @@ if (isBidder && isLeading) {
       });
       // 50/50 choice between highest trump or lowest offsuit
       const choice = Math.random() < 0.5 ? highestTrump : lowestOffsuit;
-      console.log('BIDDER LEADING DEBUG (weak trump):', {player, trumpsCount: trumps.length, choice: choice.id, highestTrump: highestTrump.id, lowestOffsuit: lowestOffsuit.id});
+      console.log('BIDDER LEADING (weak trump):', {player, count: trumps.length, leading: choice.id});
       return choice;
     }
     
-    
+    console.log('BIDDER LEADING (trump only):', {player, count: trumps.length, leading: highestTrump.id});
+    return highestTrump;
+  }
+}
 
 // FOLLOWING LOGIC - bypass Monte Carlo for obvious plays
 if (trick.length > 0) {
