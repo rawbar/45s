@@ -610,23 +610,51 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   
   if (playable.length <= 1) return playable[0] || hand[0];
   
-  // BIDDER LEADING STRATEGY: If bidder leading with 3+ trump, lead highest trump
-  const isBidder = player === bidWinner;
-  const isLeading = trick.length === 0;
-  if (isBidder && isLeading) {
-    const isTrump = (c) => getTrumpRank(c, trumpSuit) >= 0;
-    const trumps = playable.filter(c => isTrump(c));
-    if (trumps.length >= 3) {
-      // Lead highest trump
-      let best = trumps[0];
-      let bestRank = getTrumpRank(best, trumpSuit);
-      for (const card of trumps) {
-        const rank = getTrumpRank(card, trumpSuit);
-        if (rank > bestRank) {
-          best = card;
-          bestRank = rank;
-        }
+ // BIDDER LEADING STRATEGY
+const isBidder = player === bidWinner;
+const isLeading = trick.length === 0;
+if (isBidder && isLeading) {
+  const isTrump = (c) => getTrumpRank(c, trumpSuit) >= 0;
+  const trumps = playable.filter(c => isTrump(c));
+  const nonTrumps = playable.filter(c => !isTrump(c));
+  
+  if (trumps.length >= 3) {
+    // Strong trump: lead HIGHEST trump
+    let best = trumps[0];
+    let bestRank = getTrumpRank(best, trumpSuit);
+    for (const card of trumps) {
+      const rank = getTrumpRank(card, trumpSuit);
+      if (rank > bestRank) {
+        best = card;
+        bestRank = rank;
       }
+    }
+    console.log('BIDDER LEADING DEBUG (3+ trump):', {player, trumpsCount: trumps.length, trumps: trumps.map(c => c.id), bestFound: best?.id, bestRank});
+    return best;
+  } else if (trumps.length >= 1) {
+    // Weak trump (1-2): lead highest trump OR lowest offsuit
+    const highestTrump = trumps.reduce((best, card) => {
+      const r1 = getTrumpRank(best, trumpSuit);
+      const r2 = getTrumpRank(card, trumpSuit);
+      return r2 > r1 ? card : best;
+    });
+    
+    if (nonTrumps.length > 0) {
+      const lowestOffsuit = nonTrumps.reduce((lowest, card) => {
+        const r1 = getOffSuitRank(lowest);
+        const r2 = getOffSuitRank(card);
+        return r1 < r2 ? lowest : card;
+      });
+      // 50/50 choice between highest trump or lowest offsuit
+      const choice = Math.random() < 0.5 ? highestTrump : lowestOffsuit;
+      console.log('BIDDER LEADING DEBUG (weak trump):', {player, trumpsCount: trumps.length, choice: choice.id, highestTrump: highestTrump.id, lowestOffsuit: lowestOffsuit.id});
+      return choice;
+    }
+    
+    console.log('BIDDER LEADING DEBUG (trump only):', {player, trumpsCount: trumps.length, leading: highestTrump.id});
+    return highestTrump;
+  }
+}
       console.log('BIDDER LEADING DEBUG:', {player, trumpsCount: trumps.length, trumps: trumps.map(c => c.id), bestFound: best?.id, bestRank});
       return best;
     }
