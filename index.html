@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.2.11 - Bidder Leading Fix (for real this time)
+// 45s Card Game - Version 3.2.12 - Bidder Leading Fix (for real this time)
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.2.11';
+const VERSION = '3.2.12';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -654,10 +654,6 @@ if (isBidder && isLeading) {
     }
     
     
-      console.log('BIDDER LEADING DEBUG:', {player, trumpsCount: trumps.length, trumps: trumps.map(c => c.id), bestFound: best?.id, bestRank});
-      return best;
-    }
-  }
 
 // FOLLOWING LOGIC - bypass Monte Carlo for obvious plays
 if (trick.length > 0) {
