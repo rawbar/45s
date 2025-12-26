@@ -614,6 +614,7 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
 const isBidder = player === bidWinner;
 const isLeading = trick.length === 0;
 if (isBidder && isLeading) {
+  console.log('DEBUG trumpSuit:', trumpSuit, 'player:', player, 'isBidder:', isBidder);
   const isTrump = (c) => getTrumpRank(c, trumpSuit) >= 0;
   const trumps = playable.filter(c => isTrump(c));
   const nonTrumps = playable.filter(c => !isTrump(c));
