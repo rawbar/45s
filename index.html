@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.2.15 DEBUG - Enhanced bidder diagnostics
+// 45s Card Game - Version 3.2.16 - CRITICAL FIX: bidWinner parameter passing
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.2.15 DEBUG';
+const VERSION = '3.2.16';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -1207,7 +1207,7 @@ function FortyFivesGame() {
     setDrawnCards(prev => new Set([...prev, ...cardsDrawn.map(c => c.id)]));
     setHands(newH); setDeck(d); setDrawn(newDrawn);
     const next = (p + 1) % 4, start = (dlr + 1) % 4;
-    if (next === start) startPlay(bw, newH, t, hb, totals, newDrawn);
+    if (next === start) startPlay(bw, newH, t, hb, totals, newDrawn, bw);
     else { setCurrentPlayer(next);
       if (next === 0) { setSelected(getDefaultDiscardSelection(newH[0], t)); setMsg('Discard (keep 1+)'); }
       else { setMsg(`${PLAYER_NAMES[next]} discarding...`); timer.current = setTimeout(() => aiDiscard(next, newH, t, bw, hb, totals, dlr, newDrawn, d), 500); }
@@ -1228,11 +1228,11 @@ function FortyFivesGame() {
     setDrawnCards(prev => new Set([...prev, ...cardsDrawn.map(c => c.id)]));
     setHands(newH); setDeck(d); setDrawn(newDrawn); setSelected([]);
     const next = 1, start = (dealer + 1) % 4;
-    if (next === start) startPlay(bidWinner, newH, trumpSuit, highBid, scores, newDrawn);
+    if (next === start) startPlay(bidWinner, newH, trumpSuit, highBid, scores, newDrawn, bidWinner);
     else { setCurrentPlayer(next); setMsg(`${PLAYER_NAMES[next]} discarding...`); timer.current = setTimeout(() => aiDiscard(next, newH, trumpSuit, bidWinner, highBid, scores, dealer, newDrawn, d), 500); }
   }, [hands, selected, deck, dealer, bidWinner, trumpSuit, highBid, scores, drawn]);
 
-  const startPlay = useCallback((leader, h, t, hb, totals, dr) => {
+  const startPlay = useCallback((leader, h, t, hb, totals, dr, bw) => {
     // DEBUG: Check hand sizes
     console.log('=== START PLAY DEBUG ===');
     h.forEach((hand, idx) => {
@@ -1253,8 +1253,8 @@ function FortyFivesGame() {
     setBidderLostTrick(false);
     const handSizes = h.map((hand, idx) => `P${idx}:${hand.length}`).join(' ');
     if (leader === 0) setMsg(`Your lead [${handSizes}]`);
-    else { setMsg(`${PLAYER_NAMES[leader]} leads... [${handSizes}]`); timer.current = setTimeout(() => aiPlay(leader, h, [], t, leader, 1, [0,0], [0,0], { rank: -1, player: -1 }, bidWinner, hb, totals, dr, [0,0,0,0], [false,false,false,false], false, [], []), 700); }
-  }, [bidWinner]);
+    else { setMsg(`${PLAYER_NAMES[leader]} leads... [${handSizes}]`); timer.current = setTimeout(() => aiPlay(leader, h, [], t, leader, 1, [0,0], [0,0], { rank: -1, player: -1 }, bw, hb, totals, dr, [0,0,0,0], [false,false,false,false], false, [], []), 700); }
+  }, []);
 
   const aiPlay = useCallback((p, h, tc, t, lead, tn, tw, rp, hti, bw, hb, totals, dr, pt, koot, blt, cp, ph) => {
     const hand = h[p]; if (!hand || !hand.length) return;
