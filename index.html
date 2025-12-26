@@ -627,6 +627,7 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
           bestRank = rank;
         }
       }
+      console.log('BIDDER LEADING DEBUG:', {player, trumpsCount: trumps.length, trumps: trumps.map(c => c.id), bestFound: best?.id, bestRank});
       return best;
     }
   }
