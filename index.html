@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.3.5 DEBUG - Detailed canBeat diagnostics
+// 45s Card Game - Version 3.3.6 DEBUG - Kitty/discard diagnostics
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.3.5 DEBUG';
+const VERSION = '3.3.6 DEBUG';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -582,8 +582,9 @@ function decideDiscard(hand, trumpSuit, isBidWinner, bidAmount) {
       bySuit[s].sort((a, b) => getOffSuitRank(b) - getOffSuitRank(a));
       bestPerSuit.push(bySuit[s][0]);
     }
-    const strongOffsuit = bestPerSuit.filter(c => c.rank === 'K' || c.rank === 'A');
-    if (strongOffsuit.length > 0 && trumps.length >= 3) {
+    // ONLY King offsuit is strong enough to keep, and ONLY with 4+ trump
+    const strongOffsuit = bestPerSuit.filter(c => c.rank === 'K');
+    if (strongOffsuit.length > 0 && trumps.length >= 4) {
       keep.push(strongOffsuit[0]);
     }
   }
@@ -1261,6 +1262,12 @@ function FortyFivesGame() {
   const finishBid = useCallback((w, t, h, hb, totals, dlr, bagged) => {
     setTrumpSuit(t); setBidWinner(w); setHighBid(hb);
     setRoundBids([...bids]); // Save bids for modal
+    console.log('KITTY GIVEN TO WINNER:', {
+      winner: w,
+      kittyCards: kitty.map(c => c.id),
+      handBefore: h[w].map(c => c.id),
+      handAfterSize: h[w].length + kitty.length
+    });
     const newH = h.map((hand, i) => i === w ? [...hand, ...kitty] : [...hand]);
     setHands(newH); setKitty([]);
     setSelected(getDefaultDiscardSelection(newH[0], t));
@@ -1271,7 +1278,18 @@ function FortyFivesGame() {
   }, [kitty, deck, bids]);
 
   const aiDiscard = useCallback((p, h, t, bw, hb, totals, dlr, curDrawn, curDeck) => {
+    console.log('AI DISCARD START:', {
+      player: p,
+      handBefore: h[p].map(c => c.id),
+      handSize: h[p].length
+    });
     const { keep } = decideDiscard(h[p], t, p === bw, hb);
+    console.log('AI DISCARD DECISION:', {
+      player: p,
+      keeping: keep.map(c => c.id),
+      discarding: h[p].filter(c => !keep.some(k => k.id === c.id)).map(c => c.id),
+      willDraw: Math.max(0, 5 - keep.length)
+    });
     const newH = h.map(x => [...x]); newH[p] = keep;
     let d = [...curDeck]; const dc = Math.max(0, 5 - keep.length);
     const cardsDrawn = [];
