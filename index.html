@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.2.5 - Debug 6-Card Bug
+// 45s Card Game - Version 3.2.6 - Bidder Leading Fix (for real this time)
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.2.5';
+const VERSION = '3.2.6';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -130,6 +130,10 @@ class GameSimulator {
             best = card;
             bestRank = rank;
           }
+        }
+        // DEBUG: Store what was selected
+        if (typeof window !== 'undefined') {
+          window.lastBidderLead = {trumps: trumps.map(c => `${c.id}=${this.getTrumpRank(c, state.trumpSuit)}`), selected: `${best.id}=${bestRank}`};
         }
         return best;
       }
@@ -599,6 +603,27 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   const playable = getPlayableCards(hand, trumpSuit, led, ledSuit);
   
   if (playable.length <= 1) return playable[0] || hand[0];
+  
+  // BIDDER LEADING STRATEGY: If bidder leading with 3+ trump, lead highest trump
+  const isBidder = player === bidWinner;
+  const isLeading = trick.length === 0;
+  if (isBidder && isLeading) {
+    const isTrump = (c) => getTrumpRank(c, trumpSuit) >= 0;
+    const trumps = playable.filter(c => isTrump(c));
+    if (trumps.length >= 3) {
+      // Lead highest trump
+      let best = trumps[0];
+      let bestRank = getTrumpRank(best, trumpSuit);
+      for (const card of trumps) {
+        const rank = getTrumpRank(card, trumpSuit);
+        if (rank > bestRank) {
+          best = card;
+          bestRank = rank;
+        }
+      }
+      return best;
+    }
+  }
   
   // Build game state for Monte Carlo AI
   const gameState = {
