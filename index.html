@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.2.16 - CRITICAL FIX: bidWinner parameter passing
+// 45s Card Game - Version 3.3.0 - Enhanced Strategic Heuristics
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.2.16';
+const VERSION = '3.3.0';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -610,16 +610,6 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   
   if (playable.length <= 1) return playable[0] || hand[0];
   
-  // DEBUG: Check conditions
-  console.log('chooseCardToPlay called:', {
-    player, 
-    bidWinner, 
-    isBidder: player === bidWinner,
-    trickLength: trick.length,
-    isLeading: trick.length === 0,
-    willEnterBidderLogic: (player === bidWinner) && (trick.length === 0)
-  });
-  
  // BIDDER LEADING STRATEGY
 const isBidder = player === bidWinner;
 const isLeading = trick.length === 0;
@@ -627,16 +617,6 @@ if (isBidder && isLeading) {
   const isTrump = (c) => getTrumpRank(c, trumpSuit) >= 0;
   const trumps = playable.filter(c => isTrump(c));
   const nonTrumps = playable.filter(c => !isTrump(c));
-  
-  console.log('=== BIDDER LEADING ===', {
-    player,
-    trumpSuit,
-    playableCount: playable.length,
-    playableCards: playable.map(c => `${c.id}=${getTrumpRank(c, trumpSuit)}`),
-    trumpCount: trumps.length,
-    trumpCards: trumps.map(c => `${c.id}=rank${getTrumpRank(c, trumpSuit)}`),
-    nonTrumpCount: nonTrumps.length
-  });
   
   if (trumps.length >= 3) {
     // Strong trump: lead HIGHEST trump
@@ -649,7 +629,6 @@ if (isBidder && isLeading) {
         bestRank = rank;
       }
     }
-    console.log('→ Selected (3+ trump):', {card: best.id, rank: bestRank});
     return best;
   } else if (trumps.length >= 1) {
     // Weak trump (1-2): lead highest trump OR lowest offsuit
@@ -667,27 +646,32 @@ if (isBidder && isLeading) {
       });
       // 50/50 choice between highest trump or lowest offsuit
       const choice = Math.random() < 0.5 ? highestTrump : lowestOffsuit;
-      console.log('→ Selected (weak trump w/offsuit):', {card: choice.id});
       return choice;
     }
     
-    console.log('→ Selected (weak trump only):', {card: highestTrump.id});
     return highestTrump;
   }
 }
 
-// FOLLOWING LOGIC - bypass Monte Carlo for obvious plays
+// ENHANCED FOLLOWING LOGIC - Strategic play based on position and card tracking
 if (trick.length > 0) {
   const ledCard = trick[0];
+  const myPosition = trick.length; // 1, 2, or 3 (how many cards already played)
+  const isTrump = (c) => getTrumpRank(c, trumpSuit) >= 0;
+  const myTrumps = playable.filter(c => isTrump(c));
+  const myOffsuit = playable.filter(c => !isTrump(c));
+  
+  // Determine current winner
   const currentWinner = determineTrickWinner([...trick, playable[0]], trumpSuit, leader);
   const currentWinnerTeam = currentWinner % 2;
   const myTeam = player % 2;
+  const partnerWinning = currentWinnerTeam === myTeam;
   
-  // Partner winning - play lowest
-  if (currentWinnerTeam === myTeam) {
+  // RULE 1: Partner winning - play lowest (don't steal partner's trick)
+  if (partnerWinning) {
     return playable.reduce((lowest, card) => {
-      const r1 = getTrumpRank(lowest, trumpSuit) >= 0 ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
-      const r2 = getTrumpRank(card, trumpSuit) >= 0 ? getTrumpRank(card, trumpSuit) + 200 : getOffSuitRank(card);
+      const r1 = isTrump(lowest) ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
+      const r2 = isTrump(card) ? getTrumpRank(card, trumpSuit) + 200 : getOffSuitRank(card);
       return r1 < r2 ? lowest : card;
     });
   }
@@ -696,19 +680,85 @@ if (trick.length > 0) {
   const canBeat = playable.some(card => {
     const testTrick = [...trick, card];
     const winner = determineTrickWinner(testTrick, trumpSuit, leader);
-    return winner === ((leader + trick.length) % 4); // Did we win?
+    return winner === ((leader + trick.length) % 4);
   });
   
+  // RULE 2: Can't beat - play lowest
   if (!canBeat) {
-    // Can't win - play lowest
     return playable.reduce((lowest, card) => {
-      const r1 = getTrumpRank(lowest, trumpSuit) >= 0 ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
-      const r2 = getTrumpRank(card, trumpSuit) >= 0 ? getTrumpRank(card, trumpSuit) + 200 : getOffSuitRank(card);
+      const r1 = isTrump(lowest) ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
+      const r2 = isTrump(card) ? getTrumpRank(card, trumpSuit) + 200 : getOffSuitRank(card);
+      return r1 < r2 ? lowest : card;
+    });
+  }
+  
+  // We CAN beat current winner - now apply position-based strategy
+  
+  // RULE 3: 4th position (last to play) - win with MINIMUM necessary card
+  if (myPosition === 3) {
+    // Find the cheapest card that wins
+    let cheapestWinner = null;
+    let cheapestRank = 999;
+    
+    for (const card of playable) {
+      const testTrick = [...trick, card];
+      const winner = determineTrickWinner(testTrick, trumpSuit, leader);
+      if (winner === player) {
+        const cardRank = isTrump(card) ? getTrumpRank(card, trumpSuit) : getOffSuitRank(card);
+        if (cardRank < cheapestRank) {
+          cheapestWinner = card;
+          cheapestRank = cardRank;
+        }
+      }
+    }
+    
+    if (cheapestWinner) return cheapestWinner;
+  }
+  
+  // RULE 4: 3rd position - play high to win OR force 4th player to commit
+  if (myPosition === 2) {
+    // Opponent is currently winning - we want to either:
+    // 1. Win the trick ourselves, OR
+    // 2. Force 4th player to use a high card
+    
+    // Prefer trump if we have it (more likely to win or force opponent trump)
+    if (myTrumps.length > 0) {
+      // Play highest trump to maximize chance of winning
+      return myTrumps.reduce((best, card) => {
+        const r1 = getTrumpRank(best, trumpSuit);
+        const r2 = getTrumpRank(card, trumpSuit);
+        return r2 > r1 ? card : best;
+      });
+    }
+    
+    // No trump - play highest offsuit
+    if (myOffsuit.length > 0) {
+      return myOffsuit.reduce((best, card) => {
+        const r1 = getOffSuitRank(best);
+        const r2 = getOffSuitRank(card);
+        return r2 > r1 ? card : best;
+      });
+    }
+  }
+  
+  // RULE 5: 2nd position - generally play low (2nd man low)
+  // Exception: if we have guaranteed winner, take it
+  if (myPosition === 1) {
+    // Check if we have a card that's guaranteed to win (boss card)
+    for (const card of playable) {
+      if (isCardBoss(card, cardsPlayed, trumpSuit)) {
+        return card; // Play boss card immediately
+      }
+    }
+    
+    // Otherwise play low (2nd man low principle)
+    return playable.reduce((lowest, card) => {
+      const r1 = isTrump(lowest) ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
+      const r2 = isTrump(card) ? getTrumpRank(card, trumpSuit) + 200 : getOffSuitRank(card);
       return r1 < r2 ? lowest : card;
     });
   }
 }
-
 
 
   
