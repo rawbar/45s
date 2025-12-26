@@ -16,9 +16,9 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.2.14 DEBUG - Bidder leading diagnostics
+// 45s Card Game - Version 3.2.15 DEBUG - Enhanced bidder diagnostics
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.2.14 DEBUG';
+const VERSION = '3.2.15 DEBUG';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -609,6 +609,16 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   const playable = getPlayableCards(hand, trumpSuit, led, ledSuit);
   
   if (playable.length <= 1) return playable[0] || hand[0];
+  
+  // DEBUG: Check conditions
+  console.log('chooseCardToPlay called:', {
+    player, 
+    bidWinner, 
+    isBidder: player === bidWinner,
+    trickLength: trick.length,
+    isLeading: trick.length === 0,
+    willEnterBidderLogic: (player === bidWinner) && (trick.length === 0)
+  });
   
  // BIDDER LEADING STRATEGY
 const isBidder = player === bidWinner;
