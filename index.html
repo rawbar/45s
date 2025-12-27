@@ -16,11 +16,11 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.5.7-DEBUG - Auto-bagging with COMPREHENSIVE debugging
+// 45s Card Game - Version 3.5.9 - Consistent P1-P4 labeling + fixes
 // INSTALLATION: Just open this file in any modern web browser (Chrome, Firefox, Safari, Edge)
 // NO external dependencies required - everything is self-contained
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.5.7-DEBUG';
+const VERSION = '3.5.9';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -750,6 +750,18 @@ function decideDiscard(hand, trumpSuit, isBidWinner, bidAmount) {
     });
     keep = [sorted[0]];
   }
+  
+  // CRITICAL: Always limit to 5 cards max
+  if (keep.length > 5) {
+    // Sort by value and keep top 5
+    const sorted = [...keep].sort((a,b) => {
+      const ar = isTrump(a,trumpSuit) ? getTrumpRank(a,trumpSuit) : getOffSuitRank(a);
+      const br = isTrump(b,trumpSuit) ? getTrumpRank(b,trumpSuit) : getOffSuitRank(b);
+      return br - ar;
+    });
+    keep = sorted.slice(0, 5);
+  }
+  
   return { keep, discard: hand.filter(c => !keep.some(k => k.id === c.id)) };
 }
 
@@ -1319,7 +1331,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
           <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#d4af37' }}>
             Hands After Draw <span style={{ fontSize: '10px', color: '#888' }}>v{VERSION}</span>
             <div style={{ fontSize: '9px', color: '#888', fontWeight: 'normal' }}>
-              {hands && `[${hands.map((h, i) => `P${i}:${h.length}`).join(' ')}]`}
+              {hands && `[${hands.map((h, i) => `P${i+1}:${h.length}`).join(' ')}]`}
             </div>
           </span>
           <div onClick={onClose} style={{ width: '24px', height: '24px', border: '1px solid #aaa', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '16px', cursor: 'pointer' }}>✕</div>
@@ -1339,10 +1351,10 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
         
         {/* Text list of all cards for debugging/screenshots */}
         <div style={{ borderTop: '1px solid rgba(212,175,55,0.3)', paddingTop: '8px', fontSize: '10px', fontFamily: 'monospace', color: '#aaa' }}>
-          <div>P0 (You): {hands[0].map(c => c.id).join(', ')}</div>
-          <div>P1 (Partner): {hands[2].map(c => c.id).join(', ')}</div>
-          <div>P2: {hands[1].map(c => c.id).join(', ')}</div>
-          <div>P3 (P4): {hands[3].map(c => c.id).join(', ')}</div>
+          <div>P1 (You): {hands[0].map(c => c.id).join(', ')}</div>
+          <div>P2 (Partner): {hands[2].map(c => c.id).join(', ')}</div>
+          <div>P3: {hands[1].map(c => c.id).join(', ')}</div>
+          <div>P4: {hands[3].map(c => c.id).join(', ')}</div>
         </div>
       </div>
     </div>
@@ -1430,7 +1442,7 @@ function FortyFivesGame() {
       alert(errorMsg);
       console.error('DUPLICATE CARDS DETECTED!', {
         duplicates: [...new Set(duplicates)],
-        hands: h.map((hand, i) => `P${i}: ${hand.map(c => c.id).join(', ')}`),
+        hands: h.map((hand, i) => `P${i+1}: ${hand.map(c => c.id).join(', ')}`),
         kitty: k.map(c => c.id),
         deck: rem.slice(0, 10).map(c => c.id)
       });
@@ -1440,6 +1452,14 @@ function FortyFivesGame() {
     
     setHands(h); setKitty(k); setDeck(rem);
     dealtHands.current = h; // Preserve for bidding phase
+    
+    // Log initial deal for debugging
+    console.log('🎲 INITIAL DEAL:');
+    h.forEach((hand, i) => {
+      console.log(`  P${i+1}: ${hand.length} cards [${hand.map(c => c.id).join(', ')}]`);
+    });
+    console.log(`  Kitty: ${k.length} cards [${k.map(c => c.id).join(', ')}]`);
+    console.log(`  Deck: ${rem.length} cards remaining`);
     setBids([null,null,null,null]); setHighBid(0); setBidWinner(null); setTrumpSuit(null);
     setTrick([]); setTrickCards([]); setTricksWon([0,0]); setPlayerTricks([0,0,0,0]);
     setRoundPts([0,0]); setTrickNum(0); setSelected([]); setLastTrick(null);
@@ -1468,9 +1488,9 @@ function FortyFivesGame() {
       
       if (allOthersPassed) {
         console.log('🎒 AUTO-BAGGING TRIGGERED');
-        console.log('  Dealer:', dlr);
+        console.log('  Dealer:', dlr + 1); // Show as P1-P4
         console.log('  Bids:', curBids);
-        console.log('  Hands before:', h.map((hand, i) => `P${i}: [${hand.map(c => c.id).join(', ')}]`));
+        console.log('  Hands before:', h.map((hand, i) => `P${i+1}: [${hand.map(c => c.id).join(', ')}]`));
         console.log('  Kitty before:', kitty.map(c => c.id));
         console.log('  Deck size before:', deck.length);
         
@@ -1554,8 +1574,8 @@ function FortyFivesGame() {
   // Helper that accepts kitty/deck as parameters (for auto-bagging)
   const finishBidWithKitty = useCallback((w, t, h, hb, totals, dlr, bagged, capturedKitty, capturedDeck) => {
     console.log('🎒 finishBidWithKitty ENTRY');
-    console.log('  Winner:', w, 'Trump:', t);
-    console.log('  Hands before adding kitty:', h.map((hand, i) => `P${i}: [${hand.map(c => c.id).join(', ')}]`));
+    console.log('  Winner: P' + (w + 1), 'Trump:', t); // Show as P1-P4
+    console.log('  Hands before adding kitty:', h.map((hand, i) => `P${i+1}: [${hand.map(c => c.id).join(', ')}]`));
     console.log('  Kitty to add:', capturedKitty.map(c => c.id));
     
     setTrumpSuit(t); setBidWinner(w); setHighBid(hb);
@@ -1566,7 +1586,7 @@ function FortyFivesGame() {
     });
     
     const newH = h.map((hand, i) => i === w ? [...hand, ...capturedKitty] : [...hand]);
-    console.log('  Hands after adding kitty:', newH.map((hand, i) => `P${i}: [${hand.map(c => c.id).join(', ')}]`));
+    console.log('  Hands after adding kitty:', newH.map((hand, i) => `P${i+1}: [${hand.map(c => c.id).join(', ')}]`));
     
     // Validate no duplicates after adding kitty
     const allCards = newH.flat();
@@ -1608,7 +1628,7 @@ function FortyFivesGame() {
   }, [kitty, deck, bids]);
 
   const aiDiscard = useCallback((p, h, t, bw, hb, totals, dlr, curDrawn, curDeck) => {
-    console.log(`🗑️ aiDiscard P${p}:`, {
+    console.log(`🗑️ aiDiscard P${p+1}:`, { // Show as P1-P4
       handBefore: h[p].map(c => c.id),
       handSize: h[p].length,
       deckSize: curDeck.length
@@ -1631,7 +1651,7 @@ function FortyFivesGame() {
       const uniqueHandIds = new Set(handIds);
       if (uniqueHandIds.size !== handIds.length) {
         const dups = handIds.filter((id, idx) => handIds.indexOf(id) !== idx);
-        console.error(`⚠️ DUPLICATES IN P${p} HAND AFTER DRAW:`, [...new Set(dups)]);
+        console.error(`⚠️ DUPLICATES IN P${p+1} HAND AFTER DRAW:`, [...new Set(dups)]); // Show as P1-P4
       }
     }
     const newDrawn = [...curDrawn]; newDrawn[p] = dc;
@@ -1670,7 +1690,7 @@ function FortyFivesGame() {
     // DEBUG: Check hand sizes
     console.log('=== START PLAY DEBUG ===');
     h.forEach((hand, idx) => {
-      console.log(`Player ${idx}: ${hand.length} cards`, hand.map(c => c.id));
+      console.log(`Player ${idx+1}: ${hand.length} cards`, hand.map(c => c.id)); // Show as P1-P4
     });
     console.log('Drawn counts:', dr);
     console.log('=======================');
