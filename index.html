@@ -16,11 +16,11 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.5.5-TEST - Auto-bagging attempt #8 with extensive logging
+// 45s Card Game - Version 3.5.7-DEBUG - Auto-bagging with COMPREHENSIVE debugging
 // INSTALLATION: Just open this file in any modern web browser (Chrome, Firefox, Safari, Edge)
 // NO external dependencies required - everything is self-contained
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.5.5-TEST';
+const VERSION = '3.5.7-DEBUG';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -1461,17 +1461,18 @@ function FortyFivesGame() {
   const doBid = useCallback((p, h, dlr, curBids, curHigh, totals, lastBidAmt) => {
     if (p === 0) return;
     
-    // Check if dealer is about to bid and everyone else passed
+    // AUTO-BAGGING: Check if dealer is about to bid and everyone else passed
     if (p === dlr) {
       const otherBids = curBids.filter((b, idx) => idx !== dlr);
       const allOthersPassed = otherBids.every(b => b === 0);
       
       if (allOthersPassed) {
-        console.log('🎒 AUTO-BAGGING DEALER:', {
-          dealer: dlr,
-          bids: curBids,
-          allOthersPassed
-        });
+        console.log('🎒 AUTO-BAGGING TRIGGERED');
+        console.log('  Dealer:', dlr);
+        console.log('  Bids:', curBids);
+        console.log('  Hands before:', h.map((hand, i) => `P${i}: [${hand.map(c => c.id).join(', ')}]`));
+        console.log('  Kitty before:', kitty.map(c => c.id));
+        console.log('  Deck size before:', deck.length);
         
         const newBids = [...curBids];
         newBids[dlr] = 15;
@@ -1481,12 +1482,28 @@ function FortyFivesGame() {
         setBidWinner(dlr);
         
         const t = chooseTrumpSuit(h[dlr]);
-        console.log('→ Dealer bagged, proceeding to finishBid');
+        console.log('  Trump chosen:', t);
         
-        // Use 500ms delay like normal bid completion
-        timer.current = setTimeout(() => {
-          finishBid(dlr, t, h, 15, totals, dlr, true);
-        }, 500);
+        // CRITICAL: Capture kitty and deck NOW before setTimeout
+        const capturedKitty = [...kitty];
+        const capturedDeck = [...deck];
+        console.log('  Captured kitty:', capturedKitty.map(c => c.id));
+        console.log('  Captured deck size:', capturedDeck.length);
+        
+        // Validate no duplicates in captured state
+        const allCards = [...h.flat(), ...capturedKitty, ...capturedDeck];
+        const allIds = allCards.map(c => c.id);
+        const uniqueIds = new Set(allIds);
+        if (uniqueIds.size !== allIds.length) {
+          const dups = allIds.filter((id, idx) => allIds.indexOf(id) !== idx);
+          console.error('⚠️ DUPLICATES DETECTED BEFORE finishBidWithKitty:', [...new Set(dups)]);
+        } else {
+          console.log('  ✓ No duplicates before finishBidWithKitty');
+        }
+        
+        // Call finishBid immediately WITHOUT setTimeout to avoid state staleness
+        console.log('  → Calling finishBidWithKitty');
+        finishBidWithKitty(dlr, t, h, 15, totals, dlr, true, capturedKitty, capturedDeck);
         return;
       }
     }
@@ -1516,7 +1533,7 @@ function FortyFivesGame() {
       if (next === 0) setMsg('Your bid');
       else { setMsg(`${PLAYER_NAMES[next]} bidding...`); timer.current = setTimeout(() => doBid(next, h, dlr, newBids, newHigh, totals, dec.bid > 0 ? dec.bid : lastBidAmt), 800); }
     }
-  }, [aiTrump]);
+  }, [aiTrump, kitty, deck]);
 
   const humanBid = useCallback((amt, h, dlr, totals) => {
     const newBids = [...bids]; newBids[0] = amt; setBids(newBids);
@@ -1533,6 +1550,46 @@ function FortyFivesGame() {
   }, [bids, highBid, aiTrump]);
 
   const selectTrump = useCallback((s) => finishBid(0, s, hands, highBid, scores, dealer, wasBagged), [hands, highBid, scores, dealer, wasBagged]);
+
+  // Helper that accepts kitty/deck as parameters (for auto-bagging)
+  const finishBidWithKitty = useCallback((w, t, h, hb, totals, dlr, bagged, capturedKitty, capturedDeck) => {
+    console.log('🎒 finishBidWithKitty ENTRY');
+    console.log('  Winner:', w, 'Trump:', t);
+    console.log('  Hands before adding kitty:', h.map((hand, i) => `P${i}: [${hand.map(c => c.id).join(', ')}]`));
+    console.log('  Kitty to add:', capturedKitty.map(c => c.id));
+    
+    setTrumpSuit(t); setBidWinner(w); setHighBid(hb);
+    // Save current bids state for modal
+    setBids(currentBids => {
+      setRoundBids([...currentBids]);
+      return currentBids;
+    });
+    
+    const newH = h.map((hand, i) => i === w ? [...hand, ...capturedKitty] : [...hand]);
+    console.log('  Hands after adding kitty:', newH.map((hand, i) => `P${i}: [${hand.map(c => c.id).join(', ')}]`));
+    
+    // Validate no duplicates after adding kitty
+    const allCards = newH.flat();
+    const allIds = allCards.map(c => c.id);
+    const uniqueIds = new Set(allIds);
+    if (uniqueIds.size !== allIds.length) {
+      const dups = allIds.filter((id, idx) => allIds.indexOf(id) !== idx);
+      console.error('⚠️ DUPLICATES AFTER ADDING KITTY:', [...new Set(dups)]);
+    } else {
+      console.log('  ✓ No duplicates after adding kitty');
+    }
+    
+    setHands(newH); setKitty([]);
+    setSelected(getDefaultDiscardSelection(newH[0], t));
+    const first = (dlr + 1) % 4; setPhase('discarding'); setCurrentPlayer(first);
+    const bagMsg = bagged ? ' (BAGGED)' : '';
+    if (first === 0) setMsg(`Discard (keep 1+)${bagMsg}`);
+    else { 
+      console.log('  → Calling aiDiscard for P' + first);
+      setMsg(`${PLAYER_NAMES[first]} discarding...${bagMsg}`); 
+      timer.current = setTimeout(() => aiDiscard(first, newH, t, w, hb, totals, dlr, [0,0,0,0], capturedDeck), 500); 
+    }
+  }, [bids]);
 
   const finishBid = useCallback((w, t, h, hb, totals, dlr, bagged) => {
     setTrumpSuit(t); setBidWinner(w); setHighBid(hb);
@@ -1551,19 +1608,40 @@ function FortyFivesGame() {
   }, [kitty, deck, bids]);
 
   const aiDiscard = useCallback((p, h, t, bw, hb, totals, dlr, curDrawn, curDeck) => {
+    console.log(`🗑️ aiDiscard P${p}:`, {
+      handBefore: h[p].map(c => c.id),
+      handSize: h[p].length,
+      deckSize: curDeck.length
+    });
+    
     const { keep } = decideDiscard(h[p], t, p === bw, hb);
+    console.log(`  Keeping:`, keep.map(c => c.id));
     const newH = h.map(x => [...x]); newH[p] = keep;
     let d = [...curDeck]; const dc = Math.max(0, 5 - keep.length);
+    console.log(`  Will draw ${dc} cards from deck (size: ${d.length})`);
     const cardsDrawn = [];
     if (dc > 0 && d.length >= dc) { 
       cardsDrawn.push(...d.slice(0, dc));
-      newH[p] = [...newH[p], ...d.splice(0, dc)]; 
+      console.log(`  Drawing:`, cardsDrawn.map(c => c.id));
+      newH[p] = [...newH[p], ...d.splice(0, dc)];
+      console.log(`  Hand after draw:`, newH[p].map(c => c.id));
+      
+      // Validate no duplicates in this player's hand
+      const handIds = newH[p].map(c => c.id);
+      const uniqueHandIds = new Set(handIds);
+      if (uniqueHandIds.size !== handIds.length) {
+        const dups = handIds.filter((id, idx) => handIds.indexOf(id) !== idx);
+        console.error(`⚠️ DUPLICATES IN P${p} HAND AFTER DRAW:`, [...new Set(dups)]);
+      }
     }
     const newDrawn = [...curDrawn]; newDrawn[p] = dc;
     setDrawnCards(prev => new Set([...prev, ...cardsDrawn.map(c => c.id)]));
     setHands(newH); setDeck(d); setDrawn(newDrawn);
     const next = (p + 1) % 4, start = (dlr + 1) % 4;
-    if (next === start) startPlay(bw, newH, t, hb, totals, newDrawn, bw);
+    if (next === start) {
+      console.log(`🎮 All discards complete, starting play`);
+      startPlay(bw, newH, t, hb, totals, newDrawn, bw);
+    }
     else { setCurrentPlayer(next);
       if (next === 0) { setSelected(getDefaultDiscardSelection(newH[0], t)); setMsg('Discard (keep 1+)'); }
       else { setMsg(`${PLAYER_NAMES[next]} discarding...`); timer.current = setTimeout(() => aiDiscard(next, newH, t, bw, hb, totals, dlr, newDrawn, d), 500); }
