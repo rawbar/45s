@@ -1311,12 +1311,6 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
         {trumpSuit && (
           <div style={{ textAlign: 'center', fontSize: '12px', color: '#aaa' }}>
             Trump: <span style={{ fontSize: '18px', color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff' }}>{trumpSuit}</span>
-            {bidWinner !== null && highBid && (
-              <div style={{ fontSize: '11px', marginTop: '4px' }}>
-                <span style={{ color: '#d4af37' }}>{['You', 'Partner', 'P2', 'P4'][bidWinner]}</span> bid <span style={{ color: '#4caf50' }}>{highBid}</span>
-                {wasBagged && <span style={{ color: '#c62828', marginLeft: '4px' }}>(BAGGED)</span>}
-              </div>
-            )}
           </div>
         )}
         <div style={{ textAlign: 'center', fontSize: '9px', color: '#888' }}>Cards in play order • Gold border = led trick • Blue dot = drawn card</div>
@@ -1512,7 +1506,11 @@ function FortyFivesGame() {
 
   const finishBid = useCallback((w, t, h, hb, totals, dlr, bagged) => {
     setTrumpSuit(t); setBidWinner(w); setHighBid(hb);
-    setRoundBids([...bids]); // Save bids for modal
+    // Save current bids state for modal
+    setBids(currentBids => {
+      setRoundBids([...currentBids]);
+      return currentBids;
+    });
     const newH = h.map((hand, i) => i === w ? [...hand, ...kitty] : [...hand]);
     setHands(newH); setKitty([]);
     setSelected(getDefaultDiscardSelection(newH[0], t));
