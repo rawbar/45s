@@ -16,11 +16,11 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.5.2 - Reverted auto-bagging (broke deal phase)
+// 45s Card Game - Version 3.5.3-DEBUG - Investigating bidding bug
 // INSTALLATION: Just open this file in any modern web browser (Chrome, Firefox, Safari, Edge)
 // NO external dependencies required - everything is self-contained
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.5.2';
+const VERSION = '3.5.3-DEBUG';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -495,6 +495,17 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   const hasAH = hasAceHearts(hand), hasAT = hasAceTrump(hand, suit);
   const highT = countHighTrumps(hand, suit);
   
+  console.log(`🎲 BIDDING P${playerIndex}:`, {
+    hand: hand.map(c => c.id),
+    bestSuit: suit,
+    trumpCount,
+    has5,
+    hasJ,
+    hasAH,
+    hasAT,
+    highT
+  });
+  
   // Game state analysis
   const weNeed = 120 - teamScores;
   const theyNeed = 120 - oppScores;
@@ -569,9 +580,14 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   }
   
   if (bid <= currentHighBid) {
-    if (playerIndex === dealer && currentHighBid === 0) return { bid: 15, suit };
+    if (playerIndex === dealer && currentHighBid === 0) {
+      console.log(`→ Dealer forced 15`);
+      return { bid: 15, suit };
+    }
+    console.log(`→ Passing (bid ${bid} <= current ${currentHighBid})`);
     return { bid: 0, suit: null };
   }
+  console.log(`→ BIDDING ${bid}${suit}`);
   return { bid, suit };
 }
 
