@@ -16,11 +16,11 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.4.0 - Enhanced AI & Bug Fixes
+// 45s Card Game - Version 3.4.1 - Bug Fixes & UI Polish
 // INSTALLATION: Just open this file in any modern web browser (Chrome, Firefox, Safari, Edge)
 // NO external dependencies required - everything is self-contained
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.4.0';
+const VERSION = '3.4.1';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -1131,6 +1131,14 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
           {renderHand(3, 'P4')}
         </div>
         {renderHand(0, 'You')}
+        
+        {/* Text list of all cards for debugging/screenshots */}
+        <div style={{ borderTop: '1px solid rgba(212,175,55,0.3)', paddingTop: '8px', fontSize: '10px', fontFamily: 'monospace', color: '#aaa' }}>
+          <div>P0 (You): {hands[0].map(c => c.id).join(', ')}</div>
+          <div>P1 (Partner): {hands[2].map(c => c.id).join(', ')}</div>
+          <div>P2: {hands[1].map(c => c.id).join(', ')}</div>
+          <div>P3 (P4): {hands[3].map(c => c.id).join(', ')}</div>
+        </div>
       </div>
     </div>
   );
@@ -1278,8 +1286,12 @@ function FortyFivesGame() {
       if (newHigh === 0) { fw = dlr; newBids[dlr] = 15; setBids(newBids); setHighBid(15); newHigh = 15; bagged = true; }
       setWasBagged(bagged);
       setBidWinner(fw);
-      if (fw === 0) { setPhase('trump-select'); setMsg(bagged ? 'You were BAGGED! Pick trump' : 'Pick trump'); }
-      else { const t = aiTrump || chooseTrumpSuit(h[fw]); finishBid(fw, t, h, newHigh, totals, dlr, bagged); }
+      
+      // Add 500ms delay so last player's bid is visible before proceeding
+      timer.current = setTimeout(() => {
+        if (fw === 0) { setPhase('trump-select'); setMsg(bagged ? 'You were BAGGED! Pick trump' : 'Pick trump'); }
+        else { const t = aiTrump || chooseTrumpSuit(h[fw]); finishBid(fw, t, h, newHigh, totals, dlr, bagged); }
+      }, 500);
     } else {
       const next = (p + 1) % 4; setCurrentPlayer(next);
       if (next === 0) setMsg('Your bid');
