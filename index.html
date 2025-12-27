@@ -16,11 +16,11 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.5.3-DEBUG - Investigating bidding bug
+// 45s Card Game - Version 3.5.4 - FIXED: Bidding on wrong hands bug
 // INSTALLATION: Just open this file in any modern web browser (Chrome, Firefox, Safari, Edge)
 // NO external dependencies required - everything is self-contained
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.5.3-DEBUG';
+const VERSION = '3.5.4';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -1389,6 +1389,7 @@ function FortyFivesGame() {
   const [playHistory, setPlayHistory] = useState([]); // Track order of plays: [{player, card, trick}]
   const [roundBids, setRoundBids] = useState([null,null,null,null]); // Save bids for modal
   const timer = useRef(null);
+  const dealtHands = useRef(null); // Preserve original dealt hands for bidding
   
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
@@ -1438,6 +1439,7 @@ function FortyFivesGame() {
     }
     
     setHands(h); setKitty(k); setDeck(rem);
+    dealtHands.current = h; // Preserve for bidding phase
     setBids([null,null,null,null]); setHighBid(0); setBidWinner(null); setTrumpSuit(null);
     setTrick([]); setTrickCards([]); setTricksWon([0,0]); setPlayerTricks([0,0,0,0]);
     setRoundPts([0,0]); setTrickNum(0); setSelected([]); setLastTrick(null);
@@ -1486,19 +1488,19 @@ function FortyFivesGame() {
     }
   }, [aiTrump]);
 
-  const humanBid = useCallback((amt) => {
+  const humanBid = useCallback((amt, h, dlr, totals) => {
     const newBids = [...bids]; newBids[0] = amt; setBids(newBids);
     let newHigh = highBid; if (amt > highBid) { newHigh = amt; setHighBid(amt); }
     if (newBids.every(b => b !== null)) {
       let w = null, m = 0; for (let i = 0; i < 4; i++) if (newBids[i] > m) { m = newBids[i]; w = i; }
       let bagged = false;
-      if (m === 0) { w = dealer; newBids[dealer] = 15; setBids(newBids); setHighBid(15); newHigh = 15; bagged = true; }
+      if (m === 0) { w = dlr; newBids[dlr] = 15; setBids(newBids); setHighBid(15); newHigh = 15; bagged = true; }
       setWasBagged(bagged);
       setBidWinner(w);
       if (w === 0) { setPhase('trump-select'); setMsg(bagged ? 'You were BAGGED! Pick trump' : 'Pick trump'); }
-      else { const t = aiTrump || chooseTrumpSuit(hands[w]); finishBid(w, t, hands, newHigh, scores, dealer, bagged); }
-    } else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]} bidding...`); timer.current = setTimeout(() => doBid(1, hands, dealer, newBids, newHigh, scores, amt > 0 ? amt : null), 800); }
-  }, [bids, highBid, dealer, hands, aiTrump, scores]);
+      else { const t = aiTrump || chooseTrumpSuit(h[w]); finishBid(w, t, h, newHigh, totals, dlr, bagged); }
+    } else { setCurrentPlayer(1); setMsg(`${PLAYER_NAMES[1]} bidding...`); timer.current = setTimeout(() => doBid(1, h, dlr, newBids, newHigh, totals, amt > 0 ? amt : null), 800); }
+  }, [bids, highBid, aiTrump]);
 
   const selectTrump = useCallback((s) => finishBid(0, s, hands, highBid, scores, dealer, wasBagged), [hands, highBid, scores, dealer, wasBagged]);
 
@@ -1787,7 +1789,7 @@ function FortyFivesGame() {
         </div>
         {/* Buttons - yellow Pass button, "Discard (x)" text */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', flexWrap: 'wrap', padding: '4px 0', minHeight: '36px' }}>
-          {phase === 'bidding' && currentPlayer === 0 && <>{[15,20,25,30].map(b => <button key={b} onClick={() => humanBid(b)} disabled={b <= highBid} style={{ padding: '6px 12px', fontSize: '12px', background: b <= highBid ? '#555' : '#2196f3', color: '#fff', border: 'none', borderRadius: '4px', opacity: b <= highBid ? 0.5 : 1 }}>{b}</button>)}<button onClick={() => humanBid(0)} style={{ padding: '6px 12px', fontSize: '12px', background: '#c9a227', color: '#000', border: 'none', borderRadius: '4px' }}>Pass</button></>}
+          {phase === 'bidding' && currentPlayer === 0 && <>{[15,20,25,30].map(b => <button key={b} onClick={() => humanBid(b, dealtHands.current, dealer, scores)} disabled={b <= highBid} style={{ padding: '6px 12px', fontSize: '12px', background: b <= highBid ? '#555' : '#2196f3', color: '#fff', border: 'none', borderRadius: '4px', opacity: b <= highBid ? 0.5 : 1 }}>{b}</button>)}<button onClick={() => humanBid(0, dealtHands.current, dealer, scores)} style={{ padding: '6px 12px', fontSize: '12px', background: '#c9a227', color: '#000', border: 'none', borderRadius: '4px' }}>Pass</button></>}
           {phase === 'trump-select' && SUITS.map(s => <button key={s} onClick={() => selectTrump(s)} style={{ padding: '6px 14px', fontSize: '18px', background: 'rgba(0,0,0,0.5)', color: (s === '♥' || s === '♦') ? '#f44336' : '#fff', border: '1px solid #d4af37', borderRadius: '4px' }}>{s}</button>)}
           {phase === 'discarding' && currentPlayer === 0 && <button onClick={humanDiscard} style={{ padding: '6px 16px', fontSize: '12px', background: '#4caf50', color: '#fff', border: 'none', borderRadius: '4px' }}>Discard ({selected.length})</button>}
           {(phase === 'round-end' || phase === 'game-over') && postDrawHands && <button onClick={() => setShowHandsOpen(true)} style={{ padding: '6px 16px', fontSize: '12px', background: '#666', color: '#fff', border: 'none', borderRadius: '4px' }}>Show Hands</button>}
