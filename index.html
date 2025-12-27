@@ -16,11 +16,11 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.5.0 - Enhanced AI with Card Tracking & Strategic Intelligence
+// 45s Card Game - Version 3.5.1 - Enhanced AI + UI Fixes
 // INSTALLATION: Just open this file in any modern web browser (Chrome, Firefox, Safari, Edge)
 // NO external dependencies required - everything is self-contained
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.5.0';
+const VERSION = '3.5.1';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -1069,18 +1069,8 @@ function DealerBadge() {
 function Card({ card, onClick, disabled, selected, small, faceDown, playable, wasDrawn }) {
   const isRed = card && (card.suit === '♥' || card.suit === '♦');
   
-  // Color-code suits for modal only (helps AI parsing)
-  let suitColor;
-  if (small) {
-    // Modal colors: ♠=black, ♥=red, ♦=green, ♣=blue
-    if (card.suit === '♥') suitColor = '#c62828';      // Red
-    else if (card.suit === '♦') suitColor = '#2e7d32';  // Green
-    else if (card.suit === '♣') suitColor = '#1565c0';  // Blue
-    else suitColor = '#212121';                          // Black (♠)
-  } else {
-    // Main game: traditional colors
-    suitColor = isRed ? '#c62828' : '#212121';
-  }
+  // Use traditional colors everywhere
+  let suitColor = isRed ? '#c62828' : '#212121';
   
   const w = small ? '30px' : '48px', h = small ? '42px' : '68px';  // Modal slightly larger but won't wrap
   const base = { 
@@ -1242,7 +1232,11 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
     const hand = hands[playerIdx] || [];
     const isDealer = dealer === playerIdx;
     const isBidder = bidWinner === playerIdx;
-    const playerBid = bids ? bids[playerIdx] : null;
+    const playerBid = (bids && bids[playerIdx] !== undefined) ? bids[playerIdx] : null;
+    
+    if (playerIdx === 0) { // Log once for debugging
+      console.log('ShowHandsModal bids:', bids);
+    }
     
     // Sort cards by play order if playHistory exists
     let sortedHand = [...hand];
@@ -1317,6 +1311,12 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
         {trumpSuit && (
           <div style={{ textAlign: 'center', fontSize: '12px', color: '#aaa' }}>
             Trump: <span style={{ fontSize: '18px', color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff' }}>{trumpSuit}</span>
+            {bidWinner !== null && highBid && (
+              <div style={{ fontSize: '11px', marginTop: '4px' }}>
+                <span style={{ color: '#d4af37' }}>{['You', 'Partner', 'P2', 'P4'][bidWinner]}</span> bid <span style={{ color: '#4caf50' }}>{highBid}</span>
+                {wasBagged && <span style={{ color: '#c62828', marginLeft: '4px' }}>(BAGGED)</span>}
+              </div>
+            )}
           </div>
         )}
         <div style={{ textAlign: 'center', fontSize: '9px', color: '#888' }}>Cards in play order • Gold border = led trick • Blue dot = drawn card</div>
