@@ -1047,17 +1047,6 @@ function getHighestRemainingTrump(cardsPlayed, trumpSuit) {
   return -1; // All trump played
 }
 
-function isCardBoss(card, cardsPlayed, trumpSuit) {
-  // Returns true if this card is currently the highest remaining of its type
-  if (!card || !trumpSuit) return false;
-  const cardRank = getTrumpRank(card, trumpSuit);
-  if (cardRank >= 0) {
-    // It's a trump - check if it's the highest remaining
-    return cardRank >= getHighestRemainingTrump(cardsPlayed, trumpSuit);
-  }
-  return false;
-}
-
 // UI Components
 function TrickMarker({ isHighTrump }) {
   return (<div style={{ width: '14px', height: '18px', borderRadius: '2px', background: isHighTrump ? 'linear-gradient(135deg, #8b0000 0%, #5c0000 100%)' : 'linear-gradient(135deg, #1e3a5f 0%, #0d1b2a 100%)', border: isHighTrump ? '1px solid #ff6666' : '1px solid #2d5a87' }} />);
