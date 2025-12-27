@@ -16,9 +16,11 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.3.9 DEBUG - Debug partner winning check
+// 45s Card Game - Version 3.4.0 - Enhanced AI & Bug Fixes
+// INSTALLATION: Just open this file in any modern web browser (Chrome, Firefox, Safari, Edge)
+// NO external dependencies required - everything is self-contained
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.3.9 DEBUG';
+const VERSION = '3.4.0';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -562,9 +564,9 @@ function decideDiscard(hand, trumpSuit, isBidWinner, bidAmount) {
   
   // For 25+ bids, keep ALL trump - you need them all
   if (isBidWinner && bidAmount >= 25) {
-    // Only keep 1 offsuit king/ace if we have 4+ trump
-    if (trumps.length >= 4 && offsuit.length > 0) {
-      const strongOffsuit = offsuit.filter(c => c.rank === 'K' || c.rank === 'A');
+    // Only keep 1 offsuit King if we have 5 trump (very strong hand)
+    if (trumps.length >= 5 && offsuit.length > 0) {
+      const strongOffsuit = offsuit.filter(c => c.rank === 'K');
       if (strongOffsuit.length > 0) {
         keep.push(strongOffsuit[0]);
       }
@@ -662,14 +664,6 @@ if (trick.length > 0) {
   const myTrumps = playable.filter(c => isTrump(c));
   const myOffsuit = playable.filter(c => !isTrump(c));
   
-  console.log('FOLLOWING LOGIC:', {
-    player,
-    myPosition,
-    playable: playable.map(c => c.id),
-    myTrumps: myTrumps.map(c => c.id),
-    myOffsuit: myOffsuit.map(c => c.id)
-  });
-  
   // Determine current winner from the cards already played
   let currentWinner = leader; // Start with leader
   let winningCard = trick[0];
@@ -683,19 +677,8 @@ if (trick.length > 0) {
   const myTeam = player % 2;
   const partnerWinning = currentWinnerTeam === myTeam;
   
-  console.log('PARTNER CHECK:', {
-    player,
-    leader,
-    trickCards: trick.map(c => c.id),
-    currentWinner,
-    currentWinnerTeam,
-    myTeam,
-    partnerWinning
-  });
-  
   // RULE 1: Partner winning - play lowest (don't steal partner's trick)
   if (partnerWinning) {
-    console.log('→ Partner winning, playing lowest');
     return playable.reduce((lowest, card) => {
       const r1 = isTrump(lowest) ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
       const r2 = isTrump(card) ? getTrumpRank(card, trumpSuit) + 200 : getOffSuitRank(card);
@@ -704,7 +687,6 @@ if (trick.length > 0) {
   }
   
   // Check if we can beat current winner
-  const canBeatResults = [];
   const canBeat = playable.some(card => {
     const testTrick = [...trick, card];
     // determineTrickWinner needs exactly 4 cards, so add dummy cards if needed
@@ -712,17 +694,7 @@ if (trick.length > 0) {
       testTrick.push({rank: '2', suit: '♣', id: 'dummy'});
     }
     const winner = determineTrickWinner(testTrick, trumpSuit, leader);
-    const didWin = winner === player;
-    canBeatResults.push({card: card.id, winner, didWin});
-    return didWin;
-  });
-  
-  console.log('CAN BEAT:', {
-    player,
-    myPosition,
-    partnerWinning,
-    canBeat,
-    testResults: canBeatResults
+    return winner === player;
   });
   
   // RULE 2: Can't beat - play lowest
@@ -759,19 +731,12 @@ if (trick.length > 0) {
   
   // RULE 4: 3rd position - play high to win OR force 4th player to commit
   if (myPosition === 2) {
-    console.log('3RD POSITION:', {
-      player,
-      myTrumps: myTrumps.map(c => c.id),
-      myOffsuit: myOffsuit.map(c => c.id)
-    });
-    
     // Opponent is currently winning - we want to either:
     // 1. Win the trick ourselves, OR
     // 2. Force 4th player to use a high card
     
     // Prefer trump if we have it (more likely to win or force opponent trump)
     if (myTrumps.length > 0) {
-      console.log('→ Playing highest trump');
       // Play highest trump to maximize chance of winning
       return myTrumps.reduce((best, card) => {
         const r1 = getTrumpRank(best, trumpSuit);
@@ -1022,6 +987,7 @@ Without:       498471 bids, 35.0% success`}
             </ul>
             
             <p style={{ marginBottom: '12px' }}><strong style={{ color: '#d4af37' }}>UI Guide</strong></p>
+            <p style={{ marginBottom: '8px' }}>Cards with a blue dot in the corner are cards you drew from the deck (not part of your original hand). This helps you track which cards came from the draw phase.</p>
             <p style={{ marginBottom: '8px' }}>Tap the image below to view full screen:</p>
             <img 
               src="45s_table_diagram.jpeg" 
@@ -1243,6 +1209,25 @@ function FortyFivesGame() {
 
   const doBid = useCallback((p, h, dlr, curBids, curHigh, totals, lastBidAmt) => {
     if (p === 0) return;
+    
+    // Check if this is the dealer and everyone else has passed
+    const isDealer = p === dlr;
+    const otherBids = curBids.filter((b, idx) => idx !== dlr && b !== null);
+    const allOthersPassed = otherBids.length === 3 && otherBids.every(b => b === 0);
+    
+    if (isDealer && allOthersPassed) {
+      // Dealer is auto-bagged, don't let them bid
+      const newBids = [...curBids];
+      newBids[dlr] = 15;
+      setBids(newBids);
+      setHighBid(15);
+      setWasBagged(true);
+      setBidWinner(dlr);
+      const t = chooseTrumpSuit(h[dlr]);
+      finishBid(dlr, t, h, 15, totals, dlr, true);
+      return;
+    }
+    
     const team = totals[getTeam(p)], opp = totals[1-getTeam(p)];
     const partnerIdx = (p + 2) % 4;
     const partnerBid = curBids[partnerIdx];
@@ -1253,6 +1238,7 @@ function FortyFivesGame() {
     if (newBids.every(b => b !== null)) {
       let fw = winner; if (!fw) { let m = 0; for (let i = 0; i < 4; i++) if (newBids[i] > m) { m = newBids[i]; fw = i; } }
       let bagged = false;
+      // This shouldn't happen anymore since dealer is auto-bagged above
       if (newHigh === 0) { fw = dlr; newBids[dlr] = 15; setBids(newBids); setHighBid(15); newHigh = 15; bagged = true; }
       setWasBagged(bagged);
       setBidWinner(fw);
@@ -1284,12 +1270,6 @@ function FortyFivesGame() {
   const finishBid = useCallback((w, t, h, hb, totals, dlr, bagged) => {
     setTrumpSuit(t); setBidWinner(w); setHighBid(hb);
     setRoundBids([...bids]); // Save bids for modal
-    console.log('KITTY GIVEN TO WINNER:', {
-      winner: w,
-      kittyCards: kitty.map(c => c.id),
-      handBefore: h[w].map(c => c.id),
-      handAfterSize: h[w].length + kitty.length
-    });
     const newH = h.map((hand, i) => i === w ? [...hand, ...kitty] : [...hand]);
     setHands(newH); setKitty([]);
     setSelected(getDefaultDiscardSelection(newH[0], t));
@@ -1300,18 +1280,7 @@ function FortyFivesGame() {
   }, [kitty, deck, bids]);
 
   const aiDiscard = useCallback((p, h, t, bw, hb, totals, dlr, curDrawn, curDeck) => {
-    console.log('AI DISCARD START:', {
-      player: p,
-      handBefore: h[p].map(c => c.id),
-      handSize: h[p].length
-    });
     const { keep } = decideDiscard(h[p], t, p === bw, hb);
-    console.log('AI DISCARD DECISION:', {
-      player: p,
-      keeping: keep.map(c => c.id),
-      discarding: h[p].filter(c => !keep.some(k => k.id === c.id)).map(c => c.id),
-      willDraw: Math.max(0, 5 - keep.length)
-    });
     const newH = h.map(x => [...x]); newH[p] = keep;
     let d = [...curDeck]; const dc = Math.max(0, 5 - keep.length);
     const cardsDrawn = [];
