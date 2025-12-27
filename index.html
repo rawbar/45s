@@ -395,16 +395,34 @@ function createDeck() {
       const id = `${rank}${suit}`;
       if (!usedIds.has(id)) {
         usedIds.add(id);
-        deck.push({ rank, suit, id });
+        // Create new object each time to avoid any reference sharing
+        deck.push({ rank: rank, suit: suit, id: id });
+      } else {
+        console.error('DUPLICATE CARD DETECTED IN DECK CREATION:', id);
       }
     }
   }
+  
+  // Validate deck has exactly 52 unique cards
+  const uniqueIds = new Set(deck.map(c => c.id));
+  if (uniqueIds.size !== 52 || deck.length !== 52) {
+    console.error('INVALID DECK:', {
+      deckSize: deck.length,
+      uniqueCards: uniqueIds.size,
+      deck: deck.map(c => c.id)
+    });
+  }
+  
   return deck;
 }
 
 function shuffleDeck(deck) {
-  const s = [...deck];
-  for (let i = s.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [s[i], s[j]] = [s[j], s[i]]; }
+  // Deep clone each card to prevent any reference sharing
+  const s = deck.map(c => ({ rank: c.rank, suit: c.suit, id: c.id }));
+  for (let i = s.length - 1; i > 0; i--) { 
+    const j = Math.floor(Math.random() * (i + 1)); 
+    [s[i], s[j]] = [s[j], s[i]]; 
+  }
   return s;
 }
 
@@ -987,7 +1005,6 @@ Without:       498471 bids, 35.0% success`}
             </ul>
             
             <p style={{ marginBottom: '12px' }}><strong style={{ color: '#d4af37' }}>UI Guide</strong></p>
-            <p style={{ marginBottom: '8px' }}>Cards with a blue dot in the corner are cards you drew from the deck (not part of your original hand). This helps you track which cards came from the draw phase.</p>
             <p style={{ marginBottom: '8px' }}>Tap the image below to view full screen:</p>
             <img 
               src="45s_table_diagram.jpeg" 
@@ -1107,7 +1124,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             Trump: <span style={{ fontSize: '18px', color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff' }}>{trumpSuit}</span>
           </div>
         )}
-        <div style={{ textAlign: 'center', fontSize: '9px', color: '#888' }}>Cards in play order • Gold border = led trick</div>
+        <div style={{ textAlign: 'center', fontSize: '9px', color: '#888' }}>Cards in play order • Gold border = led trick • Blue dot = drawn card</div>
         {renderHand(2, 'Partner')}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {renderHand(1, 'P2')}
@@ -1188,6 +1205,25 @@ function FortyFivesGame() {
     const d = shuffleDeck(createDeck());
     const h = [d.slice(0,5), d.slice(5,10), d.slice(10,15), d.slice(15,20)];
     const k = d.slice(20,23), rem = d.slice(23);
+    
+    // Validate no duplicate cards across all hands
+    const allCards = [...h.flat(), ...k, ...rem];
+    const cardIds = allCards.map(c => c.id);
+    const uniqueIds = new Set(cardIds);
+    if (uniqueIds.size !== cardIds.length) {
+      const duplicates = cardIds.filter((id, idx) => cardIds.indexOf(id) !== idx);
+      const errorMsg = `DUPLICATE CARD BUG!\n\nDuplicates: ${[...new Set(duplicates)].join(', ')}\n\nP0: ${h[0].map(c => c.id).join(', ')}\nP1: ${h[1].map(c => c.id).join(', ')}\nP2: ${h[2].map(c => c.id).join(', ')}\nP3: ${h[3].map(c => c.id).join(', ')}\nKitty: ${k.map(c => c.id).join(', ')}\n\nPlease screenshot this and report to rrothberg@gmail.com`;
+      alert(errorMsg);
+      console.error('DUPLICATE CARDS DETECTED!', {
+        duplicates: [...new Set(duplicates)],
+        hands: h.map((hand, i) => `P${i}: ${hand.map(c => c.id).join(', ')}`),
+        kitty: k.map(c => c.id),
+        deck: rem.slice(0, 10).map(c => c.id)
+      });
+      // Re-deal to continue playing
+      return dealRound(dlr, totals);
+    }
+    
     setHands(h); setKitty(k); setDeck(rem);
     setBids([null,null,null,null]); setHighBid(0); setBidWinner(null); setTrumpSuit(null);
     setTrick([]); setTrickCards([]); setTricksWon([0,0]); setPlayerTricks([0,0,0,0]);
