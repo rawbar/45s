@@ -16,11 +16,11 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.5.1 - Enhanced AI + UI Fixes
+// 45s Card Game - Version 3.5.2 - Reverted auto-bagging (broke deal phase)
 // INSTALLATION: Just open this file in any modern web browser (Chrome, Firefox, Safari, Edge)
 // NO external dependencies required - everything is self-contained
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.5.1';
+const VERSION = '3.5.2';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -1442,24 +1442,6 @@ function FortyFivesGame() {
 
   const doBid = useCallback((p, h, dlr, curBids, curHigh, totals, lastBidAmt) => {
     if (p === 0) return;
-    
-    // Check if this is the dealer and everyone else has passed
-    const isDealer = p === dlr;
-    const otherBids = curBids.filter((b, idx) => idx !== dlr && b !== null);
-    const allOthersPassed = otherBids.length === 3 && otherBids.every(b => b === 0);
-    
-    if (isDealer && allOthersPassed) {
-      // Dealer is auto-bagged, don't let them bid
-      const newBids = [...curBids];
-      newBids[dlr] = 15;
-      setBids(newBids);
-      setHighBid(15);
-      setWasBagged(true);
-      setBidWinner(dlr);
-      const t = chooseTrumpSuit(h[dlr]);
-      finishBid(dlr, t, h, 15, totals, dlr, true);
-      return;
-    }
     
     const team = totals[getTeam(p)], opp = totals[1-getTeam(p)];
     const partnerIdx = (p + 2) % 4;
