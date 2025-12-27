@@ -16,11 +16,11 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.4.1 - Bug Fixes & UI Polish
+// 45s Card Game - Version 3.5.0 - Enhanced AI with Card Tracking & Strategic Intelligence
 // INSTALLATION: Just open this file in any modern web browser (Chrome, Firefox, Safari, Edge)
 // NO external dependencies required - everything is self-contained
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.4.1';
+const VERSION = '3.5.0';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -575,6 +575,123 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   return { bid, suit };
 }
 
+// ============================================================================
+// CARD TRACKING & STRATEGIC INTELLIGENCE HELPERS
+// ============================================================================
+
+/**
+ * Determine if a card is a "boss card" - guaranteed to win because all higher cards have been played
+ */
+function isCardBoss(card, cardsPlayed, trumpSuit) {
+  const isTrump = (c) => getTrumpRank(c, trumpSuit) >= 0;
+  const cardIsTrump = isTrump(card);
+  
+  if (cardIsTrump) {
+    const cardRank = getTrumpRank(card, trumpSuit);
+    // Check if any unplayed cards can beat this trump
+    const playedIds = new Set(cardsPlayed.map(c => c.id));
+    
+    // Check all possible higher trump cards
+    const higherTrumpCards = [
+      { rank: '5', suit: trumpSuit, id: `5${trumpSuit}` },
+      { rank: 'J', suit: trumpSuit, id: `J${trumpSuit}` },
+      { rank: 'A', suit: '♥', id: 'A♥' }
+    ];
+    
+    if (trumpSuit !== '♥') {
+      higherTrumpCards.push({ rank: 'A', suit: trumpSuit, id: `A${trumpSuit}` });
+    }
+    
+    // Add K, Q, etc. based on trump rank
+    const trumpRanks = ['K', 'Q', '10', '9', '8', '7', '6', '4', '3', '2'];
+    const redTrumpRanks = ['K', 'Q', '10', '9', '8', '7', '6', '5', '4', '3', '2', 'A', 'J'];
+    const blackTrumpRanks = ['K', 'Q', 'J', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+    
+    const ranksToCheck = (trumpSuit === '♥' || trumpSuit === '♦') ? redTrumpRanks : blackTrumpRanks;
+    ranksToCheck.forEach(r => {
+      if (r !== '5' && r !== 'J' && !(r === 'A' && trumpSuit === '♥')) {
+        const testCard = { rank: r, suit: trumpSuit, id: `${r}${trumpSuit}` };
+        const testRank = getTrumpRank(testCard, trumpSuit);
+        if (testRank > cardRank) {
+          higherTrumpCards.push(testCard);
+        }
+      }
+    });
+    
+    // If all higher trump have been played, this is boss
+    return higherTrumpCards.every(c => playedIds.has(c.id));
+  } else {
+    // For offsuit, only K is ever boss (and only if no trump exist)
+    return false; // Simplified: offsuit rarely boss in 45s
+  }
+}
+
+/**
+ * Detect if bidder is signaling for 3rd man high
+ * Returns true if bidder led a card that's obviously not intended to win
+ */
+function isBidderSignaling(ledCard, trumpSuit, cardsPlayed, bidderPosition, trickNum) {
+  const isTrump = (c) => getTrumpRank(c, trumpSuit) >= 0;
+  const ledIsTrump = isTrump(ledCard);
+  
+  // Leading offsuit when you're the bidder is almost always a signal
+  if (!ledIsTrump) {
+    return true;
+  }
+  
+  // Leading very low trump early in the round is a signal
+  if (ledIsTrump && trickNum <= 2) {
+    const ledRank = getTrumpRank(ledCard, trumpSuit);
+    // If there are many higher trump still unplayed, it's likely a signal
+    const playedIds = new Set(cardsPlayed.map(c => c.id));
+    
+    const allTrumpCards = [];
+    const suits = ['♠', '♥', '♦', '♣'];
+    const ranks = ['5', 'J', 'A', 'K', 'Q', '10', '9', '8', '7', '6', '4', '3', '2'];
+    
+    suits.forEach(s => {
+      ranks.forEach(r => {
+        const testCard = { rank: r, suit: s, id: `${r}${s}` };
+        if (isTrump(testCard)) {
+          allTrumpCards.push(testCard);
+        }
+      });
+    });
+    
+    const unplayedHigherTrump = allTrumpCards.filter(c => {
+      if (playedIds.has(c.id)) return false;
+      const rank = getTrumpRank(c, trumpSuit);
+      return rank > ledRank;
+    });
+    
+    // If 5+ higher trump unplayed, it's probably a signal
+    return unplayedHigherTrump.length >= 5;
+  }
+  
+  return false;
+}
+
+/**
+ * Estimate opponent's remaining trump count based on draw count
+ * Returns estimated number of trump opponent likely has
+ */
+function estimateOpponentTrump(opponentDrawCount, cardsPlayedByOpponent, trumpSuit) {
+  // If drew 4 cards, likely has 2-3 trump
+  // If drew 3 cards, likely has 2 trump  
+  // If drew 0-2 cards, likely has 3-4 trump
+  
+  const trumpPlayedByOpponent = cardsPlayedByOpponent.filter(c => 
+    getTrumpRank(c, trumpSuit) >= 0
+  ).length;
+  
+  let estimatedStartingTrump;
+  if (opponentDrawCount >= 4) estimatedStartingTrump = 2;
+  else if (opponentDrawCount === 3) estimatedStartingTrump = 2;
+  else if (opponentDrawCount <= 2) estimatedStartingTrump = 3;
+  
+  return Math.max(0, estimatedStartingTrump - trumpPlayedByOpponent);
+}
+
 function decideDiscard(hand, trumpSuit, isBidWinner, bidAmount) {
   const trumps = hand.filter(c => isTrump(c, trumpSuit));
   const offsuit = hand.filter(c => !isTrump(c, trumpSuit));
@@ -631,6 +748,16 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   
   if (playable.length <= 1) return playable[0] || hand[0];
   
+  // ========================================================================
+  // STRATEGIC PRIORITY #1: BOSS CARD - Play immediately if you have one
+  // ========================================================================
+  for (const card of playable) {
+    if (isCardBoss(card, cardsPlayed, trumpSuit)) {
+      console.log(`🎯 BOSS CARD: P${player} playing ${card.id} (guaranteed winner)`);
+      return card; // Play boss card immediately regardless of position
+    }
+  }
+  
  // BIDDER LEADING STRATEGY
 const isBidder = player === bidWinner;
 const isLeading = trick.length === 0;
@@ -638,6 +765,37 @@ if (isBidder && isLeading) {
   const isTrump = (c) => getTrumpRank(c, trumpSuit) >= 0;
   const trumps = playable.filter(c => isTrump(c));
   const nonTrumps = playable.filter(c => !isTrump(c));
+  
+  // ========================================================================
+  // ENDGAME TRUMP TIMING (Rounds 4-5)
+  // ========================================================================
+  if (trickNum >= 4 && trumps.length === 1 && nonTrumps.length === 1) {
+    // Final 2 cards: 1 trump, 1 offsuit
+    // Analyze opponents' likely trump count
+    const opponentIndices = [0, 1, 2, 3].filter(i => i !== player && i !== (player + 2) % 4);
+    
+    let opponentLikelyHasTrump = false;
+    for (const oppIdx of opponentIndices) {
+      const oppCardsPlayed = cardsPlayed.filter(c => {
+        // This is simplified - in real implementation would need to track which player played which card
+        // For now, estimate based on draw count
+        return false;
+      });
+      
+      const estimatedTrump = estimateOpponentTrump(cardsDrawn[oppIdx], oppCardsPlayed, trumpSuit);
+      if (estimatedTrump >= 1) {
+        opponentLikelyHasTrump = true;
+        break;
+      }
+    }
+    
+    // If opponent likely has trump, lead offsuit on R4 to force them to use it
+    if (opponentLikelyHasTrump && trickNum === 4) {
+      return nonTrumps[0]; // Lead offsuit
+    }
+    // Otherwise lead trump
+    return trumps[0];
+  }
   
   if (trumps.length >= 3) {
     // Strong trump: lead HIGHEST trump
@@ -674,6 +832,36 @@ if (isBidder && isLeading) {
   }
 }
 
+// ========================================================================
+// DEFENDER LEADING STRATEGY
+// ========================================================================
+const isDefender = !isBidder;
+if (isDefender && isLeading) {
+  const isTrump = (c) => getTrumpRank(c, trumpSuit) >= 0;
+  const trumps = playable.filter(c => isTrump(c));
+  const nonTrumps = playable.filter(c => !isTrump(c));
+  
+  // Defenders should RARELY lead trump
+  // Only lead trump if you have NO offsuit options
+  if (nonTrumps.length > 0) {
+    // Lead lowest offsuit to avoid giving bidder points
+    return nonTrumps.reduce((lowest, card) => {
+      const r1 = getOffSuitRank(lowest);
+      const r2 = getOffSuitRank(card);
+      return r1 < r2 ? lowest : card;
+    });
+  }
+  
+  // If forced to lead trump, lead LOWEST trump (don't waste high cards)
+  if (trumps.length > 0) {
+    return trumps.reduce((lowest, card) => {
+      const r1 = getTrumpRank(lowest, trumpSuit);
+      const r2 = getTrumpRank(card, trumpSuit);
+      return r1 < r2 ? lowest : card;
+    });
+  }
+}
+
 // ENHANCED FOLLOWING LOGIC - Strategic play based on position and card tracking
 if (trick.length > 0) {
   const ledCard = trick[0];
@@ -694,6 +882,24 @@ if (trick.length > 0) {
   const currentWinnerTeam = currentWinner % 2;
   const myTeam = player % 2;
   const partnerWinning = currentWinnerTeam === myTeam;
+  
+  // ========================================================================
+  // BIDDER SIGNALING DETECTION - Override partner winning if bidder signaled
+  // ========================================================================
+  const bidderLed = leader === bidWinner;
+  const signalDetected = bidderLed && isBidderSignaling(ledCard, trumpSuit, cardsPlayed, bidWinner, trickNum);
+  
+  // If bidder is signaling for 3rd man high, play trump aggressively even if partner "winning"
+  if (signalDetected && myPosition === 2 && myTrumps.length > 0) {
+    // Partner (bidder) led weak card as signal - play highest trump
+    const highTrump = myTrumps.reduce((best, card) => {
+      const r1 = getTrumpRank(best, trumpSuit);
+      const r2 = getTrumpRank(card, trumpSuit);
+      return r2 > r1 ? card : best;
+    });
+    console.log(`📢 BIDDER SIGNAL: P${player} (3rd pos) playing ${highTrump.id} trump in response to bidder's signal`);
+    return highTrump;
+  }
   
   // RULE 1: Partner winning - play lowest (don't steal partner's trick)
   if (partnerWinning) {
