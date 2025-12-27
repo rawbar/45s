@@ -16,11 +16,11 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 3.5.4 - FIXED: Bidding on wrong hands bug
+// 45s Card Game - Version 3.5.5-TEST - Auto-bagging attempt #8 with extensive logging
 // INSTALLATION: Just open this file in any modern web browser (Chrome, Firefox, Safari, Edge)
 // NO external dependencies required - everything is self-contained
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '3.5.4';
+const VERSION = '3.5.5-TEST';
 
 // ============================================================================
 // MONTE CARLO AI - 5 Rollouts (Optimized for Web Performance)
@@ -1460,6 +1460,36 @@ function FortyFivesGame() {
 
   const doBid = useCallback((p, h, dlr, curBids, curHigh, totals, lastBidAmt) => {
     if (p === 0) return;
+    
+    // Check if dealer is about to bid and everyone else passed
+    if (p === dlr) {
+      const otherBids = curBids.filter((b, idx) => idx !== dlr);
+      const allOthersPassed = otherBids.every(b => b === 0);
+      
+      if (allOthersPassed) {
+        console.log('🎒 AUTO-BAGGING DEALER:', {
+          dealer: dlr,
+          bids: curBids,
+          allOthersPassed
+        });
+        
+        const newBids = [...curBids];
+        newBids[dlr] = 15;
+        setBids(newBids);
+        setHighBid(15);
+        setWasBagged(true);
+        setBidWinner(dlr);
+        
+        const t = chooseTrumpSuit(h[dlr]);
+        console.log('→ Dealer bagged, proceeding to finishBid');
+        
+        // Use 500ms delay like normal bid completion
+        timer.current = setTimeout(() => {
+          finishBid(dlr, t, h, 15, totals, dlr, true);
+        }, 500);
+        return;
+      }
+    }
     
     const team = totals[getTeam(p)], opp = totals[1-getTeam(p)];
     const partnerIdx = (p + 2) % 4;
