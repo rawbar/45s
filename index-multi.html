@@ -16,11 +16,11 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-// 45s Card Game - Version 4.0.0-alpha - Multiplayer lobby and seat selection
+// 45s Card Game - Version 4.0.1-alpha - Enhanced lobby with bot simulation and polish
 // INSTALLATION: Just open this file in any modern web browser (Chrome, Firefox, Safari, Edge)
 // NO external dependencies required - everything is self-contained
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '4.0.0-alpha';
+const VERSION = '4.0.1-alpha';
 
 // ============================================================================
 // GAME MODES:
@@ -344,6 +344,14 @@ function generateGameCode() {
 
 function generatePlayerId() {
   return 'player_' + Math.random().toString(36).substr(2, 9) + Date.now();
+}
+
+function generateBotName() {
+  const adjectives = ['Lucky', 'Clever', 'Bold', 'Swift', 'Mighty', 'Wise', 'Quick', 'Sharp'];
+  const nouns = ['Fox', 'Wolf', 'Bear', 'Eagle', 'Hawk', 'Tiger', 'Lion', 'Dragon'];
+  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  return `${adj} ${noun}`;
 }
 
 const SUITS = ['♠', '♥', '♦', '♣'];
@@ -996,11 +1004,12 @@ function MainMenu({ onSinglePlayer, onCreateGame, onJoinGame }) {
 // ============================================================================
 // LOBBY SCREEN - Seat selection and ready system
 // ============================================================================
-function LobbyScreen({ gameCode, players, myPlayerId, onSeatSelect, onReady, onStartGame, onBackToMenu, isHost }) {
+function LobbyScreen({ gameCode, players, myPlayerId, onSeatSelect, onReady, onUnready, onStartGame, onBackToMenu, onAddBot, onKickPlayer, onLeaveSeat, isHost }) {
   const myPlayer = players.find(p => p.id === myPlayerId);
   const allReady = players.filter(p => p.id).every(p => p.ready);
   const playerCount = players.filter(p => p.id).length;
   const canStart = isHost && allReady && playerCount >= 2;
+  const hasEmptySeats = players.some(p => !p.id);
   
   // Visual seat layout
   const seatPositions = [
@@ -1014,19 +1023,28 @@ function LobbyScreen({ gameCode, players, myPlayerId, onSeatSelect, onReady, onS
     const player = players.find(p => p.seat === seatNum);
     const isMe = player && player.id === myPlayerId;
     const isEmpty = !player || !player.id;
+    const isBot = player && player.isBot;
     
     return (
       <div 
-        onClick={() => isEmpty && !myPlayer ? onSeatSelect(seatNum) : null}
+        onClick={() => {
+          if (isEmpty && !myPlayer) {
+            onSeatSelect(seatNum);
+          } else if (isEmpty && myPlayer && !myPlayer.ready) {
+            // Allow seat swapping if not ready
+            onSeatSelect(seatNum);
+          }
+        }}
         style={{ 
           padding: '16px', 
-          background: isEmpty ? 'rgba(0,0,0,0.3)' : isMe ? 'rgba(33, 150, 243, 0.3)' : 'rgba(76, 175, 80, 0.3)',
-          border: isEmpty ? '2px dashed #666' : '2px solid ' + (isMe ? '#2196f3' : '#4caf50'),
+          background: isEmpty ? 'rgba(0,0,0,0.3)' : isMe ? 'rgba(33, 150, 243, 0.3)' : isBot ? 'rgba(156, 39, 176, 0.3)' : 'rgba(76, 175, 80, 0.3)',
+          border: isEmpty ? '2px dashed #666' : '2px solid ' + (isMe ? '#2196f3' : isBot ? '#9c27b0' : '#4caf50'),
           borderRadius: '8px',
           minWidth: '140px',
           textAlign: 'center',
-          cursor: isEmpty && !myPlayer ? 'pointer' : 'default',
-          transition: 'all 0.2s'
+          cursor: (isEmpty || (isEmpty && myPlayer && !myPlayer.ready)) ? 'pointer' : 'default',
+          transition: 'all 0.2s',
+          position: 'relative'
         }}
       >
         <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>{label}</div>
@@ -1035,11 +1053,57 @@ function LobbyScreen({ gameCode, players, myPlayerId, onSeatSelect, onReady, onS
         ) : (
           <>
             <div style={{ fontSize: '16px', color: '#fff', fontWeight: 'bold' }}>
-              {player.name} {player.isHost && '👑'}
+              {player.name} {player.isHost && '👑'} {player.isBot && '🤖'}
             </div>
             <div style={{ fontSize: '12px', marginTop: '4px' }}>
               {player.ready ? <span style={{ color: '#4caf50' }}>✓ Ready</span> : <span style={{ color: '#ff9800' }}>Not Ready</span>}
             </div>
+            
+            {/* Kick button for host */}
+            {isHost && !isMe && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onKickPlayer(player.id);
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '4px',
+                  right: '4px',
+                  background: '#f44336',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '3px',
+                  padding: '2px 6px',
+                  fontSize: '10px',
+                  cursor: 'pointer'
+                }}
+              >
+                ✕
+              </button>
+            )}
+            
+            {/* Leave seat button for yourself */}
+            {isMe && !player.ready && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLeaveSeat();
+                }}
+                style={{
+                  marginTop: '8px',
+                  background: '#666',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  cursor: 'pointer'
+                }}
+              >
+                Leave Seat
+              </button>
+            )}
           </>
         )}
       </div>
@@ -1074,51 +1138,99 @@ function LobbyScreen({ gameCode, players, myPlayerId, onSeatSelect, onReady, onS
         </div>
         
         {/* South */}
-        <div>{renderSeat(0, 'South (You)')}</div>
+        <div>{renderSeat(0, 'South')}</div>
       </div>
       
       {/* Bottom Controls */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '20px' }}>
-        {myPlayer && !myPlayer.ready && (
-          <button 
-            onClick={onReady}
-            style={{ 
-              padding: '12px 24px', 
-              fontSize: '16px', 
-              background: '#4caf50', 
-              color: '#fff', 
-              border: 'none', 
-              borderRadius: '6px', 
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
-          >
-            ✓ Ready Up
-          </button>
-        )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
+        {/* Main action buttons */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+          {myPlayer && !myPlayer.ready && (
+            <button 
+              onClick={onReady}
+              style={{ 
+                padding: '12px 24px', 
+                fontSize: '16px', 
+                background: '#4caf50', 
+                color: '#fff', 
+                border: 'none', 
+                borderRadius: '6px', 
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              ✓ Ready Up
+            </button>
+          )}
+          
+          {myPlayer && myPlayer.ready && (
+            <button 
+              onClick={onUnready}
+              style={{ 
+                padding: '12px 24px', 
+                fontSize: '16px', 
+                background: '#ff9800', 
+                color: '#fff', 
+                border: 'none', 
+                borderRadius: '6px', 
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Cancel Ready
+            </button>
+          )}
+          
+          {canStart && (
+            <button 
+              onClick={onStartGame}
+              style={{ 
+                padding: '12px 24px', 
+                fontSize: '16px', 
+                background: '#d4af37', 
+                color: '#000', 
+                border: 'none', 
+                borderRadius: '6px', 
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              🎮 Start Game
+            </button>
+          )}
+        </div>
         
-        {canStart && (
-          <button 
-            onClick={onStartGame}
-            style={{ 
-              padding: '12px 24px', 
-              fontSize: '16px', 
-              background: '#d4af37', 
-              color: '#000', 
-              border: 'none', 
-              borderRadius: '6px', 
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
-          >
-            🎮 Start Game
-          </button>
+        {/* Host controls */}
+        {isHost && hasEmptySeats && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+            <button 
+              onClick={onAddBot}
+              style={{ 
+                padding: '8px 16px', 
+                fontSize: '14px', 
+                background: '#9c27b0', 
+                color: '#fff', 
+                border: 'none', 
+                borderRadius: '6px', 
+                cursor: 'pointer'
+              }}
+            >
+              🤖 Add Bot Player
+            </button>
+          </div>
         )}
       </div>
       
+      {/* Help text */}
       {!myPlayer && (
-        <div style={{ textAlign: 'center', color: '#ffc107', marginTop: '12px' }}>
+        <div style={{ textAlign: 'center', color: '#ffc107', marginTop: '12px', fontSize: '14px' }}>
           Select a seat to join the game
+        </div>
+      )}
+      
+      {myPlayer && !myPlayer.ready && (
+        <div style={{ textAlign: 'center', color: '#888', marginTop: '12px', fontSize: '12px' }}>
+          Click another empty seat to swap positions
         </div>
       )}
     </div>
@@ -1312,13 +1424,12 @@ function App() {
   const [myPlayerId, setMyPlayerId] = useState(null);
   const [myPlayerName, setMyPlayerName] = useState(null);
   const [players, setPlayers] = useState([
-    { id: null, name: null, seat: 0, ready: false, isHost: false },
-    { id: null, name: null, seat: 1, ready: false, isHost: false },
-    { id: null, name: null, seat: 2, ready: false, isHost: false },
-    { id: null, name: null, seat: 3, ready: false, isHost: false }
+    { id: null, name: null, seat: 0, ready: false, isHost: false, isBot: false },
+    { id: null, name: null, seat: 1, ready: false, isHost: false, isBot: false },
+    { id: null, name: null, seat: 2, ready: false, isHost: false, isBot: false },
+    { id: null, name: null, seat: 3, ready: false, isHost: false, isBot: false }
   ]);
   
-  // Single player game will be rendered here (existing FortyFivesGame component)
   const [showSinglePlayer, setShowSinglePlayer] = useState(false);
   
   const handleCreateGame = (playerName) => {
@@ -1331,10 +1442,10 @@ function App() {
     
     // Host automatically gets seat 0
     setPlayers([
-      { id: playerId, name: playerName, seat: 0, ready: false, isHost: true },
-      { id: null, name: null, seat: 1, ready: false, isHost: false },
-      { id: null, name: null, seat: 2, ready: false, isHost: false },
-      { id: null, name: null, seat: 3, ready: false, isHost: false }
+      { id: playerId, name: playerName, seat: 0, ready: false, isHost: true, isBot: false },
+      { id: null, name: null, seat: 1, ready: false, isHost: false, isBot: false },
+      { id: null, name: null, seat: 2, ready: false, isHost: false, isBot: false },
+      { id: null, name: null, seat: 3, ready: false, isHost: false, isBot: false }
     ]);
     
     setGameMode('lobby');
@@ -1347,21 +1458,65 @@ function App() {
     setMyPlayerId(playerId);
     setMyPlayerName(playerName);
     
-    // For now, mock joining - player will select seat in lobby
-    // In real version, this would sync with Firebase
+    // Mock joining - in real version this would load existing lobby state from Firebase
+    // For now, create a mock lobby with host already present
+    const hostId = generatePlayerId();
+    setPlayers([
+      { id: hostId, name: 'Game Host', seat: 0, ready: false, isHost: true, isBot: false },
+      { id: null, name: null, seat: 1, ready: false, isHost: false, isBot: false },
+      { id: null, name: null, seat: 2, ready: false, isHost: false, isBot: false },
+      { id: null, name: null, seat: 3, ready: false, isHost: false, isBot: false }
+    ]);
+    
     setGameMode('lobby');
   };
   
   const handleSeatSelect = (seatNum) => {
-    const newPlayers = [...players];
-    newPlayers[seatNum] = {
-      id: myPlayerId,
-      name: myPlayerName,
-      seat: seatNum,
-      ready: false,
-      isHost: false
-    };
-    setPlayers(newPlayers);
+    const myPlayer = players.find(p => p.id === myPlayerId);
+    
+    // If player already has a seat and isn't ready, allow seat swapping
+    if (myPlayer && myPlayer.seat !== seatNum && !myPlayer.ready) {
+      const newPlayers = players.map((p, idx) => {
+        if (p.id === myPlayerId) {
+          // Clear old seat
+          return { id: null, name: null, seat: idx, ready: false, isHost: false, isBot: false };
+        }
+        return p;
+      });
+      // Assign new seat
+      newPlayers[seatNum] = {
+        id: myPlayerId,
+        name: myPlayerName,
+        seat: seatNum,
+        ready: false,
+        isHost: myPlayer.isHost,
+        isBot: false
+      };
+      setPlayers(newPlayers);
+    } 
+    // If player doesn't have a seat yet, assign them
+    else if (!myPlayer) {
+      const newPlayers = [...players];
+      newPlayers[seatNum] = {
+        id: myPlayerId,
+        name: myPlayerName,
+        seat: seatNum,
+        ready: false,
+        isHost: false,
+        isBot: false
+      };
+      setPlayers(newPlayers);
+    }
+  };
+  
+  const handleLeaveSeat = () => {
+    const myPlayer = players.find(p => p.id === myPlayerId);
+    if (myPlayer && !myPlayer.ready) {
+      const newPlayers = players.map(p => 
+        p.id === myPlayerId ? { id: null, name: null, seat: p.seat, ready: false, isHost: false, isBot: false } : p
+      );
+      setPlayers(newPlayers);
+    }
   };
   
   const handleReady = () => {
@@ -1371,9 +1526,43 @@ function App() {
     setPlayers(newPlayers);
   };
   
+  const handleUnready = () => {
+    const newPlayers = players.map(p => 
+      p.id === myPlayerId ? { ...p, ready: false } : p
+    );
+    setPlayers(newPlayers);
+  };
+  
+  const handleAddBot = () => {
+    // Find first empty seat
+    const emptySeat = players.findIndex(p => !p.id);
+    if (emptySeat !== -1) {
+      const botId = generatePlayerId();
+      const botName = generateBotName();
+      const newPlayers = [...players];
+      newPlayers[emptySeat] = {
+        id: botId,
+        name: botName,
+        seat: emptySeat,
+        ready: true, // Bots are always ready
+        isHost: false,
+        isBot: true
+      };
+      setPlayers(newPlayers);
+    }
+  };
+  
+  const handleKickPlayer = (playerId) => {
+    const newPlayers = players.map(p => 
+      p.id === playerId ? { id: null, name: null, seat: p.seat, ready: false, isHost: false, isBot: false } : p
+    );
+    setPlayers(newPlayers);
+  };
+  
   const handleStartGame = () => {
+    console.log('🎮 Starting multiplayer game with players:', players.filter(p => p.id));
     // TODO: Transition to multiplayer game
-    console.log('Starting multiplayer game!');
+    alert('Multiplayer game starting! (Not yet implemented)');
   };
   
   const handleBackToMenu = () => {
@@ -1382,10 +1571,10 @@ function App() {
     setMyPlayerId(null);
     setMyPlayerName(null);
     setPlayers([
-      { id: null, name: null, seat: 0, ready: false, isHost: false },
-      { id: null, name: null, seat: 1, ready: false, isHost: false },
-      { id: null, name: null, seat: 2, ready: false, isHost: false },
-      { id: null, name: null, seat: 3, ready: false, isHost: false }
+      { id: null, name: null, seat: 0, ready: false, isHost: false, isBot: false },
+      { id: null, name: null, seat: 1, ready: false, isHost: false, isBot: false },
+      { id: null, name: null, seat: 2, ready: false, isHost: false, isBot: false },
+      { id: null, name: null, seat: 3, ready: false, isHost: false, isBot: false }
     ]);
   };
   
@@ -1427,8 +1616,12 @@ function App() {
         myPlayerId={myPlayerId}
         onSeatSelect={handleSeatSelect}
         onReady={handleReady}
+        onUnready={handleUnready}
         onStartGame={handleStartGame}
         onBackToMenu={handleBackToMenu}
+        onAddBot={handleAddBot}
+        onKickPlayer={handleKickPlayer}
+        onLeaveSeat={handleLeaveSeat}
         isHost={myPlayer && myPlayer.isHost}
       />
     );
