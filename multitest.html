@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,7 +21,78 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '1.0-MULTIPLAYER';
+const VERSION = '2.5-USER-ACCOUNTS';
+const DEBUG = true; // Set to false for production
+
+// Debug logging utility
+const debug = {
+  auth: (...args) => DEBUG && console.log('🔐 AUTH:', ...args),
+  game: (...args) => DEBUG && console.log('🎮 GAME:', ...args),
+  timer: (...args) => DEBUG && console.log('⏱️ TIMER:', ...args),
+  ai: (...args) => DEBUG && console.log('🤖 AI:', ...args),
+  cleanup: (...args) => DEBUG && console.log('🧹 CLEANUP:', ...args),
+  stats: (...args) => DEBUG && console.log('📊 STATS:', ...args),
+  reconnect: (...args) => DEBUG && console.log('🔄 RECONNECT:', ...args),
+  error: (...args) => console.error('❌ ERROR:', ...args)
+};
+
+// SHA-256 PIN hashing utility
+async function hashPin(username, pin) {
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(username.toLowerCase().trim() + pin);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    debug.auth('PIN hashed for user:', username);
+    return hash;
+  } catch (err) {
+    debug.error('PIN hashing failed:', err);
+    throw err;
+  }
+}
+
+// Generate unique user ID
+function generateUserId() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = 'user_';
+  for (let i = 0; i < 12; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+// Avatar library - 24 card-themed avatars
+const AVATARS = [
+  { id: 'spade-ace', emoji: '🂡', name: 'Ace of Spades' },
+  { id: 'heart-ace', emoji: '🂱', name: 'Ace of Hearts' },
+  { id: 'diamond-ace', emoji: '🃁', name: 'Ace of Diamonds' },
+  { id: 'club-ace', emoji: '🃑', name: 'Ace of Clubs' },
+  { id: 'spade-king', emoji: '🂮', name: 'King of Spades' },
+  { id: 'heart-king', emoji: '🂾', name: 'King of Hearts' },
+  { id: 'diamond-king', emoji: '🃎', name: 'King of Diamonds' },
+  { id: 'club-king', emoji: '🃞', name: 'King of Clubs' },
+  { id: 'spade-queen', emoji: '🂭', name: 'Queen of Spades' },
+  { id: 'heart-queen', emoji: '🂽', name: 'Queen of Hearts' },
+  { id: 'diamond-queen', emoji: '🃍', name: 'Queen of Diamonds' },
+  { id: 'club-queen', emoji: '🃝', name: 'Queen of Clubs' },
+  { id: 'spade-jack', emoji: '🂫', name: 'Jack of Spades' },
+  { id: 'heart-jack', emoji: '🂻', name: 'Jack of Hearts' },
+  { id: 'diamond-jack', emoji: '🃋', name: 'Jack of Diamonds' },
+  { id: 'club-jack', emoji: '🃛', name: 'Jack of Clubs' },
+  { id: 'spade-10', emoji: '🂪', name: '10 of Spades' },
+  { id: 'heart-10', emoji: '🂺', name: '10 of Hearts' },
+  { id: 'diamond-10', emoji: '🃊', name: '10 of Diamonds' },
+  { id: 'club-10', emoji: '🃚', name: '10 of Clubs' },
+  { id: 'joker-red', emoji: '🃏', name: 'Red Joker' },
+  { id: 'joker-black', emoji: '🃟', name: 'Black Joker' },
+  { id: 'card-back', emoji: '🂠', name: 'Card Back' },
+  { id: 'playing-card', emoji: '🎴', name: 'Playing Cards' }
+];
+
+function getAvatarById(id) {
+  return AVATARS.find(a => a.id === id) || AVATARS[0];
+}
 
 // Utility function for game ID generation (generatePlayerId is already in game logic below)
 function generateGameId() {
@@ -369,15 +439,21 @@ const FirebaseAPI = {
   // Create new game
   createGame: async (gameCode, hostPlayer) => {
     try {
+      const now = Date.now();
       await database.ref(`games/${gameCode}`).set({
         code: gameCode,
         host: hostPlayer.id,
         players: {
-          [hostPlayer.id]: hostPlayer
+          [hostPlayer.id]: {
+            ...hostPlayer,
+            lastSeen: now,
+            disconnected: false
+          }
         },
         chat: {},
         status: 'lobby',
-        createdAt: firebase.database.ServerValue.TIMESTAMP
+        createdAt: now,
+        lastActivity: now
       });
       console.log('✅ Game created:', gameCode);
     } catch (error) {
@@ -401,8 +477,12 @@ const FirebaseAPI = {
         throw new Error('Game is full (4 players max)');
       }
       
-      await database.ref(`games/${gameCode}/players/${player.id}`).set(player);
-      console.log('✅ Player joined:', player.name);
+      await database.ref(`games/${gameCode}/players/${player.id}`).set({
+        ...player,
+        lastSeen: Date.now(),
+        disconnected: false
+      });
+      console.log('✅ Player joined:', player.username);
     } catch (error) {
       console.error('❌ joinGame failed:', error);
       throw error;
@@ -1407,6 +1487,10 @@ function DealerBadge() {
   return (<span style={{ padding: '1px 3px', background: '#d4af37', color: '#000', borderRadius: '2px', fontSize: '8px', fontWeight: 'bold' }}>DEALER</span>);
 }
 
+function DisconnectedBadge() {
+  return (<span style={{ padding: '1px 3px', background: '#d32f2f', color: '#fff', borderRadius: '2px', fontSize: '8px', fontWeight: 'bold' }}>⚠️ DISCONNECTED</span>);
+}
+
 function Card({ card, onClick, disabled, selected, small, faceDown, playable, wasDrawn }) {
   const isRed = card && (card.suit === '\u2665' || card.suit === '\u2666');
   
@@ -1447,11 +1531,16 @@ function Card({ card, onClick, disabled, selected, small, faceDown, playable, wa
   );
 }
 
-function ScoreTable({ roundHistory }) {
+function ScoreTable({ roundHistory, mySeatIndex }) {
   const [expanded, setExpanded] = useState(false);
   if (roundHistory.length === 0) return null;
   const maxVis = 2, needsCollapse = roundHistory.length > maxVis;
   const visible = (!needsCollapse || expanded) ? roundHistory : roundHistory.slice(-maxVis);
+  
+  // Determine viewer's team - swap display if viewer is on Team 1
+  const myTeam = mySeatIndex % 2;
+  const swapColumns = myTeam === 1;
+  
   return (
     <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '4px', padding: '4px', fontSize: '10px' }}>
       {needsCollapse && <div onClick={() => setExpanded(!expanded)} style={{ textAlign: 'center', color: '#aaa', cursor: 'pointer', fontSize: '9px' }}>{expanded ? '\u25BC less' : `\u25B2 +${roundHistory.length - maxVis}`}</div>}
@@ -1459,7 +1548,14 @@ function ScoreTable({ roundHistory }) {
         <thead><tr><th style={{ padding: '1px 2px', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>R</th><th colSpan="2" style={{ padding: '1px 2px', borderBottom: '1px solid rgba(255,255,255,0.2)', color: '#4caf50' }}>US</th><th colSpan="2" style={{ padding: '1px 2px', borderBottom: '1px solid rgba(255,255,255,0.2)', color: '#f44336' }}>THEM</th></tr></thead>
         <tbody>{visible.map((r, i) => {
           const rn = expanded || !needsCollapse ? i + 1 : roundHistory.length - maxVis + i + 1;
-          return (<tr key={i}><td style={{ padding: '1px 2px' }}>{rn}</td><td style={{ padding: '1px 2px', color: '#4caf50' }}>{r.usRoundScore < 0 ? `(${Math.abs(r.usRoundScore)})` : r.usRoundScore}</td><td style={{ padding: '1px 2px', color: '#4caf50', fontWeight: 'bold' }}>{r.usTotal}</td><td style={{ padding: '1px 2px', color: '#f44336' }}>{r.themRoundScore < 0 ? `(${Math.abs(r.themRoundScore)})` : r.themRoundScore}</td><td style={{ padding: '1px 2px', color: '#f44336', fontWeight: 'bold' }}>{r.themTotal}</td></tr>);
+          
+          // Swap columns if viewer is on Team 1
+          const usRoundScore = swapColumns ? r.themRoundScore : r.usRoundScore;
+          const usTotal = swapColumns ? r.themTotal : r.usTotal;
+          const themRoundScore = swapColumns ? r.usRoundScore : r.themRoundScore;
+          const themTotal = swapColumns ? r.usTotal : r.themTotal;
+          
+          return (<tr key={i}><td style={{ padding: '1px 2px' }}>{rn}</td><td style={{ padding: '1px 2px', color: '#4caf50' }}>{usRoundScore < 0 ? `(${Math.abs(usRoundScore)})` : usRoundScore}</td><td style={{ padding: '1px 2px', color: '#4caf50', fontWeight: 'bold' }}>{usTotal}</td><td style={{ padding: '1px 2px', color: '#f44336' }}>{themRoundScore < 0 ? `(${Math.abs(themRoundScore)})` : themRoundScore}</td><td style={{ padding: '1px 2px', color: '#f44336', fontWeight: 'bold' }}>{themTotal}</td></tr>);
         })}</tbody>
       </table>
     </div>
@@ -1585,7 +1681,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
     const seatNames = ['North', 'East', 'South', 'West'];
     const seat = seatNames[playerIdx];
     const player = players && players[seat];
-    return player ? player.name : `P${playerIdx + 1}`;
+    return player ? player.username : `P${playerIdx + 1}`;  // Fixed: player.username → player.username
   };
   
   const renderHand = (playerIdx, label) => {
@@ -1711,32 +1807,163 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
 // ============================================================================
 
 function LoginScreen({ onLogin }) {
-  const [playerName, setPlayerName] = useState('');
-  const [isReturning, setIsReturning] = useState(false);
+  const [mode, setMode] = useState('login'); // 'login' | 'register'
+  const [username, setUsername] = useState('');
+  const [pin, setPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [selectedAvatar, setSelectedAvatar] = useState('spade-ace');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
-  // PHASE 2.1: Check for saved username
+  // Check for saved credentials on mount
   useEffect(() => {
-    const savedUsername = localStorage.getItem('45s_username');
-    if (savedUsername) {
-      setPlayerName(savedUsername);
-      setIsReturning(true);
+    // Check for new keys first
+    const savedUsername = localStorage.getItem('playerName') || localStorage.getItem('45s_username');
+    const savedUserId = localStorage.getItem('userId') || localStorage.getItem('45s_userId');
+    
+    if (savedUsername && savedUserId) {
+      debug.auth('Found saved credentials:', savedUsername);
+      setUsername(savedUsername);
+      // Auto-fill for quick login
     }
   }, []);
 
-  const handleSubmit = () => {
-    if (!playerName.trim()) return;
-    
-    // PHASE 2.1: Save username to localStorage
-    localStorage.setItem('45s_username', playerName.trim());
-    
-    const playerId = generatePlayerId();
-    onLogin(playerId, playerName.trim());
+  // Check if username exists in Firebase
+  const checkUsername = async (user) => {
+    try {
+      const snapshot = await database.ref('users').orderByChild('username').equalTo(user.toLowerCase()).once('value');
+      const users = snapshot.val();
+      
+      if (users) {
+        const userId = Object.keys(users)[0];
+        debug.auth('User found:', userId);
+        return { exists: true, userId, userData: users[userId] };
+      }
+      
+      debug.auth('User not found:', user);
+      return { exists: false };
+    } catch (err) {
+      debug.error('Username check failed:', err);
+      throw err;
+    }
   };
 
-  const handleChangeName = () => {
-    setPlayerName('');
-    setIsReturning(false);
-    localStorage.removeItem('45s_username');
+  // Handle registration
+  const handleRegister = async () => {
+    if (!username.trim() || pin.length !== 4) {
+      setError('Username and 4-digit PIN required');
+      return;
+    }
+    
+    if (pin !== confirmPin) {
+      setError('PINs do not match');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Check if username already taken
+      const check = await checkUsername(username);
+      if (check.exists) {
+        setError('Username already taken');
+        setLoading(false);
+        return;
+      }
+      
+      // Create new user
+      const userId = generateUserId();
+      const pinHash = await hashPin(username, pin);
+      
+      const newUser = {
+        username: username.trim(),
+        pinHash,
+        avatar: selectedAvatar,
+        createdAt: Date.now(),
+        lastLogin: Date.now(),
+        currentGame: null,
+        stats: {
+          gamesPlayed: 0,
+          gamesPlayedVsAI: 0,
+          gamesPlayedVsHumans: 0,
+          wins: 0,
+          winsVsAI: 0,
+          winsVsHumans: 0,
+          winPercentage: 0,
+          currentStreak: 0,
+          streakType: 'W'
+        }
+      };
+      
+      await database.ref(`users/${userId}`).set(newUser);
+      debug.auth('User created:', userId);
+      debug.stats('Initialized stats for:', userId);
+      
+      // Save credentials
+      localStorage.setItem('45s_username', username.trim());
+      localStorage.setItem('45s_userId', userId);
+      localStorage.setItem('45s_avatar', selectedAvatar);
+      
+      onLogin(userId, username.trim(), selectedAvatar);
+    } catch (err) {
+      debug.error('Registration failed:', err);
+      setError('Registration failed. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  // Handle login
+  const handleLogin = async () => {
+    if (!username.trim() || pin.length !== 4) {
+      setError('Username and 4-digit PIN required');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const check = await checkUsername(username);
+      
+      if (!check.exists) {
+        setError('Username not found');
+        setLoading(false);
+        return;
+      }
+      
+      // Verify PIN
+      const pinHash = await hashPin(username, pin);
+      if (pinHash !== check.userData.pinHash) {
+        setError('Incorrect PIN');
+        setLoading(false);
+        return;
+      }
+      
+      debug.auth('Login successful:', check.userId);
+      
+      // Update last login
+      await database.ref(`users/${check.userId}/lastLogin`).set(Date.now());
+      
+      // Save credentials
+      localStorage.setItem('45s_username', username.trim());
+      localStorage.setItem('45s_userId', check.userId);
+      localStorage.setItem('45s_avatar', check.userData.avatar);
+      
+      onLogin(check.userId, username.trim(), check.userData.avatar);
+    } catch (err) {
+      debug.error('Login failed:', err);
+      setError('Login failed. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  // PIN input handling (only allow digits)
+  const handlePinInput = (value, setter) => {
+    if (/^\d{0,4}$/.test(value)) {
+      setter(value);
+    }
   };
 
   return (
@@ -1747,87 +1974,292 @@ function LoginScreen({ onLogin }) {
       justifyContent: 'center', 
       minHeight: '100vh',
       padding: '20px',
-      background: 'linear-gradient(135deg, #1a5f3f 0%, #2d8f5f 100%)'
+      background: 'linear-gradient(135deg, #1a5f3f 0%, #2d8f5f 100%)',
+      position: 'relative'
     }}>
+      {/* Version number */}
+      <div style={{
+        position: 'absolute',
+        top: '10px',
+        left: '10px',
+        fontSize: '11px',
+        color: 'rgba(255,255,255,0.8)',
+        fontFamily: 'monospace',
+        fontWeight: 'bold',
+        background: 'rgba(0,0,0,0.2)',
+        padding: '4px 8px',
+        borderRadius: '4px'
+      }}>
+        v{VERSION}
+      </div>
+
       <div style={{
         background: 'white',
         padding: '40px',
         borderRadius: '12px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-        maxWidth: '400px',
+        maxWidth: '450px',
         width: '100%'
       }}>
         <h1 style={{ marginBottom: '8px', textAlign: 'center', color: '#1a5f3f' }}>
           45s Card Game
         </h1>
         <p style={{ marginBottom: '24px', textAlign: 'center', color: '#666', fontSize: '14px' }}>
-          {isReturning ? 'Welcome back!' : 'Enter your name to start'}
+          {mode === 'register' ? 'Create Your Account' : 'Welcome Back!'}
         </p>
 
-        {isReturning && (
+        {error && (
           <div style={{
-            background: '#e8f5e9',
+            background: '#ffebee',
+            border: '2px solid #f44336',
             padding: '12px',
-            borderRadius: '8px',
+            borderRadius: '6px',
             marginBottom: '16px',
-            textAlign: 'center'
+            color: '#c62828',
+            fontSize: '14px'
           }}>
-            <p style={{ color: '#2e7d32', fontSize: '14px', marginBottom: '8px' }}>
-              Remembered username: <strong>{playerName}</strong>
-            </p>
-            <button
-              onClick={handleChangeName}
-              style={{
-                padding: '6px 12px',
-                fontSize: '12px',
-                background: 'none',
-                color: '#2e7d32',
-                border: '1px solid #2e7d32',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Use different name
-            </button>
+            {error}
           </div>
         )}
 
-        <input
-          type="text"
-          value={playerName}
-          onChange={(e) => setPlayerName(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
-          placeholder="Your name"
-          style={{
-            width: '100%',
-            padding: '12px',
-            fontSize: '16px',
-            border: '2px solid #ddd',
-            borderRadius: '6px',
-            marginBottom: '16px'
-          }}
-          autoFocus={!isReturning}
-          maxLength={20}
-          disabled={isReturning}
-        />
-        
-        <button
-          onClick={handleSubmit}
-          disabled={!playerName.trim()}
-          style={{
-            width: '100%',
-            padding: '12px',
-            fontSize: '16px',
-            background: playerName.trim() ? '#2d8f5f' : '#ccc',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: playerName.trim() ? 'pointer' : 'not-allowed',
-            fontWeight: 'bold'
-          }}
-        >
-          {isReturning ? 'Continue' : 'Start Playing'}
-        </button>
+        {/* Username input */}
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
+            Username
+          </label>
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Choose a username"
+            style={{
+              width: '100%',
+              padding: '12px',
+              fontSize: '16px',
+              border: '2px solid #ddd',
+              borderRadius: '6px'
+            }}
+            autoFocus
+            maxLength={20}
+            disabled={loading}
+          />
+        </div>
+
+        {/* PIN input */}
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
+            4-Digit PIN
+          </label>
+          <input
+            type="password"
+            value={pin}
+            onChange={(e) => handlePinInput(e.target.value, setPin)}
+            placeholder="••••"
+            style={{
+              width: '100%',
+              padding: '12px',
+              fontSize: '24px',
+              border: '2px solid #ddd',
+              borderRadius: '6px',
+              letterSpacing: '8px',
+              textAlign: 'center'
+            }}
+            maxLength={4}
+            disabled={loading}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && mode === 'login' && pin.length === 4) {
+                handleLogin();
+              }
+            }}
+          />
+        </div>
+
+        {/* Confirm PIN (registration only) */}
+        {mode === 'register' && (
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
+              Confirm PIN
+            </label>
+            <input
+              type="password"
+              value={confirmPin}
+              onChange={(e) => handlePinInput(e.target.value, setConfirmPin)}
+              placeholder="••••"
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '24px',
+                border: '2px solid #ddd',
+                borderRadius: '6px',
+                letterSpacing: '8px',
+                textAlign: 'center'
+              }}
+              maxLength={4}
+              disabled={loading}
+            />
+          </div>
+        )}
+
+        {/* Avatar selection (registration only) */}
+        {mode === 'register' && (
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
+              Choose Avatar
+            </label>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '12px',
+              border: '2px solid #ddd',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              background: '#f5f5f5'
+            }}
+            onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+            >
+              <div style={{ fontSize: '32px' }}>
+                {getAvatarById(selectedAvatar).emoji}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
+                  {getAvatarById(selectedAvatar).name}
+                </div>
+                <div style={{ fontSize: '12px', color: '#666' }}>
+                  Click to change
+                </div>
+              </div>
+            </div>
+
+            {showAvatarPicker && (
+              <div style={{
+                marginTop: '12px',
+                padding: '12px',
+                border: '2px solid #ddd',
+                borderRadius: '6px',
+                maxHeight: '200px',
+                overflowY: 'auto',
+                background: 'white'
+              }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: '8px'
+                }}>
+                  {AVATARS.map(avatar => (
+                    <div
+                      key={avatar.id}
+                      onClick={() => {
+                        setSelectedAvatar(avatar.id);
+                        setShowAvatarPicker(false);
+                      }}
+                      style={{
+                        fontSize: '32px',
+                        padding: '8px',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        borderRadius: '6px',
+                        border: selectedAvatar === avatar.id ? '2px solid #2d8f5f' : '2px solid transparent',
+                        background: selectedAvatar === avatar.id ? '#e8f5e9' : 'white',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {avatar.emoji}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {mode === 'login' ? (
+            <>
+              <button
+                onClick={handleLogin}
+                disabled={loading || !username.trim() || pin.length !== 4}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  fontSize: '16px',
+                  background: (loading || !username.trim() || pin.length !== 4) ? '#ccc' : '#2d8f5f',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: (loading || !username.trim() || pin.length !== 4) ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                {loading ? 'Logging in...' : 'Login'}
+              </button>
+              <button
+                onClick={() => {
+                  setMode('register');
+                  setPin('');
+                  setError(null);
+                }}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  fontSize: '16px',
+                  background: 'white',
+                  color: '#2d8f5f',
+                  border: '2px solid #2d8f5f',
+                  borderRadius: '6px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                Create New Account
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={handleRegister}
+                disabled={loading || !username.trim() || pin.length !== 4 || pin !== confirmPin}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  fontSize: '16px',
+                  background: (loading || !username.trim() || pin.length !== 4 || pin !== confirmPin) ? '#ccc' : '#2d8f5f',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: (loading || !username.trim() || pin.length !== 4 || pin !== confirmPin) ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                {loading ? 'Creating Account...' : 'Register'}
+              </button>
+              <button
+                onClick={() => {
+                  setMode('login');
+                  setConfirmPin('');
+                  setShowAvatarPicker(false);
+                  setError(null);
+                }}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  fontSize: '16px',
+                  background: 'white',
+                  color: '#666',
+                  border: '2px solid #ddd',
+                  borderRadius: '6px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                Back to Login
+              </button>
+            </>
+          )}
+        </div>
 
         <p style={{ 
           marginTop: '16px', 
@@ -1835,13 +2267,13 @@ function LoginScreen({ onLogin }) {
           color: '#999', 
           textAlign: 'center' 
         }}>
-          Your name is saved locally and used for all games
+          {mode === 'register' ? 'Your PIN is hashed and stored securely' : 'Forgot your PIN? Create a new account'}
         </p>
       </div>
     </div>
   );
 }
-function LobbyScreen({ playerId, playerName, onJoinGame }) {
+function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Updated signature
   const [games, setGames] = useState({});
   const [showCreateGame, setShowCreateGame] = useState(false);
   const [newGameName, setNewGameName] = useState('');
@@ -1849,6 +2281,42 @@ function LobbyScreen({ playerId, playerName, onJoinGame }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Clean up old/inactive games on lobby mount
+    const cleanupOldGames = async () => {
+      const now = Date.now();
+      const fifteenMinutes = 15 * 60 * 1000; // 15 minutes in milliseconds
+      
+      const gamesSnapshot = await database.ref('lobby/games').once('value');
+      const allGames = gamesSnapshot.val() || {};
+      
+      let deletedCount = 0;
+      for (const [gameId, game] of Object.entries(allGames)) {
+        // Check lastActivity if game has started, otherwise check createdAt
+        let timestamp = null;
+        if (game.gameState && game.gameState.lastActivity) {
+          timestamp = game.gameState.lastActivity;
+        } else if (game.createdAt) {
+          timestamp = game.createdAt;
+        }
+        
+        if (timestamp) {
+          const inactiveTime = now - timestamp;
+          if (inactiveTime > fifteenMinutes) {
+            console.log(`🗑️ Auto-deleting inactive game ${gameId} (inactive for ${Math.floor(inactiveTime/60000)} minutes)`);
+            await database.ref(`lobby/games/${gameId}`).remove();
+            deletedCount++;
+          }
+        }
+      }
+      
+      if (deletedCount > 0) {
+        console.log(`✅ Cleaned up ${deletedCount} inactive game(s)`);
+      }
+    };
+    
+    // Run cleanup
+    cleanupOldGames();
+    
     // Listen to all games
     const gamesRef = database.ref('lobby/games');
     const listener = gamesRef.on('value', (snapshot) => {
@@ -1877,8 +2345,9 @@ function LobbyScreen({ playerId, playerName, onJoinGame }) {
       await database.ref(`lobby/games/${gameId}`).set({
         name: gameName,
         status: 'waiting',
-        creatorId: playerId,
+        creatorId: userId,
         createdAt: Date.now(),
+        lastActivity: Date.now(),
         players: {}
       });
 
@@ -1888,6 +2357,25 @@ function LobbyScreen({ playerId, playerName, onJoinGame }) {
     } catch (err) {
       console.error('Error creating game:', err);
       setError('Failed to create game: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleDeleteGame = async (gameId) => {
+    if (!window.confirm('Are you sure you want to delete this game?')) {
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('Deleting game:', gameId);
+      await database.ref(`lobby/games/${gameId}`).remove();
+      console.log('Game deleted successfully');
+    } catch (err) {
+      console.error('Error deleting game:', err);
+      setError('Failed to delete game: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -1916,15 +2404,20 @@ function LobbyScreen({ playerId, playerName, onJoinGame }) {
         return;
       }
 
+      debug.game('Joining game:', gameId, 'seat:', seat);
       console.log('Joining game:', gameId, 'seat:', seat);
 
       await gameRef.child(`players/${seat}`).set({
-        name: playerName,
-        playerId: playerId,
+        username: playerName,  // Changed from 'name'
+        userId: userId,  // Changed from playerId
+        avatar: playerAvatar,  // NEW
         connected: true,
-        lastSeen: Date.now()
+        lastSeen: Date.now(),
+        ready: false,  // NEW - start as not ready
+        isAI: false  // NEW
       });
 
+      debug.game('Joined successfully');
       console.log('Joined successfully');
       onJoinGame(gameId, seat);
     } catch (err) {
@@ -1941,8 +2434,27 @@ function LobbyScreen({ playerId, playerName, onJoinGame }) {
     <div style={{
       minHeight: '100vh',
       overflow: 'auto',
-      padding: '20px'
+      padding: '20px',
+      position: 'relative'
     }}>
+      {/* Version number */}
+      <div style={{
+        position: 'fixed',
+        top: '10px',
+        left: '10px',
+        fontSize: '11px',
+        color: '#666',
+        fontFamily: 'monospace',
+        fontWeight: 'bold',
+        background: 'white',
+        padding: '4px 8px',
+        borderRadius: '4px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        zIndex: 1000
+      }}>
+        v{VERSION}
+      </div>
+
       <div style={{
         maxWidth: '1200px',
         margin: '0 auto'
@@ -1956,15 +2468,27 @@ function LobbyScreen({ playerId, playerName, onJoinGame }) {
           boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-            <div>
-              <h1 style={{ marginBottom: '8px', color: '#1a5f3f' }}>45s Card Game Lobby</h1>
-              <p style={{ color: '#666' }}>Welcome, {playerName}!</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ fontSize: '48px' }}>
+                {getAvatarById(playerAvatar).emoji}
+              </div>
+              <div>
+                <h1 style={{ marginBottom: '8px', color: '#1a5f3f' }}>45s Card Game Lobby</h1>
+                <p style={{ color: '#666' }}>Welcome, {playerName}!</p>
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
               <button
                 onClick={() => {
-                  if (window.confirm('Change your username? You will be logged out.')) {
+                  if (window.confirm('Log out? You will need to re-enter your PIN.')) {
+                    // Clear localStorage
+                    localStorage.removeItem('userId');
+                    localStorage.removeItem('playerName');
+                    localStorage.removeItem('playerAvatar');
+                    // Also clear old keys for backward compatibility
                     localStorage.removeItem('45s_username');
+                    localStorage.removeItem('45s_userId');
+                    localStorage.removeItem('45s_avatar');
                     window.location.reload();
                   }
                 }}
@@ -1979,7 +2503,7 @@ function LobbyScreen({ playerId, playerName, onJoinGame }) {
                   fontWeight: 'bold'
                 }}
               >
-                Change Name
+                Logout
               </button>
               <button
 onClick={() => {
@@ -2152,6 +2676,8 @@ onClick={() => {
                   gameId={gameId}
                   game={game}
                   onJoinSeat={(seat) => handleJoinSeat(gameId, seat)}
+                  onDeleteGame={() => handleDeleteGame(gameId)}
+                  userId={userId}
                   disabled={loading}
                 />
               ))}
@@ -2162,10 +2688,25 @@ onClick={() => {
     </div>
   );
 }
-function GameListItem({ gameId, game, onJoinSeat, disabled }) {
+function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled }) {
   const players = game.players || {};
   const playerCount = Object.keys(players).length;
   const seats = ['North', 'South', 'East', 'West'];
+  const isCreator = game.creatorId === userId;
+  
+  // Format timestamp to local time
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'Unknown';
+    const date = new Date(timestamp);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = String(date.getFullYear()).slice(-2);
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    return `${month}/${day}/${year} ${hours}:${minutes} ${ampm}`;
+  };
 
   return (
     <div style={{
@@ -2179,13 +2720,20 @@ function GameListItem({ gameId, game, onJoinSeat, disabled }) {
           <h3 style={{ color: '#1a5f3f' }}>{game.name}</h3>
           <span style={{
             padding: '4px 12px',
-            background: game.status === 'waiting' ? '#ffa500' : '#2d8f5f',
+            background: game.gameState?.phase === 'game-over' ? '#4caf50' : game.status === 'waiting' ? '#ffa500' : '#2d8f5f',
             color: 'white',
             borderRadius: '12px',
             fontSize: '14px',
             fontWeight: 'bold'
           }}>
-            {game.status === 'waiting' ? 'Waiting for Players' : 'In Progress'}
+            {(() => {
+              if (game.gameState?.phase === 'game-over') {
+                const scores = game.gameState.scores || [0, 0];
+                const winner = game.gameState.winner;
+                return `✅ COMPLETED (${scores[0]}-${scores[1]})`;
+              }
+              return game.status === 'waiting' ? 'Waiting for Players' : 'In Progress';
+            })()}
           </span>
         </div>
         <p style={{ color: '#666', fontSize: '14px' }}>
@@ -2227,7 +2775,7 @@ function GameListItem({ gameId, game, onJoinSeat, disabled }) {
                 {seat}
               </div>
               <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
-                {isOccupied ? player.name : 'Empty'}
+                {isOccupied ? player.username : 'Empty'}
               </div>
               {!isOccupied && game.status === 'waiting' && (
                 <button
@@ -2277,7 +2825,7 @@ function GameListItem({ gameId, game, onJoinSeat, disabled }) {
                 {seat}
               </div>
               <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
-                {isOccupied ? player.name : 'Empty'}
+                {isOccupied ? player.username : 'Empty'}
               </div>
               {!isOccupied && game.status === 'waiting' && (
                 <button
@@ -2327,7 +2875,7 @@ function GameListItem({ gameId, game, onJoinSeat, disabled }) {
                 {seat}
               </div>
               <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
-                {isOccupied ? player.name : 'Empty'}
+                {isOccupied ? player.username : 'Empty'}
               </div>
               {!isOccupied && game.status === 'waiting' && (
                 <button
@@ -2377,7 +2925,7 @@ function GameListItem({ gameId, game, onJoinSeat, disabled }) {
                 {seat}
               </div>
               <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
-                {isOccupied ? player.name : 'Empty'}
+                {isOccupied ? player.username : 'Empty'}
               </div>
               {!isOccupied && game.status === 'waiting' && (
                 <button
@@ -2417,10 +2965,38 @@ function GameListItem({ gameId, game, onJoinSeat, disabled }) {
           <div>E+W</div>
         </div>
       </div>
+      
+      {/* Timestamp in lower left */}
+      <div style={{ marginTop: '12px', fontSize: '12px', color: '#999' }}>
+        Created: {formatTimestamp(game.createdAt)}
+      </div>
+      
+      {/* Delete button (only for creator) */}
+      {isCreator && (
+        <div style={{ marginTop: '16px', textAlign: 'right' }}>
+          <button
+            onClick={onDeleteGame}
+            disabled={disabled}
+            style={{
+              padding: '8px 16px',
+              background: '#d32f2f',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              opacity: disabled ? 0.5 : 1
+            }}
+          >
+            Delete Game
+          </button>
+        </div>
+      )}
     </div>
   );
 }
-function WaitingRoom({ gameId, playerId, playerName, mySeat, onStartGame, onLeaveGame }) {
+function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStartGame, onLeaveGame }) {  // Updated signature
   const [game, setGame] = useState(null);
   const [isCreator, setIsCreator] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -2435,7 +3011,7 @@ function WaitingRoom({ gameId, playerId, playerName, mySeat, onStartGame, onLeav
       const data = snapshot.val();
       if (data) {
         setGame(data);
-        setIsCreator(data.creatorId === playerId);
+        setIsCreator(data.creatorId === userId);
         console.log('Game updated:', data);
         
         // PHASE 2.1: Update my ready state from server
@@ -2474,7 +3050,7 @@ function WaitingRoom({ gameId, playerId, playerName, mySeat, onStartGame, onLeav
       gameRef.off('value', listener);
       clearInterval(heartbeat);
     };
-  }, [gameId, playerId, mySeat]);
+  }, [gameId, userId, mySeat]);  // Changed playerId to userId
   // PHASE 2.1: Toggle ready state
   const handleToggleReady = async () => {
     const newReady = !myReady;
@@ -2500,16 +3076,10 @@ function WaitingRoom({ gameId, playerId, playerName, mySeat, onStartGame, onLeav
       const players = game.players || {};
       const playerCount = Object.keys(players).length;
       
-      // PHASE 2.1: Check ready states
-      const readyPlayers = Object.values(players).filter(p => !p.isAI && p.ready).length;
-      
-      if (readyPlayers < 1) {
-        setError('At least one player must be ready to start');
-        setLoading(false);
-        return;
-      }
-      
-      console.log('Starting game with', playerCount, 'players,', readyPlayers, 'ready');
+      // PHASE 2.5a FIX: Creator clicking "Start Game" IS their ready signal
+      // No validation needed - if they can click the button, they're ready
+      debug.game('Starting game as creator with', playerCount, 'players');
+      console.log('Starting game with', playerCount, 'players');
       
       if (playerCount < 4) {
         // Fill empty seats with AI
@@ -2519,8 +3089,9 @@ function WaitingRoom({ gameId, playerId, playerName, mySeat, onStartGame, onLeav
           if (!players[seat]) {
             const seatIndex = SEAT_TO_INDEX[seat];
             await database.ref(`lobby/games/${gameId}/players/${seat}`).set({
-              name: `AI Player ${seatIndex + 1}`,
-              playerId: `ai_${seat}`,
+              username: `AI Player ${seatIndex + 1}`,  // Changed from 'name'
+              userId: `ai_${seat}`,  // Changed from 'playerId'
+              avatar: 'joker-black',  // AI players get joker avatar
               connected: true,
               lastSeen: Date.now(),
               isAI: true,
@@ -2592,14 +3163,32 @@ function WaitingRoom({ gameId, playerId, playerName, mySeat, onStartGame, onLeav
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '20px'
+      padding: '20px',
+      background: 'linear-gradient(135deg, #1a5f3f 0%, #2d8f5f 100%)',
+      position: 'relative'
     }}>
+      {/* Version number */}
+      <div style={{
+        position: 'absolute',
+        top: '10px',
+        left: '10px',
+        fontSize: '11px',
+        color: 'rgba(255,255,255,0.8)',
+        fontFamily: 'monospace',
+        fontWeight: 'bold',
+        background: 'rgba(0,0,0,0.2)',
+        padding: '4px 8px',
+        borderRadius: '4px'
+      }}>
+        v{VERSION}
+      </div>
+
       <div style={{
         background: 'white',
         borderRadius: '12px',
         padding: '40px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-        maxWidth: '600px',
+        maxWidth: '700px',
         width: '100%'
       }}>
         <h1 style={{ marginBottom: '8px', textAlign: 'center', color: '#1a5f3f' }}>
@@ -2690,7 +3279,7 @@ function WaitingRoom({ gameId, playerId, playerName, mySeat, onStartGame, onLeav
                     {seat.toUpperCase()}
                   </div>
                   <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px', marginBottom: '4px' }}>
-                    {player ? player.name : 'Empty Seat'}
+                    {player ? player.username : 'Empty Seat'}
                     {isMe && <span style={{ color: '#2196f3', fontSize: '11px' }}> (You)</span>}
                   </div>
                   {player && (
@@ -2773,7 +3362,7 @@ function WaitingRoom({ gameId, playerId, playerName, mySeat, onStartGame, onLeav
                     {seat.toUpperCase()}
                   </div>
                   <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px', marginBottom: '4px' }}>
-                    {player ? player.name : 'Empty Seat'}
+                    {player ? player.username : 'Empty Seat'}
                     {isMe && <span style={{ color: '#2196f3', fontSize: '11px' }}> (You)</span>}
                   </div>
                   {player && (
@@ -2856,7 +3445,7 @@ function WaitingRoom({ gameId, playerId, playerName, mySeat, onStartGame, onLeav
                     {seat.toUpperCase()}
                   </div>
                   <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px', marginBottom: '4px' }}>
-                    {player ? player.name : 'Empty Seat'}
+                    {player ? player.username : 'Empty Seat'}
                     {isMe && <span style={{ color: '#2196f3', fontSize: '11px' }}> (You)</span>}
                   </div>
                   {player && (
@@ -2939,7 +3528,7 @@ function WaitingRoom({ gameId, playerId, playerName, mySeat, onStartGame, onLeav
                     {seat.toUpperCase()}
                   </div>
                   <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px', marginBottom: '4px' }}>
-                    {player ? player.name : 'Empty Seat'}
+                    {player ? player.username : 'Empty Seat'}
                     {isMe && <span style={{ color: '#2196f3', fontSize: '11px' }}> (You)</span>}
                   </div>
                   {player && (
@@ -3099,19 +3688,44 @@ function WaitingRoom({ gameId, playerId, playerName, mySeat, onStartGame, onLeav
 
 function MultiplayerApp() {
   const [appState, setAppState] = useState('login'); // 'login' | 'lobby' | 'waiting' | 'playing'
-  const [playerId, setPlayerId] = useState(null);
+  const [userId, setUserId] = useState(null);  // Changed from playerId
   const [playerName, setPlayerName] = useState(null);
+  const [playerAvatar, setPlayerAvatar] = useState(null);  // NEW
   const [gameId, setGameId] = useState(null);
   const [mySeat, setMySeat] = useState(null);
 
-  const handleLogin = (pid, pname) => {
-    console.log('Logged in:', pname, pid);
-    setPlayerId(pid);
-    setPlayerName(pname);
+  // Check for saved login on mount
+  useEffect(() => {
+    const savedUserId = localStorage.getItem('userId');
+    const savedPlayerName = localStorage.getItem('playerName');
+    const savedPlayerAvatar = localStorage.getItem('playerAvatar');
+    
+    if (savedUserId && savedPlayerName) {
+      console.log('🔐 AUTH: Found saved credentials:', savedPlayerName);
+      setUserId(savedUserId);
+      setPlayerName(savedPlayerName);
+      setPlayerAvatar(savedPlayerAvatar || '👤');
+      setAppState('lobby');
+    }
+  }, []);
+
+  const handleLogin = (uid, uname, avatar) => {  // Updated signature
+    debug.auth('User logged into app:', uname, uid);
+    console.log('Logged in:', uname, uid);
+    setUserId(uid);
+    setPlayerName(uname);
+    setPlayerAvatar(avatar);
+    
+    // Save to localStorage for persistence
+    localStorage.setItem('userId', uid);
+    localStorage.setItem('playerName', uname);
+    localStorage.setItem('playerAvatar', avatar);
+    
     setAppState('lobby');
   };
 
   const handleJoinGame = (gid, seat) => {
+    debug.game('Joining game:', gid, 'seat:', seat);
     console.log('Joining game:', gid, 'as', seat);
     setGameId(gid);
     setMySeat(seat);
@@ -3119,11 +3733,13 @@ function MultiplayerApp() {
   };
 
   const handleStartGame = () => {
+    debug.game('Game starting...');
     console.log('Game starting...');
     setAppState('playing');
   };
 
   const handleLeaveGame = () => {
+    debug.game('Left game, returning to lobby');
     console.log('Left game, returning to lobby');
     setGameId(null);
     setMySeat(null);
@@ -3137,8 +3753,9 @@ function MultiplayerApp() {
   if (appState === 'lobby') {
     return (
       <LobbyScreen 
-        playerId={playerId}
+        userId={userId}  // Changed from playerId
         playerName={playerName}
+        playerAvatar={playerAvatar}  // NEW
         onJoinGame={handleJoinGame}
       />
     );
@@ -3148,8 +3765,9 @@ function MultiplayerApp() {
     return (
       <WaitingRoom
         gameId={gameId}
-        playerId={playerId}
+        userId={userId}  // Changed from playerId
         playerName={playerName}
+        playerAvatar={playerAvatar}  // NEW
         mySeat={mySeat}
         onStartGame={handleStartGame}
         onLeaveGame={handleLeaveGame}
@@ -3161,8 +3779,9 @@ function MultiplayerApp() {
     return (
       <GameWrapper
         gameId={gameId}
-        playerId={playerId}
+        userId={userId}  // Changed from playerId
         playerName={playerName}
+        playerAvatar={playerAvatar}  // NEW
         mySeat={mySeat}
         onLeaveGame={handleLeaveGame}
       />
@@ -3192,7 +3811,7 @@ function relativeToAbsolute(relativePos, mySeatIndex) {
 // GAME WRAPPER WITH FIREBASE SYNC
 // ============================================================================
 
-function GameWrapper({ gameId, playerId, playerName, mySeat, onLeaveGame }) {
+function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeaveGame }) {  // Updated: playerId → userId, added playerAvatar
   const [gameState, setGameState] = useState(null);
   const [players, setPlayers] = useState({});
   const [disconnectTimer, setDisconnectTimer] = useState(null);
@@ -3217,49 +3836,65 @@ function GameWrapper({ gameId, playerId, playerName, mySeat, onLeaveGame }) {
       const data = snapshot.val();
       if (data) {
         setPlayers(data);
-        
-        // Check for disconnections
-        Object.entries(data).forEach(([seat, player]) => {
-          if (!player.isAI && !player.connected) {
-            const timeSinceLastSeen = Date.now() - player.lastSeen;
-            if (timeSinceLastSeen > 30000) {
-              // Convert to AI after 30 seconds
-              const seatIndex = SEAT_TO_INDEX[seat];
-              const playerNum = seatIndex + 1;
-              console.log(`Player ${seat} disconnected, converting to AI P${playerNum}`);
-              database.ref(`lobby/games/${gameId}/players/${seat}`).update({
-                isAI: true,
-                name: `P${playerNum}`
-              });
-            }
-          }
-        });
       }
     });
 
-    // Heartbeat
+    // Heartbeat - update every 10 seconds
     const heartbeat = setInterval(() => {
       database.ref(`lobby/games/${gameId}/players/${mySeat}`).update({
         lastSeen: Date.now(),
-        connected: true
+        disconnected: false
       });
-    }, 5000);
+    }, 10000); // 10 second interval
+    
+    // Disconnect detection - check every 5 seconds
+    const disconnectCheck = setInterval(() => {
+      const now = Date.now();
+      database.ref(`lobby/games/${gameId}/players`).once('value', (snapshot) => {
+        const playerData = snapshot.val();
+        if (playerData) {
+          Object.entries(playerData).forEach(([seat, player]) => {
+            if (!player.isAI && player.lastSeen) {
+              const timeSinceLastSeen = now - player.lastSeen;
+              if (timeSinceLastSeen > 30000 && !player.disconnected) {
+                // Mark as disconnected after 30 seconds
+                console.log(`⚠️ Player ${seat} (${player.username}) disconnected - ${Math.floor(timeSinceLastSeen/1000)}s since last seen`);
+                database.ref(`lobby/games/${gameId}/players/${seat}`).update({
+                  disconnected: true
+                });
+              } else if (timeSinceLastSeen <= 30000 && player.disconnected) {
+                // Reconnected
+                console.log(`✅ Player ${seat} (${player.username}) reconnected`);
+                database.ref(`lobby/games/${gameId}/players/${seat}`).update({
+                  disconnected: false
+                });
+              }
+            }
+          });
+        }
+      });
+    }, 5000); // Check every 5 seconds
 
     return () => {
       gameRef.off('value', gameListener);
       playersRef.off('value', playersListener);
       clearInterval(heartbeat);
+      clearInterval(disconnectCheck);
     };
   }, [gameId, mySeat]);
 
   // Initialize game if needed
   useEffect(() => {
+    debug.game('GameWrapper: Checking initialization. gameState:', gameState ? 'EXISTS' : 'NULL');
     if (!gameState) {
-      // Check if we're the creator - if so, initialize the game
-      database.ref(`lobby/games/${gameId}`).once('value', (snapshot) => {
-        const game = snapshot.val();
-        if (game.creatorId === playerId && !game.gameState) {
-          console.log('Initializing game state as creator');
+      // We're in GameWrapper, so game should be playing. Initialize if needed.
+      database.ref(`lobby/games/${gameId}/gameState`).once('value', (snapshot) => {
+        const existingState = snapshot.val();
+        debug.game('GameWrapper: Checking Firebase gameState:', existingState ? 'EXISTS' : 'NULL');
+        
+        if (!existingState) {
+          console.log('Initializing game state (no existing state found)');
+          debug.game('GameWrapper: Initializing game state NOW');
           const initialState = {
             phase: 'start',
             dealer: 0,
@@ -3267,11 +3902,15 @@ function GameWrapper({ gameId, playerId, playerName, mySeat, onLeaveGame }) {
             scores: [0, 0],
             initialized: true
           };
-          database.ref(`lobby/games/${gameId}/gameState`).set(initialState);
+          database.ref(`lobby/games/${gameId}/gameState`).set(initialState)
+            .then(() => debug.game('GameWrapper: Game state initialized successfully'))
+            .catch(err => debug.error('GameWrapper: Failed to initialize game state:', err));
+        } else {
+          debug.game('GameWrapper: Game state already exists in Firebase, waiting for sync...');
         }
       });
     }
-  }, [gameId, playerId, gameState]);
+  }, [gameId, userId, gameState]);  // Changed playerId to userId
 
   if (!gameState || !gameState.initialized) {
     return (
@@ -3294,7 +3933,7 @@ function GameWrapper({ gameId, playerId, playerName, mySeat, onLeaveGame }) {
   return (
     <MultiplayerGameTable
       gameId={gameId}
-      playerId={playerId}
+      userId={userId}  // Changed from playerId
       playerName={playerName}
       mySeat={mySeat}
       mySeatIndex={mySeatIndex}
@@ -3309,7 +3948,7 @@ function GameWrapper({ gameId, playerId, playerName, mySeat, onLeaveGame }) {
 // MULTIPLAYER GAME TABLE - Integrates game logic with Firebase sync
 // ============================================================================
 
-function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatIndex, gameState, players, onLeaveGame }) {
+function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex, gameState, players, onLeaveGame }) {  // Changed playerId to userId
   // All the game state from the original App component
   const [phase, setPhase] = useState('start');
   const [hands, setHands] = useState([[], [], [], []]);
@@ -3526,7 +4165,7 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
 
   // Bid indicator with BAGGED support - matches v3.5.9
   const bidIndicator = (pi) => {
-    if (phase === 'bidding') { 
+    if (phase === 'bidding' || phase === 'trump-select') {  // Show bids during bidding AND trump selection
       if (bids[pi] === null || bids[pi] === undefined) return null;
       const showBagged = wasBagged && pi === bidWinner && bids[pi] === 15;
       if (bids[pi] === 0) {
@@ -3550,7 +4189,11 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
     });
     
     try {
-      await database.ref(`lobby/games/${gameId}/gameState`).update(updates);
+      // Always update lastActivity timestamp with every game action
+      await database.ref(`lobby/games/${gameId}/gameState`).update({
+        ...updates,
+        lastActivity: timestamp
+      });
       console.log(`[${timestamp}] ✓ Firebase write complete`);
     } catch (error) {
       console.error(`[${timestamp}] ✗ Firebase write FAILED:`, error);
@@ -3657,7 +4300,13 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
   const getPlayerName = useCallback((playerIndex) => {
     const seat = SEAT_NAMES[playerIndex];
     const player = players[seat];
-    return player ? player.name : `P${playerIndex + 1}`;
+    return player ? player.username : `P${playerIndex + 1}`;
+  }, [players]);
+  
+  const isPlayerDisconnected = useCallback((playerIndex) => {
+    const seat = SEAT_NAMES[playerIndex];
+    const player = players[seat];
+    return player && !player.isAI && player.disconnected;
   }, [players]);
 
   // Normalize arrays from Firebase (Firebase sometimes corrupts sparse arrays)
@@ -3724,6 +4373,20 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
       // Don't overbid current high bid unless significantly better
       if (bid <= highBid && bid < 25) bid = 0;
       
+      // AUTOBAG CHECK: If this is the dealer and all 3 others passed, force bid to 15
+      let wasAutoBagged = false;
+      if (currentPlayer === dealer) {
+        const bidsIn = bids.filter(b => b !== null && b !== undefined && b !== -1).length;
+        if (bidsIn === 3) {
+          const allPassed = bids.every((b, i) => i === dealer || b === 0);
+          if (allPassed && bid === 0) {
+            console.log(`🎯 AI Dealer P${dealer + 1} is BAGGED! All others passed - forcing bid to 15`);
+            bid = 15;
+            wasAutoBagged = true;  // Track that this was an autobag
+          }
+        }
+      }
+      
       console.log(`AI P${currentPlayer + 1} bids ${bid}`);
       
       // Make the bid
@@ -3750,7 +4413,8 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
           }
         }
         
-        let wasBagged = false;
+        // wasBagged is true if we forced it inline OR if all bids are 0
+        let wasBagged = wasAutoBagged;
         if (maxBid === 0) {
           newBids[dealer] = 15;
           newHighBid = 15;
@@ -3777,7 +4441,32 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
     }, 1000);
     
     return () => clearTimeout(timer);
-  }, [resettingRound, phase, currentPlayer, mySeatIndex, players, hands, bids, highBid, bidWinner, dealer, updateGameState]);
+  }, [resettingRound, phase, currentPlayer, mySeatIndex, players, hands, bids, highBid, bidWinner, dealer, updateGameState, handleBid]);
+
+  // AUTOBAG for HUMAN players: If dealer and all 3 others passed, automatically bid 15
+  useEffect(() => {
+    if (phase !== 'bidding') return;
+    if (currentPlayer !== mySeatIndex) return; // Not human player's turn
+    if (bids[mySeatIndex] !== null && bids[mySeatIndex] !== undefined && bids[mySeatIndex] !== -1) return; // Already bid
+    
+    // Check if human player is dealer and all others have passed
+    if (mySeatIndex === dealer) {
+      // Count how many bids are in (should be 3 if dealer is last)
+      const bidsIn = bids.filter(b => b !== null && b !== undefined && b !== -1).length;
+      if (bidsIn === 3) {
+        // Check if all 3 bids are passes (0)
+        const allPassed = bids.every((b, i) => i === dealer || b === 0);
+        if (allPassed) {
+          console.log(`🎯 HUMAN Dealer P${dealer + 1} is BAGGED! All others passed - autobidding 15`);
+          // Automatically bid 15 after a short delay
+          const autobagTimer = setTimeout(() => {
+            handleBid(15);
+          }, 500);
+          return () => clearTimeout(autobagTimer);
+        }
+      }
+    }
+  }, [phase, currentPlayer, mySeatIndex, bids, dealer, handleBid]);  // Changed bidWinner to dealer
 
   // Handle trump selection
   const handleSelectTrump = useCallback(async (suit) => {
@@ -4024,7 +4713,8 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
     
     // Check if card is playable
     const ledCard = trickCards.length > 0 ? trickCards[0].card : null;
-    const playable = getPlayableCards(hand, trumpSuit, ledCard);
+    const ledSuit = ledCard?.suit;  // Get the led suit
+    const playable = getPlayableCards(hand, trumpSuit, ledCard, ledSuit);  // Pass ledSuit
     
     if (!playable.some(c => c.id === card.id)) {
       alert('Must follow suit!');
@@ -4093,9 +4783,9 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
         console.error('  ✗ Firebase update FAILED:', error);
       }
       
-      // Wait so players can see the complete trick
+      // Wait so players can see the complete trick (reduced from 800ms for faster play)
       console.log('  → Waiting to show trick...');
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 600));
       
       // Evaluate trick
       const winner = determineTrickWinner(newTrick, trumpSuit, trickLeader);
@@ -4107,9 +4797,9 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
       // Save trick for "Last Trick" display
       setLastTrick({ cards: newTrickCards, winner });
       
-      // Animate cards to winner
+      // Animate cards to winner (reduced from 600ms for faster play)
       setAnimating(winner);
-      await new Promise(resolve => setTimeout(resolve, 600));
+      await new Promise(resolve => setTimeout(resolve, 400));
       setAnimating(null);
       
       // Track highest trump played
@@ -4471,14 +5161,22 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
       console.log(`⏸️ AI P${currentPlayer + 1}: Trick number changed (${lastTrickNum.current} → ${trickNum}), waiting for trickCards sync...`);
       lastTrickNum.current = trickNum;
       
-      // Give Firebase 500ms to sync the cleared trickCards
-      setTimeout(() => {
-        console.log(`▶️ AI P${currentPlayer + 1}: Resuming after sync wait`);
-      }, 500);
-      return;
+      // Only wait for cleared trickCards if I'm the leader (first to play)
+      // If I'm NOT the leader, trickCards will have cards from players before me - that's expected!
+      if (currentPlayer === trickLeader && trickCards.length > 0) {
+        console.log(`  → I'm the leader but trickCards not cleared yet (${trickCards.length} cards), waiting...`);
+        return; // useEffect will re-trigger when trickCards updates
+      }
+      
+      console.log(`▶️ AI P${currentPlayer + 1}: Ready to play (${trickCards.length} cards already played)`);
     }
     
-    console.log(`AI P${currentPlayer + 1} playing...`);
+    console.log(`AI P${currentPlayer + 1} playing...`, {
+      trickNum,
+      lastTrickNum: lastTrickNum.current,
+      trickCardsLength: trickCards.length,
+      isNewTrick: trickNum !== lastTrickNum.current
+    });
     
     // CRITICAL: Check trick is not already complete FIRST
     if (trickCards.length >= 4) {
@@ -4491,7 +5189,8 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
       return;
     }
     
-    const timer = setTimeout(async () => {
+    // Execute AI play immediately (no setTimeout delay)
+    (async () => {
       const hand = hands[currentPlayer];
       if (!hand || hand.length === 0) return;
       
@@ -4558,8 +5257,8 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
           playHistory: newPlayHistory  // ✅ Sync play history
         });
         
-        // Wait so players can see complete trick
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // Wait so players can see complete trick (reduced from 800ms for faster play)
+        await new Promise(resolve => setTimeout(resolve, 600));
         
         const winner = determineTrickWinner(newTrick, trumpSuit, trickLeader);
         const winnerTeam = getTeam(winner);
@@ -4569,9 +5268,9 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
         // Save trick for "Last Trick" display
         setLastTrick({ cards: newTrickCards, winner });
         
-        // Animate cards to winner
+        // Animate cards to winner (reduced from 600ms for faster play)
         setAnimating(winner);
-        await new Promise(resolve => setTimeout(resolve, 600));
+        await new Promise(resolve => setTimeout(resolve, 400));
         setAnimating(null);
         
         // Track highest trump played
@@ -4712,9 +5411,8 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
           currentPlayer: nextPlayer
         });
       }
-    }, 1000);
+    })(); // Close async IIFE - executes immediately
     
-    return () => clearTimeout(timer);
   }, [resettingRound, phase, currentPlayer, mySeatIndex, players, hands, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, playerTricks, roundPts, updateGameState, trickComplete]);
 
 
@@ -4894,9 +5592,18 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
         </div>
         
         <div style={{ fontSize: '16px' }}>
-          <span style={{ color: '#4caf50' }}>Us: {scores[0]}</span>
-          <span style={{ margin: '0 12px' }}>|</span>
-          <span style={{ color: '#f44336' }}>Them: {scores[1]}</span>
+          {(() => {
+            const myTeam = mySeatIndex % 2;
+            const usScore = myTeam === 0 ? scores[0] : scores[1];
+            const themScore = myTeam === 0 ? scores[1] : scores[0];
+            return (
+              <>
+                <span style={{ color: '#4caf50' }}>Us: {usScore}</span>
+                <span style={{ margin: '0 12px' }}>|</span>
+                <span style={{ color: '#f44336' }}>Them: {themScore}</span>
+              </>
+            );
+          })()}
         </div>
         
         <button
@@ -4939,6 +5646,7 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
           <div style={{ fontSize: '14px', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span>{getPlayerName(visualPositions.top)}</span>
             {dealer === visualPositions.top && <DealerBadge />}
+            {isPlayerDisconnected(visualPositions.top) && <DisconnectedBadge />}
             {drawn[visualPositions.top] > 0 && <CardsDrawnIndicator count={drawn[visualPositions.top]} />}
             {bidIndicator(visualPositions.top)}
           </div>
@@ -4962,6 +5670,7 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
           <div style={{ fontSize: '14px', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span>{getPlayerName(visualPositions.left)}</span>
             {dealer === visualPositions.left && <DealerBadge />}
+            {isPlayerDisconnected(visualPositions.left) && <DisconnectedBadge />}
             {drawn[visualPositions.left] > 0 && <CardsDrawnIndicator count={drawn[visualPositions.left]} />}
             {bidIndicator(visualPositions.left)}
           </div>
@@ -4985,6 +5694,7 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
           <div style={{ fontSize: '14px', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span>{getPlayerName(visualPositions.right)}</span>
             {dealer === visualPositions.right && <DealerBadge />}
+            {isPlayerDisconnected(visualPositions.right) && <DisconnectedBadge />}
             {drawn[visualPositions.right] > 0 && <CardsDrawnIndicator count={drawn[visualPositions.right]} />}
             {bidIndicator(visualPositions.right)}
           </div>
@@ -5007,8 +5717,8 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
           alignItems: 'center',
           position: 'relative'
         }}>
-          {/* Trump suit display */}
-          {trumpSuit && (
+          {/* Trump suit display - only show after bidding is complete */}
+          {trumpSuit && (phase === 'playing' || phase === 'discarding' || phase === 'round-end' || phase === 'game-over') && (
             <div style={{
               position: 'absolute',
               fontSize: '64px',
@@ -5102,6 +5812,7 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
             <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#ffd700', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span>You</span>
               {dealer === mySeatIndex && <DealerBadge />}
+              {isPlayerDisconnected(mySeatIndex) && <DisconnectedBadge />}
               {drawn[mySeatIndex] > 0 && <CardsDrawnIndicator count={drawn[mySeatIndex]} />}
               {bidIndicator(mySeatIndex)}
             </div>
@@ -5302,14 +6013,23 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
                 <span>High Bid:</span>
                 <span style={{ color: '#ffd700' }}>{highBid} ({getPlayerName(bidWinner)})</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span>Us:</span>
-                <span style={{ color: '#4caf50' }}>{roundPts[0]} points</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span>Them:</span>
-                <span style={{ color: '#f44336' }}>{roundPts[1]} points</span>
-              </div>
+              {(() => {
+                const myTeam = mySeatIndex % 2;
+                const usPoints = myTeam === 0 ? roundPts[0] : roundPts[1];
+                const themPoints = myTeam === 0 ? roundPts[1] : roundPts[0];
+                return (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                      <span>Us:</span>
+                      <span style={{ color: '#4caf50' }}>{usPoints} points</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                      <span>Them:</span>
+                      <span style={{ color: '#f44336' }}>{themPoints} points</span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
@@ -5410,7 +6130,7 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
                   View Final Hand
                 </button>
                 <button
-                  onClick={() => window.location.reload()}
+                  onClick={startGame}  // Fixed: was window.location.reload()
                   style={{
                     padding: '12px 32px',
                     fontSize: '18px',
@@ -5473,7 +6193,7 @@ function MultiplayerGameTable({ gameId, playerId, playerName, mySeat, mySeatInde
           )}
         </div>
         {/* Score table */}
-        <ScoreTable roundHistory={history} />
+        <ScoreTable roundHistory={history} mySeatIndex={mySeatIndex} />
       </div>
 
       {/* Modals */}
