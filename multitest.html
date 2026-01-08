@@ -2651,7 +2651,9 @@ onClick={() => {
           background: 'white',
           borderRadius: '12px',
           padding: '24px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+          boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+          maxHeight: 'calc(100vh - 300px)',
+          overflowY: 'auto'
         }}>
           <h2 style={{ marginBottom: '20px', color: '#1a5f3f' }}>
             Available Games ({gameList.length})
@@ -2664,11 +2666,8 @@ onClick={() => {
           ) : (
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: 'repeat(2, 1fr)', 
-              gap: '20px',
-              '@media (max-width: 1000px)': {
-                gridTemplateColumns: '1fr'
-              }
+              gridTemplateColumns: window.innerWidth > 768 ? 'repeat(2, 1fr)' : '1fr',
+              gap: '20px'
             }}>
               {gameList.map(([gameId, game]) => (
                 <GameListItem
@@ -4593,6 +4592,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     // CRITICAL: Block all AI actions during reset
     setResettingRound(true);
     
+    // Reset AI tracking for new round
+    setKnownOutOfTrump([false, false, false, false]);
+    setBidderLostTrick(false);
+    
     // Reset drawnCards for new round
     setDrawnCards(new Set());
     setCardsPlayed([]);
@@ -4793,6 +4796,37 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       
       console.log(`🏆 Trick ${trickNum} won by ${getPlayerName(winner)} (P${winner + 1})`);
       console.log('  Winner team:', winnerTeam);
+      
+      // ✅ Track AI state: knownOutOfTrump and bidderLostTrick
+      const ledCard = newTrick[0];
+      const newKnownOutOfTrump = [...knownOutOfTrump];
+      
+      // Check if trump was led (using getTrumpRank to handle all 45s trump rules)
+      const ledIsTrump = getTrumpRank(ledCard, trumpSuit) >= 0;
+      
+      if (ledIsTrump) {
+        // Trump was led - anyone who didn't play trump is out
+        newTrickCards.forEach((tc, i) => {
+          const playedCard = tc.card;
+          const player = tc.player;
+          const playedIsTrump = getTrumpRank(playedCard, trumpSuit) >= 0;
+          
+          if (!playedIsTrump) {
+            newKnownOutOfTrump[player] = true;
+            console.log(`🎯 P${player + 1} is out of trump`);
+          }
+        });
+      }
+      setKnownOutOfTrump(newKnownOutOfTrump);
+      
+      // Track if bidder lost a trick
+      if (bidWinner !== null && !bidderLostTrick) {
+        const bidderTeam = getTeam(bidWinner);
+        if (winnerTeam !== bidderTeam) {
+          setBidderLostTrick(true);
+          console.log(`🎯 Bidder (P${bidWinner + 1}) lost first trick`);
+        }
+      }
       
       // Save trick for "Last Trick" display
       setLastTrick({ cards: newTrickCards, winner });
@@ -5212,9 +5246,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         bidWinner, 
         highBid, 
         drawn, 
-        [], // knownOutOfTrump - TODO: track this
+        knownOutOfTrump, // ✅ FIXED - use actual state
         trickNum, 
-        false, // bidderHasLostTrick - TODO: track this
+        bidderLostTrick, // ✅ FIXED - use actual state
         cardsPlayed
       );
       
@@ -5264,6 +5298,37 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         const winnerTeam = getTeam(winner);
         
         console.log(`🏆 Trick ${trickNum} won by P${winner + 1}`);
+        
+        // ✅ Track AI state: knownOutOfTrump and bidderLostTrick
+        const ledCard = newTrick[0];
+        const newKnownOutOfTrump = [...knownOutOfTrump];
+        
+        // Check if trump was led (using getTrumpRank to handle all 45s trump rules)
+        const ledIsTrump = getTrumpRank(ledCard, trumpSuit) >= 0;
+        
+        if (ledIsTrump) {
+          // Trump was led - anyone who didn't play trump is out
+          newTrickCards.forEach((tc, i) => {
+            const playedCard = tc.card;
+            const player = tc.player;
+            const playedIsTrump = getTrumpRank(playedCard, trumpSuit) >= 0;
+            
+            if (!playedIsTrump) {
+              newKnownOutOfTrump[player] = true;
+              console.log(`🎯 AI: P${player + 1} is out of trump`);
+            }
+          });
+        }
+        setKnownOutOfTrump(newKnownOutOfTrump);
+        
+        // Track if bidder lost a trick
+        if (bidWinner !== null && !bidderLostTrick) {
+          const bidderTeam = getTeam(bidWinner);
+          if (winnerTeam !== bidderTeam) {
+            setBidderLostTrick(true);
+            console.log(`🎯 AI: Bidder (P${bidWinner + 1}) lost first trick`);
+          }
+        }
         
         // Save trick for "Last Trick" display
         setLastTrick({ cards: newTrickCards, winner });
@@ -5420,6 +5485,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   // Start game function - DEALER DEALS CARDS
   const startGame = useCallback(() => {
     console.log('Starting game - dealing cards...');
+    
+    // Reset AI tracking state for new game
+    setKnownOutOfTrump([false, false, false, false]);
+    setBidderLostTrick(false);
     
     // Save dealer for modal
     setRoundDealer(0);
