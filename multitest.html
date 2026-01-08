@@ -62,32 +62,36 @@ function generateUserId() {
   return result;
 }
 
-// Avatar library - 24 card-themed avatars
+// Avatar library - Fun themed avatars instead of cards
 const AVATARS = [
-  { id: 'spade-ace', emoji: '🂡', name: 'Ace of Spades' },
-  { id: 'heart-ace', emoji: '🂱', name: 'Ace of Hearts' },
-  { id: 'diamond-ace', emoji: '🃁', name: 'Ace of Diamonds' },
-  { id: 'club-ace', emoji: '🃑', name: 'Ace of Clubs' },
-  { id: 'spade-king', emoji: '🂮', name: 'King of Spades' },
-  { id: 'heart-king', emoji: '🂾', name: 'King of Hearts' },
-  { id: 'diamond-king', emoji: '🃎', name: 'King of Diamonds' },
-  { id: 'club-king', emoji: '🃞', name: 'King of Clubs' },
-  { id: 'spade-queen', emoji: '🂭', name: 'Queen of Spades' },
-  { id: 'heart-queen', emoji: '🂽', name: 'Queen of Hearts' },
-  { id: 'diamond-queen', emoji: '🃍', name: 'Queen of Diamonds' },
-  { id: 'club-queen', emoji: '🃝', name: 'Queen of Clubs' },
-  { id: 'spade-jack', emoji: '🂫', name: 'Jack of Spades' },
-  { id: 'heart-jack', emoji: '🂻', name: 'Jack of Hearts' },
-  { id: 'diamond-jack', emoji: '🃋', name: 'Jack of Diamonds' },
-  { id: 'club-jack', emoji: '🃛', name: 'Jack of Clubs' },
-  { id: 'spade-10', emoji: '🂪', name: '10 of Spades' },
-  { id: 'heart-10', emoji: '🂺', name: '10 of Hearts' },
-  { id: 'diamond-10', emoji: '🃊', name: '10 of Diamonds' },
-  { id: 'club-10', emoji: '🃚', name: '10 of Clubs' },
-  { id: 'joker-red', emoji: '🃏', name: 'Red Joker' },
-  { id: 'joker-black', emoji: '🃟', name: 'Black Joker' },
-  { id: 'card-back', emoji: '🂠', name: 'Card Back' },
-  { id: 'playing-card', emoji: '🎴', name: 'Playing Cards' }
+  // Fantasy/Magic
+  { id: 'wizard', emoji: '🧙', name: 'Wizard' },
+  { id: 'mage', emoji: '🧙‍♀️', name: 'Mage' },
+  { id: 'dragon', emoji: '🐉', name: 'Dragon' },
+  { id: 'unicorn', emoji: '🦄', name: 'Unicorn' },
+  { id: 'phoenix', emoji: '🔥', name: 'Phoenix' },
+  // Animals
+  { id: 'lion', emoji: '🦁', name: 'Lion' },
+  { id: 'tiger', emoji: '🐯', name: 'Tiger' },
+  { id: 'wolf', emoji: '🐺', name: 'Wolf' },
+  { id: 'fox', emoji: '🦊', name: 'Fox' },
+  { id: 'bear', emoji: '🐻', name: 'Bear' },
+  { id: 'panda', emoji: '🐼', name: 'Panda' },
+  { id: 'koala', emoji: '🐨', name: 'Koala' },
+  // Fun
+  { id: 'robot', emoji: '🤖', name: 'Robot' },
+  { id: 'alien', emoji: '👽', name: 'Alien' },
+  { id: 'ninja', emoji: '🥷', name: 'Ninja' },
+  { id: 'pirate', emoji: '🏴‍☠️', name: 'Pirate' },
+  { id: 'astronaut', emoji: '👨‍🚀', name: 'Astronaut' },
+  { id: 'detective', emoji: '🕵️', name: 'Detective' },
+  // Gaming
+  { id: 'dice', emoji: '🎲', name: 'Dice' },
+  { id: 'trophy', emoji: '🏆', name: 'Trophy' },
+  { id: 'crown', emoji: '👑', name: 'Crown' },
+  { id: 'gem', emoji: '💎', name: 'Diamond' },
+  { id: 'star', emoji: '⭐', name: 'Star' },
+  { id: 'fire', emoji: '🔥', name: 'Fire' }
 ];
 
 function getAvatarById(id) {
@@ -1811,7 +1815,7 @@ function LoginScreen({ onLogin }) {
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  const [selectedAvatar, setSelectedAvatar] = useState('spade-ace');
+  const [selectedAvatar, setSelectedAvatar] = useState('wizard');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -2505,33 +2509,36 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
               >
                 Logout
               </button>
-              <button
-onClick={() => {
-                  if (window.confirm('Delete ALL games? This cannot be undone!')) {
-                    Promise.all([
-                      database.ref('lobby/games').remove(),
-                      database.ref('games').remove()
-                    ]).then(() => {
-                      console.log('✅ All games deleted');
-                      // Force immediate reload without cache
-                      window.location.href = window.location.href;
-                    });
-                  }
-                }}
-                disabled={loading}
-                style={{
-                  padding: '12px 24px',
-                  background: loading ? '#ccc' : '#ff9800',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  fontSize: '16px',
-                  fontWeight: 'bold'
-                }}
-              >
-                🗑️ Clear All
-              </button>
+              {/* Clear All button - restricted to admin user robr */}
+              {userId === 'user_xh8pq0ja9zma' && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('Delete ALL games? This cannot be undone!')) {
+                      Promise.all([
+                        database.ref('lobby/games').remove(),
+                        database.ref('games').remove()
+                      ]).then(() => {
+                        console.log('✅ All games deleted');
+                        // Force immediate reload without cache
+                        window.location.href = window.location.href;
+                      });
+                    }
+                  }}
+                  disabled={loading}
+                  style={{
+                    padding: '12px 24px',
+                    background: loading ? '#ccc' : '#ff9800',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontSize: '16px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  🗑️ Clear All
+                </button>
+              )}
               <button
                 onClick={() => setShowCreateGame(true)}
                 disabled={loading}
@@ -2762,18 +2769,18 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
                 top: '0',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                width: '140px',
-                padding: '10px',
+                width: window.innerWidth < 480 ? '100px' : '140px',
+                padding: window.innerWidth < 480 ? '8px' : '10px',
                 background: isOccupied ? '#e8f5e9' : 'white',
                 border: `2px solid ${isOccupied ? '#4caf50' : '#ddd'}`,
                 borderRadius: '6px',
                 textAlign: 'center'
               }}
             >
-              <div style={{ fontWeight: 'bold', color: '#333', marginBottom: '4px', fontSize: '12px' }}>
+              <div style={{ fontWeight: 'bold', color: '#333', marginBottom: '4px', fontSize: window.innerWidth < 480 ? '11px' : '12px' }}>
                 {seat}
               </div>
-              <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
+              <div style={{ fontSize: window.innerWidth < 480 ? '11px' : '13px', color: '#666', marginBottom: '6px' }}>
                 {isOccupied ? player.username : 'Empty'}
               </div>
               {!isOccupied && game.status === 'waiting' && (
@@ -2812,15 +2819,15 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
                 bottom: '0',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                width: '140px',
-                padding: '10px',
+                width: window.innerWidth < 480 ? '100px' : '140px',
+                padding: window.innerWidth < 480 ? '8px' : '10px',
                 background: isOccupied ? '#e8f5e9' : 'white',
                 border: `2px solid ${isOccupied ? '#4caf50' : '#ddd'}`,
                 borderRadius: '6px',
                 textAlign: 'center'
               }}
             >
-              <div style={{ fontWeight: 'bold', color: '#333', marginBottom: '4px', fontSize: '12px' }}>
+              <div style={{ fontWeight: 'bold', color: '#333', marginBottom: '4px', fontSize: window.innerWidth < 480 ? '11px' : '12px' }}>
                 {seat}
               </div>
               <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
@@ -2948,21 +2955,6 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
           );
         })()}
         
-        {/* Center indicator showing partners */}
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          fontSize: '11px',
-          color: '#999',
-          textAlign: 'center',
-          pointerEvents: 'none'
-        }}>
-          <div>N+S</div>
-          <div>vs</div>
-          <div>E+W</div>
-        </div>
       </div>
       
       {/* Timestamp in lower left */}
