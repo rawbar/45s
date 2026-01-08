@@ -21,7 +21,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.5-USER-ACCOUNTS';
+const VERSION = '2.5.1-LOBBY-IMPROVEMENTS';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2283,12 +2283,56 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
   const [newGameName, setNewGameName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [onlinePlayers, setOnlinePlayers] = useState({});
 
+  // Set up presence tracking
   useEffect(() => {
+    // Update presence on mount
+    const presenceRef = database.ref(`presence/${userId}`);
+    presenceRef.set({
+      username: playerName,
+      avatar: playerAvatar,
+      status: 'lobby',
+      lastSeen: Date.now()
+    });
+
+    // Heartbeat every 30 seconds
+    const heartbeatInterval = setInterval(() => {
+      presenceRef.update({ lastSeen: Date.now() });
+    }, 30000);
+
+    // Listen to all online players
+    const allPresenceRef = database.ref('presence');
+    const presenceListener = allPresenceRef.on('value', (snapshot) => {
+      const allPresence = snapshot.val() || {};
+      const now = Date.now();
+      const twoMinutes = 2 * 60 * 1000;
+      
+      // Filter out stale presence (>2 min old)
+      const active = {};
+      Object.entries(allPresence).forEach(([uid, data]) => {
+        if (now - data.lastSeen < twoMinutes) {
+          active[uid] = data;
+        }
+      });
+      
+      setOnlinePlayers(active);
+    });
+
+    // Cleanup
+    return () => {
+      clearInterval(heartbeatInterval);
+      allPresenceRef.off('value', presenceListener);
+      presenceRef.remove();
+    };
+  }, [userId, playerName, playerAvatar]);
+
+  useEffect(() {
     // Clean up old/inactive games on lobby mount
     const cleanupOldGames = async () => {
       const now = Date.now();
-      const fifteenMinutes = 15 * 60 * 1000; // 15 minutes in milliseconds
+      const fifteenMinutes = 15 * 60 * 1000; // 15 minutes
+      const thirtyMinutes = 30 * 60 * 1000;  // 30 minutes for completed games
       
       const gamesSnapshot = await database.ref('lobby/games').once('value');
       const allGames = gamesSnapshot.val() || {};
@@ -2297,6 +2341,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
       for (const [gameId, game] of Object.entries(allGames)) {
         // Check lastActivity if game has started, otherwise check createdAt
         let timestamp = null;
+        const isCompleted = game.gameState && game.gameState.phase === 'game-over';
+        const timeLimit = isCompleted ? thirtyMinutes : fifteenMinutes;
+        
         if (game.gameState && game.gameState.lastActivity) {
           timestamp = game.gameState.lastActivity;
         } else if (game.createdAt) {
@@ -2305,8 +2352,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
         
         if (timestamp) {
           const inactiveTime = now - timestamp;
-          if (inactiveTime > fifteenMinutes) {
-            console.log(`🗑️ Auto-deleting inactive game ${gameId} (inactive for ${Math.floor(inactiveTime/60000)} minutes)`);
+          if (inactiveTime > timeLimit) {
+            console.log(`🗑️ Auto-deleting ${isCompleted ? 'completed' : 'inactive'} game ${gameId} (inactive for ${Math.floor(inactiveTime/60000)} minutes)`);
             await database.ref(`lobby/games/${gameId}`).remove();
             deletedCount++;
           }
@@ -2649,6 +2696,67 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Online Players */}
+        {Object.keys(onlinePlayers).length > 0 && (
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '20px',
+            marginBottom: '20px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+          }}>
+            <h3 style={{ marginBottom: '12px', color: '#1a5f3f', fontSize: '16px' }}>
+              🟢 Online Players ({Object.keys(onlinePlayers).length})
+            </h3>
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              overflowX: 'auto',
+              paddingBottom: '8px'
+            }}>
+              {Object.entries(onlinePlayers).map(([uid, player]) => (
+                <div
+                  key={uid}
+                  style={{
+                    minWidth: '80px',
+                    padding: '12px',
+                    background: '#f5f5f5',
+                    borderRadius: '8px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    border: uid === userId ? '2px solid #2196f3' : '2px solid transparent'
+                  }}
+                  onClick={() => {
+                    // TODO: Show stats modal
+                    alert(`Stats for ${player.username} - Coming soon!`);
+                  }}
+                >
+                  <div style={{ fontSize: '32px', marginBottom: '4px' }}>
+                    {getAvatarById(player.avatar).emoji}
+                  </div>
+                  <div style={{ 
+                    fontSize: '11px', 
+                    fontWeight: 'bold', 
+                    color: '#333',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {player.username}
+                  </div>
+                  <div style={{
+                    fontSize: '9px',
+                    color: player.status === 'playing' ? '#4caf50' : '#999',
+                    marginTop: '2px'
+                  }}>
+                    {player.status === 'playing' ? '🎮' : '💤'}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -3177,17 +3285,16 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
       <div style={{
         background: 'white',
         borderRadius: '12px',
-        padding: '40px',
+        padding: window.innerWidth < 480 ? '20px' : '40px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
         maxWidth: '700px',
-        width: '100%'
+        width: '100%',
+        maxHeight: window.innerWidth < 480 ? '90vh' : 'none',
+        overflowY: window.innerWidth < 480 ? 'auto' : 'visible'
       }}>
-        <h1 style={{ marginBottom: '8px', textAlign: 'center', color: '#1a5f3f' }}>
+        <h1 style={{ marginBottom: '24px', textAlign: 'center', color: '#1a5f3f' }}>
           {game.name}
         </h1>
-        <p style={{ marginBottom: '24px', textAlign: 'center', color: '#666', fontSize: '14px' }}>
-          Game ID: {gameId}
-        </p>
 
         {error && (
           <div style={{
@@ -3236,8 +3343,8 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
           <div style={{
             position: 'relative',
             width: '100%',
-            maxWidth: '400px',
-            height: '280px',
+            maxWidth: window.innerWidth < 480 ? '280px' : '400px',
+            height: window.innerWidth < 480 ? '220px' : '280px',
             margin: '0 auto'
           }}>
             {/* North */}
@@ -3254,8 +3361,8 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     top: '0',
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    width: '150px',
-                    padding: '12px',
+                    width: window.innerWidth < 480 ? '110px' : '150px',
+                    padding: window.innerWidth < 480 ? '8px' : '12px',
                     background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
                     border: `3px solid ${
                       !player ? '#ddd' : 
@@ -3266,10 +3373,10 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     textAlign: 'center'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '11px', marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: window.innerWidth < 480 ? '10px' : '11px', marginBottom: '4px' }}>
                     {seat.toUpperCase()}
                   </div>
-                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px', marginBottom: '4px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: window.innerWidth < 480 ? '12px' : '14px', marginBottom: '4px' }}>
                     {player ? player.username : 'Empty Seat'}
                     {isMe && <span style={{ color: '#2196f3', fontSize: '11px' }}> (You)</span>}
                   </div>
@@ -3337,8 +3444,8 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     left: '0',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    width: '150px',
-                    padding: '12px',
+                    width: window.innerWidth < 480 ? '110px' : '150px',
+                    padding: window.innerWidth < 480 ? '8px' : '12px',
                     background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
                     border: `3px solid ${
                       !player ? '#ddd' : 
@@ -3349,10 +3456,10 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     textAlign: 'center'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '11px', marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: window.innerWidth < 480 ? '10px' : '11px', marginBottom: '4px' }}>
                     {seat.toUpperCase()}
                   </div>
-                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px', marginBottom: '4px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: window.innerWidth < 480 ? '12px' : '14px', marginBottom: '4px' }}>
                     {player ? player.username : 'Empty Seat'}
                     {isMe && <span style={{ color: '#2196f3', fontSize: '11px' }}> (You)</span>}
                   </div>
@@ -3420,8 +3527,8 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     bottom: '0',
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    width: '150px',
-                    padding: '12px',
+                    width: window.innerWidth < 480 ? '110px' : '150px',
+                    padding: window.innerWidth < 480 ? '8px' : '12px',
                     background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
                     border: `3px solid ${
                       !player ? '#ddd' : 
@@ -3432,10 +3539,10 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     textAlign: 'center'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '11px', marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: window.innerWidth < 480 ? '10px' : '11px', marginBottom: '4px' }}>
                     {seat.toUpperCase()}
                   </div>
-                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px', marginBottom: '4px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: window.innerWidth < 480 ? '12px' : '14px', marginBottom: '4px' }}>
                     {player ? player.username : 'Empty Seat'}
                     {isMe && <span style={{ color: '#2196f3', fontSize: '11px' }}> (You)</span>}
                   </div>
@@ -3503,8 +3610,8 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     right: '0',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    width: '150px',
-                    padding: '12px',
+                    width: window.innerWidth < 480 ? '110px' : '150px',
+                    padding: window.innerWidth < 480 ? '8px' : '12px',
                     background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
                     border: `3px solid ${
                       !player ? '#ddd' : 
@@ -3515,10 +3622,10 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     textAlign: 'center'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '11px', marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: window.innerWidth < 480 ? '10px' : '11px', marginBottom: '4px' }}>
                     {seat.toUpperCase()}
                   </div>
-                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px', marginBottom: '4px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: window.innerWidth < 480 ? '12px' : '14px', marginBottom: '4px' }}>
                     {player ? player.username : 'Empty Seat'}
                     {isMe && <span style={{ color: '#2196f3', fontSize: '11px' }}> (You)</span>}
                   </div>
@@ -3572,21 +3679,6 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
               );
             })()}
             
-            {/* Center indicator showing partners */}
-            <div style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              fontSize: '11px',
-              color: '#999',
-              textAlign: 'center',
-              pointerEvents: 'none'
-            }}>
-              <div>N+S</div>
-              <div>vs</div>
-              <div>E+W</div>
-            </div>
           </div>
         </div>
 
@@ -5215,8 +5307,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       return;
     }
     
-    // Execute AI play immediately (no setTimeout delay)
+    // Execute AI play with natural delay
     (async () => {
+      // Add delay so humans can follow the game (800ms feels natural)
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
       const hand = hands[currentPlayer];
       if (!hand || hand.length === 0) return;
       
