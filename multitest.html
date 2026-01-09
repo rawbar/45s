@@ -21,7 +21,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = 'v2.5.7';
+const VERSION = '2.5.8';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1777,8 +1777,8 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
         
         {/* East (1) and West (3) on sides */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {renderHand(1, getPlayerName(1))}
           {renderHand(3, getPlayerName(3))}
+          {renderHand(1, getPlayerName(1))}
         </div>
         
         {/* South (2) at bottom */}
@@ -5960,11 +5960,6 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           )}
         </div>
 
-        {/* Last Trick - TODO if needed */}
-        <div style={{ height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {/* Last trick display */}
-        </div>
-
         {/* Round End Overlay */}
         {phase === 'round-end' && (
           <div style={{
@@ -6020,7 +6015,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   cursor: 'pointer'
                 }}
               >
-                View Hands
+                View Round
               </button>
               <button
                 onClick={handleNextRound}
@@ -6095,7 +6090,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     cursor: 'pointer'
                   }}
                 >
-                  View Hands
+                  View Round
                 </button>
                 <button
                   onClick={startGame}
@@ -6116,6 +6111,53 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             </div>
           );
         })()}
+      </div>
+
+      {/* Score Table at Bottom */}
+      <div style={{
+        padding: '8px 16px',
+        background: 'rgba(0,0,0,0.4)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '4px'
+      }}>
+        {/* Last Trick */}
+        <div style={{ height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {lastTrick && phase === 'playing' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '2px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
+              <span style={{ fontSize: '9px', color: '#aaa' }}>Last:</span>
+              {lastTrick.cards.map((tc, i) => {
+                const isWinner = tc.player === lastTrick.winner;
+                return (
+                  <div key={i} style={{ position: 'relative' }}>
+                    <Card card={tc.card} small disabled />
+                    {isWinner && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '-6px',
+                        right: '-6px',
+                        background: '#4caf50',
+                        borderRadius: '50%',
+                        width: '12px',
+                        height: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '8px'
+                      }}>
+                        ✓
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        
+        {/* Score table */}
+        <ScoreTable roundHistory={history} mySeatIndex={mySeatIndex} />
       </div>
 
       {/* Modals */}
