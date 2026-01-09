@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -21,7 +23,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.5.3-UI-POLISH';
+const VERSION = '2.5.4-DESIGN-SPEC';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2762,7 +2764,7 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
                 top: '0',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                width: window.innerWidth < 480 ? "100px" : "140px",
+                width: '140px',
                 padding: '10px',
                 background: isOccupied ? '#e8f5e9' : 'white',
                 border: `2px solid ${isOccupied ? '#4caf50' : '#ddd'}`,
@@ -2812,7 +2814,7 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
                 bottom: '0',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                width: window.innerWidth < 480 ? "100px" : "140px",
+                width: '140px',
                 padding: '10px',
                 background: isOccupied ? '#e8f5e9' : 'white',
                 border: `2px solid ${isOccupied ? '#4caf50' : '#ddd'}`,
@@ -2862,7 +2864,7 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
                 left: '0',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                width: window.innerWidth < 480 ? "100px" : "140px",
+                width: '140px',
                 padding: '10px',
                 background: isOccupied ? '#e8f5e9' : 'white',
                 border: `2px solid ${isOccupied ? '#4caf50' : '#ddd'}`,
@@ -2912,7 +2914,7 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
                 right: '0',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                width: window.innerWidth < 480 ? "100px" : "140px",
+                width: '140px',
                 padding: '10px',
                 background: isOccupied ? '#e8f5e9' : 'white',
                 border: `2px solid ${isOccupied ? '#4caf50' : '#ddd'}`,
@@ -5675,21 +5677,6 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           })()}
         </div>
         
-        <button
-          onClick={onLeaveGame}
-          style={{
-            padding: '6px 12px',
-            background: '#f44336',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '11px',
-            fontWeight: 'bold'
-          }}
-        >
-          Leave Game
-        </button>
       </div>
 
       {/* Main Game Area */}
@@ -5814,10 +5801,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             
             // Position based on visual position
             const positions = {
-              bottom: { bottom: '10px', left: '50%', transform: 'translateX(-50%)' },
-              top: { top: '10px', left: '50%', transform: 'translateX(-50%)' },
-              left: { left: '10px', top: '50%', transform: 'translateY(-50%)' },
-              right: { right: '10px', top: '50%', transform: 'translateY(-50%)' }
+              bottom: { bottom: '4px', left: '50%', transform: 'translateX(-50%)' },
+              top: { top: '4px', left: '50%', transform: 'translateX(-50%)' },
+              left: { left: '4px', top: '50%', transform: 'translateY(-50%)' },
+              right: { right: '4px', top: '50%', transform: 'translateY(-50%)' }
             };
             
             const pos = positions[relativePos] || {};
@@ -5860,7 +5847,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           
           {/* Status text when no cards */}
           {(!trickCards || trickCards.length === 0) && (
-            <div style={{ fontSize: '13px', color: '#888', textAlign: 'center', maxWidth: '130px' }}>
+            <div style={{ fontSize: '14px', color: '#888', textAlign: 'center', maxWidth: '130px' }}>
               {phase === 'bidding' && `Waiting for ${getPlayerName(currentPlayer)} to bid`}
               {phase === 'trump-select' && `Waiting for ${getPlayerName(bidWinner)} to select trump`}
               {phase === 'discarding' && `Waiting for ${getPlayerName(currentPlayer)} to discard`}
