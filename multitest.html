@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,7 +21,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.5.4-DESIGN-SPEC';
+const VERSION = 'v2.5.7';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1577,7 +1575,7 @@ function HelpModal({ isOpen, onClose }) {
           {/* Modal Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid rgba(212,175,55,0.3)' }}>
             <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#d4af37' }}>Info & Help</span>
-            <div onClick={onClose} style={{ width: '24px', height: '24px', border: '1px solid #aaa', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '16px', cursor: 'pointer' }}>X</div>
+            <div onClick={onClose} style={{ width: '24px', height: '24px', border: '1px solid #aaa', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '16px', cursor: 'pointer' }}>✕</div>
           </div>
           {/* Modal Content - Scrollable */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px', fontSize: '13px', lineHeight: 1.5, color: '#e8e4d9' }}>
@@ -1650,7 +1648,7 @@ Without:       498471 bids, 35.0% success`}
             <div 
               onClick={() => setImageModalOpen(false)}
               style={{ position: 'absolute', top: '-30px', right: '0', width: '24px', height: '24px', border: '1px solid #aaa', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '16px', cursor: 'pointer', background: 'rgba(0,0,0,0.5)' }}
-            >X</div>
+            >✕</div>
             <img 
               src="45s_table_diagram.jpeg" 
               style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 40px)', objectFit: 'contain' }} 
@@ -1757,7 +1755,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
   
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px' }}>
-      <div style={{ background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '3px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '400px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 0 20px rgba(212, 175, 55, 0.5)' }}>
+      <div style={{ background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '2px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '400px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 0 20px rgba(212, 175, 55, 0.5)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#d4af37' }}>
             Hands After Draw <span style={{ fontSize: '10px', color: '#888' }}>v{VERSION}</span>
@@ -1765,7 +1763,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
               {hands && `[${hands.map((h, i) => `P${i+1}:${h.length}`).join(' ')}]`}
             </div>
           </span>
-          <div onClick={onClose} style={{ width: '24px', height: '24px', border: '1px solid #aaa', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '16px', cursor: 'pointer' }}>X</div>
+          <div onClick={onClose} style={{ width: '24px', height: '24px', border: '1px solid #aaa', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '16px', cursor: 'pointer' }}>✕</div>
         </div>
         {trumpSuit && (
           <div style={{ textAlign: 'center', fontSize: '12px', color: '#aaa' }}>
@@ -5602,59 +5600,52 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const myBid = bids[mySeatIndex];
   
   // Calculate positions for 4 players around circular table
-  // With new seating: North(0), East(1), South(2), West(3)
-  // Partners are 2 positions apart: 0↔2 (N-S), 1↔3 (E-W)
-  // IMPORTANT: Clockwise play goes to your LEFT (next player in sequence)
   const visualPositions = {
     bottom: mySeatIndex,
-    top: (mySeatIndex + 2) % 4,      // Partner across from me
-    left: (mySeatIndex + 1) % 4,      // Next player (clockwise play)
-    right: (mySeatIndex + 3) % 4      // Previous player
+    top: (mySeatIndex + 2) % 4,
+    left: (mySeatIndex + 1) % 4,
+    right: (mySeatIndex + 3) % 4
   };
-  
-  console.log(`P${mySeatIndex + 1} (${SEAT_NAMES[mySeatIndex]}) sees:`, {
-    bottom: `P${visualPositions.bottom + 1} (${SEAT_NAMES[visualPositions.bottom]})`,
-    top: `P${visualPositions.top + 1} (${SEAT_NAMES[visualPositions.top]})`,
-    left: `P${visualPositions.left + 1} (${SEAT_NAMES[visualPositions.left]})`,
-    right: `P${visualPositions.right + 1} (${SEAT_NAMES[visualPositions.right]})`
-  });
   
   const getPlayerHand = (pos) => hands[pos] || [];
   
   return (
     <div style={{
-      height: '100vh',
+      height: '100%',
       display: 'flex',
       flexDirection: 'column',
       background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 50%, #0a1f12 100%)',
-      color: 'white',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
+      padding: '4px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#e8e4d9'
     }}>
-      {/* Top Bar */}
+      {/* Header Bar */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: '8px 16px',
-        background: 'rgba(0,0,0,0.3)'
+        padding: '4px 8px',
+        background: 'rgba(0,0,0,0.3)',
+        borderRadius: '6px',
+        marginBottom: '4px'
       }}>
-        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#d4af37' }}>
-          45s <span style={{ fontSize: '10px', color: '#666' }}>v{VERSION}-MULTIPLAYER</span>
+        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#d4af37' }}>
+          45s <span style={{ fontSize: '8px', color: '#666' }}>v{VERSION}</span>
         </div>
         
         {/* Help button */}
         <div 
           onClick={() => setHelpOpen(true)} 
           style={{ 
-            width: '24px', 
-            height: '24px', 
+            width: '20px', 
+            height: '20px', 
             borderRadius: '50%', 
-            border: '2px solid #d4af37', 
+            border: '1px solid #d4af37', 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center', 
             color: '#d4af37', 
-            fontSize: '14px', 
+            fontSize: '12px', 
             cursor: 'pointer', 
             fontWeight: 'bold' 
           }}
@@ -5662,220 +5653,205 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           ?
         </div>
         
-        <div style={{ fontSize: '16px' }}>
+        <div style={{ fontSize: '12px' }}>
           {(() => {
             const myTeam = mySeatIndex % 2;
             const usScore = myTeam === 0 ? scores[0] : scores[1];
             const themScore = myTeam === 0 ? scores[1] : scores[0];
             return (
               <>
-                <span style={{ color: '#4caf50' }}>Us: {usScore}</span>
-                <span style={{ margin: '0 12px' }}>|</span>
-                <span style={{ color: '#f44336' }}>Them: {themScore}</span>
+                <span style={{ color: '#4caf50' }}>Us:{usScore}</span> | <span style={{ color: '#f44336' }}>Them:{themScore}</span>
               </>
             );
           })()}
         </div>
-        
       </div>
 
-      {/* Main Game Area */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
+      {/* Game Area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         
-        {/* Top Player (Partner) */}
-        <div style={{
-          position: 'absolute',
-          top: '40px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '4px'
-        }}>
-          <div style={{ fontSize: '14px', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>{getPlayerName(visualPositions.top)}</span>
-            {dealer === visualPositions.top && <DealerBadge />}
-            {isPlayerDisconnected(visualPositions.top) && <DisconnectedBadge />}
+        {/* North Player (Partner) */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', padding: '2px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '16px' }}>
+            <span style={{ fontSize: '11px', color: '#aaa' }}>{getPlayerName(visualPositions.top)}</span>
+            <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>
+              {dealer === visualPositions.top && <DealerBadge />}
+            </div>
             {drawn[visualPositions.top] > 0 && <CardsDrawnIndicator count={drawn[visualPositions.top]} />}
-            {bidIndicator(visualPositions.top)}
           </div>
-          <TricksWonDisplay count={playerTricks[visualPositions.top]} hasHighTrump={highTrumpInfo.player === visualPositions.top} />
-          <div style={{ display: 'flex', gap: '2px' }}>
+          <div style={{ display: 'flex', gap: '1px' }}>
             {getPlayerHand(visualPositions.top).map((_, i) => (
               <Card key={i} card={{}} faceDown small />
             ))}
           </div>
-        </div>
-
-        {/* Left Player */}
-        <div style={{
-          position: 'absolute',
-          left: '40px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '4px'
-        }}>
-          <div style={{ fontSize: '14px', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>{getPlayerName(visualPositions.left)}</span>
-            {dealer === visualPositions.left && <DealerBadge />}
-            {isPlayerDisconnected(visualPositions.left) && <DisconnectedBadge />}
-            {drawn[visualPositions.left] > 0 && <CardsDrawnIndicator count={drawn[visualPositions.left]} />}
-            {bidIndicator(visualPositions.left)}
-          </div>
-          <TricksWonDisplay count={playerTricks[visualPositions.left]} hasHighTrump={highTrumpInfo.player === visualPositions.left} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            {getPlayerHand(visualPositions.left).map((_, i) => (
-              <Card key={i} card={{}} faceDown small />
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '20px' }}>
+            <div style={{ minWidth: '40px', display: 'flex', justifyContent: 'center' }}>
+              {bidIndicator(visualPositions.top)}
+            </div>
+            <div style={{ minWidth: '60px', display: 'flex', justifyContent: 'center' }}>
+              <TricksWonDisplay count={playerTricks[visualPositions.top]} hasHighTrump={highTrumpInfo.player === visualPositions.top} />
+            </div>
           </div>
         </div>
 
-        {/* Right Player */}
-        <div style={{
-          position: 'absolute',
-          right: '40px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '4px'
-        }}>
-          <div style={{ fontSize: '14px', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>{getPlayerName(visualPositions.right)}</span>
-            {dealer === visualPositions.right && <DealerBadge />}
-            {isPlayerDisconnected(visualPositions.right) && <DisconnectedBadge />}
-            {drawn[visualPositions.right] > 0 && <CardsDrawnIndicator count={drawn[visualPositions.right]} />}
-            {bidIndicator(visualPositions.right)}
+        {/* Middle Row: West + Circle + East */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', minHeight: 0 }}>
+          
+          {/* West Player */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '50px' }}>
+            <div style={{ fontSize: '10px', color: '#aaa', textAlign: 'center' }}>{getPlayerName(visualPositions.left)}</div>
+            <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {dealer === visualPositions.left && <DealerBadge />}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+              {getPlayerHand(visualPositions.left).map((_, i) => (
+                <Card key={i} card={{}} faceDown small />
+              ))}
+            </div>
+            <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {drawn[visualPositions.left] > 0 && <CardsDrawnIndicator count={drawn[visualPositions.left]} />}
+            </div>
+            <div style={{ height: '18px', minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {bidIndicator(visualPositions.left)}
+            </div>
+            <div style={{ height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <TricksWonDisplay count={playerTricks[visualPositions.left]} hasHighTrump={highTrumpInfo.player === visualPositions.left} />
+            </div>
           </div>
-          <TricksWonDisplay count={playerTricks[visualPositions.right]} hasHighTrump={highTrumpInfo.player === visualPositions.right} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            {getPlayerHand(visualPositions.right).map((_, i) => (
-              <Card key={i} card={{}} faceDown small />
-            ))}
-          </div>
-        </div>
 
-        {/* Center - Circular Table with Trick Cards */}
-        <div style={{
-          width: '150px',
-          height: '150px',
-          background: 'rgba(0,0,0,0.3)',
-          borderRadius: '50%',
-          border: '2px solid rgba(212, 175, 55, 0.3)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          position: 'relative'
-        }}>
-          {/* Trump suit display - only show after bidding is complete */}
-          {trumpSuit && (phase === 'playing' || phase === 'discarding' || phase === 'round-end' || phase === 'game-over') && (
+          {/* Center - Circle Table */}
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             <div style={{
-              position: 'absolute',
-              fontSize: '64px',
-              color: trumpSuit === '♥' || trumpSuit === '♦' ? '#f44336' : 'white',
-              opacity: 0.3
+              width: '150px',
+              height: '150px',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              background: 'rgba(0,0,0,0.3)',
+              borderRadius: '50%',
+              border: '2px solid rgba(212,175,55,0.3)',
+              position: 'relative'
             }}>
-              {trumpSuit}
+              {/* Trump suit - ALWAYS visible when set */}
+              {trumpSuit && (
+                <div style={{
+                  position: 'absolute',
+                  fontSize: '64px',
+                  color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#f44336' : '#fff',
+                  opacity: 0.3,
+                  zIndex: 0
+                }}>
+                  {trumpSuit}
+                </div>
+              )}
+              
+              {/* Trick cards */}
+              {trickCards && trickCards.length > 0 && trickCards.map((tc, idx) => {
+                if (!tc || !tc.card) return null;
+                
+                // Calculate relative position
+                let relativePos;
+                if (tc.player === visualPositions.bottom) relativePos = 'bottom';
+                else if (tc.player === visualPositions.top) relativePos = 'top';
+                else if (tc.player === visualPositions.left) relativePos = 'left';
+                else if (tc.player === visualPositions.right) relativePos = 'right';
+                
+                const positions = {
+                  bottom: { bottom: '4px', left: '50%', transform: 'translateX(-50%)' },
+                  top: { top: '4px', left: '50%', transform: 'translateX(-50%)' },
+                  left: { left: '4px', top: '50%', transform: 'translateY(-50%)' },
+                  right: { right: '4px', top: '50%', transform: 'translateY(-50%)' }
+                };
+                
+                const pos = positions[relativePos] || {};
+                
+                // Animation
+                const winnerPositions = {
+                  bottom: { x: 0, y: 80 },
+                  top: { x: 0, y: -80 },
+                  left: { x: -80, y: 0 },
+                  right: { x: 80, y: 0 }
+                };
+                
+                let winnerVisualPos;
+                if (animating === visualPositions.bottom) winnerVisualPos = 'bottom';
+                else if (animating === visualPositions.top) winnerVisualPos = 'top';
+                else if (animating === visualPositions.left) winnerVisualPos = 'left';
+                else if (animating === visualPositions.right) winnerVisualPos = 'right';
+                
+                const isAnimating = animating !== null;
+                const winPos = isAnimating ? winnerPositions[winnerVisualPos] : { x: 0, y: 0 };
+                
+                return (
+                  <div 
+                    key={idx} 
+                    style={{ 
+                      position: 'absolute',
+                      zIndex: 1,
+                      ...pos,
+                      transition: isAnimating ? 'all 0.4s ease' : 'none',
+                      transform: isAnimating 
+                        ? `translate(${winPos.x}px, ${winPos.y}px) scale(0.2)` 
+                        : pos.transform,
+                      opacity: isAnimating ? 0 : 1
+                    }}
+                  >
+                    <Card card={tc.card} small disabled />
+                  </div>
+                );
+              })}
+              
+              {/* Status text when no cards */}
+              {(!trickCards || trickCards.length === 0) && (
+                <div style={{ fontSize: '14px', color: '#888', textAlign: 'center', maxWidth: '130px' }}>
+                  {phase === 'bidding' && `Waiting for ${getPlayerName(currentPlayer)} to bid`}
+                  {phase === 'trump-select' && `Waiting for ${getPlayerName(bidWinner)} to select trump`}
+                  {phase === 'discarding' && `Waiting for ${getPlayerName(currentPlayer)} to discard`}
+                  {phase === 'playing' && `Trick ${trickNum + 1} - ${getPlayerName(currentPlayer)}'s turn`}
+                </div>
+              )}
             </div>
-          )}
-          
-          {/* Trick cards */}
-          {trickCards && trickCards.length > 0 && trickCards.map((tc, idx) => {
-            if (!tc || !tc.card) return null;
-            
-            // Calculate relative position based on where player appears on MY screen
-            let relativePos;
-            if (tc.player === visualPositions.bottom) relativePos = 'bottom';
-            else if (tc.player === visualPositions.top) relativePos = 'top';
-            else if (tc.player === visualPositions.left) relativePos = 'left';
-            else if (tc.player === visualPositions.right) relativePos = 'right';
-            
-            console.log(`Trick card from P${tc.player + 1} positioned at ${relativePos}`);
-            
-            // Position based on visual position
-            const positions = {
-              bottom: { bottom: '4px', left: '50%', transform: 'translateX(-50%)' },
-              top: { top: '4px', left: '50%', transform: 'translateX(-50%)' },
-              left: { left: '4px', top: '50%', transform: 'translateY(-50%)' },
-              right: { right: '4px', top: '50%', transform: 'translateY(-50%)' }
-            };
-            
-            const pos = positions[relativePos] || {};
-            
-            // Calculate winner position offset for animation
-            const winnerPositions = {
-              bottom: { x: 0, y: 100 },
-              top: { x: 0, y: -100 },
-              left: { x: -100, y: 0 },
-              right: { x: 100, y: 0 }
-            };
-            
-            // Find where winner appears visually
-            let winnerVisualPos;
-            if (animating === visualPositions.bottom) winnerVisualPos = 'bottom';
-            else if (animating === visualPositions.top) winnerVisualPos = 'top';
-            else if (animating === visualPositions.left) winnerVisualPos = 'left';
-            else if (animating === visualPositions.right) winnerVisualPos = 'right';
-            
-            const isAnimating = animating !== null;
-            const winPos = isAnimating ? winnerPositions[winnerVisualPos] : { x: 0, y: 0 };
-            
-            return (
-              <div 
-                key={idx} 
-                style={{ 
-                  position: 'absolute', 
-                  ...pos,
-                  transition: isAnimating ? 'all 0.5s ease' : 'none',
-                  transform: isAnimating 
-                    ? `translate(${winPos.x}px, ${winPos.y}px) scale(0.3)` 
-                    : pos.transform,
-                  opacity: isAnimating ? 0 : 1
-                }}
-              >
-                <Card card={tc.card} />
-              </div>
-            );
-          })}
-          
-          {/* Status text when no cards */}
-          {(!trickCards || trickCards.length === 0) && (
-            <div style={{ fontSize: '14px', color: '#888', textAlign: 'center', maxWidth: '130px' }}>
-              {phase === 'bidding' && `Waiting for ${getPlayerName(currentPlayer)} to bid`}
-              {phase === 'trump-select' && `Waiting for ${getPlayerName(bidWinner)} to select trump`}
-              {phase === 'discarding' && `Waiting for ${getPlayerName(currentPlayer)} to discard`}
-              {phase === 'playing' && `Trick ${trickNum + 1} - ${getPlayerName(currentPlayer)}'s turn`}
+          </div>
+
+          {/* East Player */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '50px' }}>
+            <div style={{ fontSize: '10px', color: '#aaa', textAlign: 'center' }}>{getPlayerName(visualPositions.right)}</div>
+            <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {dealer === visualPositions.right && <DealerBadge />}
             </div>
-          )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+              {getPlayerHand(visualPositions.right).map((_, i) => (
+                <Card key={i} card={{}} faceDown small />
+              ))}
+            </div>
+            <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {drawn[visualPositions.right] > 0 && <CardsDrawnIndicator count={drawn[visualPositions.right]} />}
+            </div>
+            <div style={{ height: '18px', minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {bidIndicator(visualPositions.right)}
+            </div>
+            <div style={{ height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <TricksWonDisplay count={playerTricks[visualPositions.right]} hasHighTrump={highTrumpInfo.player === visualPositions.right} />
+            </div>
+          </div>
         </div>
 
-        {/* Bottom - My Hand */}
-        <div style={{
-          position: 'absolute',
-          bottom: '40px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#ffd700', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>You</span>
+        {/* South Player (You) */}
+        <div style={{ padding: '4px 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', marginBottom: '4px', height: '20px' }}>
+            <div style={{ minWidth: '60px', display: 'flex', justifyContent: 'center' }}>
+              <TricksWonDisplay count={playerTricks[mySeatIndex]} hasHighTrump={highTrumpInfo.player === mySeatIndex} />
+            </div>
+            <span style={{ fontSize: '11px', color: '#aaa' }}>{getPlayerName(mySeatIndex)}</span>
+            <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>
               {dealer === mySeatIndex && <DealerBadge />}
-              {isPlayerDisconnected(mySeatIndex) && <DisconnectedBadge />}
-              {drawn[mySeatIndex] > 0 && <CardsDrawnIndicator count={drawn[mySeatIndex]} />}
+            </div>
+            <div style={{ minWidth: '50px', display: 'flex', justifyContent: 'center' }}>
               {bidIndicator(mySeatIndex)}
             </div>
+            {drawn[mySeatIndex] > 0 && <CardsDrawnIndicator count={drawn[mySeatIndex]} />}
           </div>
-          <TricksWonDisplay count={playerTricks[mySeatIndex]} hasHighTrump={highTrumpInfo.player === mySeatIndex} />
-          <div style={{ display: 'flex', gap: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '2px', minHeight: '68px' }}>
             {myHand.map((card, i) => {
               // Calculate if this specific card is playable
               let isPlayable = false;
@@ -5886,12 +5862,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               }
               
               return (
-                <Card
+                <Card 
                   key={card.id}
                   card={card}
                   onClick={() => {
                     if (phase === 'discarding' && isMyTurn) {
-                      // Toggle selection
                       setSelected(prev => 
                         prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]
                       );
@@ -5900,151 +5875,94 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     }
                   }}
                   selected={selected.includes(i)}
-                  disabled={phase === 'playing' && !isMyTurn}
                   playable={isPlayable}
+                  disabled={phase === 'playing' && !isMyTurn}
+                  wasDrawn={drawnCards.has(card.id)}
                 />
               );
             })}
           </div>
-          
-          {/* Discard Button */}
-          {phase === 'discarding' && isMyTurn && (
-            <button
-              onClick={handleDiscard}
-              disabled={selected.length === 0}
-              style={{
-                marginTop: '12px',
-                padding: '12px 24px',
-                fontSize: '16px',
-                background: selected.length > 0 ? '#4caf50' : '#666',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: selected.length > 0 ? 'pointer' : 'not-allowed',
-                fontWeight: 'bold'
-              }}
-            >
-              Discard Selected ({selected.length})
-            </button>
-          )}
-          
-          {/* Bidding Buttons - below hand like v3.5.9 */}
-          {phase === 'bidding' && isMyTurn && (myBid === null || myBid === undefined || myBid === -1) && (
-            <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
+        </div>
+
+        {/* Button Area */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', flexWrap: 'wrap', padding: '4px 0', minHeight: '36px' }}>
+          {phase === 'bidding' && currentPlayer === mySeatIndex && (
+            <>
               {[15,20,25,30].map(b => (
-                <button
-                  key={b}
-                  onClick={() => handleBid(b)}
+                <button 
+                  key={b} 
+                  onClick={() => handleBid(b)} 
                   disabled={b <= highBid}
-                  style={{
-                    padding: '6px 12px',
-                    fontSize: '12px',
-                    background: b <= highBid ? '#555' : '#2196f3',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
+                  style={{ 
+                    padding: '6px 12px', 
+                    fontSize: '12px', 
+                    background: b <= highBid ? '#555' : '#2196f3', 
+                    color: '#fff', 
+                    border: 'none', 
+                    borderRadius: '4px', 
                     opacity: b <= highBid ? 0.5 : 1,
-                    cursor: b <= highBid ? 'not-allowed' : 'pointer'
+                    cursor: b <= highBid ? 'default' : 'pointer'
                   }}
                 >
                   {b}
                 </button>
               ))}
-              <button
-                onClick={() => handleBid(0)}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  background: '#c9a227',
-                  color: '#000',
-                  border: 'none',
+              <button 
+                onClick={() => handleBid(0)} 
+                style={{ 
+                  padding: '6px 12px', 
+                  fontSize: '12px', 
+                  background: '#c9a227', 
+                  color: '#000', 
+                  border: 'none', 
                   borderRadius: '4px',
                   cursor: 'pointer'
                 }}
               >
                 Pass
               </button>
-            </div>
+            </>
           )}
-          
-          {/* Trump Selection Buttons */}
-          {phase === 'trump-select' && bidWinner === mySeatIndex && (
-            <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
-              {['♠', '♣', '♥', '♦'].map(s => (
-                <button
-                  key={s}
-                  onClick={() => handleSelectTrump(s)}
-                  style={{
-                    padding: '6px 14px',
-                    fontSize: '18px',
-                    background: 'rgba(0,0,0,0.5)',
-                    color: (s === '♥' || s === '♦') ? '#f44336' : '#fff',
-                    border: '1px solid #d4af37',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+          {phase === 'trump-select' && bidWinner === mySeatIndex && SUITS.map(s => (
+            <button 
+              key={s} 
+              onClick={() => handleSelectTrump(s)} 
+              style={{ 
+                padding: '6px 14px', 
+                fontSize: '18px', 
+                background: 'rgba(0,0,0,0.5)', 
+                color: (s === '♥' || s === '♦') ? '#f44336' : '#fff', 
+                border: '1px solid #d4af37', 
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              {s}
+            </button>
+          ))}
+          {phase === 'discarding' && currentPlayer === mySeatIndex && (
+            <button 
+              onClick={handleDiscard}
+              disabled={selected.length === 0}
+              style={{ 
+                padding: '6px 16px', 
+                fontSize: '12px', 
+                background: '#4caf50', 
+                color: '#fff', 
+                border: 'none', 
+                borderRadius: '4px',
+                cursor: selected.length === 0 ? 'default' : 'pointer',
+                opacity: selected.length === 0 ? 0.5 : 1
+              }}
+            >
+              Discard ({selected.length})
+            </button>
           )}
-          
-          {/* Round End / Game Over Buttons */}
-          {((phase === 'round-end' || phase === 'game-over') && postDrawHands) || phase === 'round-end' || phase === 'game-over' ? (
-            <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
-              {(phase === 'round-end' || phase === 'game-over') && postDrawHands && (
-                <button
-                  onClick={() => setShowHandsOpen(true)}
-                  style={{
-                    padding: '6px 16px',
-                    fontSize: '12px',
-                    background: '#666',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Show Hands
-                </button>
-              )}
-              {phase === 'round-end' && (
-                <button
-                  onClick={handleNextRound}
-                  style={{
-                    padding: '6px 16px',
-                    fontSize: '12px',
-                    background: '#d4af37',
-                    color: '#000',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  Next Round
-                </button>
-              )}
-              {phase === 'game-over' && (
-                <button
-                  onClick={startGame}
-                  style={{
-                    padding: '6px 16px',
-                    fontSize: '12px',
-                    background: '#d4af37',
-                    color: '#000',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  New Game
-                </button>
-              )}
-            </div>
-          ) : null}
+        </div>
+
+        {/* Last Trick - TODO if needed */}
+        <div style={{ height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* Last trick display */}
         </div>
 
         {/* Round End Overlay */}
@@ -6102,7 +6020,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   cursor: 'pointer'
                 }}
               >
-                View Hand
+                View Hands
               </button>
               <button
                 onClick={handleNextRound}
@@ -6126,10 +6044,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         {/* Game Over Overlay */}
         {phase === 'game-over' && (() => {
           const winner = gameState && gameState.winner !== undefined ? gameState.winner : null;
-          const winnerTeamName = winner === 0 ? 'Us' : 'Them';
+          const myTeam = mySeatIndex % 2;
+          const isWin = winner === myTeam;
           const winnerScore = winner !== null ? scores[winner] : 0;
           const loserScore = winner !== null ? scores[1 - winner] : 0;
-          const isWin = winner === 0;
           
           return (
             <div style={{
@@ -6149,29 +6067,22 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 {isWin ? '🏆 VICTORY!' : '💀 DEFEAT'}
               </div>
               
-              <div style={{ fontSize: '24px', marginBottom: '32px', color: '#d4af37' }}>
-                {winnerTeamName} Win{winner === 0 ? '' : 's'}!
-              </div>
-              
-              <div style={{ marginBottom: '32px', fontSize: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '48px' }}>
-                  <div>
-                    <div style={{ color: '#aaa', fontSize: '14px', marginBottom: '8px' }}>Us</div>
-                    <div style={{ fontSize: '32px', color: winner === 0 ? '#4caf50' : '#f44336', fontWeight: 'bold' }}>
-                      {scores[0]}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '32px', color: '#666' }}>-</div>
-                  <div>
-                    <div style={{ color: '#aaa', fontSize: '14px', marginBottom: '8px' }}>Them</div>
-                    <div style={{ fontSize: '32px', color: winner === 1 ? '#4caf50' : '#f44336', fontWeight: 'bold' }}>
-                      {scores[1]}
-                    </div>
-                  </div>
+              <div style={{ fontSize: '24px', marginBottom: '32px' }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <span style={{ color: isWin ? '#4caf50' : '#aaa' }}>Us: </span>
+                  <span style={{ fontWeight: 'bold', color: isWin ? '#4caf50' : '#aaa' }}>
+                    {myTeam === 0 ? winnerScore : loserScore}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ color: isWin ? '#aaa' : '#f44336' }}>Them: </span>
+                  <span style={{ fontWeight: 'bold', color: isWin ? '#aaa' : '#f44336' }}>
+                    {myTeam === 0 ? loserScore : winnerScore}
+                  </span>
                 </div>
               </div>
-              
-              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button
                   onClick={() => setShowHandsOpen(true)}
                   style={{
@@ -6184,15 +6095,15 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     cursor: 'pointer'
                   }}
                 >
-                  View Final Hand
+                  View Hands
                 </button>
                 <button
-                  onClick={startGame}  // Fixed: was window.location.reload()
+                  onClick={startGame}
                   style={{
-                    padding: '12px 32px',
-                    fontSize: '18px',
-                    background: '#4caf50',
-                    color: 'white',
+                    padding: '12px 24px',
+                    fontSize: '16px',
+                    background: '#d4af37',
+                    color: '#000',
                     border: 'none',
                     borderRadius: '8px',
                     cursor: 'pointer',
@@ -6207,74 +6118,24 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         })()}
       </div>
 
-      {/* Score Table at Bottom */}
-      <div style={{
-        padding: '8px 16px',
-        background: 'rgba(0,0,0,0.4)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '4px'
-      }}>
-        {/* Last Trick - fixed height container to prevent layout shift */}
-        <div style={{ height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {lastTrick && phase === 'playing' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '2px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
-              <span style={{ fontSize: '9px', color: '#aaa' }}>Last:</span>
-              {lastTrick.cards.map((tc, i) => {
-                const isWinner = tc.player === lastTrick.winner;
-                return (
-                  <div key={i} style={{ position: 'relative' }}>
-                    <Card card={tc.card} small disabled />
-                    {isWinner && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '-6px',
-                        right: '-6px',
-                        background: '#4caf50',
-                        borderRadius: '50%',
-                        width: '12px',
-                        height: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '8px'
-                      }}>
-                        ✓
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        {/* Score table */}
-        <ScoreTable roundHistory={history} mySeatIndex={mySeatIndex} />
-      </div>
-
       {/* Modals */}
-      <ShowHandsModal
+      <ShowHandsModal 
         isOpen={showHandsOpen}
         onClose={() => setShowHandsOpen(false)}
         hands={postDrawHands || hands}
-        dealer={roundDealer}
+        dealer={dealer}
         bidWinner={bidWinner}
         highBid={highBid}
         trumpSuit={trumpSuit}
-        drawn={roundDrawn}
+        drawn={drawn}
         drawnCards={drawnCards}
         wasBagged={wasBagged}
         playHistory={playHistory}
-        bids={roundBids}
+        bids={bids}
         mySeatIndex={mySeatIndex}
         players={players}
       />
-      
-      <HelpModal
-        isOpen={helpOpen}
-        onClose={() => setHelpOpen(false)}
-      />
+      <HelpModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 
