@@ -21,7 +21,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.5.2-MOBILE-FINAL';
+const VERSION = '2.5.3-UI-POLISH';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1571,7 +1571,7 @@ function HelpModal({ isOpen, onClose }) {
     <>
       {/* Main Help Modal */}
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px' }}>
-        <div style={{ background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '2px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: window.innerWidth < 480 ? '280px' : '400px', maxHeight: '95%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '2px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '400px', maxHeight: '95%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Modal Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid rgba(212,175,55,0.3)' }}>
             <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#d4af37' }}>Info & Help</span>
@@ -1755,7 +1755,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
   
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px' }}>
-      <div style={{ background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '3px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: window.innerWidth < 480 ? '280px' : '400px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 0 20px rgba(212, 175, 55, 0.5)' }}>
+      <div style={{ background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '3px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '400px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 0 20px rgba(212, 175, 55, 0.5)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#d4af37' }}>
             Hands After Draw <span style={{ fontSize: '10px', color: '#888' }}>v{VERSION}</span>
@@ -1995,13 +1995,13 @@ function LoginScreen({ onLogin }) {
 
       <div style={{
         background: 'white',
-        padding: window.innerWidth < 480 ? '20px' : '40px',
+        padding: '40px',
         borderRadius: '12px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
         maxWidth: '450px',
         width: '100%'
       }}>
-        <h1 style={{ marginBottom: '24px', textAlign: 'center', color: '#1a5f3f' }}>
+        <h1 style={{ marginBottom: '8px', textAlign: 'center', color: '#1a5f3f' }}>
           45s Card Game
         </h1>
         <p style={{ marginBottom: '24px', textAlign: 'center', color: '#666', fontSize: '14px' }}>
@@ -2744,7 +2744,7 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
       <div style={{
         position: 'relative',
         width: '100%',
-        maxWidth: window.innerWidth < 480 ? '280px' : '400px',
+        maxWidth: '400px',
         height: '300px',
         margin: '0 auto'
       }}>
@@ -2762,7 +2762,7 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
                 top: '0',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                width: '140px',
+                width: window.innerWidth < 480 ? "100px" : "140px",
                 padding: '10px',
                 background: isOccupied ? '#e8f5e9' : 'white',
                 border: `2px solid ${isOccupied ? '#4caf50' : '#ddd'}`,
@@ -2812,7 +2812,7 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
                 bottom: '0',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                width: '140px',
+                width: window.innerWidth < 480 ? "100px" : "140px",
                 padding: '10px',
                 background: isOccupied ? '#e8f5e9' : 'white',
                 border: `2px solid ${isOccupied ? '#4caf50' : '#ddd'}`,
@@ -2862,7 +2862,7 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
                 left: '0',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                width: '140px',
+                width: window.innerWidth < 480 ? "100px" : "140px",
                 padding: '10px',
                 background: isOccupied ? '#e8f5e9' : 'white',
                 border: `2px solid ${isOccupied ? '#4caf50' : '#ddd'}`,
@@ -2912,7 +2912,7 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
                 right: '0',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                width: '140px',
+                width: window.innerWidth < 480 ? "100px" : "140px",
                 padding: '10px',
                 background: isOccupied ? '#e8f5e9' : 'white',
                 border: `2px solid ${isOccupied ? '#4caf50' : '#ddd'}`,
@@ -2948,6 +2948,21 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
           );
         })()}
         
+        {/* Center indicator showing partners */}
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          fontSize: '11px',
+          color: '#999',
+          textAlign: 'center',
+          pointerEvents: 'none'
+        }}>
+          <div>N+S</div>
+          <div>vs</div>
+          <div>E+W</div>
+        </div>
       </div>
       
       {/* Timestamp in lower left */}
@@ -3170,16 +3185,17 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
       <div style={{
         background: 'white',
         borderRadius: '12px',
-        padding: window.innerWidth < 480 ? '20px' : '40px',
+        padding: '40px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
         maxWidth: '700px',
-        maxHeight: window.innerWidth < 480 ? '90vh' : 'none',
-        overflowY: window.innerWidth < 480 ? 'auto' : 'visible',
         width: '100%'
       }}>
-        <h1 style={{ marginBottom: '24px', textAlign: 'center', color: '#1a5f3f' }}>
+        <h1 style={{ marginBottom: '8px', textAlign: 'center', color: '#1a5f3f' }}>
           {game.name}
         </h1>
+        <p style={{ marginBottom: '24px', textAlign: 'center', color: '#666', fontSize: '14px' }}>
+          Game ID: {gameId}
+        </p>
 
         {error && (
           <div style={{
@@ -3228,8 +3244,8 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
           <div style={{
             position: 'relative',
             width: '100%',
-            maxWidth: window.innerWidth < 480 ? '280px' : '400px',
-            height: window.innerWidth < 480 ? '220px' : '280px',
+            maxWidth: '400px',
+            height: '280px',
             margin: '0 auto'
           }}>
             {/* North */}
@@ -3246,8 +3262,8 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     top: '0',
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    width: window.innerWidth < 480 ? '110px' : '150px',
-                    padding: window.innerWidth < 480 ? '8px' : '12px',
+                    width: '150px',
+                    padding: '12px',
                     background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
                     border: `3px solid ${
                       !player ? '#ddd' : 
@@ -3258,10 +3274,10 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     textAlign: 'center'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: window.innerWidth < 480 ? '10px' : '11px', marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '11px', marginBottom: '6px' }}>
                     {seat.toUpperCase()}
                   </div>
-                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: window.innerWidth < 480 ? '12px' : '14px', marginBottom: '4px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px', marginBottom: '4px' }}>
                     {player ? player.username : 'Empty Seat'}
                     {isMe && <span style={{ color: '#2196f3', fontSize: '11px' }}> (You)</span>}
                   </div>
@@ -3329,8 +3345,8 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     left: '0',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    width: window.innerWidth < 480 ? '110px' : '150px',
-                    padding: window.innerWidth < 480 ? '8px' : '12px',
+                    width: '150px',
+                    padding: '12px',
                     background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
                     border: `3px solid ${
                       !player ? '#ddd' : 
@@ -3341,10 +3357,10 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     textAlign: 'center'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: window.innerWidth < 480 ? '10px' : '11px', marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '11px', marginBottom: '6px' }}>
                     {seat.toUpperCase()}
                   </div>
-                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: window.innerWidth < 480 ? '12px' : '14px', marginBottom: '4px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px', marginBottom: '4px' }}>
                     {player ? player.username : 'Empty Seat'}
                     {isMe && <span style={{ color: '#2196f3', fontSize: '11px' }}> (You)</span>}
                   </div>
@@ -3412,8 +3428,8 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     bottom: '0',
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    width: window.innerWidth < 480 ? '110px' : '150px',
-                    padding: window.innerWidth < 480 ? '8px' : '12px',
+                    width: '150px',
+                    padding: '12px',
                     background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
                     border: `3px solid ${
                       !player ? '#ddd' : 
@@ -3495,8 +3511,8 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     right: '0',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    width: window.innerWidth < 480 ? '110px' : '150px',
-                    padding: window.innerWidth < 480 ? '8px' : '12px',
+                    width: '150px',
+                    padding: '12px',
                     background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
                     border: `3px solid ${
                       !player ? '#ddd' : 
@@ -3564,6 +3580,21 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
               );
             })()}
             
+            {/* Center indicator showing partners */}
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              fontSize: '11px',
+              color: '#999',
+              textAlign: 'center',
+              pointerEvents: 'none'
+            }}>
+              <div>N+S</div>
+              <div>vs</div>
+              <div>E+W</div>
+            </div>
           </div>
         </div>
 
@@ -5783,10 +5814,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             
             // Position based on visual position
             const positions = {
-              bottom: { bottom: '80px', left: '50%', transform: 'translateX(-50%)' },
-              top: { top: '80px', left: '50%', transform: 'translateX(-50%)' },
-              left: { left: '80px', top: '50%', transform: 'translateY(-50%)' },
-              right: { right: '80px', top: '50%', transform: 'translateY(-50%)' }
+              bottom: { bottom: '10px', left: '50%', transform: 'translateX(-50%)' },
+              top: { top: '10px', left: '50%', transform: 'translateX(-50%)' },
+              left: { left: '10px', top: '50%', transform: 'translateY(-50%)' },
+              right: { right: '10px', top: '50%', transform: 'translateY(-50%)' }
             };
             
             const pos = positions[relativePos] || {};
@@ -5829,7 +5860,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           
           {/* Status text when no cards */}
           {(!trickCards || trickCards.length === 0) && (
-            <div style={{ fontSize: '14px', color: '#888' }}>
+            <div style={{ fontSize: '13px', color: '#888', textAlign: 'center', maxWidth: '130px' }}>
               {phase === 'bidding' && `Waiting for ${getPlayerName(currentPlayer)} to bid`}
               {phase === 'trump-select' && `Waiting for ${getPlayerName(bidWinner)} to select trump`}
               {phase === 'discarding' && `Waiting for ${getPlayerName(currentPlayer)} to discard`}
