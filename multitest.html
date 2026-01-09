@@ -21,7 +21,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.5.2-MOBILE-UI';
+const VERSION = '2.5.2-MOBILE-FINAL';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2948,7 +2948,6 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
           );
         })()}
         
-        {/* Center indicator showing partners */}
       </div>
       
       {/* Timestamp in lower left */}
@@ -3565,8 +3564,6 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
               );
             })()}
             
-            {/* Center indicator showing partners */}
-            <div style={{
           </div>
         </div>
 
