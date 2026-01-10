@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.8.0';
+const VERSION = '2.8.1';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2617,33 +2617,34 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
               >
                 Logout
               </button>
-              <button
-onClick={() => {
-                  if (window.confirm('Delete ALL games? This cannot be undone!')) {
-                    Promise.all([
-                      database.ref('lobby/games').remove(),
-                      database.ref('games').remove()
-                    ]).then(() => {
-                      console.log('✅ All games deleted');
-                      // Force immediate reload without cache
-                      window.location.href = window.location.href;
-                    });
-                  }
-                }}
-                disabled={loading}
-                style={{
-                  padding: '12px 24px',
-                  background: loading ? '#ccc' : '#ff9800',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  fontSize: '16px',
-                  fontWeight: 'bold'
-                }}
-              >
-                🗑️ Clear All
-              </button>
+              {playerName.toLowerCase() === 'robr' && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('Delete ALL games? This cannot be undone!')) {
+                      Promise.all([
+                        database.ref('lobby/games').remove(),
+                        database.ref('games').remove()
+                      ]).then(() => {
+                        console.log('✅ All games deleted');
+                        window.location.href = window.location.href;
+                      });
+                    }
+                  }}
+                  disabled={loading}
+                  style={{
+                    padding: '12px 24px',
+                    background: loading ? '#ccc' : '#ff9800',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontSize: '16px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  🗑️ Clear All
+                </button>
+              )}
               <button
                 onClick={() => setShowCreateGame(true)}
                 disabled={loading}
