@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.7.8';
+const VERSION = '2.7.9';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2545,11 +2545,13 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
 
   return (
     <div style={{
-      minHeight: '100vh',
-      overflow: 'auto',
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
       padding: '20px',
-      paddingBottom: '250px',
-      position: 'relative'
+      paddingBottom: '10px',
+      position: 'relative',
+      overflow: 'hidden'
     }}>
       {/* Version number */}
       <div style={{
@@ -2571,15 +2573,21 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
 
       <div style={{
         maxWidth: '1200px',
-        margin: '0 auto'
+        margin: '0 auto',
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        minHeight: 0,
+        overflow: 'hidden'
       }}>
         {/* Header */}
         <div style={{
           background: 'white',
           borderRadius: '12px',
-          padding: '24px',
-          marginBottom: '20px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+          padding: '16px',
+          marginBottom: '12px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+          flexShrink: 0
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <div onClick={() => setShowSettings(true)} style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }} title="Click to edit profile">
@@ -2766,9 +2774,10 @@ onClick={() => {
           borderRadius: '12px',
           padding: '12px 8px',
           boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-          marginBottom: '50px',
-          maxHeight: 'calc(100vh - 280px)',
-          overflowY: 'auto'
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          marginBottom: '10px'
         }}>
           <h2 style={{ marginBottom: '12px', color: '#1a5f3f', fontSize: '20px' }}>
             Available Games ({gameList.length})
