@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.8.1';
+const VERSION = '2.8.2';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2004,7 +2004,7 @@ function LoginScreen({ onLogin }) {
         maxWidth: '450px',
         width: '100%'
       }}>
-        <h1 style={{ marginBottom: '8px', textAlign: 'center', color: '#1a5f3f' }}>
+        <h1 style={{ marginBottom: '5px', textAlign: 'center', color: '#1a5f3f', fontSize: '22px' }}>
           45s Card Game
         </h1>
         <p style={{ marginBottom: '24px', textAlign: 'center', color: '#666', fontSize: '14px' }}>
@@ -2526,7 +2526,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
         avatar: playerAvatar,  // NEW
         connected: true,
         lastSeen: Date.now(),
-        ready: false,  // NEW - start as not ready
+        ready: true,  // Start as ready when joining
         isAI: false  // NEW
       });
 
@@ -3442,17 +3442,15 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
       <div style={{
         background: 'white',
         borderRadius: '12px',
-        padding: '40px',
+        padding: '15px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
         maxWidth: '700px',
         width: '100%'
       }}>
-        <h1 style={{ marginBottom: '8px', textAlign: 'center', color: '#1a5f3f' }}>
+        <h1 style={{ marginBottom: '5px', textAlign: 'center', color: '#1a5f3f', fontSize: '22px' }}>
           {game.name}
         </h1>
-        <p style={{ marginBottom: '24px', textAlign: 'center', color: '#666', fontSize: '14px' }}>
-          Game ID: {gameId}
-        </p>
+
 
         {error && (
           <div style={{
@@ -3471,9 +3469,9 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
         {/* PHASE 2.1: Status bar */}
         <div style={{
           background: '#f5f5f5',
-          padding: '16px',
+          padding: '10px',
           borderRadius: '8px',
-          marginBottom: '20px',
+          marginBottom: '10px',
           textAlign: 'center'
         }}>
           <div style={{ fontSize: '16px', color: '#333', marginBottom: '8px' }}>
@@ -3489,11 +3487,11 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
 
         <div style={{
           background: '#f5f5f5',
-          padding: '20px',
+          padding: '10px 5px',
           borderRadius: '8px',
-          marginBottom: '24px'
+          marginBottom: '12px'
         }}>
-          <h2 style={{ marginBottom: '16px', color: '#333', fontSize: '18px' }}>
+          <h2 style={{ marginBottom: '10px', color: '#333', fontSize: '16px', textAlign: 'center' }}>
             Players ({playerCount}/4)
           </h2>
           
@@ -3501,8 +3499,8 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
           <div style={{
             position: 'relative',
             width: '100%',
-            maxWidth: '400px',
-            height: '280px',
+            maxWidth: '100%',
+            height: '220px',
             margin: '0 auto'
           }}>
             {/* North */}
@@ -3519,8 +3517,9 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     top: '0',
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    width: '150px',
-                    padding: '12px',
+                    width: '110px',
+                    minHeight: '70px',
+                    padding: '8px',
                     background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
                     border: `3px solid ${
                       !player ? '#ddd' : 
@@ -3531,12 +3530,13 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     textAlign: 'center'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '11px', marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '10px', marginBottom: '4px' }}>
                     {seat.toUpperCase()}
                   </div>
-                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px', marginBottom: '4px' }}>
+                  {player && <div style={{ fontSize: '18px', marginBottom: '2px' }}>{getAvatarById(player.avatar).emoji}</div>}
+                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '12px', marginBottom: '2px' }}>
                     {player ? player.username : 'Empty Seat'}
-                    {isMe && <span style={{ color: '#2196f3', fontSize: '11px' }}> (You)</span>}
+                    {isMe && <span style={{ color: '#2196f3', fontSize: '10px' }}> (You)</span>}
                   </div>
                   {player && (
                     <>
@@ -3599,11 +3599,12 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                   key={seat}
                   style={{
                     position: 'absolute',
-                    left: '0',
+                    left: '5px',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    width: '150px',
-                    padding: '12px',
+                    width: '110px',
+                    minHeight: '70px',
+                    padding: '8px',
                     background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
                     border: `3px solid ${
                       !player ? '#ddd' : 
@@ -3614,12 +3615,13 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     textAlign: 'center'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '11px', marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '10px', marginBottom: '4px' }}>
                     {seat.toUpperCase()}
                   </div>
-                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px', marginBottom: '4px' }}>
+                  {player && <div style={{ fontSize: '18px', marginBottom: '2px' }}>{getAvatarById(player.avatar).emoji}</div>}
+                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '12px', marginBottom: '2px' }}>
                     {player ? player.username : 'Empty Seat'}
-                    {isMe && <span style={{ color: '#2196f3', fontSize: '11px' }}> (You)</span>}
+                    {isMe && <span style={{ color: '#2196f3', fontSize: '10px' }}> (You)</span>}
                   </div>
                   {player && (
                     <>
@@ -3685,8 +3687,9 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     bottom: '0',
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    width: '150px',
-                    padding: '12px',
+                    width: '110px',
+                    minHeight: '70px',
+                    padding: '8px',
                     background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
                     border: `3px solid ${
                       !player ? '#ddd' : 
@@ -3697,12 +3700,13 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     textAlign: 'center'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '11px', marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '10px', marginBottom: '4px' }}>
                     {seat.toUpperCase()}
                   </div>
-                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px', marginBottom: '4px' }}>
+                  {player && <div style={{ fontSize: '18px', marginBottom: '2px' }}>{getAvatarById(player.avatar).emoji}</div>}
+                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '12px', marginBottom: '2px' }}>
                     {player ? player.username : 'Empty Seat'}
-                    {isMe && <span style={{ color: '#2196f3', fontSize: '11px' }}> (You)</span>}
+                    {isMe && <span style={{ color: '#2196f3', fontSize: '10px' }}> (You)</span>}
                   </div>
                   {player && (
                     <>
@@ -3765,11 +3769,12 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                   key={seat}
                   style={{
                     position: 'absolute',
-                    right: '0',
+                    right: '5px',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    width: '150px',
-                    padding: '12px',
+                    width: '110px',
+                    minHeight: '70px',
+                    padding: '8px',
                     background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
                     border: `3px solid ${
                       !player ? '#ddd' : 
@@ -3780,12 +3785,13 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                     textAlign: 'center'
                   }}
                 >
-                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '11px', marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '10px', marginBottom: '4px' }}>
                     {seat.toUpperCase()}
                   </div>
-                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '14px', marginBottom: '4px' }}>
+                  {player && <div style={{ fontSize: '18px', marginBottom: '2px' }}>{getAvatarById(player.avatar).emoji}</div>}
+                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '12px', marginBottom: '2px' }}>
                     {player ? player.username : 'Empty Seat'}
-                    {isMe && <span style={{ color: '#2196f3', fontSize: '11px' }}> (You)</span>}
+                    {isMe && <span style={{ color: '#2196f3', fontSize: '10px' }}> (You)</span>}
                   </div>
                   {player && (
                     <>
@@ -3837,21 +3843,7 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
               );
             })()}
             
-            {/* Center indicator showing partners */}
-            <div style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              fontSize: '11px',
-              color: '#999',
-              textAlign: 'center',
-              pointerEvents: 'none'
-            }}>
-              <div>N+S</div>
-              <div>vs</div>
-              <div>E+W</div>
-            </div>
+
           </div>
         </div>
 
@@ -3916,22 +3908,7 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
           </button>
         </div>
 
-        {/* PHASE 2.1: Instructions */}
-        <div style={{
-          marginTop: '16px',
-          background: '#e8f5e9',
-          padding: '12px',
-          borderRadius: '6px',
-          fontSize: '13px',
-          color: '#2e7d32'
-        }}>
-          <strong>How to start:</strong>
-          {isCreator ? (
-            <> As the creator, click "Start Game" when ready. Empty seats will be filled with AI players.</>
-          ) : (
-            <> Click "Ready to Play" when you're ready. The creator will start the game.</>
-          )}
-        </div>
+
       </div>
     </div>
   );
