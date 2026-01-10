@@ -16,7 +16,7 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Palatino Linotype', Palatino, Georgia, serif; overflow: hidden; position: fixed; width: 100%; height: 100%; }
+    body { font-family: 'Palatino Linotype', Palatino, Georgia, serif; overflow: auto; width: 100%; min-height: 100%; }
     html, body, #root { height: 100%; }
   </style>
 </head>
@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.7.9';
+const VERSION = '2.8.0';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2545,13 +2545,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
 
   return (
     <div style={{
-      height: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
+      minHeight: '100vh',
       padding: '20px',
-      paddingBottom: '10px',
-      position: 'relative',
-      overflow: 'hidden'
+      paddingBottom: '50px'
     }}>
       {/* Version number */}
       <div style={{
@@ -2573,12 +2569,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
 
       <div style={{
         maxWidth: '1200px',
-        margin: '0 auto',
-        display: 'flex',
-        flexDirection: 'column',
-        flex: 1,
-        minHeight: 0,
-        overflow: 'hidden'
+        margin: '0 auto'
       }}>
         {/* Header */}
         <div style={{
@@ -2586,8 +2577,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
           borderRadius: '12px',
           padding: '16px',
           marginBottom: '12px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-          flexShrink: 0
+          boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <div onClick={() => setShowSettings(true)} style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }} title="Click to edit profile">
@@ -2773,11 +2763,7 @@ onClick={() => {
           background: 'white',
           borderRadius: '12px',
           padding: '12px 8px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-          flex: 1,
-          minHeight: 0,
-          overflowY: 'auto',
-          marginBottom: '10px'
+          boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
         }}>
           <h2 style={{ marginBottom: '12px', color: '#1a5f3f', fontSize: '20px' }}>
             Available Games ({gameList.length})
