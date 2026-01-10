@@ -1,3 +1,6 @@
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -21,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.5.8';
+const VERSION = '2.7.2';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -62,32 +65,32 @@ function generateUserId() {
   return result;
 }
 
-// Avatar library - 24 card-themed avatars
+// Avatar library - 24 fantasy-themed avatars
 const AVATARS = [
-  { id: 'spade-ace', emoji: '🂡', name: 'Ace of Spades' },
-  { id: 'heart-ace', emoji: '🂱', name: 'Ace of Hearts' },
-  { id: 'diamond-ace', emoji: '🃁', name: 'Ace of Diamonds' },
-  { id: 'club-ace', emoji: '🃑', name: 'Ace of Clubs' },
-  { id: 'spade-king', emoji: '🂮', name: 'King of Spades' },
-  { id: 'heart-king', emoji: '🂾', name: 'King of Hearts' },
-  { id: 'diamond-king', emoji: '🃎', name: 'King of Diamonds' },
-  { id: 'club-king', emoji: '🃞', name: 'King of Clubs' },
-  { id: 'spade-queen', emoji: '🂭', name: 'Queen of Spades' },
-  { id: 'heart-queen', emoji: '🂽', name: 'Queen of Hearts' },
-  { id: 'diamond-queen', emoji: '🃍', name: 'Queen of Diamonds' },
-  { id: 'club-queen', emoji: '🃝', name: 'Queen of Clubs' },
-  { id: 'spade-jack', emoji: '🂫', name: 'Jack of Spades' },
-  { id: 'heart-jack', emoji: '🂻', name: 'Jack of Hearts' },
-  { id: 'diamond-jack', emoji: '🃋', name: 'Jack of Diamonds' },
-  { id: 'club-jack', emoji: '🃛', name: 'Jack of Clubs' },
-  { id: 'spade-10', emoji: '🂪', name: '10 of Spades' },
-  { id: 'heart-10', emoji: '🂺', name: '10 of Hearts' },
-  { id: 'diamond-10', emoji: '🃊', name: '10 of Diamonds' },
-  { id: 'club-10', emoji: '🃚', name: '10 of Clubs' },
-  { id: 'joker-red', emoji: '🃏', name: 'Red Joker' },
-  { id: 'joker-black', emoji: '🃟', name: 'Black Joker' },
-  { id: 'card-back', emoji: '🂠', name: 'Card Back' },
-  { id: 'playing-card', emoji: '🎴', name: 'Playing Cards' }
+  { id: 'wizard', emoji: '🧙', name: 'Wizard' },
+  { id: 'warrior', emoji: '⚔️', name: 'Warrior' },
+  { id: 'archer', emoji: '🏹', name: 'Archer' },
+  { id: 'knight', emoji: '🛡️', name: 'Knight' },
+  { id: 'rogue', emoji: '🗡️', name: 'Rogue' },
+  { id: 'king', emoji: '👑', name: 'King' },
+  { id: 'queen', emoji: '👸', name: 'Queen' },
+  { id: 'elf', emoji: '🧝', name: 'Elf' },
+  { id: 'fairy', emoji: '🧚', name: 'Fairy' },
+  { id: 'vampire', emoji: '🧛', name: 'Vampire' },
+  { id: 'troll', emoji: '🧌', name: 'Troll' },
+  { id: 'dragon', emoji: '🐉', name: 'Dragon' },
+  { id: 'eagle', emoji: '🦅', name: 'Eagle' },
+  { id: 'wolf', emoji: '🐺', name: 'Wolf' },
+  { id: 'lion', emoji: '🦁', name: 'Lion' },
+  { id: 'bear', emoji: '🐻', name: 'Bear' },
+  { id: 'owl', emoji: '🦉', name: 'Owl' },
+  { id: 'bat', emoji: '🦇', name: 'Bat' },
+  { id: 'crystal', emoji: '🔮', name: 'Crystal Ball' },
+  { id: 'fire', emoji: '🔥', name: 'Fire Mage' },
+  { id: 'lightning', emoji: '⚡', name: 'Storm Mage' },
+  { id: 'star', emoji: '🌟', name: 'Cleric' },
+  { id: 'skull', emoji: '💀', name: 'Necromancer' },
+  { id: 'moon', emoji: '🌙', name: 'Moon Knight' }
 ];
 
 function getAvatarById(id) {
@@ -2279,19 +2282,105 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
   const [newGameName, setNewGameName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Settings modal state
+  const [showSettings, setShowSettings] = useState(false);
+  const [editUsername, setEditUsername] = useState(playerName);
+  const [editAvatar, setEditAvatar] = useState(playerAvatar);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   useEffect(() => {
     // Clean up old/inactive games on lobby mount
     const cleanupOldGames = async () => {
       const now = Date.now();
-      const fifteenMinutes = 15 * 60 * 1000; // 15 minutes in milliseconds
-      
+      const fifteenMinutes = 15 * 60 * 1000;
+      const twentyFourHours = 24 * 60 * 60 * 1000;
+
       const gamesSnapshot = await database.ref('lobby/games').once('value');
       const allGames = gamesSnapshot.val() || {};
-      
+
       let deletedCount = 0;
+      let corruptedCount = 0;
+
       for (const [gameId, game] of Object.entries(allGames)) {
-        // Check lastActivity if game has started, otherwise check createdAt
+        let shouldDelete = false;
+        let reason = '';
+
+        // Get timestamp
+        let timestamp = null;
+        if (game.gameState && game.gameState.lastActivity) {
+          timestamp = game.gameState.lastActivity;
+        } else if (game.createdAt) {
+          timestamp = game.createdAt;
+        }
+
+        // Check for missing timestamp
+        if (!timestamp || timestamp === null || timestamp === undefined) {
+          shouldDelete = true;
+          reason = 'missing timestamp';
+          corruptedCount++;
+        }
+        // Check for invalid timestamp (not a number)
+        else if (typeof timestamp !== 'number' || isNaN(timestamp)) {
+          shouldDelete = true;
+          reason = 'invalid timestamp (NaN)';
+          corruptedCount++;
+        }
+        // Check for impossible timestamp (negative or far future)
+        else if (timestamp < 0 || timestamp > (now + 86400000)) {
+          shouldDelete = true;
+          reason = 'impossible timestamp';
+          corruptedCount++;
+        }
+        // Check for old games (>24 hours)
+        else if ((now - timestamp) > twentyFourHours) {
+          shouldDelete = true;
+          reason = `old game (${Math.floor((now - timestamp) / 3600000)} hours)`;
+        }
+        // Check for inactive games (>15 minutes)
+        else if ((now - timestamp) > fifteenMinutes) {
+          shouldDelete = true;
+          reason = `inactive (${Math.floor((now - timestamp) / 60000)} minutes)`;
+        }
+
+        if (shouldDelete) {
+          console.log(`🗑️ Deleting game ${gameId}: ${reason}`);
+          try {
+            await database.ref(`lobby/games/${gameId}`).remove();
+            deletedCount++;
+          } catch (err) {
+            console.error(`Failed to delete game ${gameId}:`, err);
+          }
+        }
+      }
+
+      if (deletedCount > 0) {
+        console.log(`✅ Cleaned up ${deletedCount} game(s) (${corruptedCount} corrupted)`);
+      }
+
+      if (corruptedCount > 0) {
+        setError(`Found and removed ${corruptedCount} corrupted game(s)`);
+        setTimeout(() => setError(null), 5000);
+      }
+    };
+    
+    // Run cleanup and wait for it to complete before listening
+    cleanupOldGames().then(() => {
+      console.log('Cleanup complete, now listening for games');
+    });
+    
+    // Listen to all games
+    const gamesRef = database.ref('lobby/games');
+    const listener = gamesRef.on('value', (snapshot) => {
+      const data = snapshot.val() || {};
+      const now = Date.now();
+      const fifteenMinutes = 15 * 60 * 1000;
+      const twentyFourHours = 24 * 60 * 60 * 1000;
+      
+      // Filter out invalid/stale games before displaying
+      const validGames = {};
+      for (const [gameId, game] of Object.entries(data)) {
         let timestamp = null;
         if (game.gameState && game.gameState.lastActivity) {
           timestamp = game.gameState.lastActivity;
@@ -2299,30 +2388,19 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
           timestamp = game.createdAt;
         }
         
-        if (timestamp) {
-          const inactiveTime = now - timestamp;
-          if (inactiveTime > fifteenMinutes) {
-            console.log(`🗑️ Auto-deleting inactive game ${gameId} (inactive for ${Math.floor(inactiveTime/60000)} minutes)`);
-            await database.ref(`lobby/games/${gameId}`).remove();
-            deletedCount++;
-          }
+        // Only show games with valid, recent timestamps
+        const isValidTimestamp = timestamp && typeof timestamp === 'number' && !isNaN(timestamp) && timestamp > 0 && timestamp <= (now + 86400000);
+        const isRecent = timestamp && (now - timestamp) <= twentyFourHours;
+        const isActive = timestamp && (now - timestamp) <= fifteenMinutes;
+        
+        // Show game if it has valid timestamp and is either recent or actively playing
+        if (isValidTimestamp && (isActive || game.status === 'playing')) {
+          validGames[gameId] = game;
         }
       }
       
-      if (deletedCount > 0) {
-        console.log(`✅ Cleaned up ${deletedCount} inactive game(s)`);
-      }
-    };
-    
-    // Run cleanup
-    cleanupOldGames();
-    
-    // Listen to all games
-    const gamesRef = database.ref('lobby/games');
-    const listener = gamesRef.on('value', (snapshot) => {
-      const data = snapshot.val() || {};
-      setGames(data);
-      console.log('Games updated:', data);
+      setGames(validGames);
+      console.log('Games updated (filtered):', Object.keys(validGames).length, 'of', Object.keys(data).length);
     }, (err) => {
       console.error('Error listening to games:', err);
       setError('Failed to load games');
@@ -2339,15 +2417,21 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
     try {
       const gameId = generateGameId();
       const gameName = newGameName.trim() || gameId;
-      
-      console.log('Creating game:', gameId, gameName);
-      
+      const now = Date.now();
+
+      // Validate timestamp
+      if (!now || isNaN(now) || now < 0) {
+        throw new Error('Failed to generate valid timestamp');
+      }
+
+      console.log('Creating game:', gameId, gameName, 'at', new Date(now).toISOString());
+
       await database.ref(`lobby/games/${gameId}`).set({
         name: gameName,
         status: 'waiting',
         creatorId: userId,
-        createdAt: Date.now(),
-        lastActivity: Date.now(),
+        createdAt: now,
+        lastActivity: now,
         players: {}
       });
 
@@ -2378,6 +2462,35 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
       setError('Failed to delete game: ' + err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (!editUsername.trim()) {
+      alert('Username cannot be empty');
+      return;
+    }
+    
+    setSettingsSaving(true);
+    try {
+      // Update Firebase
+      await database.ref(`users/${userId}`).update({
+        username: editUsername.trim(),
+        avatar: editAvatar
+      });
+      
+      // Update localStorage
+      localStorage.setItem('playerName', editUsername.trim());
+      localStorage.setItem('playerAvatar', editAvatar);
+      
+      // Close modal and reload to reflect changes
+      setShowSettings(false);
+      window.location.reload();
+    } catch (err) {
+      console.error('Error saving settings:', err);
+      alert('Failed to save settings: ' + err.message);
+    } finally {
+      setSettingsSaving(false);
     }
   };
 
@@ -2468,7 +2581,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
           boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div onClick={() => setShowSettings(true)} style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }} title="Click to edit profile">
               <div style={{ fontSize: '48px' }}>
                 {getAvatarById(playerAvatar).emoji}
               </div>
@@ -2684,6 +2797,171 @@ onClick={() => {
           )}
         </div>
       </div>
+
+        {/* Settings Modal */}
+        {showSettings && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000
+          }}>
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '32px',
+              maxWidth: '500px',
+              width: '90%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            }}>
+              <h2 style={{ marginBottom: '24px', color: '#1a5f3f' }}>Profile Settings</h2>
+              
+              {/* Username */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={editUsername}
+                  onChange={(e) => setEditUsername(e.target.value)}
+                  maxLength={20}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    fontSize: '16px',
+                    border: '2px solid #ddd',
+                    borderRadius: '6px'
+                  }}
+                />
+              </div>
+
+              {/* Avatar Selection */}
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
+                  Avatar
+                </label>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px',
+                    border: '2px solid #ddd',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    background: '#f5f5f5'
+                  }}
+                  onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+                >
+                  <div style={{ fontSize: '32px' }}>
+                    {getAvatarById(editAvatar).emoji}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
+                      {getAvatarById(editAvatar).name}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      Click to change
+                    </div>
+                  </div>
+                </div>
+
+                {/* Avatar Picker Grid */}
+                {showAvatarPicker && (
+                  <div style={{
+                    marginTop: '12px',
+                    padding: '12px',
+                    border: '2px solid #ddd',
+                    borderRadius: '6px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    background: 'white'
+                  }}>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4, 1fr)',
+                      gap: '8px'
+                    }}>
+                      {AVATARS.map(avatar => (
+                        <div
+                          key={avatar.id}
+                          onClick={() => {
+                            setEditAvatar(avatar.id);
+                            setShowAvatarPicker(false);
+                          }}
+                          style={{
+                            fontSize: '32px',
+                            padding: '8px',
+                            cursor: 'pointer',
+                            textAlign: 'center',
+                            borderRadius: '6px',
+                            border: editAvatar === avatar.id ? '2px solid #2d8f5f' : '2px solid transparent',
+                            background: editAvatar === avatar.id ? '#e8f5e9' : 'white',
+                            transition: 'all 0.2s'
+                          }}
+                          title={avatar.name}
+                        >
+                          {avatar.emoji}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Buttons */}
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => {
+                    setShowSettings(false);
+                    setEditUsername(playerName);
+                    setEditAvatar(playerAvatar);
+                    setShowAvatarPicker(false);
+                  }}
+                  disabled={settingsSaving}
+                  style={{
+                    padding: '12px 24px',
+                    background: '#757575',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: settingsSaving ? 'default' : 'pointer',
+                    fontSize: '16px',
+                    opacity: settingsSaving ? 0.5 : 1
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveSettings}
+                  disabled={settingsSaving || !editUsername.trim()}
+                  style={{
+                    padding: '12px 24px',
+                    background: '#2d8f5f',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: (settingsSaving || !editUsername.trim()) ? 'default' : 'pointer',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    opacity: (settingsSaving || !editUsername.trim()) ? 0.5 : 1
+                  }}
+                >
+                  {settingsSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 }
@@ -3035,11 +3313,19 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
 
     // Set up presence/heartbeat
     const presenceRef = database.ref(`lobby/games/${gameId}/players/${mySeat}`);
-    const heartbeat = setInterval(() => {
-      presenceRef.update({ 
-        lastSeen: Date.now(), 
-        connected: true 
-      }).catch(err => console.error('Heartbeat error:', err));
+    const gameExistsRef = database.ref(`lobby/games/${gameId}/createdAt`);
+    const heartbeat = setInterval(async () => {
+      // Only send heartbeat if game still exists (has createdAt)
+      const snapshot = await gameExistsRef.once('value');
+      if (snapshot.exists()) {
+        presenceRef.update({ 
+          lastSeen: Date.now(), 
+          connected: true 
+        }).catch(err => console.error('Heartbeat error:', err));
+      } else {
+        console.log('Game no longer exists, stopping heartbeat');
+        clearInterval(heartbeat);
+      }
     }, 5000);
 
     // Handle disconnect
@@ -3838,16 +4124,28 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
       }
     });
 
-    // Heartbeat - update every 10 seconds
-    const heartbeat = setInterval(() => {
-      database.ref(`lobby/games/${gameId}/players/${mySeat}`).update({
-        lastSeen: Date.now(),
-        disconnected: false
-      });
+    // Heartbeat - update every 10 seconds (only if game still exists)
+    const heartbeat = setInterval(async () => {
+      const gameSnapshot = await database.ref(`lobby/games/${gameId}/createdAt`).once('value');
+      if (gameSnapshot.exists()) {
+        database.ref(`lobby/games/${gameId}/players/${mySeat}`).update({
+          lastSeen: Date.now(),
+          disconnected: false
+        });
+      } else {
+        console.log('Game no longer exists, stopping heartbeat');
+        clearInterval(heartbeat);
+      }
     }, 10000); // 10 second interval
     
-    // Disconnect detection - check every 5 seconds
-    const disconnectCheck = setInterval(() => {
+    // Disconnect detection - check every 5 seconds (only if game exists)
+    const disconnectCheck = setInterval(async () => {
+      const gameSnapshot = await database.ref(`lobby/games/${gameId}/createdAt`).once('value');
+      if (!gameSnapshot.exists()) {
+        console.log('Game no longer exists, stopping disconnect check');
+        clearInterval(disconnectCheck);
+        return;
+      }
       const now = Date.now();
       database.ref(`lobby/games/${gameId}/players`).once('value', (snapshot) => {
         const playerData = snapshot.val();
@@ -6002,7 +6300,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               })()}
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 onClick={() => setShowHandsOpen(true)}
                 style={{
@@ -6041,8 +6339,6 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           const winner = gameState && gameState.winner !== undefined ? gameState.winner : null;
           const myTeam = mySeatIndex % 2;
           const isWin = winner === myTeam;
-          const winnerScore = winner !== null ? scores[winner] : 0;
-          const loserScore = winner !== null ? scores[1 - winner] : 0;
           
           return (
             <div style={{
@@ -6066,18 +6362,18 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 <div style={{ marginBottom: '12px' }}>
                   <span style={{ color: isWin ? '#4caf50' : '#aaa' }}>Us: </span>
                   <span style={{ fontWeight: 'bold', color: isWin ? '#4caf50' : '#aaa' }}>
-                    {myTeam === 0 ? winnerScore : loserScore}
+                    {scores[myTeam]}
                   </span>
                 </div>
                 <div>
                   <span style={{ color: isWin ? '#aaa' : '#f44336' }}>Them: </span>
                   <span style={{ fontWeight: 'bold', color: isWin ? '#aaa' : '#f44336' }}>
-                    {myTeam === 0 ? loserScore : winnerScore}
+                    {scores[1 - myTeam]}
                   </span>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <button
                   onClick={() => setShowHandsOpen(true)}
                   style={{
@@ -6091,6 +6387,20 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   }}
                 >
                   View Round
+                </button>
+                <button
+                  onClick={onLeaveGame}
+                  style={{
+                    padding: '12px 24px',
+                    fontSize: '16px',
+                    background: '#666',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Lobby
                 </button>
                 <button
                   onClick={startGame}
