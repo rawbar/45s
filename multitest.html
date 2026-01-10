@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.7.3';
+const VERSION = '2.7.4';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2548,7 +2548,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
       minHeight: '100vh',
       overflow: 'auto',
       padding: '20px',
-      paddingBottom: '100px',
+      paddingBottom: '150px',
       position: 'relative'
     }}>
       {/* Version number */}
@@ -3024,7 +3024,7 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
         position: 'relative',
         width: '100%',
         maxWidth: '400px',
-        height: '180px',
+        height: '220px',
         margin: '0 auto'
       }}>
         {/* North */}
@@ -3052,8 +3052,9 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
               <div style={{ fontWeight: 'bold', color: '#333', marginBottom: '4px', fontSize: '12px' }}>
                 {seat}
               </div>
-              <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
-                {isOccupied ? player.username : 'Empty'}
+              <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                {isOccupied && <span style={{ fontSize: '16px' }}>{getAvatarById(player.avatar).emoji}</span>}
+                <span>{isOccupied ? player.username : 'Empty'}</span>
               </div>
               {!isOccupied && game.status === 'waiting' && (
                 <button
@@ -3102,8 +3103,9 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
               <div style={{ fontWeight: 'bold', color: '#333', marginBottom: '4px', fontSize: '12px' }}>
                 {seat}
               </div>
-              <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
-                {isOccupied ? player.username : 'Empty'}
+              <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                {isOccupied && <span style={{ fontSize: '16px' }}>{getAvatarById(player.avatar).emoji}</span>}
+                <span>{isOccupied ? player.username : 'Empty'}</span>
               </div>
               {!isOccupied && game.status === 'waiting' && (
                 <button
@@ -3152,8 +3154,9 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
               <div style={{ fontWeight: 'bold', color: '#333', marginBottom: '4px', fontSize: '12px' }}>
                 {seat}
               </div>
-              <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
-                {isOccupied ? player.username : 'Empty'}
+              <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                {isOccupied && <span style={{ fontSize: '16px' }}>{getAvatarById(player.avatar).emoji}</span>}
+                <span>{isOccupied ? player.username : 'Empty'}</span>
               </div>
               {!isOccupied && game.status === 'waiting' && (
                 <button
@@ -3202,8 +3205,9 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
               <div style={{ fontWeight: 'bold', color: '#333', marginBottom: '4px', fontSize: '12px' }}>
                 {seat}
               </div>
-              <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px' }}>
-                {isOccupied ? player.username : 'Empty'}
+              <div style={{ fontSize: '13px', color: '#666', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                {isOccupied && <span style={{ fontSize: '16px' }}>{getAvatarById(player.avatar).emoji}</span>}
+                <span>{isOccupied ? player.username : 'Empty'}</span>
               </div>
               {!isOccupied && game.status === 'waiting' && (
                 <button
