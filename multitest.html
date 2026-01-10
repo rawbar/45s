@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.8.3';
+const VERSION = '2.8.4';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -3416,37 +3416,32 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
   return (
     <div style={{
       minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px',
+      padding: '10px',
       background: 'linear-gradient(135deg, #1a5f3f 0%, #2d8f5f 100%)',
       position: 'relative'
     }}>
-      {/* Version number */}
-      <div style={{
-        position: 'absolute',
-        top: '10px',
-        left: '10px',
-        fontSize: '11px',
-        color: 'rgba(255,255,255,0.8)',
-        fontFamily: 'monospace',
-        fontWeight: 'bold',
-        background: 'rgba(0,0,0,0.2)',
-        padding: '4px 8px',
-        borderRadius: '4px'
-      }}>
-        v{VERSION}
-      </div>
-
       <div style={{
         background: 'white',
         borderRadius: '12px',
         padding: '20px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
         maxWidth: '700px',
-        width: '100%'
+        width: '100%',
+        margin: '0 auto',
+        position: 'relative'
       }}>
+        {/* Version number - inside white box */}
+        <div style={{
+          position: 'absolute',
+          top: '8px',
+          left: '10px',
+          fontSize: '10px',
+          color: '#999',
+          fontFamily: 'monospace',
+          fontWeight: 'bold'
+        }}>
+          v{VERSION}
+        </div>
         <h1 style={{ marginBottom: '5px', textAlign: 'center', color: '#1a5f3f', fontSize: '22px' }}>
           {game.name}
         </h1>
