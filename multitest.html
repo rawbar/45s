@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.7.6';
+const VERSION = '2.7.7';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2764,12 +2764,11 @@ onClick={() => {
         <div style={{
           background: 'white',
           borderRadius: '12px',
-          padding: '24px',
+          padding: '12px 8px',
           boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-          maxHeight: 'calc(100vh - 300px)',
-          overflowY: 'auto'
+          marginBottom: '50px'
         }}>
-          <h2 style={{ marginBottom: '20px', color: '#1a5f3f' }}>
+          <h2 style={{ marginBottom: '12px', color: '#1a5f3f', fontSize: '20px' }}>
             Available Games ({gameList.length})
           </h2>
           
@@ -2781,7 +2780,7 @@ onClick={() => {
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: window.innerWidth > 768 ? 'repeat(2, 1fr)' : '1fr',
-              gap: '20px'
+              gap: '12px'
             }}>
               {gameList.map(([gameId, game]) => (
                 <GameListItem
