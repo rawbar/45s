@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.7.5';
+const VERSION = '2.7.6';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2548,7 +2548,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
       minHeight: '100vh',
       overflow: 'auto',
       padding: '20px',
-      paddingBottom: '200px',
+      paddingBottom: '250px',
       position: 'relative'
     }}>
       {/* Version number */}
@@ -2990,7 +2990,7 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
     <div style={{
       border: '2px solid #e0e0e0',
       borderRadius: '8px',
-      padding: '20px',
+      padding: '12px 5px',
       background: '#fafafa'
     }}>
       <div style={{ marginBottom: '16px' }}>
@@ -3142,7 +3142,7 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
               key={seat}
               style={{
                 position: 'absolute',
-                left: '-15px',
+                left: '0',
                 top: '50%',
                 transform: 'translateY(-50%)',
                 width: '100px',
@@ -3194,7 +3194,7 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
               key={seat}
               style={{
                 position: 'absolute',
-                right: '-15px',
+                right: '0',
                 top: '50%',
                 transform: 'translateY(-50%)',
                 width: '100px',
