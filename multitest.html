@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.10.0';
+const VERSION = '2.10.1';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2320,29 +2320,43 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
 
     const myPresenceRef = database.ref(`lobby/online/${userId}`);
     const onlineRef = database.ref('lobby/online');
+    const connectedRef = database.ref('.info/connected');
 
     // Register self as online
     const registerPresence = () => {
+      console.log('Registering presence for:', userId, playerName);
       myPresenceRef.set({
         username: playerName,
         avatar: playerAvatar,
-        lastSeen: Date.now(),
+        lastSeen: firebase.database.ServerValue.TIMESTAMP,
         connected: true
       });
     };
 
-    registerPresence();
+    // Listen to connection state
+    const connectedListener = connectedRef.on('value', (snap) => {
+      if (snap.val() === true) {
+        // Connected to Firebase
+        console.log('Firebase connected, registering presence');
+        
+        // Set up disconnect handler FIRST (uses server timestamp)
+        myPresenceRef.onDisconnect().update({
+          connected: false,
+          lastSeen: firebase.database.ServerValue.TIMESTAMP
+        }).then(() => {
+          // Then register as online
+          registerPresence();
+        });
+      }
+    });
 
     // Update lastSeen every 30 seconds
     const heartbeatInterval = setInterval(() => {
-      myPresenceRef.update({ lastSeen: Date.now() });
+      myPresenceRef.update({ 
+        lastSeen: firebase.database.ServerValue.TIMESTAMP,
+        connected: true 
+      });
     }, 30000);
-
-    // Set up disconnect handler
-    myPresenceRef.onDisconnect().update({
-      connected: false,
-      lastSeen: Date.now()
-    });
 
     // Listen for online players
     const onlineListener = onlineRef.on('value', (snapshot) => {
@@ -2350,37 +2364,47 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
       const now = Date.now();
       const fiveMinutes = 5 * 60 * 1000;
 
-      // Filter to only show recently active players
+      console.log('Raw online data:', JSON.stringify(data));
+
+      // Filter to only show recently active connected players
       const activePlayers = {};
       for (const [id, player] of Object.entries(data)) {
-        if (player && player.connected && player.lastSeen && (now - player.lastSeen) < fiveMinutes) {
-          activePlayers[id] = player;
+        // Check if player data is valid and connected
+        if (player && player.connected === true && player.lastSeen) {
+          // Check if lastSeen is recent (within 5 minutes)
+          const lastSeenTime = typeof player.lastSeen === 'number' ? player.lastSeen : 0;
+          if ((now - lastSeenTime) < fiveMinutes) {
+            activePlayers[id] = player;
+          }
         }
       }
 
+      console.log('Filtered online players:', Object.keys(activePlayers).length, Object.keys(activePlayers));
       setOnlinePlayers(activePlayers);
-      console.log('Online players:', Object.keys(activePlayers).length);
     });
 
-    // Cleanup stale presence entries (older than 5 minutes)
+    // Cleanup stale presence entries (older than 10 minutes, not 5)
     const cleanupStale = async () => {
       const snapshot = await onlineRef.once('value');
       const data = snapshot.val() || {};
       const now = Date.now();
-      const fiveMinutes = 5 * 60 * 1000;
+      const tenMinutes = 10 * 60 * 1000;
 
       for (const [id, player] of Object.entries(data)) {
-        if (!player || !player.lastSeen || (now - player.lastSeen) > fiveMinutes) {
+        const lastSeenTime = player && typeof player.lastSeen === 'number' ? player.lastSeen : 0;
+        if (!player || !player.lastSeen || (now - lastSeenTime) > tenMinutes) {
           console.log('Cleaning stale presence:', id);
           await database.ref(`lobby/online/${id}`).remove();
         }
       }
     };
 
-    cleanupStale();
+    // Delay cleanup to avoid race conditions
+    setTimeout(cleanupStale, 5000);
 
     return () => {
       clearInterval(heartbeatInterval);
+      connectedRef.off('value', connectedListener);
       onlineRef.off('value', onlineListener);
       // Mark self as offline on unmount
       myPresenceRef.update({ connected: false });
