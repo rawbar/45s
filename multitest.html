@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.11.0';
+const VERSION = '2.11.1';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2327,7 +2327,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
     setShowStatsModal(true);
     
     try {
-      const snapshot = await database.ref(\).once('value');
+      const snapshot = await database.ref(`users/${playerId}/stats`).once('value');
       const stats = snapshot.val() || {
         gamesPlayed: 0,
         gamesWon: 0,
@@ -4548,7 +4548,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
   // Update player stats when game ends
   useEffect(() => {
-    if (phase === 'game-over' && gameState?.winner \!== undefined && \!statsUpdated.current) {
+    if (phase === 'game-over' && gameState?.winner !== undefined && !statsUpdated.current) {
       statsUpdated.current = true;
       const winningTeam = gameState.winner;
       
@@ -4556,15 +4556,15 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       
       // Update stats for all human players
       Object.entries(players).forEach(([seat, player]) => {
-        if (player && \!player.isAI && player.userId) {
+        if (player && !player.isAI && player.userId) {
           const seatIndex = SEAT_TO_INDEX[seat];
           const playerTeam = seatIndex % 2; // 0,2 = team 0; 1,3 = team 1
           const isWinner = playerTeam === winningTeam;
           
-          console.log(\);
+          console.log(`Updating stats for ${player.username} - ${isWinner ? 'WON' : 'LOST'}`);
           
           // Update stats in Firebase
-          const statsRef = database.ref(\);
+          const statsRef = database.ref(`users/${player.userId}/stats`);
           statsRef.transaction((currentStats) => {
             const stats = currentStats || {
               gamesPlayed: 0,
@@ -4589,9 +4589,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             
             return stats;
           }).then(() => {
-            console.log(\);
+            console.log(`Stats updated for ${player.username}`);
           }).catch(err => {
-            console.error(\, err);
+            console.error(`Error updating stats for ${player.username}:`, err);
           });
         }
       });
