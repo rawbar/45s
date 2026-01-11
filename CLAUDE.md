@@ -44,7 +44,7 @@ From `handoff/CLAUDE_CODE_FEATURE_SPECS.md`:
 | 8 | Clear trump display at round start | 15 min | Low | Not done |
 | 13 | Hide bid display until player has bid or passed | 15 min | Low | Not done |
 | 14 | Bagging logic (dealer auto-bid 15 + red BAGGED indicator) | 1-2 hrs | Medium | Not done |
-| 1 | Connected Players Display | 1-2 hrs | Medium | Not done |
+| 1 | Connected Players Display | 1-2 hrs | Medium | ✅ Done (v2.10.1) |
 | 7 | Round-by-Round Score Modal | 1-2 hrs | Medium | Not done |
 | 9 | Create AI Design Specification Doc | 1 hr | Low | Not done |
 | 10 | Utilize getHighestRemainingTrump() strategically | 1-2 hrs | Medium | Not done |
@@ -52,6 +52,11 @@ From `handoff/CLAUDE_CODE_FEATURE_SPECS.md`:
 | 12 | Utilize bidderLostTrick for strategy adjustments | 1-2 hrs | Medium | Not done |
 | 6 | Heuristics AI Strategy | 2-4 hrs | High | ✅ Done (v2.9.0) |
 | 5 | Monte Carlo AI (wire up properly) | 4-8 hrs | Very High | ✅ Done (v2.9.0) |
+| 15 | WaitingRoom: West/East positions reversed | 15 min | Low | Not done |
+| 16 | Remove "(you)" text from online players (blue bg is sufficient) | 5 min | Low | Not done |
+| 17 | Move version number below "45s" title (smaller font, not overlapping) | 5 min | Low | Not done |
+| 18 | Player stats tracking (games played, won, lost, win%, streak) | 2-3 hrs | Medium | Not done |
+| 19 | Leaderboard - top 10 by win% (min 5 games to qualify) | 1-2 hrs | Medium | Not done |
 
 **Recommended approach:** Start with low-risk features to build confidence, save AI work for last.
 
