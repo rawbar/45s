@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.8.5';
+const VERSION = '2.9.0';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1173,13 +1173,34 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   if (playable.length <= 1) return playable[0] || hand[0];
   
   // ========================================================================
-  // STRATEGIC PRIORITY #1: BOSS CARD - Play immediately if you have one
+  // STRATEGIC PRIORITY #1: BOSS CARD - But NOT if partner is already winning!
   // ========================================================================
-  for (const card of playable) {
-    if (isCardBoss(card, cardsPlayed, trumpSuit)) {
-      console.log(`ðŸŽ¯ BOSS CARD: P${player} playing ${card.id} (guaranteed winner)`);
-      return card; // Play boss card immediately regardless of position
+  const isLeadingTrick = trick.length === 0;
+  
+  // Quick check: is partner currently winning this trick?
+  let partnerCurrentlyWinning = false;
+  if (!isLeadingTrick && trick.length > 0) {
+    let currentWinner = leader;
+    let winningCard = trick[0];
+    for (let i = 1; i < trick.length; i++) {
+      if (cardBeats(trick[i], winningCard, trumpSuit, trick[0].suit)) {
+        winningCard = trick[i];
+        currentWinner = (leader + i) % 4;
+      }
     }
+    partnerCurrentlyWinning = (currentWinner % 2) === (player % 2);
+  }
+  
+  // Only play boss card if LEADING or OPPONENT is winning (save it if partner winning)
+  if (!partnerCurrentlyWinning) {
+    for (const card of playable) {
+      if (isCardBoss(card, cardsPlayed, trumpSuit)) {
+        console.log(`🎯 BOSS CARD: P${player} playing ${card.id} (guaranteed winner)`);
+        return card;
+      }
+    }
+  } else {
+    console.log(`🤝 Partner winning - preserving boss card`);
   }
   
  // BIDDER LEADING STRATEGY
@@ -4615,27 +4636,16 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       const hand = hands[currentPlayer];
       if (!hand || hand.length === 0) return;
       
-      // Simple AI bidding logic
-      const trumpCount = Math.max(
-        hand.filter(c => c.suit === '♠').length,
-        hand.filter(c => c.suit === '♥').length,
-        hand.filter(c => c.suit === '♦').length,
-        hand.filter(c => c.suit === '♣').length
-      );
+      // Use full AI bidding strategy (matches v3.5.9)
+      const myTeam = currentPlayer % 2;
+      const teamScores = scores[myTeam];
+      const oppScores = scores[1 - myTeam];
+      const partnerIdx = (currentPlayer + 2) % 4;
+      const partnerBid = bids[partnerIdx] !== null && bids[partnerIdx] !== -1 ? bids[partnerIdx] : 0;
       
-      let bid = 0;
-      const has5 = hand.some(c => c.rank === '5');
-      const hasJ = hand.some(c => c.rank === 'J');
-      const hasAH = hand.some(c => c.rank === 'A' && c.suit === '♥');
-      
-      if (has5 && hasJ && hasAH) bid = 25;
-      else if (has5 && trumpCount >= 3) bid = 20;
-      else if (has5) bid = 15;
-      else if (hasJ && trumpCount >= 3) bid = 15;
-      else if (trumpCount >= 4) bid = 15;
-      
-      // Don't overbid current high bid unless significantly better
-      if (bid <= highBid && bid < 25) bid = 0;
+      const bidResult = decideBid(hand, highBid, currentPlayer, dealer, teamScores, oppScores, partnerBid);
+      let bid = bidResult.bid;
+      console.log('🎲 AI decideBid result:', bidResult)
       
       // AUTOBAG CHECK: If this is the dealer and all 3 others passed, force bid to 15
       let wasAutoBagged = false;
@@ -5301,22 +5311,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       const winnerHand = hands[bidWinner];
       if (!winnerHand || winnerHand.length === 0) return;
       
-      // Simple AI: pick suit with most cards
-      const suitCounts = {
-        '♠': winnerHand.filter(c => c.suit === '♠').length,
-        '♥': winnerHand.filter(c => c.suit === '♥').length,
-        '♦': winnerHand.filter(c => c.suit === '♦').length,
-        '♣': winnerHand.filter(c => c.suit === '♣').length
-      };
-      
-      let bestSuit = '♠';
-      let maxCount = 0;
-      Object.entries(suitCounts).forEach(([suit, count]) => {
-        if (count > maxCount) {
-          maxCount = count;
-          bestSuit = suit;
-        }
-      });
+      // Use proper trump selection (weights 5=1000, J=500, count*10)
+      const bestSuit = chooseTrumpSuit(winnerHand);
       
       console.log(`AI selects trump: ${bestSuit}`);
       
