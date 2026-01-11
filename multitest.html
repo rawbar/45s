@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.8.4';
+const VERSION = '2.8.5';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2993,23 +2993,47 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
       <div style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
           <h3 style={{ color: '#1a5f3f' }}>{game.name}</h3>
-          <span style={{
-            padding: '4px 12px',
-            background: game.gameState?.phase === 'game-over' ? '#4caf50' : game.status === 'waiting' ? '#ffa500' : '#2d8f5f',
-            color: 'white',
-            borderRadius: '12px',
-            fontSize: '14px',
-            fontWeight: 'bold'
-          }}>
-            {(() => {
-              if (game.gameState?.phase === 'game-over') {
-                const scores = game.gameState.scores || [0, 0];
-                const winner = game.gameState.winner;
-                return `✅ COMPLETED (${scores[0]}-${scores[1]})`;
-              }
-              return game.status === 'waiting' ? 'Waiting for Players' : 'In Progress';
-            })()}
-          </span>
+          {game.gameState?.phase === 'game-over' ? (() => {
+            const scores = game.gameState.scores || [0, 0];
+            const team0Won = scores[0] >= 120;
+            const team1Won = scores[1] >= 120;
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px' }}>✅</span>
+                <span style={{
+                  padding: '4px 10px',
+                  background: team0Won ? '#2e7d32' : '#ffcdd2',
+                  color: team0Won ? 'white' : '#c62828',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 'bold'
+                }}>
+                  N+S: {scores[0]}
+                </span>
+                <span style={{
+                  padding: '4px 10px',
+                  background: team1Won ? '#2e7d32' : '#ffcdd2',
+                  color: team1Won ? 'white' : '#c62828',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 'bold'
+                }}>
+                  E+W: {scores[1]}
+                </span>
+              </div>
+            );
+          })() : (
+            <span style={{
+              padding: '4px 12px',
+              background: game.status === 'waiting' ? '#ffa500' : '#2d8f5f',
+              color: 'white',
+              borderRadius: '12px',
+              fontSize: '14px',
+              fontWeight: 'bold'
+            }}>
+              {game.status === 'waiting' ? 'Waiting for Players' : 'In Progress'}
+            </span>
+          )}
         </div>
         <p style={{ color: '#666', fontSize: '14px' }}>
           Players: {playerCount}/4
