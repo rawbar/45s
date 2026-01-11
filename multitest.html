@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.11.1';
+const VERSION = '2.12.0';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2320,6 +2320,53 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
   const [statsData, setStatsData] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
+  // Leaderboard modal state
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+
+  // Fetch leaderboard data
+  const fetchLeaderboard = async () => {
+    setLeaderboardLoading(true);
+    setShowLeaderboard(true);
+    
+    try {
+      const snapshot = await database.ref('users').once('value');
+      const users = snapshot.val() || {};
+      
+      // Build leaderboard from users with stats
+      const leaderboard = [];
+      for (const [uid, user] of Object.entries(users)) {
+        if (user.stats && user.stats.gamesPlayed >= 5) {
+          const winRate = Math.round((user.stats.gamesWon / user.stats.gamesPlayed) * 100);
+          leaderboard.push({
+            odIn: uid,
+            username: user.username,
+            avatar: user.avatar,
+            gamesPlayed: user.stats.gamesPlayed,
+            gamesWon: user.stats.gamesWon,
+            winRate: winRate,
+            bestStreak: user.stats.bestStreak || 0
+          });
+        }
+      }
+      
+      // Sort by win rate descending, then by games played
+      leaderboard.sort((a, b) => {
+        if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+        return b.gamesPlayed - a.gamesPlayed;
+      });
+      
+      // Take top 10
+      setLeaderboardData(leaderboard.slice(0, 10));
+    } catch (err) {
+      console.error('Error fetching leaderboard:', err);
+      setLeaderboardData([]);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  };
+
   // Fetch player stats
   const fetchPlayerStats = async (playerId, playerInfo) => {
     setStatsLoading(true);
@@ -2740,7 +2787,38 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                 <span style={{ fontSize: '13px', fontWeight: '500', color: '#333', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName}</span>
               </div>
 
-              {/* Compact buttons */}
+              {/* Compact buttons - Order: New, Leaderboard, Logout */}
+              <button
+                onClick={() => setShowCreateGame(true)}
+                disabled={loading}
+                style={{
+                  padding: '6px 10px',
+                  background: loading ? '#ccc' : '#2d8f5f',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 'bold'
+                }}
+              >
+                + New
+              </button>
+              <button
+                onClick={fetchLeaderboard}
+                style={{
+                  padding: '6px 10px',
+                  background: '#2196f3',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 'bold'
+                }}
+              >
+                Leaderboard
+              </button>
               <button
                 onClick={() => {
                   if (window.confirm('Log out? You will need to re-enter your PIN.')) {
@@ -2755,7 +2833,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                 }}
                 style={{
                   padding: '6px 10px',
-                  background: '#757575',
+                  background: '#f44336',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
@@ -2766,7 +2844,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
               >
                 Logout
               </button>
-              {playerName.toLowerCase() === 'robr' && (
+              {/* Clear button - hidden but kept for admin use if needed */}
+              {false && playerName.toLowerCase() === 'robr' && (
                 <button
                   onClick={() => {
                     if (window.confirm('Delete ALL games? This cannot be undone!')) {
@@ -2795,22 +2874,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                   Clear
                 </button>
               )}
-              <button
-                onClick={() => setShowCreateGame(true)}
-                disabled={loading}
-                style={{
-                  padding: '6px 10px',
-                  background: loading ? '#ccc' : '#2d8f5f',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  fontSize: '12px',
-                  fontWeight: 'bold'
-                }}
-              >
-                + New
-              </button>
             </div>
           </div>
         </div>
@@ -3077,6 +3140,100 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                     <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2196f3' }}>{statsData.bestStreak}</div>
                     <div style={{ fontSize: '11px', color: '#666' }}>Best Streak</div>
                   </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Leaderboard Modal */}
+        {showLeaderboard && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000
+          }}>
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              maxWidth: '400px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h2 style={{ margin: 0, color: '#1a5f3f', fontSize: '18px' }}>Leaderboard</h2>
+                <button
+                  onClick={() => setShowLeaderboard(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '24px',
+                    cursor: 'pointer',
+                    color: '#666'
+                  }}
+                >x</button>
+              </div>
+              
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '16px', textAlign: 'center' }}>
+                Top 10 players by win rate (minimum 5 games)
+              </div>
+              
+              {leaderboardLoading ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>Loading...</div>
+              ) : leaderboardData.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+                  No players have completed 5+ games yet
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {leaderboardData.map((player, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '10px',
+                        background: index === 0 ? '#fff8e1' : index === 1 ? '#f5f5f5' : index === 2 ? '#fff3e0' : '#fafafa',
+                        borderRadius: '8px',
+                        border: index < 3 ? `2px solid ${index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : '#cd7f32'}` : '1px solid #eee'
+                      }}
+                    >
+                      <div style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        background: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#e0e0e0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        color: index < 3 ? '#fff' : '#666'
+                      }}>
+                        {index + 1}
+                      </div>
+                      <div style={{ fontSize: '20px' }}>{getAvatarById(player.avatar).emoji}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>{player.username}</div>
+                        <div style={{ fontSize: '11px', color: '#666' }}>{player.gamesWon}W / {player.gamesPlayed}G</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#4caf50' }}>{player.winRate}%</div>
+                        <div style={{ fontSize: '10px', color: '#666' }}>Best: {player.bestStreak}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
