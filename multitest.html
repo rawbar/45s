@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.9.0';
+const VERSION = '2.10.0';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2311,6 +2311,82 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
 
+  // Online players state
+  const [onlinePlayers, setOnlinePlayers] = useState({});
+
+  // Presence system - track online players
+  useEffect(() => {
+    if (!userId) return;
+
+    const myPresenceRef = database.ref(`lobby/online/${userId}`);
+    const onlineRef = database.ref('lobby/online');
+
+    // Register self as online
+    const registerPresence = () => {
+      myPresenceRef.set({
+        username: playerName,
+        avatar: playerAvatar,
+        lastSeen: Date.now(),
+        connected: true
+      });
+    };
+
+    registerPresence();
+
+    // Update lastSeen every 30 seconds
+    const heartbeatInterval = setInterval(() => {
+      myPresenceRef.update({ lastSeen: Date.now() });
+    }, 30000);
+
+    // Set up disconnect handler
+    myPresenceRef.onDisconnect().update({
+      connected: false,
+      lastSeen: Date.now()
+    });
+
+    // Listen for online players
+    const onlineListener = onlineRef.on('value', (snapshot) => {
+      const data = snapshot.val() || {};
+      const now = Date.now();
+      const fiveMinutes = 5 * 60 * 1000;
+
+      // Filter to only show recently active players
+      const activePlayers = {};
+      for (const [id, player] of Object.entries(data)) {
+        if (player && player.connected && player.lastSeen && (now - player.lastSeen) < fiveMinutes) {
+          activePlayers[id] = player;
+        }
+      }
+
+      setOnlinePlayers(activePlayers);
+      console.log('Online players:', Object.keys(activePlayers).length);
+    });
+
+    // Cleanup stale presence entries (older than 5 minutes)
+    const cleanupStale = async () => {
+      const snapshot = await onlineRef.once('value');
+      const data = snapshot.val() || {};
+      const now = Date.now();
+      const fiveMinutes = 5 * 60 * 1000;
+
+      for (const [id, player] of Object.entries(data)) {
+        if (!player || !player.lastSeen || (now - player.lastSeen) > fiveMinutes) {
+          console.log('Cleaning stale presence:', id);
+          await database.ref(`lobby/online/${id}`).remove();
+        }
+      }
+    };
+
+    cleanupStale();
+
+    return () => {
+      clearInterval(heartbeatInterval);
+      onlineRef.off('value', onlineListener);
+      // Mark self as offline on unmount
+      myPresenceRef.update({ connected: false });
+    };
+  }, [userId, playerName, playerAvatar]);
+
   useEffect(() => {
     // Clean up old/inactive games on lobby mount
     const cleanupOldGames = async () => {
@@ -2592,33 +2668,46 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
         maxWidth: '1200px',
         margin: '0 auto'
       }}>
-        {/* Header */}
+        {/* Compact Header */}
         <div style={{
           background: 'white',
-          borderRadius: '12px',
-          padding: '16px',
-          marginBottom: '12px',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+          borderRadius: '8px',
+          padding: '8px 12px',
+          marginBottom: '8px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-            <div onClick={() => setShowSettings(true)} style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }} title="Click to edit profile">
-              <div style={{ fontSize: '48px' }}>
-                {getAvatarById(playerAvatar).emoji}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+            {/* Left: 45s title */}
+            <h1 style={{ margin: 0, color: '#1a5f3f', fontSize: '28px', fontWeight: 'bold' }}>45s</h1>
+
+            {/* Right: User box + buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* User avatar box - clickable */}
+              <div
+                onClick={() => setShowSettings(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  background: '#f5f5f5',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid #ddd'
+                }}
+                title="Click to edit profile"
+              >
+                <span style={{ fontSize: '20px' }}>{getAvatarById(playerAvatar).emoji}</span>
+                <span style={{ fontSize: '13px', fontWeight: '500', color: '#333', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName}</span>
               </div>
-              <div>
-                <h1 style={{ marginBottom: '8px', color: '#1a5f3f' }}>45s Card Game Lobby</h1>
-                <p style={{ color: '#666' }}>Welcome, {playerName}!</p>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
+
+              {/* Compact buttons */}
               <button
                 onClick={() => {
                   if (window.confirm('Log out? You will need to re-enter your PIN.')) {
-                    // Clear localStorage
                     localStorage.removeItem('userId');
                     localStorage.removeItem('playerName');
                     localStorage.removeItem('playerAvatar');
-                    // Also clear old keys for backward compatibility
                     localStorage.removeItem('45s_username');
                     localStorage.removeItem('45s_userId');
                     localStorage.removeItem('45s_avatar');
@@ -2626,13 +2715,13 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                   }
                 }}
                 style={{
-                  padding: '12px 24px',
+                  padding: '6px 10px',
                   background: '#757575',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '6px',
+                  borderRadius: '4px',
                   cursor: 'pointer',
-                  fontSize: '16px',
+                  fontSize: '12px',
                   fontWeight: 'bold'
                 }}
               >
@@ -2644,44 +2733,101 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                     if (window.confirm('Delete ALL games? This cannot be undone!')) {
                       Promise.all([
                         database.ref('lobby/games').remove(),
-                        database.ref('games').remove()
+                        database.ref('games').remove(),
+                        database.ref('lobby/online').remove()
                       ]).then(() => {
-                        console.log('✅ All games deleted');
+                        console.log('All data cleared');
                         window.location.href = window.location.href;
                       });
                     }
                   }}
                   disabled={loading}
                   style={{
-                    padding: '12px 24px',
+                    padding: '6px 10px',
                     background: loading ? '#ccc' : '#ff9800',
                     color: 'white',
                     border: 'none',
-                    borderRadius: '6px',
+                    borderRadius: '4px',
                     cursor: loading ? 'not-allowed' : 'pointer',
-                    fontSize: '16px',
+                    fontSize: '12px',
                     fontWeight: 'bold'
                   }}
                 >
-                  🗑️ Clear All
+                  Clear
                 </button>
               )}
               <button
                 onClick={() => setShowCreateGame(true)}
                 disabled={loading}
                 style={{
-                  padding: '12px 24px',
+                  padding: '6px 10px',
                   background: loading ? '#ccc' : '#2d8f5f',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '6px',
+                  borderRadius: '4px',
                   cursor: loading ? 'not-allowed' : 'pointer',
-                  fontSize: '16px',
+                  fontSize: '12px',
                   fontWeight: 'bold'
                 }}
               >
-                + Create Game
+                + New
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Online Players Section */}
+        <div style={{
+          background: 'white',
+          borderRadius: '8px',
+          padding: '8px 12px',
+          marginBottom: '8px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#1a5f3f', whiteSpace: 'nowrap' }}>
+              {Object.keys(onlinePlayers).length} Online
+            </span>
+            <div style={{
+              display: 'flex',
+              gap: '6px',
+              overflowX: 'auto',
+              flex: 1,
+              paddingBottom: '2px'
+            }}>
+              {Object.entries(onlinePlayers).map(([id, player]) => (
+                <div
+                  key={id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: id === userId ? '#e3f2fd' : '#f5f5f5',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    border: id === userId ? '1px solid #2196f3' : '1px solid #ddd',
+                    flexShrink: 0
+                  }}
+                  title={player.username}
+                >
+                  <span style={{ fontSize: '16px' }}>{getAvatarById(player.avatar).emoji}</span>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: '500',
+                    color: '#333',
+                    maxWidth: '60px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {player.username}
+                    {id === userId && ' (you)'}
+                  </span>
+                </div>
+              ))}
+              {Object.keys(onlinePlayers).length === 0 && (
+                <span style={{ fontSize: '12px', color: '#999', fontStyle: 'italic' }}>No players online</span>
+              )}
             </div>
           </div>
         </div>

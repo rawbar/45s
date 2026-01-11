@@ -40,8 +40,10 @@ From `handoff/CLAUDE_CODE_FEATURE_SPECS.md`:
 |---|---------|------|------|--------|
 | 2 | Game Cleanup (invalid timestamps) | 30 min | Low | ✅ Done (v2.7.0) |
 | 3 | Lobby Mobile Scrolling | 30 min | Low | ✅ Done (v2.8.x) |
-| 4 | Button Positioning (Mobile) | 30 min | Low | Not done |
+| 4 | Button Positioning (Mobile) | 30 min | Low | ✅ Done (v2.8.x) |
 | 8 | Clear trump display at round start | 15 min | Low | Not done |
+| 13 | Hide bid display until player has bid or passed | 15 min | Low | Not done |
+| 14 | Bagging logic (dealer auto-bid 15 + red BAGGED indicator) | 1-2 hrs | Medium | Not done |
 | 1 | Connected Players Display | 1-2 hrs | Medium | Not done |
 | 7 | Round-by-Round Score Modal | 1-2 hrs | Medium | Not done |
 | 9 | Create AI Design Specification Doc | 1 hr | Low | Not done |
