@@ -185,6 +185,6 @@ Format: `vX.Y.Z` (semantic versioning)
 - Minor: New features
 - Patch: Bug fixes
 
-Current: `const VERSION = '2.13.0';`
+Current: `const VERSION = '2.13.1';`
 
 **IMPORTANT:** Always update the version number upon ANY code change. This is mandatory.

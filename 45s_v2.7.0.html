@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.13.0';
+const VERSION = '2.13.1';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1184,7 +1184,9 @@ function isCardBoss(card, cardsPlayed, trumpSuit) {
     });
     
     // If all higher trump have been played, this is boss
-    return higherTrumpCards.every(c => playedIds.has(c.id));
+    // IMPORTANT: Exclude the card being tested from the higher cards list
+    const relevantHigherCards = higherTrumpCards.filter(c => c.id !== card.id);
+    return relevantHigherCards.every(c => playedIds.has(c.id));
   } else {
     // For offsuit, only K is ever boss (and only if no trump exist)
     return false; // Simplified: offsuit rarely boss in 45s
