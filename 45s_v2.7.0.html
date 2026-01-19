@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.13.1';
+const VERSION = '2.14.0';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -524,6 +524,98 @@ const FirebaseAPI = {
       });
     } catch (error) {
       console.error('❌ sendChat failed:', error);
+      throw error;
+    }
+  },
+
+  // Create rematch game - new game with same players in same seats
+  createRematchGame: async (oldGameCode, players, creatorId) => {
+    try {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let newGameCode = '';
+      for (let i = 0; i < 6; i++) {
+        newGameCode += chars[Math.floor(Math.random() * chars.length)];
+      }
+
+      const now = Date.now();
+
+      // Create deck and deal cards
+      const suits = ['♠', '♥', '♦', '♣'];
+      const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+      const deck = [];
+      for (const suit of suits) {
+        for (const rank of ranks) {
+          deck.push({ rank, suit, id: rank + suit });
+        }
+      }
+
+      // Shuffle
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+
+      // Deal
+      const hands = [
+        deck.slice(0, 5),
+        deck.slice(5, 10),
+        deck.slice(10, 15),
+        deck.slice(15, 20)
+      ];
+      const kitty = deck.slice(20, 23);
+      const remaining = deck.slice(23);
+
+      // Copy players with updated timestamps
+      const newPlayers = {};
+      Object.entries(players).forEach(([playerId, playerData]) => {
+        newPlayers[playerId] = {
+          ...playerData,
+          lastSeen: now,
+          disconnected: false
+        };
+      });
+
+      // Create new game with active status and dealt cards
+      await database.ref(`games/${newGameCode}`).set({
+        code: newGameCode,
+        host: creatorId,
+        players: newPlayers,
+        chat: {},
+        status: 'active',
+        createdAt: now,
+        lastActivity: now,
+        gameState: {
+          phase: 'bidding',
+          dealer: 0,
+          currentPlayer: 1,
+          scores: [0, 0],
+          history: [],
+          hands: hands,
+          kitty: kitty,
+          deck: remaining,
+          bids: [null, null, null, null],
+          highBid: 0,
+          bidWinner: null,
+          wasBagged: false,
+          trumpSuit: null,
+          tricksWon: [0, 0],
+          playerTricks: [0, 0, 0, 0],
+          roundPts: [0, 0],
+          trickNum: 0,
+          highTrumpInfo: { rank: -1, player: -1 },
+          drawnCardsArray: [],
+          playHistory: [],
+          drawn: [0, 0, 0, 0]
+        }
+      });
+
+      // Set nextGameId on old game to notify other players
+      await database.ref(`games/${oldGameCode}/nextGameId`).set(newGameCode);
+
+      console.log('Rematch game created:', newGameCode);
+      return newGameCode;
+    } catch (error) {
+      console.error('createRematchGame failed:', error);
       throw error;
     }
   },
@@ -4540,6 +4632,12 @@ function MultiplayerApp() {
     setAppState('lobby');
   };
 
+  const handleRematch = (newGameId) => {
+    console.log('REMATCH: Transitioning to new game:', newGameId);
+    setGameId(newGameId);
+    // Stay in 'playing' state, just change the game ID
+  };
+
   if (appState === 'login') {
     return <LoginScreen onLogin={handleLogin} />;
   }
@@ -4573,11 +4671,12 @@ function MultiplayerApp() {
     return (
       <GameWrapper
         gameId={gameId}
-        userId={userId}  // Changed from playerId
+        userId={userId}
         playerName={playerName}
-        playerAvatar={playerAvatar}  // NEW
+        playerAvatar={playerAvatar}
         mySeat={mySeat}
         onLeaveGame={handleLeaveGame}
+        onRematch={handleRematch}
       />
     );
   }
@@ -4605,7 +4704,7 @@ function relativeToAbsolute(relativePos, mySeatIndex) {
 // GAME WRAPPER WITH FIREBASE SYNC
 // ============================================================================
 
-function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeaveGame }) {  // Updated: playerId → userId, added playerAvatar
+function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeaveGame, onRematch }) {  // Added onRematch → userId, added playerAvatar
   const [gameState, setGameState] = useState(null);
   const [players, setPlayers] = useState({});
   const [disconnectTimer, setDisconnectTimer] = useState(null);
@@ -4689,6 +4788,22 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
     };
   }, [gameId, mySeat]);
 
+  // Listen for nextGameId (rematch signal)
+  useEffect(() => {
+    const nextGameRef = database.ref(`lobby/games/${gameId}/nextGameId`);
+
+    const handleNextGame = (snapshot) => {
+      const nextGameId = snapshot.val();
+      if (nextGameId && onRematch) {
+        console.log('REMATCH detected! Transitioning to:', nextGameId);
+        onRematch(nextGameId);
+      }
+    };
+
+    nextGameRef.on('value', handleNextGame);
+    return () => nextGameRef.off('value', handleNextGame);
+  }, [gameId, onRematch]);
+
   // Initialize game if needed
   useEffect(() => {
     debug.game('GameWrapper: Checking initialization. gameState:', gameState ? 'EXISTS' : 'NULL');
@@ -4739,13 +4854,14 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
   return (
     <MultiplayerGameTable
       gameId={gameId}
-      userId={userId}  // Changed from playerId
+      userId={userId}
       playerName={playerName}
       mySeat={mySeat}
       mySeatIndex={mySeatIndex}
       gameState={gameState}
       players={players}
       onLeaveGame={onLeaveGame}
+      onRematch={onRematch}
     />
   );
 }
@@ -4754,7 +4870,7 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
 // MULTIPLAYER GAME TABLE - Integrates game logic with Firebase sync
 // ============================================================================
 
-function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex, gameState, players, onLeaveGame }) {  // Changed playerId to userId
+function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex, gameState, players, onLeaveGame, onRematch }) {
   // All the game state from the original App component
   const [phase, setPhase] = useState('start');
   const [hands, setHands] = useState([[], [], [], []]);
@@ -6376,6 +6492,18 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     });
   }, [updateGameState]);
 
+  // Handle rematch - create new game with same players
+  const handleRematch = useCallback(async () => {
+    console.log('Creating rematch game...');
+    try {
+      const newGameId = await FirebaseAPI.createRematchGame(gameId, players, userId);
+      console.log('Rematch game created:', newGameId);
+      // The nextGameId listener in GameWrapper will handle the transition for all players
+    } catch (error) {
+      console.error('Failed to create rematch:', error);
+    }
+  }, [gameId, players, userId]);
+
   // Render based on phase
   if (phase === 'start') {
     return (
@@ -6941,7 +7069,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   Lobby
                 </button>
                 <button
-                  onClick={startGame}
+                  onClick={handleRematch}
                   style={{
                     padding: '12px 24px',
                     fontSize: '16px',
