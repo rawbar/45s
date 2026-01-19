@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.14.0';
+const VERSION = '2.14.1';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -3629,8 +3629,9 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
           <h3 style={{ color: '#1a5f3f' }}>{game.name}</h3>
           {game.gameState?.phase === 'game-over' ? (() => {
             const scores = game.gameState.scores || [0, 0];
-            const team0Won = scores[0] >= 120;
-            const team1Won = scores[1] >= 120;
+            const winner = game.gameState.winner;
+            const team0Won = winner === 0;
+            const team1Won = winner === 1;
             return (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '14px' }}>✅</span>
@@ -5893,8 +5894,19 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           themTotal: newScores[1]
         }];
         
-        // Check for game winner (first to 120)
-        const gameWinner = newScores[0] >= 120 ? 0 : newScores[1] >= 120 ? 1 : null;
+        // Check for game winner (first to 120, bidding team wins ties)
+        let gameWinner = null;
+        const team0Reached120 = newScores[0] >= 120;
+        const team1Reached120 = newScores[1] >= 120;
+        if (team0Reached120 || team1Reached120) {
+          if (team0Reached120 && team1Reached120) {
+            // Both teams reached 120 on same hand - bidding team wins
+            gameWinner = bidWinner % 2;
+            console.log('Both teams reached 120! Bidding team (Team ' + gameWinner + ') wins!');
+          } else {
+            gameWinner = team0Reached120 ? 0 : 1;
+          }
+        }
         
         if (gameWinner !== null) {
           console.log(`🏆 GAME OVER! Team ${gameWinner} wins with ${newScores[gameWinner]} points!`);
@@ -6360,8 +6372,19 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             themTotal: newScores[1]
           }];
           
-          // Check for game winner (first to 120)
-          const gameWinner = newScores[0] >= 120 ? 0 : newScores[1] >= 120 ? 1 : null;
+          // Check for game winner (first to 120, bidding team wins ties)
+          let gameWinner = null;
+          const team0Reached120 = newScores[0] >= 120;
+          const team1Reached120 = newScores[1] >= 120;
+          if (team0Reached120 || team1Reached120) {
+            if (team0Reached120 && team1Reached120) {
+              // Both teams reached 120 on same hand - bidding team wins
+              gameWinner = bidWinner % 2;
+              console.log('Both teams reached 120! Bidding team (Team ' + gameWinner + ') wins!');
+            } else {
+              gameWinner = team0Reached120 ? 0 : 1;
+            }
+          }
           
           if (gameWinner !== null) {
             console.log(`🏆 GAME OVER! Team ${gameWinner} wins with ${newScores[gameWinner]} points!`);
