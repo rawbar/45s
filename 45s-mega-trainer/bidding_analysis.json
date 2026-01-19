@@ -1,0 +1,5404 @@
+{
+  "total_bid_tests": 1100061,
+  "by_bid": {
+    "15": {
+      "attempts": 400000,
+      "made": 322597,
+      "success_rate": 80.65
+    },
+    "20": {
+      "attempts": 400000,
+      "made": 231504,
+      "success_rate": 57.88
+    },
+    "25": {
+      "attempts": 232710,
+      "made": 97154,
+      "success_rate": 41.75
+    },
+    "30": {
+      "attempts": 67351,
+      "made": 16833,
+      "success_rate": 24.99
+    }
+  },
+  "by_category": {
+    "5_AH_AT_T3": {
+      "15": {
+        "attempts": 290,
+        "made": 290,
+        "success_rate": 100.0,
+        "avg_tricks": 4.15
+      },
+      "20": {
+        "attempts": 290,
+        "made": 279,
+        "success_rate": 96.21,
+        "avg_tricks": 4.15
+      },
+      "25": {
+        "attempts": 290,
+        "made": 227,
+        "success_rate": 78.28,
+        "avg_tricks": 4.13
+      },
+      "30": {
+        "attempts": 290,
+        "made": 110,
+        "success_rate": 37.93,
+        "avg_tricks": 4.13
+      }
+    },
+    "5_AH_AT_T4": {
+      "15": {
+        "attempts": 152,
+        "made": 151,
+        "success_rate": 99.34,
+        "avg_tricks": 4.38
+      },
+      "20": {
+        "attempts": 152,
+        "made": 151,
+        "success_rate": 99.34,
+        "avg_tricks": 4.38
+      },
+      "25": {
+        "attempts": 152,
+        "made": 135,
+        "success_rate": 88.82,
+        "avg_tricks": 4.38
+      },
+      "30": {
+        "attempts": 152,
+        "made": 77,
+        "success_rate": 50.66,
+        "avg_tricks": 4.38
+      }
+    },
+    "5_AH_AT_T5": {
+      "15": {
+        "attempts": 10,
+        "made": 10,
+        "success_rate": 100.0,
+        "avg_tricks": 4.8
+      },
+      "20": {
+        "attempts": 10,
+        "made": 10,
+        "success_rate": 100.0,
+        "avg_tricks": 4.8
+      },
+      "25": {
+        "attempts": 10,
+        "made": 10,
+        "success_rate": 100.0,
+        "avg_tricks": 4.8
+      },
+      "30": {
+        "attempts": 10,
+        "made": 8,
+        "success_rate": 80.0,
+        "avg_tricks": 4.8
+      }
+    },
+    "5_AH_T2": {
+      "15": {
+        "attempts": 4388,
+        "made": 4304,
+        "success_rate": 98.09,
+        "avg_tricks": 3.55
+      },
+      "20": {
+        "attempts": 4388,
+        "made": 3553,
+        "success_rate": 80.97,
+        "avg_tricks": 3.55
+      },
+      "25": {
+        "attempts": 4388,
+        "made": 2332,
+        "success_rate": 53.14,
+        "avg_tricks": 3.54
+      }
+    },
+    "5_AH_T3": {
+      "15": {
+        "attempts": 4220,
+        "made": 4204,
+        "success_rate": 99.62,
+        "avg_tricks": 3.86
+      },
+      "20": {
+        "attempts": 4220,
+        "made": 3716,
+        "success_rate": 88.06,
+        "avg_tricks": 3.86
+      },
+      "25": {
+        "attempts": 4220,
+        "made": 2788,
+        "success_rate": 66.07,
+        "avg_tricks": 3.85
+      },
+      "30": {
+        "attempts": 4220,
+        "made": 1332,
+        "success_rate": 31.56,
+        "avg_tricks": 3.85
+      }
+    },
+    "5_AH_T4": {
+      "15": {
+        "attempts": 1071,
+        "made": 1068,
+        "success_rate": 99.72,
+        "avg_tricks": 4.19
+      },
+      "20": {
+        "attempts": 1071,
+        "made": 1017,
+        "success_rate": 94.96,
+        "avg_tricks": 4.19
+      },
+      "25": {
+        "attempts": 1071,
+        "made": 858,
+        "success_rate": 80.11,
+        "avg_tricks": 4.18
+      },
+      "30": {
+        "attempts": 1071,
+        "made": 463,
+        "success_rate": 43.23,
+        "avg_tricks": 4.18
+      }
+    },
+    "5_AH_T5": {
+      "15": {
+        "attempts": 100,
+        "made": 100,
+        "success_rate": 100.0,
+        "avg_tricks": 4.49
+      },
+      "20": {
+        "attempts": 100,
+        "made": 100,
+        "success_rate": 100.0,
+        "avg_tricks": 4.49
+      },
+      "25": {
+        "attempts": 100,
+        "made": 89,
+        "success_rate": 89.0,
+        "avg_tricks": 4.47
+      },
+      "30": {
+        "attempts": 100,
+        "made": 59,
+        "success_rate": 59.0,
+        "avg_tricks": 4.47
+      }
+    },
+    "5_AT_T2": {
+      "15": {
+        "attempts": 3635,
+        "made": 3541,
+        "success_rate": 97.41,
+        "avg_tricks": 3.4
+      },
+      "20": {
+        "attempts": 3635,
+        "made": 2760,
+        "success_rate": 75.93,
+        "avg_tricks": 3.4
+      },
+      "25": {
+        "attempts": 3635,
+        "made": 1761,
+        "success_rate": 48.45,
+        "avg_tricks": 3.41
+      }
+    },
+    "5_AT_T3": {
+      "15": {
+        "attempts": 3226,
+        "made": 3201,
+        "success_rate": 99.23,
+        "avg_tricks": 3.73
+      },
+      "20": {
+        "attempts": 3226,
+        "made": 2756,
+        "success_rate": 85.43,
+        "avg_tricks": 3.73
+      },
+      "25": {
+        "attempts": 3226,
+        "made": 1990,
+        "success_rate": 61.69,
+        "avg_tricks": 3.72
+      },
+      "30": {
+        "attempts": 3226,
+        "made": 838,
+        "success_rate": 25.98,
+        "avg_tricks": 3.72
+      }
+    },
+    "5_AT_T4": {
+      "15": {
+        "attempts": 793,
+        "made": 789,
+        "success_rate": 99.5,
+        "avg_tricks": 4.07
+      },
+      "20": {
+        "attempts": 793,
+        "made": 735,
+        "success_rate": 92.69,
+        "avg_tricks": 4.07
+      },
+      "25": {
+        "attempts": 793,
+        "made": 603,
+        "success_rate": 76.04,
+        "avg_tricks": 4.07
+      },
+      "30": {
+        "attempts": 793,
+        "made": 311,
+        "success_rate": 39.22,
+        "avg_tricks": 4.07
+      }
+    },
+    "5_AT_T5": {
+      "15": {
+        "attempts": 56,
+        "made": 56,
+        "success_rate": 100.0,
+        "avg_tricks": 4.39
+      },
+      "20": {
+        "attempts": 56,
+        "made": 54,
+        "success_rate": 96.43,
+        "avg_tricks": 4.39
+      },
+      "25": {
+        "attempts": 56,
+        "made": 48,
+        "success_rate": 85.71,
+        "avg_tricks": 4.39
+      },
+      "30": {
+        "attempts": 56,
+        "made": 32,
+        "success_rate": 57.14,
+        "avg_tricks": 4.39
+      }
+    },
+    "5_J_AH_T3": {
+      "15": {
+        "attempts": 451,
+        "made": 451,
+        "success_rate": 100.0,
+        "avg_tricks": 4.5
+      },
+      "20": {
+        "attempts": 451,
+        "made": 451,
+        "success_rate": 100.0,
+        "avg_tricks": 4.5
+      },
+      "25": {
+        "attempts": 451,
+        "made": 393,
+        "success_rate": 87.14,
+        "avg_tricks": 4.47
+      },
+      "30": {
+        "attempts": 451,
+        "made": 269,
+        "success_rate": 59.65,
+        "avg_tricks": 4.47
+      }
+    },
+    "5_J_AH_T4": {
+      "15": {
+        "attempts": 192,
+        "made": 192,
+        "success_rate": 100.0,
+        "avg_tricks": 4.72
+      },
+      "20": {
+        "attempts": 192,
+        "made": 192,
+        "success_rate": 100.0,
+        "avg_tricks": 4.72
+      },
+      "25": {
+        "attempts": 192,
+        "made": 180,
+        "success_rate": 93.75,
+        "avg_tricks": 4.72
+      },
+      "30": {
+        "attempts": 192,
+        "made": 151,
+        "success_rate": 78.65,
+        "avg_tricks": 4.72
+      }
+    },
+    "5_J_AH_T5": {
+      "15": {
+        "attempts": 25,
+        "made": 25,
+        "success_rate": 100.0,
+        "avg_tricks": 4.96
+      },
+      "20": {
+        "attempts": 25,
+        "made": 25,
+        "success_rate": 100.0,
+        "avg_tricks": 4.96
+      },
+      "25": {
+        "attempts": 25,
+        "made": 25,
+        "success_rate": 100.0,
+        "avg_tricks": 4.96
+      },
+      "30": {
+        "attempts": 25,
+        "made": 24,
+        "success_rate": 96.0,
+        "avg_tricks": 4.96
+      }
+    },
+    "5_J_AT_T3": {
+      "15": {
+        "attempts": 337,
+        "made": 337,
+        "success_rate": 100.0,
+        "avg_tricks": 4.27
+      },
+      "20": {
+        "attempts": 337,
+        "made": 327,
+        "success_rate": 97.03,
+        "avg_tricks": 4.27
+      },
+      "25": {
+        "attempts": 337,
+        "made": 275,
+        "success_rate": 81.6,
+        "avg_tricks": 4.27
+      },
+      "30": {
+        "attempts": 337,
+        "made": 163,
+        "success_rate": 48.37,
+        "avg_tricks": 4.27
+      }
+    },
+    "5_J_AT_T4": {
+      "15": {
+        "attempts": 146,
+        "made": 146,
+        "success_rate": 100.0,
+        "avg_tricks": 4.59
+      },
+      "20": {
+        "attempts": 146,
+        "made": 145,
+        "success_rate": 99.32,
+        "avg_tricks": 4.59
+      },
+      "25": {
+        "attempts": 146,
+        "made": 131,
+        "success_rate": 89.73,
+        "avg_tricks": 4.59
+      },
+      "30": {
+        "attempts": 146,
+        "made": 102,
+        "success_rate": 69.86,
+        "avg_tricks": 4.59
+      }
+    },
+    "5_J_AT_T5": {
+      "15": {
+        "attempts": 18,
+        "made": 18,
+        "success_rate": 100.0,
+        "avg_tricks": 4.89
+      },
+      "20": {
+        "attempts": 18,
+        "made": 18,
+        "success_rate": 100.0,
+        "avg_tricks": 4.89
+      },
+      "25": {
+        "attempts": 18,
+        "made": 17,
+        "success_rate": 94.44,
+        "avg_tricks": 4.89
+      },
+      "30": {
+        "attempts": 18,
+        "made": 17,
+        "success_rate": 94.44,
+        "avg_tricks": 4.89
+      }
+    },
+    "5_J_T2": {
+      "15": {
+        "attempts": 5412,
+        "made": 5412,
+        "success_rate": 100.0,
+        "avg_tricks": 3.76
+      },
+      "20": {
+        "attempts": 5412,
+        "made": 4749,
+        "success_rate": 87.75,
+        "avg_tricks": 3.76
+      },
+      "25": {
+        "attempts": 5412,
+        "made": 3246,
+        "success_rate": 59.98,
+        "avg_tricks": 3.75
+      }
+    },
+    "5_J_T3": {
+      "15": {
+        "attempts": 4345,
+        "made": 4345,
+        "success_rate": 100.0,
+        "avg_tricks": 4.09
+      },
+      "20": {
+        "attempts": 4345,
+        "made": 4049,
+        "success_rate": 93.19,
+        "avg_tricks": 4.09
+      },
+      "25": {
+        "attempts": 4345,
+        "made": 3252,
+        "success_rate": 74.84,
+        "avg_tricks": 4.08
+      },
+      "30": {
+        "attempts": 4345,
+        "made": 1756,
+        "success_rate": 40.41,
+        "avg_tricks": 4.08
+      }
+    },
+    "5_J_T4": {
+      "15": {
+        "attempts": 1125,
+        "made": 1125,
+        "success_rate": 100.0,
+        "avg_tricks": 4.44
+      },
+      "20": {
+        "attempts": 1125,
+        "made": 1118,
+        "success_rate": 99.38,
+        "avg_tricks": 4.44
+      },
+      "25": {
+        "attempts": 1125,
+        "made": 1004,
+        "success_rate": 89.24,
+        "avg_tricks": 4.43
+      },
+      "30": {
+        "attempts": 1125,
+        "made": 609,
+        "success_rate": 54.13,
+        "avg_tricks": 4.43
+      }
+    },
+    "5_J_T5": {
+      "15": {
+        "attempts": 71,
+        "made": 71,
+        "success_rate": 100.0,
+        "avg_tricks": 4.68
+      },
+      "20": {
+        "attempts": 71,
+        "made": 71,
+        "success_rate": 100.0,
+        "avg_tricks": 4.68
+      },
+      "25": {
+        "attempts": 71,
+        "made": 68,
+        "success_rate": 95.77,
+        "avg_tricks": 4.66
+      },
+      "30": {
+        "attempts": 71,
+        "made": 50,
+        "success_rate": 70.42,
+        "avg_tricks": 4.66
+      }
+    },
+    "5_T1": {
+      "15": {
+        "attempts": 34995,
+        "made": 32696,
+        "success_rate": 93.43,
+        "avg_tricks": 2.97
+      },
+      "20": {
+        "attempts": 34995,
+        "made": 21852,
+        "success_rate": 62.44,
+        "avg_tricks": 2.97
+      },
+      "25": {
+        "attempts": 34995,
+        "made": 11226,
+        "success_rate": 32.08,
+        "avg_tricks": 2.97
+      }
+    },
+    "5_T2": {
+      "15": {
+        "attempts": 48657,
+        "made": 46879,
+        "success_rate": 96.35,
+        "avg_tricks": 3.21
+      },
+      "20": {
+        "attempts": 48657,
+        "made": 34337,
+        "success_rate": 70.57,
+        "avg_tricks": 3.21
+      },
+      "25": {
+        "attempts": 48657,
+        "made": 20076,
+        "success_rate": 41.26,
+        "avg_tricks": 3.2
+      }
+    },
+    "5_T3": {
+      "15": {
+        "attempts": 19473,
+        "made": 19239,
+        "success_rate": 98.8,
+        "avg_tricks": 3.52
+      },
+      "20": {
+        "attempts": 19473,
+        "made": 15697,
+        "success_rate": 80.61,
+        "avg_tricks": 3.52
+      },
+      "25": {
+        "attempts": 19473,
+        "made": 10536,
+        "success_rate": 54.11,
+        "avg_tricks": 3.52
+      },
+      "30": {
+        "attempts": 19473,
+        "made": 3607,
+        "success_rate": 18.52,
+        "avg_tricks": 3.52
+      }
+    },
+    "5_T4": {
+      "15": {
+        "attempts": 2800,
+        "made": 2790,
+        "success_rate": 99.64,
+        "avg_tricks": 3.87
+      },
+      "20": {
+        "attempts": 2800,
+        "made": 2526,
+        "success_rate": 90.21,
+        "avg_tricks": 3.87
+      },
+      "25": {
+        "attempts": 2800,
+        "made": 1922,
+        "success_rate": 68.64,
+        "avg_tricks": 3.86
+      },
+      "30": {
+        "attempts": 2800,
+        "made": 776,
+        "success_rate": 27.71,
+        "avg_tricks": 3.86
+      }
+    },
+    "5_T5": {
+      "15": {
+        "attempts": 116,
+        "made": 115,
+        "success_rate": 99.14,
+        "avg_tricks": 4.11
+      },
+      "20": {
+        "attempts": 116,
+        "made": 113,
+        "success_rate": 97.41,
+        "avg_tricks": 4.11
+      },
+      "25": {
+        "attempts": 116,
+        "made": 94,
+        "success_rate": 81.03,
+        "avg_tricks": 4.11
+      },
+      "30": {
+        "attempts": 116,
+        "made": 39,
+        "success_rate": 33.62,
+        "avg_tricks": 4.11
+      }
+    },
+    "AH_AT_T2": {
+      "15": {
+        "attempts": 219,
+        "made": 169,
+        "success_rate": 77.17,
+        "avg_tricks": 3.31
+      },
+      "20": {
+        "attempts": 219,
+        "made": 129,
+        "success_rate": 58.9,
+        "avg_tricks": 3.31
+      }
+    },
+    "AH_AT_T3": {
+      "15": {
+        "attempts": 1903,
+        "made": 1604,
+        "success_rate": 84.29,
+        "avg_tricks": 3.57
+      },
+      "20": {
+        "attempts": 1903,
+        "made": 1208,
+        "success_rate": 63.48,
+        "avg_tricks": 3.57
+      }
+    },
+    "AH_AT_T4": {
+      "15": {
+        "attempts": 679,
+        "made": 624,
+        "success_rate": 91.9,
+        "avg_tricks": 3.84
+      },
+      "20": {
+        "attempts": 679,
+        "made": 484,
+        "success_rate": 71.28,
+        "avg_tricks": 3.84
+      }
+    },
+    "AH_AT_T5": {
+      "15": {
+        "attempts": 62,
+        "made": 61,
+        "success_rate": 98.39,
+        "avg_tricks": 4.16
+      },
+      "20": {
+        "attempts": 62,
+        "made": 52,
+        "success_rate": 83.87,
+        "avg_tricks": 4.16
+      }
+    },
+    "AH_T2": {
+      "15": {
+        "attempts": 1885,
+        "made": 1371,
+        "success_rate": 72.73,
+        "avg_tricks": 3.04
+      },
+      "20": {
+        "attempts": 1885,
+        "made": 962,
+        "success_rate": 51.03,
+        "avg_tricks": 3.04
+      }
+    },
+    "AH_T3": {
+      "15": {
+        "attempts": 11663,
+        "made": 9057,
+        "success_rate": 77.66,
+        "avg_tricks": 3.26
+      },
+      "20": {
+        "attempts": 11663,
+        "made": 6546,
+        "success_rate": 56.13,
+        "avg_tricks": 3.26
+      }
+    },
+    "AH_T4": {
+      "15": {
+        "attempts": 2384,
+        "made": 2004,
+        "success_rate": 84.06,
+        "avg_tricks": 3.57
+      },
+      "20": {
+        "attempts": 2384,
+        "made": 1527,
+        "success_rate": 64.05,
+        "avg_tricks": 3.57
+      }
+    },
+    "AH_T5": {
+      "15": {
+        "attempts": 121,
+        "made": 116,
+        "success_rate": 95.87,
+        "avg_tricks": 3.86
+      },
+      "20": {
+        "attempts": 121,
+        "made": 87,
+        "success_rate": 71.9,
+        "avg_tricks": 3.86
+      }
+    },
+    "AT_T2": {
+      "15": {
+        "attempts": 12553,
+        "made": 8546,
+        "success_rate": 68.08,
+        "avg_tricks": 2.87
+      },
+      "20": {
+        "attempts": 12553,
+        "made": 5555,
+        "success_rate": 44.25,
+        "avg_tricks": 2.87
+      }
+    },
+    "AT_T3": {
+      "15": {
+        "attempts": 10345,
+        "made": 7723,
+        "success_rate": 74.65,
+        "avg_tricks": 3.14
+      },
+      "20": {
+        "attempts": 10345,
+        "made": 5270,
+        "success_rate": 50.94,
+        "avg_tricks": 3.14
+      }
+    },
+    "AT_T4": {
+      "15": {
+        "attempts": 1783,
+        "made": 1502,
+        "success_rate": 84.24,
+        "avg_tricks": 3.5
+      },
+      "20": {
+        "attempts": 1783,
+        "made": 1096,
+        "success_rate": 61.47,
+        "avg_tricks": 3.5
+      }
+    },
+    "AT_T5": {
+      "15": {
+        "attempts": 94,
+        "made": 85,
+        "success_rate": 90.43,
+        "avg_tricks": 3.64
+      },
+      "20": {
+        "attempts": 94,
+        "made": 61,
+        "success_rate": 64.89,
+        "avg_tricks": 3.64
+      }
+    },
+    "GUARANTEED_30": {
+      "15": {
+        "attempts": 14,
+        "made": 14,
+        "success_rate": 100.0,
+        "avg_tricks": 4.93
+      },
+      "20": {
+        "attempts": 14,
+        "made": 14,
+        "success_rate": 100.0,
+        "avg_tricks": 4.93
+      },
+      "25": {
+        "attempts": 14,
+        "made": 14,
+        "success_rate": 100.0,
+        "avg_tricks": 4.93
+      },
+      "30": {
+        "attempts": 14,
+        "made": 13,
+        "success_rate": 92.86,
+        "avg_tricks": 4.93
+      }
+    },
+    "J_AH_AT_T3": {
+      "15": {
+        "attempts": 261,
+        "made": 248,
+        "success_rate": 95.02,
+        "avg_tricks": 4.03
+      },
+      "20": {
+        "attempts": 261,
+        "made": 215,
+        "success_rate": 82.38,
+        "avg_tricks": 4.03
+      },
+      "25": {
+        "attempts": 261,
+        "made": 140,
+        "success_rate": 53.64,
+        "avg_tricks": 4.03
+      },
+      "30": {
+        "attempts": 261,
+        "made": 88,
+        "success_rate": 33.72,
+        "avg_tricks": 4.03
+      }
+    },
+    "J_AH_AT_T4": {
+      "15": {
+        "attempts": 128,
+        "made": 126,
+        "success_rate": 98.44,
+        "avg_tricks": 4.38
+      },
+      "20": {
+        "attempts": 128,
+        "made": 108,
+        "success_rate": 84.38,
+        "avg_tricks": 4.38
+      },
+      "25": {
+        "attempts": 128,
+        "made": 80,
+        "success_rate": 62.5,
+        "avg_tricks": 4.37
+      },
+      "30": {
+        "attempts": 128,
+        "made": 69,
+        "success_rate": 53.91,
+        "avg_tricks": 4.37
+      }
+    },
+    "J_AH_AT_T5": {
+      "15": {
+        "attempts": 11,
+        "made": 11,
+        "success_rate": 100.0,
+        "avg_tricks": 4.55
+      },
+      "20": {
+        "attempts": 11,
+        "made": 10,
+        "success_rate": 90.91,
+        "avg_tricks": 4.55
+      },
+      "25": {
+        "attempts": 11,
+        "made": 7,
+        "success_rate": 63.64,
+        "avg_tricks": 4.55
+      },
+      "30": {
+        "attempts": 11,
+        "made": 7,
+        "success_rate": 63.64,
+        "avg_tricks": 4.55
+      }
+    },
+    "J_AH_T2": {
+      "15": {
+        "attempts": 3439,
+        "made": 2923,
+        "success_rate": 85.0,
+        "avg_tricks": 3.48
+      },
+      "20": {
+        "attempts": 3439,
+        "made": 2280,
+        "success_rate": 66.3,
+        "avg_tricks": 3.48
+      },
+      "25": {
+        "attempts": 3439,
+        "made": 1452,
+        "success_rate": 42.22,
+        "avg_tricks": 3.48
+      }
+    },
+    "J_AH_T3": {
+      "15": {
+        "attempts": 3615,
+        "made": 3255,
+        "success_rate": 90.04,
+        "avg_tricks": 3.81
+      },
+      "20": {
+        "attempts": 3615,
+        "made": 2712,
+        "success_rate": 75.02,
+        "avg_tricks": 3.81
+      },
+      "25": {
+        "attempts": 3615,
+        "made": 1796,
+        "success_rate": 49.68,
+        "avg_tricks": 3.8
+      },
+      "30": {
+        "attempts": 3615,
+        "made": 1045,
+        "success_rate": 28.91,
+        "avg_tricks": 3.8
+      }
+    },
+    "J_AH_T4": {
+      "15": {
+        "attempts": 973,
+        "made": 934,
+        "success_rate": 95.99,
+        "avg_tricks": 4.15
+      },
+      "20": {
+        "attempts": 973,
+        "made": 798,
+        "success_rate": 82.01,
+        "avg_tricks": 4.15
+      },
+      "25": {
+        "attempts": 973,
+        "made": 568,
+        "success_rate": 58.38,
+        "avg_tricks": 4.13
+      },
+      "30": {
+        "attempts": 973,
+        "made": 390,
+        "success_rate": 40.08,
+        "avg_tricks": 4.13
+      }
+    },
+    "J_AH_T5": {
+      "15": {
+        "attempts": 71,
+        "made": 71,
+        "success_rate": 100.0,
+        "avg_tricks": 4.37
+      },
+      "20": {
+        "attempts": 71,
+        "made": 67,
+        "success_rate": 94.37,
+        "avg_tricks": 4.37
+      },
+      "25": {
+        "attempts": 71,
+        "made": 41,
+        "success_rate": 57.75,
+        "avg_tricks": 4.35
+      },
+      "30": {
+        "attempts": 71,
+        "made": 31,
+        "success_rate": 43.66,
+        "avg_tricks": 4.35
+      }
+    },
+    "J_AT_T2": {
+      "15": {
+        "attempts": 2769,
+        "made": 2281,
+        "success_rate": 82.38,
+        "avg_tricks": 3.3
+      },
+      "20": {
+        "attempts": 2769,
+        "made": 1736,
+        "success_rate": 62.69,
+        "avg_tricks": 3.3
+      },
+      "25": {
+        "attempts": 2769,
+        "made": 1064,
+        "success_rate": 38.43,
+        "avg_tricks": 3.31
+      }
+    },
+    "J_AT_T3": {
+      "15": {
+        "attempts": 2768,
+        "made": 2435,
+        "success_rate": 87.97,
+        "avg_tricks": 3.61
+      },
+      "20": {
+        "attempts": 2768,
+        "made": 1910,
+        "success_rate": 69.0,
+        "avg_tricks": 3.61
+      },
+      "25": {
+        "attempts": 2768,
+        "made": 1232,
+        "success_rate": 44.51,
+        "avg_tricks": 3.59
+      },
+      "30": {
+        "attempts": 2768,
+        "made": 619,
+        "success_rate": 22.36,
+        "avg_tricks": 3.59
+      }
+    },
+    "J_AT_T4": {
+      "15": {
+        "attempts": 728,
+        "made": 677,
+        "success_rate": 92.99,
+        "avg_tricks": 3.94
+      },
+      "20": {
+        "attempts": 728,
+        "made": 579,
+        "success_rate": 79.53,
+        "avg_tricks": 3.94
+      },
+      "25": {
+        "attempts": 728,
+        "made": 402,
+        "success_rate": 55.22,
+        "avg_tricks": 3.93
+      },
+      "30": {
+        "attempts": 728,
+        "made": 220,
+        "success_rate": 30.22,
+        "avg_tricks": 3.93
+      }
+    },
+    "J_AT_T5": {
+      "15": {
+        "attempts": 48,
+        "made": 44,
+        "success_rate": 91.67,
+        "avg_tricks": 3.94
+      },
+      "20": {
+        "attempts": 48,
+        "made": 40,
+        "success_rate": 83.33,
+        "avg_tricks": 3.94
+      },
+      "25": {
+        "attempts": 48,
+        "made": 24,
+        "success_rate": 50.0,
+        "avg_tricks": 3.94
+      },
+      "30": {
+        "attempts": 48,
+        "made": 11,
+        "success_rate": 22.92,
+        "avg_tricks": 3.94
+      }
+    },
+    "J_T1": {
+      "15": {
+        "attempts": 24239,
+        "made": 17796,
+        "success_rate": 73.42,
+        "avg_tricks": 2.83
+      },
+      "20": {
+        "attempts": 24239,
+        "made": 11978,
+        "success_rate": 49.42,
+        "avg_tricks": 2.83
+      },
+      "25": {
+        "attempts": 24239,
+        "made": 6269,
+        "success_rate": 25.86,
+        "avg_tricks": 2.83
+      }
+    },
+    "J_T2": {
+      "15": {
+        "attempts": 37825,
+        "made": 29324,
+        "success_rate": 77.53,
+        "avg_tricks": 3.06
+      },
+      "20": {
+        "attempts": 37825,
+        "made": 21057,
+        "success_rate": 55.67,
+        "avg_tricks": 3.06
+      },
+      "25": {
+        "attempts": 37825,
+        "made": 12345,
+        "success_rate": 32.64,
+        "avg_tricks": 3.06
+      }
+    },
+    "J_T3": {
+      "15": {
+        "attempts": 16760,
+        "made": 13949,
+        "success_rate": 83.23,
+        "avg_tricks": 3.37
+      },
+      "20": {
+        "attempts": 16760,
+        "made": 10642,
+        "success_rate": 63.5,
+        "avg_tricks": 3.37
+      },
+      "25": {
+        "attempts": 16760,
+        "made": 6944,
+        "success_rate": 41.43,
+        "avg_tricks": 3.37
+      },
+      "30": {
+        "attempts": 16760,
+        "made": 2786,
+        "success_rate": 16.62,
+        "avg_tricks": 3.37
+      }
+    },
+    "J_T4": {
+      "15": {
+        "attempts": 2651,
+        "made": 2344,
+        "success_rate": 88.42,
+        "avg_tricks": 3.65
+      },
+      "20": {
+        "attempts": 2651,
+        "made": 1839,
+        "success_rate": 69.37,
+        "avg_tricks": 3.65
+      },
+      "25": {
+        "attempts": 2651,
+        "made": 1277,
+        "success_rate": 48.17,
+        "avg_tricks": 3.64
+      },
+      "30": {
+        "attempts": 2651,
+        "made": 605,
+        "success_rate": 22.82,
+        "avg_tricks": 3.64
+      }
+    },
+    "J_T5": {
+      "15": {
+        "attempts": 132,
+        "made": 123,
+        "success_rate": 93.18,
+        "avg_tricks": 3.86
+      },
+      "20": {
+        "attempts": 132,
+        "made": 100,
+        "success_rate": 75.76,
+        "avg_tricks": 3.86
+      },
+      "25": {
+        "attempts": 132,
+        "made": 65,
+        "success_rate": 49.24,
+        "avg_tricks": 3.86
+      },
+      "30": {
+        "attempts": 132,
+        "made": 39,
+        "success_rate": 29.55,
+        "avg_tricks": 3.86
+      }
+    },
+    "NEAR_GUARANTEED_30": {
+      "15": {
+        "attempts": 174,
+        "made": 174,
+        "success_rate": 100.0,
+        "avg_tricks": 4.62
+      },
+      "20": {
+        "attempts": 174,
+        "made": 173,
+        "success_rate": 99.43,
+        "avg_tricks": 4.62
+      },
+      "25": {
+        "attempts": 174,
+        "made": 148,
+        "success_rate": 85.06,
+        "avg_tricks": 4.61
+      },
+      "30": {
+        "attempts": 174,
+        "made": 117,
+        "success_rate": 67.24,
+        "avg_tricks": 4.61
+      }
+    },
+    "NO_HIGH_T2": {
+      "15": {
+        "attempts": 82013,
+        "made": 51882,
+        "success_rate": 63.26,
+        "avg_tricks": 2.69
+      },
+      "20": {
+        "attempts": 82013,
+        "made": 32211,
+        "success_rate": 39.28,
+        "avg_tricks": 2.69
+      }
+    },
+    "NO_HIGH_T3": {
+      "15": {
+        "attempts": 37322,
+        "made": 26182,
+        "success_rate": 70.15,
+        "avg_tricks": 2.96
+      },
+      "20": {
+        "attempts": 37322,
+        "made": 16994,
+        "success_rate": 45.53,
+        "avg_tricks": 2.96
+      }
+    },
+    "NO_HIGH_T4": {
+      "15": {
+        "attempts": 4097,
+        "made": 3250,
+        "success_rate": 79.33,
+        "avg_tricks": 3.26
+      },
+      "20": {
+        "attempts": 4097,
+        "made": 2171,
+        "success_rate": 52.99,
+        "avg_tricks": 3.26
+      }
+    },
+    "NO_HIGH_T5": {
+      "15": {
+        "attempts": 167,
+        "made": 137,
+        "success_rate": 82.04,
+        "avg_tricks": 3.42
+      },
+      "20": {
+        "attempts": 167,
+        "made": 92,
+        "success_rate": 55.09,
+        "avg_tricks": 3.42
+      }
+    }
+  },
+  "recommendations": {
+    "5_AH_AT_T3": {
+      "recommended_bid": 20,
+      "expected_value": 18.48,
+      "all_options": {
+        "15": {
+          "success_rate": 100.0,
+          "expected_value": 15.0,
+          "attempts": 290
+        },
+        "20": {
+          "success_rate": 96.21,
+          "expected_value": 18.48,
+          "attempts": 290
+        },
+        "25": {
+          "success_rate": 78.28,
+          "expected_value": 14.14,
+          "attempts": 290
+        },
+        "30": {
+          "success_rate": 37.93,
+          "expected_value": -7.24,
+          "attempts": 290
+        }
+      }
+    },
+    "5_AH_AT_T4": {
+      "recommended_bid": 20,
+      "expected_value": 19.74,
+      "all_options": {
+        "15": {
+          "success_rate": 99.34,
+          "expected_value": 14.8,
+          "attempts": 152
+        },
+        "20": {
+          "success_rate": 99.34,
+          "expected_value": 19.74,
+          "attempts": 152
+        },
+        "25": {
+          "success_rate": 88.82,
+          "expected_value": 19.41,
+          "attempts": 152
+        },
+        "30": {
+          "success_rate": 50.66,
+          "expected_value": 0.39,
+          "attempts": 152
+        }
+      }
+    },
+    "5_AH_T2": {
+      "recommended_bid": 15,
+      "expected_value": 14.43,
+      "all_options": {
+        "15": {
+          "success_rate": 98.09,
+          "expected_value": 14.43,
+          "attempts": 4388
+        },
+        "20": {
+          "success_rate": 80.97,
+          "expected_value": 12.39,
+          "attempts": 4388
+        },
+        "25": {
+          "success_rate": 53.14,
+          "expected_value": 1.57,
+          "attempts": 4388
+        }
+      }
+    },
+    "5_AH_T3": {
+      "recommended_bid": 20,
+      "expected_value": 15.22,
+      "all_options": {
+        "15": {
+          "success_rate": 99.62,
+          "expected_value": 14.89,
+          "attempts": 4220
+        },
+        "20": {
+          "success_rate": 88.06,
+          "expected_value": 15.22,
+          "attempts": 4220
+        },
+        "25": {
+          "success_rate": 66.07,
+          "expected_value": 8.03,
+          "attempts": 4220
+        },
+        "30": {
+          "success_rate": 31.56,
+          "expected_value": -11.06,
+          "attempts": 4220
+        }
+      }
+    },
+    "5_AH_T4": {
+      "recommended_bid": 20,
+      "expected_value": 17.98,
+      "all_options": {
+        "15": {
+          "success_rate": 99.72,
+          "expected_value": 14.92,
+          "attempts": 1071
+        },
+        "20": {
+          "success_rate": 94.96,
+          "expected_value": 17.98,
+          "attempts": 1071
+        },
+        "25": {
+          "success_rate": 80.11,
+          "expected_value": 15.06,
+          "attempts": 1071
+        },
+        "30": {
+          "success_rate": 43.23,
+          "expected_value": -4.06,
+          "attempts": 1071
+        }
+      }
+    },
+    "5_AH_T5": {
+      "recommended_bid": 20,
+      "expected_value": 20.0,
+      "all_options": {
+        "15": {
+          "success_rate": 100.0,
+          "expected_value": 15.0,
+          "attempts": 100
+        },
+        "20": {
+          "success_rate": 100.0,
+          "expected_value": 20.0,
+          "attempts": 100
+        },
+        "25": {
+          "success_rate": 89.0,
+          "expected_value": 19.5,
+          "attempts": 100
+        },
+        "30": {
+          "success_rate": 59.0,
+          "expected_value": 5.4,
+          "attempts": 100
+        }
+      }
+    },
+    "5_AT_T2": {
+      "recommended_bid": 15,
+      "expected_value": 14.22,
+      "all_options": {
+        "15": {
+          "success_rate": 97.41,
+          "expected_value": 14.22,
+          "attempts": 3635
+        },
+        "20": {
+          "success_rate": 75.93,
+          "expected_value": 10.37,
+          "attempts": 3635
+        },
+        "25": {
+          "success_rate": 48.45,
+          "expected_value": -0.78,
+          "attempts": 3635
+        }
+      }
+    },
+    "5_AT_T3": {
+      "recommended_bid": 15,
+      "expected_value": 14.77,
+      "all_options": {
+        "15": {
+          "success_rate": 99.23,
+          "expected_value": 14.77,
+          "attempts": 3226
+        },
+        "20": {
+          "success_rate": 85.43,
+          "expected_value": 14.17,
+          "attempts": 3226
+        },
+        "25": {
+          "success_rate": 61.69,
+          "expected_value": 5.84,
+          "attempts": 3226
+        },
+        "30": {
+          "success_rate": 25.98,
+          "expected_value": -14.41,
+          "attempts": 3226
+        }
+      }
+    },
+    "5_AT_T4": {
+      "recommended_bid": 20,
+      "expected_value": 17.07,
+      "all_options": {
+        "15": {
+          "success_rate": 99.5,
+          "expected_value": 14.85,
+          "attempts": 793
+        },
+        "20": {
+          "success_rate": 92.69,
+          "expected_value": 17.07,
+          "attempts": 793
+        },
+        "25": {
+          "success_rate": 76.04,
+          "expected_value": 13.02,
+          "attempts": 793
+        },
+        "30": {
+          "success_rate": 39.22,
+          "expected_value": -6.47,
+          "attempts": 793
+        }
+      }
+    },
+    "5_AT_T5": {
+      "recommended_bid": 20,
+      "expected_value": 18.57,
+      "all_options": {
+        "15": {
+          "success_rate": 100.0,
+          "expected_value": 15.0,
+          "attempts": 56
+        },
+        "20": {
+          "success_rate": 96.43,
+          "expected_value": 18.57,
+          "attempts": 56
+        },
+        "25": {
+          "success_rate": 85.71,
+          "expected_value": 17.86,
+          "attempts": 56
+        },
+        "30": {
+          "success_rate": 57.14,
+          "expected_value": 4.29,
+          "attempts": 56
+        }
+      }
+    },
+    "5_J_AH_T3": {
+      "recommended_bid": 20,
+      "expected_value": 20.0,
+      "all_options": {
+        "15": {
+          "success_rate": 100.0,
+          "expected_value": 15.0,
+          "attempts": 451
+        },
+        "20": {
+          "success_rate": 100.0,
+          "expected_value": 20.0,
+          "attempts": 451
+        },
+        "25": {
+          "success_rate": 87.14,
+          "expected_value": 18.57,
+          "attempts": 451
+        },
+        "30": {
+          "success_rate": 59.65,
+          "expected_value": 5.79,
+          "attempts": 451
+        }
+      }
+    },
+    "5_J_AH_T4": {
+      "recommended_bid": 25,
+      "expected_value": 21.88,
+      "all_options": {
+        "15": {
+          "success_rate": 100.0,
+          "expected_value": 15.0,
+          "attempts": 192
+        },
+        "20": {
+          "success_rate": 100.0,
+          "expected_value": 20.0,
+          "attempts": 192
+        },
+        "25": {
+          "success_rate": 93.75,
+          "expected_value": 21.88,
+          "attempts": 192
+        },
+        "30": {
+          "success_rate": 78.65,
+          "expected_value": 17.19,
+          "attempts": 192
+        }
+      }
+    },
+    "5_J_AH_T5": {
+      "recommended_bid": 30,
+      "expected_value": 27.6,
+      "all_options": {
+        "15": {
+          "success_rate": 100.0,
+          "expected_value": 15.0,
+          "attempts": 25
+        },
+        "20": {
+          "success_rate": 100.0,
+          "expected_value": 20.0,
+          "attempts": 25
+        },
+        "25": {
+          "success_rate": 100.0,
+          "expected_value": 25.0,
+          "attempts": 25
+        },
+        "30": {
+          "success_rate": 96.0,
+          "expected_value": 27.6,
+          "attempts": 25
+        }
+      }
+    },
+    "5_J_AT_T3": {
+      "recommended_bid": 20,
+      "expected_value": 18.81,
+      "all_options": {
+        "15": {
+          "success_rate": 100.0,
+          "expected_value": 15.0,
+          "attempts": 337
+        },
+        "20": {
+          "success_rate": 97.03,
+          "expected_value": 18.81,
+          "attempts": 337
+        },
+        "25": {
+          "success_rate": 81.6,
+          "expected_value": 15.8,
+          "attempts": 337
+        },
+        "30": {
+          "success_rate": 48.37,
+          "expected_value": -0.98,
+          "attempts": 337
+        }
+      }
+    },
+    "5_J_AT_T4": {
+      "recommended_bid": 25,
+      "expected_value": 19.86,
+      "all_options": {
+        "15": {
+          "success_rate": 100.0,
+          "expected_value": 15.0,
+          "attempts": 146
+        },
+        "20": {
+          "success_rate": 99.32,
+          "expected_value": 19.73,
+          "attempts": 146
+        },
+        "25": {
+          "success_rate": 89.73,
+          "expected_value": 19.86,
+          "attempts": 146
+        },
+        "30": {
+          "success_rate": 69.86,
+          "expected_value": 11.92,
+          "attempts": 146
+        }
+      }
+    },
+    "5_J_T2": {
+      "recommended_bid": 20,
+      "expected_value": 15.1,
+      "all_options": {
+        "15": {
+          "success_rate": 100.0,
+          "expected_value": 15.0,
+          "attempts": 5412
+        },
+        "20": {
+          "success_rate": 87.75,
+          "expected_value": 15.1,
+          "attempts": 5412
+        },
+        "25": {
+          "success_rate": 59.98,
+          "expected_value": 4.99,
+          "attempts": 5412
+        }
+      }
+    },
+    "5_J_T3": {
+      "recommended_bid": 20,
+      "expected_value": 17.28,
+      "all_options": {
+        "15": {
+          "success_rate": 100.0,
+          "expected_value": 15.0,
+          "attempts": 4345
+        },
+        "20": {
+          "success_rate": 93.19,
+          "expected_value": 17.28,
+          "attempts": 4345
+        },
+        "25": {
+          "success_rate": 74.84,
+          "expected_value": 12.42,
+          "attempts": 4345
+        },
+        "30": {
+          "success_rate": 40.41,
+          "expected_value": -5.75,
+          "attempts": 4345
+        }
+      }
+    },
+    "5_J_T4": {
+      "recommended_bid": 20,
+      "expected_value": 19.75,
+      "all_options": {
+        "15": {
+          "success_rate": 100.0,
+          "expected_value": 15.0,
+          "attempts": 1125
+        },
+        "20": {
+          "success_rate": 99.38,
+          "expected_value": 19.75,
+          "attempts": 1125
+        },
+        "25": {
+          "success_rate": 89.24,
+          "expected_value": 19.62,
+          "attempts": 1125
+        },
+        "30": {
+          "success_rate": 54.13,
+          "expected_value": 2.48,
+          "attempts": 1125
+        }
+      }
+    },
+    "5_J_T5": {
+      "recommended_bid": 25,
+      "expected_value": 22.89,
+      "all_options": {
+        "15": {
+          "success_rate": 100.0,
+          "expected_value": 15.0,
+          "attempts": 71
+        },
+        "20": {
+          "success_rate": 100.0,
+          "expected_value": 20.0,
+          "attempts": 71
+        },
+        "25": {
+          "success_rate": 95.77,
+          "expected_value": 22.89,
+          "attempts": 71
+        },
+        "30": {
+          "success_rate": 70.42,
+          "expected_value": 12.25,
+          "attempts": 71
+        }
+      }
+    },
+    "5_T1": {
+      "recommended_bid": 15,
+      "expected_value": 13.03,
+      "all_options": {
+        "15": {
+          "success_rate": 93.43,
+          "expected_value": 13.03,
+          "attempts": 34995
+        },
+        "20": {
+          "success_rate": 62.44,
+          "expected_value": 4.98,
+          "attempts": 34995
+        },
+        "25": {
+          "success_rate": 32.08,
+          "expected_value": -8.96,
+          "attempts": 34995
+        }
+      }
+    },
+    "5_T2": {
+      "recommended_bid": 15,
+      "expected_value": 13.9,
+      "all_options": {
+        "15": {
+          "success_rate": 96.35,
+          "expected_value": 13.9,
+          "attempts": 48657
+        },
+        "20": {
+          "success_rate": 70.57,
+          "expected_value": 8.23,
+          "attempts": 48657
+        },
+        "25": {
+          "success_rate": 41.26,
+          "expected_value": -4.37,
+          "attempts": 48657
+        }
+      }
+    },
+    "5_T3": {
+      "recommended_bid": 15,
+      "expected_value": 14.64,
+      "all_options": {
+        "15": {
+          "success_rate": 98.8,
+          "expected_value": 14.64,
+          "attempts": 19473
+        },
+        "20": {
+          "success_rate": 80.61,
+          "expected_value": 12.24,
+          "attempts": 19473
+        },
+        "25": {
+          "success_rate": 54.11,
+          "expected_value": 2.05,
+          "attempts": 19473
+        },
+        "30": {
+          "success_rate": 18.52,
+          "expected_value": -18.89,
+          "attempts": 19473
+        }
+      }
+    },
+    "5_T4": {
+      "recommended_bid": 20,
+      "expected_value": 16.09,
+      "all_options": {
+        "15": {
+          "success_rate": 99.64,
+          "expected_value": 14.89,
+          "attempts": 2800
+        },
+        "20": {
+          "success_rate": 90.21,
+          "expected_value": 16.09,
+          "attempts": 2800
+        },
+        "25": {
+          "success_rate": 68.64,
+          "expected_value": 9.32,
+          "attempts": 2800
+        },
+        "30": {
+          "success_rate": 27.71,
+          "expected_value": -13.37,
+          "attempts": 2800
+        }
+      }
+    },
+    "5_T5": {
+      "recommended_bid": 20,
+      "expected_value": 18.97,
+      "all_options": {
+        "15": {
+          "success_rate": 99.14,
+          "expected_value": 14.74,
+          "attempts": 116
+        },
+        "20": {
+          "success_rate": 97.41,
+          "expected_value": 18.97,
+          "attempts": 116
+        },
+        "25": {
+          "success_rate": 81.03,
+          "expected_value": 15.52,
+          "attempts": 116
+        },
+        "30": {
+          "success_rate": 33.62,
+          "expected_value": -9.83,
+          "attempts": 116
+        }
+      }
+    },
+    "AH_AT_T2": {
+      "recommended_bid": 15,
+      "expected_value": 8.15,
+      "all_options": {
+        "15": {
+          "success_rate": 77.17,
+          "expected_value": 8.15,
+          "attempts": 219
+        },
+        "20": {
+          "success_rate": 58.9,
+          "expected_value": 3.56,
+          "attempts": 219
+        }
+      }
+    },
+    "AH_AT_T3": {
+      "recommended_bid": 15,
+      "expected_value": 10.29,
+      "all_options": {
+        "15": {
+          "success_rate": 84.29,
+          "expected_value": 10.29,
+          "attempts": 1903
+        },
+        "20": {
+          "success_rate": 63.48,
+          "expected_value": 5.39,
+          "attempts": 1903
+        }
+      }
+    },
+    "AH_AT_T4": {
+      "recommended_bid": 15,
+      "expected_value": 12.57,
+      "all_options": {
+        "15": {
+          "success_rate": 91.9,
+          "expected_value": 12.57,
+          "attempts": 679
+        },
+        "20": {
+          "success_rate": 71.28,
+          "expected_value": 8.51,
+          "attempts": 679
+        }
+      }
+    },
+    "AH_AT_T5": {
+      "recommended_bid": 15,
+      "expected_value": 14.52,
+      "all_options": {
+        "15": {
+          "success_rate": 98.39,
+          "expected_value": 14.52,
+          "attempts": 62
+        },
+        "20": {
+          "success_rate": 83.87,
+          "expected_value": 13.55,
+          "attempts": 62
+        }
+      }
+    },
+    "AH_T2": {
+      "recommended_bid": 15,
+      "expected_value": 6.82,
+      "all_options": {
+        "15": {
+          "success_rate": 72.73,
+          "expected_value": 6.82,
+          "attempts": 1885
+        },
+        "20": {
+          "success_rate": 51.03,
+          "expected_value": 0.41,
+          "attempts": 1885
+        }
+      }
+    },
+    "AH_T3": {
+      "recommended_bid": 15,
+      "expected_value": 8.3,
+      "all_options": {
+        "15": {
+          "success_rate": 77.66,
+          "expected_value": 8.3,
+          "attempts": 11663
+        },
+        "20": {
+          "success_rate": 56.13,
+          "expected_value": 2.45,
+          "attempts": 11663
+        }
+      }
+    },
+    "AH_T4": {
+      "recommended_bid": 15,
+      "expected_value": 10.22,
+      "all_options": {
+        "15": {
+          "success_rate": 84.06,
+          "expected_value": 10.22,
+          "attempts": 2384
+        },
+        "20": {
+          "success_rate": 64.05,
+          "expected_value": 5.62,
+          "attempts": 2384
+        }
+      }
+    },
+    "AH_T5": {
+      "recommended_bid": 15,
+      "expected_value": 13.76,
+      "all_options": {
+        "15": {
+          "success_rate": 95.87,
+          "expected_value": 13.76,
+          "attempts": 121
+        },
+        "20": {
+          "success_rate": 71.9,
+          "expected_value": 8.76,
+          "attempts": 121
+        }
+      }
+    },
+    "AT_T2": {
+      "recommended_bid": 15,
+      "expected_value": 5.42,
+      "all_options": {
+        "15": {
+          "success_rate": 68.08,
+          "expected_value": 5.42,
+          "attempts": 12553
+        },
+        "20": {
+          "success_rate": 44.25,
+          "expected_value": -2.3,
+          "attempts": 12553
+        }
+      }
+    },
+    "AT_T3": {
+      "recommended_bid": 15,
+      "expected_value": 7.4,
+      "all_options": {
+        "15": {
+          "success_rate": 74.65,
+          "expected_value": 7.4,
+          "attempts": 10345
+        },
+        "20": {
+          "success_rate": 50.94,
+          "expected_value": 0.38,
+          "attempts": 10345
+        }
+      }
+    },
+    "AT_T4": {
+      "recommended_bid": 15,
+      "expected_value": 10.27,
+      "all_options": {
+        "15": {
+          "success_rate": 84.24,
+          "expected_value": 10.27,
+          "attempts": 1783
+        },
+        "20": {
+          "success_rate": 61.47,
+          "expected_value": 4.59,
+          "attempts": 1783
+        }
+      }
+    },
+    "AT_T5": {
+      "recommended_bid": 15,
+      "expected_value": 12.13,
+      "all_options": {
+        "15": {
+          "success_rate": 90.43,
+          "expected_value": 12.13,
+          "attempts": 94
+        },
+        "20": {
+          "success_rate": 64.89,
+          "expected_value": 5.96,
+          "attempts": 94
+        }
+      }
+    },
+    "J_AH_AT_T3": {
+      "recommended_bid": 15,
+      "expected_value": 13.51,
+      "all_options": {
+        "15": {
+          "success_rate": 95.02,
+          "expected_value": 13.51,
+          "attempts": 261
+        },
+        "20": {
+          "success_rate": 82.38,
+          "expected_value": 12.95,
+          "attempts": 261
+        },
+        "25": {
+          "success_rate": 53.64,
+          "expected_value": 1.82,
+          "attempts": 261
+        },
+        "30": {
+          "success_rate": 33.72,
+          "expected_value": -9.77,
+          "attempts": 261
+        }
+      }
+    },
+    "J_AH_AT_T4": {
+      "recommended_bid": 15,
+      "expected_value": 14.53,
+      "all_options": {
+        "15": {
+          "success_rate": 98.44,
+          "expected_value": 14.53,
+          "attempts": 128
+        },
+        "20": {
+          "success_rate": 84.38,
+          "expected_value": 13.75,
+          "attempts": 128
+        },
+        "25": {
+          "success_rate": 62.5,
+          "expected_value": 6.25,
+          "attempts": 128
+        },
+        "30": {
+          "success_rate": 53.91,
+          "expected_value": 2.34,
+          "attempts": 128
+        }
+      }
+    },
+    "J_AH_T2": {
+      "recommended_bid": 15,
+      "expected_value": 10.5,
+      "all_options": {
+        "15": {
+          "success_rate": 85.0,
+          "expected_value": 10.5,
+          "attempts": 3439
+        },
+        "20": {
+          "success_rate": 66.3,
+          "expected_value": 6.52,
+          "attempts": 3439
+        },
+        "25": {
+          "success_rate": 42.22,
+          "expected_value": -3.89,
+          "attempts": 3439
+        }
+      }
+    },
+    "J_AH_T3": {
+      "recommended_bid": 15,
+      "expected_value": 12.01,
+      "all_options": {
+        "15": {
+          "success_rate": 90.04,
+          "expected_value": 12.01,
+          "attempts": 3615
+        },
+        "20": {
+          "success_rate": 75.02,
+          "expected_value": 10.01,
+          "attempts": 3615
+        },
+        "25": {
+          "success_rate": 49.68,
+          "expected_value": -0.16,
+          "attempts": 3615
+        },
+        "30": {
+          "success_rate": 28.91,
+          "expected_value": -12.66,
+          "attempts": 3615
+        }
+      }
+    },
+    "J_AH_T4": {
+      "recommended_bid": 15,
+      "expected_value": 13.8,
+      "all_options": {
+        "15": {
+          "success_rate": 95.99,
+          "expected_value": 13.8,
+          "attempts": 973
+        },
+        "20": {
+          "success_rate": 82.01,
+          "expected_value": 12.81,
+          "attempts": 973
+        },
+        "25": {
+          "success_rate": 58.38,
+          "expected_value": 4.19,
+          "attempts": 973
+        },
+        "30": {
+          "success_rate": 40.08,
+          "expected_value": -5.95,
+          "attempts": 973
+        }
+      }
+    },
+    "J_AH_T5": {
+      "recommended_bid": 20,
+      "expected_value": 17.75,
+      "all_options": {
+        "15": {
+          "success_rate": 100.0,
+          "expected_value": 15.0,
+          "attempts": 71
+        },
+        "20": {
+          "success_rate": 94.37,
+          "expected_value": 17.75,
+          "attempts": 71
+        },
+        "25": {
+          "success_rate": 57.75,
+          "expected_value": 3.87,
+          "attempts": 71
+        },
+        "30": {
+          "success_rate": 43.66,
+          "expected_value": -3.8,
+          "attempts": 71
+        }
+      }
+    },
+    "J_AT_T2": {
+      "recommended_bid": 15,
+      "expected_value": 9.71,
+      "all_options": {
+        "15": {
+          "success_rate": 82.38,
+          "expected_value": 9.71,
+          "attempts": 2769
+        },
+        "20": {
+          "success_rate": 62.69,
+          "expected_value": 5.08,
+          "attempts": 2769
+        },
+        "25": {
+          "success_rate": 38.43,
+          "expected_value": -5.79,
+          "attempts": 2769
+        }
+      }
+    },
+    "J_AT_T3": {
+      "recommended_bid": 15,
+      "expected_value": 11.39,
+      "all_options": {
+        "15": {
+          "success_rate": 87.97,
+          "expected_value": 11.39,
+          "attempts": 2768
+        },
+        "20": {
+          "success_rate": 69.0,
+          "expected_value": 7.6,
+          "attempts": 2768
+        },
+        "25": {
+          "success_rate": 44.51,
+          "expected_value": -2.75,
+          "attempts": 2768
+        },
+        "30": {
+          "success_rate": 22.36,
+          "expected_value": -16.58,
+          "attempts": 2768
+        }
+      }
+    },
+    "J_AT_T4": {
+      "recommended_bid": 15,
+      "expected_value": 12.9,
+      "all_options": {
+        "15": {
+          "success_rate": 92.99,
+          "expected_value": 12.9,
+          "attempts": 728
+        },
+        "20": {
+          "success_rate": 79.53,
+          "expected_value": 11.81,
+          "attempts": 728
+        },
+        "25": {
+          "success_rate": 55.22,
+          "expected_value": 2.61,
+          "attempts": 728
+        },
+        "30": {
+          "success_rate": 30.22,
+          "expected_value": -11.87,
+          "attempts": 728
+        }
+      }
+    },
+    "J_AT_T5": {
+      "recommended_bid": 20,
+      "expected_value": 13.33,
+      "all_options": {
+        "15": {
+          "success_rate": 91.67,
+          "expected_value": 12.5,
+          "attempts": 48
+        },
+        "20": {
+          "success_rate": 83.33,
+          "expected_value": 13.33,
+          "attempts": 48
+        },
+        "25": {
+          "success_rate": 50.0,
+          "expected_value": 0.0,
+          "attempts": 48
+        },
+        "30": {
+          "success_rate": 22.92,
+          "expected_value": -16.25,
+          "attempts": 48
+        }
+      }
+    },
+    "J_T1": {
+      "recommended_bid": 15,
+      "expected_value": 7.03,
+      "all_options": {
+        "15": {
+          "success_rate": 73.42,
+          "expected_value": 7.03,
+          "attempts": 24239
+        },
+        "20": {
+          "success_rate": 49.42,
+          "expected_value": -0.23,
+          "attempts": 24239
+        },
+        "25": {
+          "success_rate": 25.86,
+          "expected_value": -12.07,
+          "attempts": 24239
+        }
+      }
+    },
+    "J_T2": {
+      "recommended_bid": 15,
+      "expected_value": 8.26,
+      "all_options": {
+        "15": {
+          "success_rate": 77.53,
+          "expected_value": 8.26,
+          "attempts": 37825
+        },
+        "20": {
+          "success_rate": 55.67,
+          "expected_value": 2.27,
+          "attempts": 37825
+        },
+        "25": {
+          "success_rate": 32.64,
+          "expected_value": -8.68,
+          "attempts": 37825
+        }
+      }
+    },
+    "J_T3": {
+      "recommended_bid": 15,
+      "expected_value": 9.97,
+      "all_options": {
+        "15": {
+          "success_rate": 83.23,
+          "expected_value": 9.97,
+          "attempts": 16760
+        },
+        "20": {
+          "success_rate": 63.5,
+          "expected_value": 5.4,
+          "attempts": 16760
+        },
+        "25": {
+          "success_rate": 41.43,
+          "expected_value": -4.28,
+          "attempts": 16760
+        },
+        "30": {
+          "success_rate": 16.62,
+          "expected_value": -20.03,
+          "attempts": 16760
+        }
+      }
+    },
+    "J_T4": {
+      "recommended_bid": 15,
+      "expected_value": 11.53,
+      "all_options": {
+        "15": {
+          "success_rate": 88.42,
+          "expected_value": 11.53,
+          "attempts": 2651
+        },
+        "20": {
+          "success_rate": 69.37,
+          "expected_value": 7.75,
+          "attempts": 2651
+        },
+        "25": {
+          "success_rate": 48.17,
+          "expected_value": -0.91,
+          "attempts": 2651
+        },
+        "30": {
+          "success_rate": 22.82,
+          "expected_value": -16.31,
+          "attempts": 2651
+        }
+      }
+    },
+    "J_T5": {
+      "recommended_bid": 15,
+      "expected_value": 12.95,
+      "all_options": {
+        "15": {
+          "success_rate": 93.18,
+          "expected_value": 12.95,
+          "attempts": 132
+        },
+        "20": {
+          "success_rate": 75.76,
+          "expected_value": 10.3,
+          "attempts": 132
+        },
+        "25": {
+          "success_rate": 49.24,
+          "expected_value": -0.38,
+          "attempts": 132
+        },
+        "30": {
+          "success_rate": 29.55,
+          "expected_value": -12.27,
+          "attempts": 132
+        }
+      }
+    },
+    "NEAR_GUARANTEED_30": {
+      "recommended_bid": 20,
+      "expected_value": 19.77,
+      "all_options": {
+        "15": {
+          "success_rate": 100.0,
+          "expected_value": 15.0,
+          "attempts": 174
+        },
+        "20": {
+          "success_rate": 99.43,
+          "expected_value": 19.77,
+          "attempts": 174
+        },
+        "25": {
+          "success_rate": 85.06,
+          "expected_value": 17.53,
+          "attempts": 174
+        },
+        "30": {
+          "success_rate": 67.24,
+          "expected_value": 10.34,
+          "attempts": 174
+        }
+      }
+    },
+    "NO_HIGH_T2": {
+      "recommended_bid": 15,
+      "expected_value": 3.98,
+      "all_options": {
+        "15": {
+          "success_rate": 63.26,
+          "expected_value": 3.98,
+          "attempts": 82013
+        },
+        "20": {
+          "success_rate": 39.28,
+          "expected_value": -4.29,
+          "attempts": 82013
+        }
+      }
+    },
+    "NO_HIGH_T3": {
+      "recommended_bid": 15,
+      "expected_value": 6.05,
+      "all_options": {
+        "15": {
+          "success_rate": 70.15,
+          "expected_value": 6.05,
+          "attempts": 37322
+        },
+        "20": {
+          "success_rate": 45.53,
+          "expected_value": -1.79,
+          "attempts": 37322
+        }
+      }
+    },
+    "NO_HIGH_T4": {
+      "recommended_bid": 15,
+      "expected_value": 8.8,
+      "all_options": {
+        "15": {
+          "success_rate": 79.33,
+          "expected_value": 8.8,
+          "attempts": 4097
+        },
+        "20": {
+          "success_rate": 52.99,
+          "expected_value": 1.2,
+          "attempts": 4097
+        }
+      }
+    },
+    "NO_HIGH_T5": {
+      "recommended_bid": 15,
+      "expected_value": 9.61,
+      "all_options": {
+        "15": {
+          "success_rate": 82.04,
+          "expected_value": 9.61,
+          "attempts": 167
+        },
+        "20": {
+          "success_rate": 55.09,
+          "expected_value": 2.04,
+          "attempts": 167
+        }
+      }
+    }
+  },
+  "detailed": {
+    "15": {
+      "5:0_J:0_AH:0_AT:0_T:2_HT:0": {
+        "attempts": 50997,
+        "made": 31514,
+        "success_rate": 61.8,
+        "avg_tricks": 2.63,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 0
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:2_HT:1": {
+        "attempts": 38769,
+        "made": 37291,
+        "success_rate": 96.19,
+        "avg_tricks": 3.19,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 1
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:1_HT:1": {
+        "attempts": 34995,
+        "made": 32696,
+        "success_rate": 93.43,
+        "avg_tricks": 2.97,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 1,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:2_HT:1": {
+        "attempts": 30293,
+        "made": 23348,
+        "success_rate": 77.07,
+        "avg_tricks": 3.04,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:0_AT:0_T:2_HT:1": {
+        "attempts": 29217,
+        "made": 19092,
+        "success_rate": 65.35,
+        "avg_tricks": 2.77,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:1_HT:1": {
+        "attempts": 24239,
+        "made": 17796,
+        "success_rate": 73.42,
+        "avg_tricks": 2.83,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 1,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:0_AT:0_T:3_HT:1": {
+        "attempts": 17540,
+        "made": 12663,
+        "success_rate": 72.19,
+        "avg_tricks": 3.03,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:0_AT:0_T:3_HT:0": {
+        "attempts": 17272,
+        "made": 11581,
+        "success_rate": 67.05,
+        "avg_tricks": 2.85,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 0
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:3_HT:1": {
+        "attempts": 12064,
+        "made": 11894,
+        "success_rate": 98.59,
+        "avg_tricks": 3.48,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:3_HT:1": {
+        "attempts": 10420,
+        "made": 8527,
+        "success_rate": 81.83,
+        "avg_tricks": 3.3,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:0_AT:1_T:2_HT:1": {
+        "attempts": 10078,
+        "made": 6727,
+        "success_rate": 66.75,
+        "avg_tricks": 2.82,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 2,
+          "high_trump_count": 1
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:2_HT:2": {
+        "attempts": 9888,
+        "made": 9588,
+        "success_rate": 96.97,
+        "avg_tricks": 3.29,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:2_HT:2": {
+        "attempts": 7532,
+        "made": 5976,
+        "success_rate": 79.34,
+        "avg_tricks": 3.16,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:1_AT:0_T:3_HT:1": {
+        "attempts": 7171,
+        "made": 5386,
+        "success_rate": 75.11,
+        "avg_tricks": 3.17,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 1
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:3_HT:2": {
+        "attempts": 6966,
+        "made": 6903,
+        "success_rate": 99.1,
+        "avg_tricks": 3.59,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:0_AT:1_T:3_HT:1": {
+        "attempts": 6465,
+        "made": 4666,
+        "success_rate": 72.17,
+        "avg_tricks": 3.05,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:3_HT:2": {
+        "attempts": 5951,
+        "made": 5079,
+        "success_rate": 85.35,
+        "avg_tricks": 3.47,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:2_HT:2": {
+        "attempts": 5412,
+        "made": 5412,
+        "success_rate": 100.0,
+        "avg_tricks": 3.76,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:2_HT:2": {
+        "attempts": 4388,
+        "made": 4304,
+        "success_rate": 98.09,
+        "avg_tricks": 3.55,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:1_AT:0_T:3_HT:2": {
+        "attempts": 4231,
+        "made": 3445,
+        "success_rate": 81.42,
+        "avg_tricks": 3.39,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:0_AT:1_T:3_HT:2": {
+        "attempts": 3643,
+        "made": 2852,
+        "success_rate": 78.29,
+        "avg_tricks": 3.26,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:1_T:2_HT:2": {
+        "attempts": 3635,
+        "made": 3541,
+        "success_rate": 97.41,
+        "avg_tricks": 3.4,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:3_HT:2": {
+        "attempts": 3507,
+        "made": 3507,
+        "success_rate": 100.0,
+        "avg_tricks": 4.06,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:2_HT:2": {
+        "attempts": 3439,
+        "made": 2923,
+        "success_rate": 85.0,
+        "avg_tricks": 3.48,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:3_HT:2": {
+        "attempts": 3379,
+        "made": 3365,
+        "success_rate": 99.59,
+        "avg_tricks": 3.81,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:3_HT:2": {
+        "attempts": 2887,
+        "made": 2581,
+        "success_rate": 89.4,
+        "avg_tricks": 3.79,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:1_T:2_HT:2": {
+        "attempts": 2769,
+        "made": 2281,
+        "success_rate": 82.38,
+        "avg_tricks": 3.3,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:1_T:3_HT:2": {
+        "attempts": 2532,
+        "made": 2507,
+        "success_rate": 99.01,
+        "avg_tricks": 3.7,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:0_AT:0_T:3_HT:2": {
+        "attempts": 2510,
+        "made": 1938,
+        "success_rate": 77.21,
+        "avg_tricks": 3.25,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:0_AT:1_T:2_HT:2": {
+        "attempts": 2475,
+        "made": 1819,
+        "success_rate": 73.49,
+        "avg_tricks": 3.07,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:1_T:3_HT:2": {
+        "attempts": 2201,
+        "made": 1926,
+        "success_rate": 87.51,
+        "avg_tricks": 3.57,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:0_AT:0_T:4_HT:1": {
+        "attempts": 2150,
+        "made": 1709,
+        "success_rate": 79.49,
+        "avg_tricks": 3.27,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:0_AT:0_T:2_HT:2": {
+        "attempts": 1799,
+        "made": 1276,
+        "success_rate": 70.93,
+        "avg_tricks": 3.0,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:1_AT:1_T:3_HT:2": {
+        "attempts": 1517,
+        "made": 1277,
+        "success_rate": 84.18,
+        "avg_tricks": 3.56,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:1_AT:0_T:2_HT:1": {
+        "attempts": 1484,
+        "made": 1068,
+        "success_rate": 71.97,
+        "avg_tricks": 3.01,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:0_AT:0_T:4_HT:0": {
+        "attempts": 1413,
+        "made": 1072,
+        "success_rate": 75.87,
+        "avg_tricks": 3.12,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 0
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:4_HT:2": {
+        "attempts": 1344,
+        "made": 1341,
+        "success_rate": 99.78,
+        "avg_tricks": 3.9,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:4_HT:1": {
+        "attempts": 1297,
+        "made": 1290,
+        "success_rate": 99.46,
+        "avg_tricks": 3.82,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:4_HT:2": {
+        "attempts": 1242,
+        "made": 1097,
+        "success_rate": 88.33,
+        "avg_tricks": 3.7,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:4_HT:1": {
+        "attempts": 1205,
+        "made": 1051,
+        "success_rate": 87.22,
+        "avg_tricks": 3.55,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:1_AT:0_T:4_HT:2": {
+        "attempts": 1104,
+        "made": 958,
+        "success_rate": 86.78,
+        "avg_tricks": 3.66,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:1_AT:0_T:4_HT:1": {
+        "attempts": 1104,
+        "made": 884,
+        "success_rate": 80.07,
+        "avg_tricks": 3.44,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 1
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:3_HT:3": {
+        "attempts": 841,
+        "made": 839,
+        "success_rate": 99.76,
+        "avg_tricks": 4.05,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:3_HT:3": {
+        "attempts": 838,
+        "made": 838,
+        "success_rate": 100.0,
+        "avg_tricks": 4.21,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:0_AH:0_AT:1_T:4_HT:1": {
+        "attempts": 833,
+        "made": 673,
+        "success_rate": 80.79,
+        "avg_tricks": 3.39,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:0_AT:1_T:4_HT:2": {
+        "attempts": 820,
+        "made": 709,
+        "success_rate": 86.46,
+        "avg_tricks": 3.55,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:3_HT:3": {
+        "attempts": 728,
+        "made": 674,
+        "success_rate": 92.58,
+        "avg_tricks": 3.92,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:4_HT:2": {
+        "attempts": 698,
+        "made": 698,
+        "success_rate": 100.0,
+        "avg_tricks": 4.37,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:1_T:3_HT:3": {
+        "attempts": 694,
+        "made": 694,
+        "success_rate": 100.0,
+        "avg_tricks": 3.84,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:4_HT:2": {
+        "attempts": 675,
+        "made": 672,
+        "success_rate": 99.56,
+        "avg_tricks": 4.17,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      }
+    },
+    "20": {
+      "5:0_J:0_AH:0_AT:0_T:2_HT:0": {
+        "attempts": 50997,
+        "made": 19245,
+        "success_rate": 37.74,
+        "avg_tricks": 2.63,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 0
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:2_HT:1": {
+        "attempts": 38769,
+        "made": 27117,
+        "success_rate": 69.95,
+        "avg_tricks": 3.19,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 1
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:1_HT:1": {
+        "attempts": 34995,
+        "made": 21852,
+        "success_rate": 62.44,
+        "avg_tricks": 2.97,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 1,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:2_HT:1": {
+        "attempts": 30293,
+        "made": 16732,
+        "success_rate": 55.23,
+        "avg_tricks": 3.04,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:0_AT:0_T:2_HT:1": {
+        "attempts": 29217,
+        "made": 12098,
+        "success_rate": 41.41,
+        "avg_tricks": 2.77,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:1_HT:1": {
+        "attempts": 24239,
+        "made": 11978,
+        "success_rate": 49.42,
+        "avg_tricks": 2.83,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 1,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:0_AT:0_T:3_HT:1": {
+        "attempts": 17540,
+        "made": 8378,
+        "success_rate": 47.77,
+        "avg_tricks": 3.03,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:0_AT:0_T:3_HT:0": {
+        "attempts": 17272,
+        "made": 7229,
+        "success_rate": 41.85,
+        "avg_tricks": 2.85,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 0
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:3_HT:1": {
+        "attempts": 12064,
+        "made": 9582,
+        "success_rate": 79.43,
+        "avg_tricks": 3.48,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:3_HT:1": {
+        "attempts": 10420,
+        "made": 6435,
+        "success_rate": 61.76,
+        "avg_tricks": 3.3,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:0_AT:1_T:2_HT:1": {
+        "attempts": 10078,
+        "made": 4307,
+        "success_rate": 42.74,
+        "avg_tricks": 2.82,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 2,
+          "high_trump_count": 1
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:2_HT:2": {
+        "attempts": 9888,
+        "made": 7220,
+        "success_rate": 73.02,
+        "avg_tricks": 3.29,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:2_HT:2": {
+        "attempts": 7532,
+        "made": 4325,
+        "success_rate": 57.42,
+        "avg_tricks": 3.16,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:1_AT:0_T:3_HT:1": {
+        "attempts": 7171,
+        "made": 3829,
+        "success_rate": 53.4,
+        "avg_tricks": 3.17,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 1
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:3_HT:2": {
+        "attempts": 6966,
+        "made": 5724,
+        "success_rate": 82.17,
+        "avg_tricks": 3.59,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:0_AT:1_T:3_HT:1": {
+        "attempts": 6465,
+        "made": 3122,
+        "success_rate": 48.29,
+        "avg_tricks": 3.05,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:3_HT:2": {
+        "attempts": 5951,
+        "made": 3923,
+        "success_rate": 65.92,
+        "avg_tricks": 3.47,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:2_HT:2": {
+        "attempts": 5412,
+        "made": 4749,
+        "success_rate": 87.75,
+        "avg_tricks": 3.76,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:2_HT:2": {
+        "attempts": 4388,
+        "made": 3553,
+        "success_rate": 80.97,
+        "avg_tricks": 3.55,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:1_AT:0_T:3_HT:2": {
+        "attempts": 4231,
+        "made": 2542,
+        "success_rate": 60.08,
+        "avg_tricks": 3.39,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:0_AT:1_T:3_HT:2": {
+        "attempts": 3643,
+        "made": 1995,
+        "success_rate": 54.76,
+        "avg_tricks": 3.26,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:1_T:2_HT:2": {
+        "attempts": 3635,
+        "made": 2760,
+        "success_rate": 75.93,
+        "avg_tricks": 3.4,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:3_HT:2": {
+        "attempts": 3507,
+        "made": 3260,
+        "success_rate": 92.96,
+        "avg_tricks": 4.06,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:2_HT:2": {
+        "attempts": 3439,
+        "made": 2280,
+        "success_rate": 66.3,
+        "avg_tricks": 3.48,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:3_HT:2": {
+        "attempts": 3379,
+        "made": 2944,
+        "success_rate": 87.13,
+        "avg_tricks": 3.81,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:3_HT:2": {
+        "attempts": 2887,
+        "made": 2124,
+        "success_rate": 73.57,
+        "avg_tricks": 3.79,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:1_T:2_HT:2": {
+        "attempts": 2769,
+        "made": 1736,
+        "success_rate": 62.69,
+        "avg_tricks": 3.3,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:1_T:3_HT:2": {
+        "attempts": 2532,
+        "made": 2139,
+        "success_rate": 84.48,
+        "avg_tricks": 3.7,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:0_AT:0_T:3_HT:2": {
+        "attempts": 2510,
+        "made": 1387,
+        "success_rate": 55.26,
+        "avg_tricks": 3.25,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:0_AT:1_T:2_HT:2": {
+        "attempts": 2475,
+        "made": 1248,
+        "success_rate": 50.42,
+        "avg_tricks": 3.07,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:1_T:3_HT:2": {
+        "attempts": 2201,
+        "made": 1488,
+        "success_rate": 67.61,
+        "avg_tricks": 3.57,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:0_AT:0_T:4_HT:1": {
+        "attempts": 2150,
+        "made": 1137,
+        "success_rate": 52.88,
+        "avg_tricks": 3.27,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:0_AT:0_T:2_HT:2": {
+        "attempts": 1799,
+        "made": 868,
+        "success_rate": 48.25,
+        "avg_tricks": 3.0,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:1_AT:1_T:3_HT:2": {
+        "attempts": 1517,
+        "made": 950,
+        "success_rate": 62.62,
+        "avg_tricks": 3.56,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:1_AT:0_T:2_HT:1": {
+        "attempts": 1484,
+        "made": 747,
+        "success_rate": 50.34,
+        "avg_tricks": 3.01,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:0_AT:0_T:4_HT:0": {
+        "attempts": 1413,
+        "made": 683,
+        "success_rate": 48.34,
+        "avg_tricks": 3.12,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 0
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:4_HT:2": {
+        "attempts": 1344,
+        "made": 1215,
+        "success_rate": 90.4,
+        "avg_tricks": 3.9,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:4_HT:1": {
+        "attempts": 1297,
+        "made": 1156,
+        "success_rate": 89.13,
+        "avg_tricks": 3.82,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:4_HT:2": {
+        "attempts": 1242,
+        "made": 883,
+        "success_rate": 71.1,
+        "avg_tricks": 3.7,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:4_HT:1": {
+        "attempts": 1205,
+        "made": 805,
+        "success_rate": 66.8,
+        "avg_tricks": 3.55,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:1_AT:0_T:4_HT:2": {
+        "attempts": 1104,
+        "made": 733,
+        "success_rate": 66.39,
+        "avg_tricks": 3.66,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:0_AH:1_AT:0_T:4_HT:1": {
+        "attempts": 1104,
+        "made": 665,
+        "success_rate": 60.24,
+        "avg_tricks": 3.44,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 1
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:3_HT:3": {
+        "attempts": 841,
+        "made": 772,
+        "success_rate": 91.8,
+        "avg_tricks": 4.05,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:3_HT:3": {
+        "attempts": 838,
+        "made": 789,
+        "success_rate": 94.15,
+        "avg_tricks": 4.21,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:0_AH:0_AT:1_T:4_HT:1": {
+        "attempts": 833,
+        "made": 477,
+        "success_rate": 57.26,
+        "avg_tricks": 3.39,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:0_AH:0_AT:1_T:4_HT:2": {
+        "attempts": 820,
+        "made": 519,
+        "success_rate": 63.29,
+        "avg_tricks": 3.55,
+        "profile": {
+          "has_5": false,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:3_HT:3": {
+        "attempts": 728,
+        "made": 588,
+        "success_rate": 80.77,
+        "avg_tricks": 3.92,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:4_HT:2": {
+        "attempts": 698,
+        "made": 691,
+        "success_rate": 99.0,
+        "avg_tricks": 4.37,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:1_T:3_HT:3": {
+        "attempts": 694,
+        "made": 617,
+        "success_rate": 88.9,
+        "avg_tricks": 3.84,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:4_HT:2": {
+        "attempts": 675,
+        "made": 635,
+        "success_rate": 94.07,
+        "avg_tricks": 4.17,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      }
+    },
+    "25": {
+      "5:1_J:0_AH:0_AT:0_T:2_HT:1": {
+        "attempts": 38769,
+        "made": 15693,
+        "success_rate": 40.48,
+        "avg_tricks": 3.18,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 1
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:1_HT:1": {
+        "attempts": 34995,
+        "made": 11226,
+        "success_rate": 32.08,
+        "avg_tricks": 2.97,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 1,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:2_HT:1": {
+        "attempts": 30293,
+        "made": 9764,
+        "success_rate": 32.23,
+        "avg_tricks": 3.04,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:1_HT:1": {
+        "attempts": 24239,
+        "made": 6269,
+        "success_rate": 25.86,
+        "avg_tricks": 2.83,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 1,
+          "high_trump_count": 1
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:3_HT:1": {
+        "attempts": 12064,
+        "made": 6308,
+        "success_rate": 52.29,
+        "avg_tricks": 3.47,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:3_HT:1": {
+        "attempts": 10420,
+        "made": 4166,
+        "success_rate": 39.98,
+        "avg_tricks": 3.3,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 1
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:2_HT:2": {
+        "attempts": 9888,
+        "made": 4383,
+        "success_rate": 44.33,
+        "avg_tricks": 3.29,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:2_HT:2": {
+        "attempts": 7532,
+        "made": 2581,
+        "success_rate": 34.27,
+        "avg_tricks": 3.15,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:3_HT:2": {
+        "attempts": 6966,
+        "made": 3933,
+        "success_rate": 56.46,
+        "avg_tricks": 3.58,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:3_HT:2": {
+        "attempts": 5951,
+        "made": 2595,
+        "success_rate": 43.61,
+        "avg_tricks": 3.47,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:2_HT:2": {
+        "attempts": 5412,
+        "made": 3246,
+        "success_rate": 59.98,
+        "avg_tricks": 3.75,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:2_HT:2": {
+        "attempts": 4388,
+        "made": 2332,
+        "success_rate": 53.14,
+        "avg_tricks": 3.54,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:1_T:2_HT:2": {
+        "attempts": 3635,
+        "made": 1761,
+        "success_rate": 48.45,
+        "avg_tricks": 3.41,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:3_HT:2": {
+        "attempts": 3507,
+        "made": 2587,
+        "success_rate": 73.77,
+        "avg_tricks": 4.06,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:2_HT:2": {
+        "attempts": 3439,
+        "made": 1452,
+        "success_rate": 42.22,
+        "avg_tricks": 3.48,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:3_HT:2": {
+        "attempts": 3379,
+        "made": 2163,
+        "success_rate": 64.01,
+        "avg_tricks": 3.8,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:3_HT:2": {
+        "attempts": 2887,
+        "made": 1416,
+        "success_rate": 49.05,
+        "avg_tricks": 3.77,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:1_T:2_HT:2": {
+        "attempts": 2769,
+        "made": 1064,
+        "success_rate": 38.43,
+        "avg_tricks": 3.31,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 2,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:1_T:3_HT:2": {
+        "attempts": 2532,
+        "made": 1538,
+        "success_rate": 60.74,
+        "avg_tricks": 3.69,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:1_T:3_HT:2": {
+        "attempts": 2201,
+        "made": 963,
+        "success_rate": 43.75,
+        "avg_tricks": 3.56,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:4_HT:2": {
+        "attempts": 1344,
+        "made": 927,
+        "success_rate": 68.97,
+        "avg_tricks": 3.88,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:4_HT:1": {
+        "attempts": 1297,
+        "made": 862,
+        "success_rate": 66.46,
+        "avg_tricks": 3.81,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:4_HT:2": {
+        "attempts": 1242,
+        "made": 611,
+        "success_rate": 49.19,
+        "avg_tricks": 3.69,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:4_HT:1": {
+        "attempts": 1205,
+        "made": 557,
+        "success_rate": 46.22,
+        "avg_tricks": 3.54,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 1
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:3_HT:3": {
+        "attempts": 841,
+        "made": 625,
+        "success_rate": 74.32,
+        "avg_tricks": 4.05,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:3_HT:3": {
+        "attempts": 838,
+        "made": 665,
+        "success_rate": 79.36,
+        "avg_tricks": 4.19,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:3_HT:3": {
+        "attempts": 728,
+        "made": 380,
+        "success_rate": 52.2,
+        "avg_tricks": 3.9,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:4_HT:2": {
+        "attempts": 698,
+        "made": 610,
+        "success_rate": 87.39,
+        "avg_tricks": 4.36,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:1_T:3_HT:3": {
+        "attempts": 694,
+        "made": 452,
+        "success_rate": 65.13,
+        "avg_tricks": 3.83,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:4_HT:2": {
+        "attempts": 675,
+        "made": 535,
+        "success_rate": 79.26,
+        "avg_tricks": 4.16,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:4_HT:2": {
+        "attempts": 608,
+        "made": 353,
+        "success_rate": 58.06,
+        "avg_tricks": 4.09,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:1_T:3_HT:3": {
+        "attempts": 567,
+        "made": 269,
+        "success_rate": 47.44,
+        "avg_tricks": 3.73,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:0_AT:1_T:4_HT:2": {
+        "attempts": 487,
+        "made": 362,
+        "success_rate": 74.33,
+        "avg_tricks": 4.03,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:1_AH:1_AT:0_T:3_HT:3": {
+        "attempts": 451,
+        "made": 393,
+        "success_rate": 87.14,
+        "avg_tricks": 4.47,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:0_AT:1_T:4_HT:2": {
+        "attempts": 447,
+        "made": 243,
+        "success_rate": 54.36,
+        "avg_tricks": 3.9,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:3_HT:3": {
+        "attempts": 443,
+        "made": 295,
+        "success_rate": 66.59,
+        "avg_tricks": 3.79,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:4_HT:3": {
+        "attempts": 406,
+        "made": 374,
+        "success_rate": 92.12,
+        "avg_tricks": 4.53,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:3_HT:3": {
+        "attempts": 389,
+        "made": 183,
+        "success_rate": 47.04,
+        "avg_tricks": 3.63,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:4_HT:3": {
+        "attempts": 376,
+        "made": 304,
+        "success_rate": 80.85,
+        "avg_tricks": 4.2,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:4_HT:3": {
+        "attempts": 348,
+        "made": 203,
+        "success_rate": 58.33,
+        "avg_tricks": 4.19,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:0_AT:1_T:3_HT:3": {
+        "attempts": 337,
+        "made": 275,
+        "success_rate": 81.6,
+        "avg_tricks": 4.27,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:1_AT:1_T:3_HT:3": {
+        "attempts": 290,
+        "made": 227,
+        "success_rate": 78.28,
+        "avg_tricks": 4.13,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:0_AT:1_T:4_HT:3": {
+        "attempts": 287,
+        "made": 225,
+        "success_rate": 78.4,
+        "avg_tricks": 4.13,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:0_AT:1_T:4_HT:3": {
+        "attempts": 263,
+        "made": 149,
+        "success_rate": 56.65,
+        "avg_tricks": 3.97,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:1_AT:1_T:3_HT:3": {
+        "attempts": 261,
+        "made": 140,
+        "success_rate": 53.64,
+        "avg_tricks": 4.03,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:4_HT:3": {
+        "attempts": 204,
+        "made": 109,
+        "success_rate": 53.43,
+        "avg_tricks": 3.87,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:1_AT:0_T:4_HT:3": {
+        "attempts": 192,
+        "made": 180,
+        "success_rate": 93.75,
+        "avg_tricks": 4.72,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:4_HT:3": {
+        "attempts": 159,
+        "made": 133,
+        "success_rate": 83.65,
+        "avg_tricks": 4.1,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:1_AT:1_T:4_HT:3": {
+        "attempts": 152,
+        "made": 135,
+        "success_rate": 88.82,
+        "avg_tricks": 4.38,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:0_AT:1_T:4_HT:3": {
+        "attempts": 146,
+        "made": 131,
+        "success_rate": 89.73,
+        "avg_tricks": 4.59,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      }
+    },
+    "30": {
+      "5:1_J:0_AH:0_AT:0_T:3_HT:1": {
+        "attempts": 12064,
+        "made": 2048,
+        "success_rate": 16.98,
+        "avg_tricks": 3.47,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:3_HT:1": {
+        "attempts": 10420,
+        "made": 1564,
+        "success_rate": 15.01,
+        "avg_tricks": 3.3,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 1
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:3_HT:2": {
+        "attempts": 6966,
+        "made": 1450,
+        "success_rate": 20.82,
+        "avg_tricks": 3.58,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:3_HT:2": {
+        "attempts": 5951,
+        "made": 1143,
+        "success_rate": 19.21,
+        "avg_tricks": 3.47,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:3_HT:2": {
+        "attempts": 3507,
+        "made": 1372,
+        "success_rate": 39.12,
+        "avg_tricks": 4.06,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:3_HT:2": {
+        "attempts": 3379,
+        "made": 1001,
+        "success_rate": 29.62,
+        "avg_tricks": 3.8,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:3_HT:2": {
+        "attempts": 2887,
+        "made": 834,
+        "success_rate": 28.89,
+        "avg_tricks": 3.77,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:1_T:3_HT:2": {
+        "attempts": 2532,
+        "made": 637,
+        "success_rate": 25.16,
+        "avg_tricks": 3.69,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:1_T:3_HT:2": {
+        "attempts": 2201,
+        "made": 473,
+        "success_rate": 21.49,
+        "avg_tricks": 3.56,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:4_HT:2": {
+        "attempts": 1344,
+        "made": 396,
+        "success_rate": 29.46,
+        "avg_tricks": 3.88,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:4_HT:1": {
+        "attempts": 1297,
+        "made": 334,
+        "success_rate": 25.75,
+        "avg_tricks": 3.81,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:4_HT:2": {
+        "attempts": 1242,
+        "made": 313,
+        "success_rate": 25.2,
+        "avg_tricks": 3.69,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:4_HT:1": {
+        "attempts": 1205,
+        "made": 243,
+        "success_rate": 20.17,
+        "avg_tricks": 3.54,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 1
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:3_HT:3": {
+        "attempts": 841,
+        "made": 331,
+        "success_rate": 39.36,
+        "avg_tricks": 4.05,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:3_HT:3": {
+        "attempts": 838,
+        "made": 384,
+        "success_rate": 45.82,
+        "avg_tricks": 4.19,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:3_HT:3": {
+        "attempts": 728,
+        "made": 211,
+        "success_rate": 28.98,
+        "avg_tricks": 3.9,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:4_HT:2": {
+        "attempts": 698,
+        "made": 348,
+        "success_rate": 49.86,
+        "avg_tricks": 4.36,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:1_T:3_HT:3": {
+        "attempts": 694,
+        "made": 201,
+        "success_rate": 28.96,
+        "avg_tricks": 3.83,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:4_HT:2": {
+        "attempts": 675,
+        "made": 293,
+        "success_rate": 43.41,
+        "avg_tricks": 4.16,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:4_HT:2": {
+        "attempts": 608,
+        "made": 236,
+        "success_rate": 38.82,
+        "avg_tricks": 4.09,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:1_T:3_HT:3": {
+        "attempts": 567,
+        "made": 146,
+        "success_rate": 25.75,
+        "avg_tricks": 3.73,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:0_AT:1_T:4_HT:2": {
+        "attempts": 487,
+        "made": 184,
+        "success_rate": 37.78,
+        "avg_tricks": 4.03,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:1_AH:1_AT:0_T:3_HT:3": {
+        "attempts": 451,
+        "made": 269,
+        "success_rate": 59.65,
+        "avg_tricks": 4.47,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:0_AT:1_T:4_HT:2": {
+        "attempts": 447,
+        "made": 137,
+        "success_rate": 30.65,
+        "avg_tricks": 3.9,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:3_HT:3": {
+        "attempts": 443,
+        "made": 109,
+        "success_rate": 24.6,
+        "avg_tricks": 3.79,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:4_HT:3": {
+        "attempts": 406,
+        "made": 247,
+        "success_rate": 60.84,
+        "avg_tricks": 4.53,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:3_HT:3": {
+        "attempts": 389,
+        "made": 79,
+        "success_rate": 20.31,
+        "avg_tricks": 3.63,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:4_HT:3": {
+        "attempts": 376,
+        "made": 161,
+        "success_rate": 42.82,
+        "avg_tricks": 4.2,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:4_HT:3": {
+        "attempts": 348,
+        "made": 143,
+        "success_rate": 41.09,
+        "avg_tricks": 4.19,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:0_AT:1_T:3_HT:3": {
+        "attempts": 337,
+        "made": 163,
+        "success_rate": 48.37,
+        "avg_tricks": 4.27,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:1_AT:1_T:3_HT:3": {
+        "attempts": 290,
+        "made": 110,
+        "success_rate": 37.93,
+        "avg_tricks": 4.13,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:0_AT:1_T:4_HT:3": {
+        "attempts": 287,
+        "made": 119,
+        "success_rate": 41.46,
+        "avg_tricks": 4.13,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:0_AT:1_T:4_HT:3": {
+        "attempts": 263,
+        "made": 75,
+        "success_rate": 28.52,
+        "avg_tricks": 3.97,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:1_AT:1_T:3_HT:3": {
+        "attempts": 261,
+        "made": 88,
+        "success_rate": 33.72,
+        "avg_tricks": 4.03,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": true,
+          "trump_count": 3,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:4_HT:3": {
+        "attempts": 204,
+        "made": 49,
+        "success_rate": 24.02,
+        "avg_tricks": 3.87,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:1_AT:0_T:4_HT:3": {
+        "attempts": 192,
+        "made": 151,
+        "success_rate": 78.65,
+        "avg_tricks": 4.72,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:4_HT:3": {
+        "attempts": 159,
+        "made": 46,
+        "success_rate": 28.93,
+        "avg_tricks": 4.1,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:1_AT:1_T:4_HT:3": {
+        "attempts": 152,
+        "made": 77,
+        "success_rate": 50.66,
+        "avg_tricks": 4.38,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:1_AH:0_AT:1_T:4_HT:3": {
+        "attempts": 146,
+        "made": 102,
+        "success_rate": 69.86,
+        "avg_tricks": 4.59,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:1_AT:1_T:4_HT:3": {
+        "attempts": 128,
+        "made": 69,
+        "success_rate": 53.91,
+        "avg_tricks": 4.37,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 3
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:5_HT:2": {
+        "attempts": 75,
+        "made": 23,
+        "success_rate": 30.67,
+        "avg_tricks": 3.91,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 5,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:5_HT:2": {
+        "attempts": 58,
+        "made": 16,
+        "success_rate": 27.59,
+        "avg_tricks": 4.05,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 5,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:5_HT:3": {
+        "attempts": 49,
+        "made": 35,
+        "success_rate": 71.43,
+        "avg_tricks": 4.67,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 5,
+          "high_trump_count": 3
+        }
+      },
+      "5:1_J:0_AH:0_AT:0_T:5_HT:1": {
+        "attempts": 45,
+        "made": 16,
+        "success_rate": 35.56,
+        "avg_tricks": 4.16,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 5,
+          "high_trump_count": 1
+        }
+      },
+      "5:1_J:0_AH:1_AT:0_T:5_HT:2": {
+        "attempts": 42,
+        "made": 21,
+        "success_rate": 50.0,
+        "avg_tricks": 4.29,
+        "profile": {
+          "has_5": true,
+          "has_j": false,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 5,
+          "high_trump_count": 2
+        }
+      },
+      "5:0_J:1_AH:0_AT:0_T:5_HT:1": {
+        "attempts": 39,
+        "made": 11,
+        "success_rate": 28.21,
+        "avg_tricks": 3.87,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 5,
+          "high_trump_count": 1
+        }
+      },
+      "5:0_J:1_AH:1_AT:0_T:5_HT:2": {
+        "attempts": 37,
+        "made": 16,
+        "success_rate": 43.24,
+        "avg_tricks": 4.32,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 5,
+          "high_trump_count": 2
+        }
+      },
+      "5:1_J:1_AH:1_AT:0_T:4_HT:4": {
+        "attempts": 34,
+        "made": 29,
+        "success_rate": 85.29,
+        "avg_tricks": 4.82,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": false,
+          "trump_count": 4,
+          "high_trump_count": 4
+        }
+      },
+      "5:0_J:1_AH:1_AT:1_T:4_HT:4": {
+        "attempts": 33,
+        "made": 14,
+        "success_rate": 42.42,
+        "avg_tricks": 4.33,
+        "profile": {
+          "has_5": false,
+          "has_j": true,
+          "has_ah": true,
+          "has_at": true,
+          "trump_count": 4,
+          "high_trump_count": 4
+        }
+      },
+      "5:1_J:1_AH:0_AT:0_T:5_HT:3": {
+        "attempts": 32,
+        "made": 25,
+        "success_rate": 78.12,
+        "avg_tricks": 4.75,
+        "profile": {
+          "has_5": true,
+          "has_j": true,
+          "has_ah": false,
+          "has_at": false,
+          "trump_count": 5,
+          "high_trump_count": 3
+        }
+      }
+    }
+  }
+}

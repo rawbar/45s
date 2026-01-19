@@ -1,0 +1,15 @@
+# Python 45s Simulator Requirements
+
+# Core dependencies (none needed for heuristic/MC)
+
+# For Reinforcement Learning training:
+torch>=2.0.0
+numpy>=1.24.0
+
+# Optional for visualization:
+# matplotlib>=3.7.0
+# tensorboard>=2.13.0
+
+# Install PyTorch with CUDA support:
+# pip install torch --index-url https://download.pytorch.org/whl/cu118
+

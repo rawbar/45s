@@ -56,7 +56,7 @@ From `handoff/CLAUDE_CODE_FEATURE_SPECS.md`:
 | 16 | Remove "(you)" text from online players (blue bg is sufficient) | 5 min | Low | ✅ Done (v2.11.0) |
 | 17 | Move version number below "45s" title (smaller font, not overlapping) | 5 min | Low | ✅ Done (v2.11.0) |
 | 18 | Player stats tracking (games played, won, lost, win%, streak) | 2-3 hrs | Medium | ✅ Done (v2.11.0) |
-| 19 | Leaderboard - top 10 by win% (min 5 games to qualify) | 1-2 hrs | Medium | Not done |
+| 19 | Leaderboard - top 10 by win% (min 5 games to qualify) | 1-2 hrs | Medium | ✅ Done (v2.12.0) |
 
 **Recommended approach:** Start with low-risk features to build confidence, save AI work for last.
 
@@ -106,6 +106,8 @@ Position 3 = West   (Team 1) - Partners with East
 | v3.5.9 HTML | **GOLD STANDARD** - reference for UI and strategy |
 | v2.6.1 HTML | Current multiplayer version |
 | `45s_UI_DESIGN_SPECIFICATION.md` | **Authoritative UI spec** - all styling must match |
+| `AI_BIDDING_SPECIFICATIONS.md` | **Bidding thresholds** - 70%+ success from 1.1M simulation tests |
+| `AI_DESPERATION_BIDDING.md` | **Desperation strategy** - when opponent is about to win |
 | `handoff/CLAUDE_CODE_FEATURE_SPECS.md` | Detailed specs for pending features |
 | `handoff/V2_6_1_CURRENT_STATE.md` | What's working, what's missing |
 | `SYNTAX_ERROR_PREVENTION.md` | Workflow for safe code edits |
@@ -183,4 +185,6 @@ Format: `vX.Y.Z` (semantic versioning)
 - Minor: New features
 - Patch: Bug fixes
 
-Current: `const VERSION = '2.6.1';`
+Current: `const VERSION = '2.13.0';`
+
+**IMPORTANT:** Always update the version number upon ANY code change. This is mandatory.
