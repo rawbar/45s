@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.12.0';
+const VERSION = '2.14.1';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -528,6 +528,98 @@ const FirebaseAPI = {
     }
   },
 
+  // Create rematch game - new game with same players in same seats
+  createRematchGame: async (oldGameCode, players, creatorId) => {
+    try {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let newGameCode = '';
+      for (let i = 0; i < 6; i++) {
+        newGameCode += chars[Math.floor(Math.random() * chars.length)];
+      }
+
+      const now = Date.now();
+
+      // Create deck and deal cards
+      const suits = ['♠', '♥', '♦', '♣'];
+      const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+      const deck = [];
+      for (const suit of suits) {
+        for (const rank of ranks) {
+          deck.push({ rank, suit, id: rank + suit });
+        }
+      }
+
+      // Shuffle
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+
+      // Deal
+      const hands = [
+        deck.slice(0, 5),
+        deck.slice(5, 10),
+        deck.slice(10, 15),
+        deck.slice(15, 20)
+      ];
+      const kitty = deck.slice(20, 23);
+      const remaining = deck.slice(23);
+
+      // Copy players with updated timestamps
+      const newPlayers = {};
+      Object.entries(players).forEach(([playerId, playerData]) => {
+        newPlayers[playerId] = {
+          ...playerData,
+          lastSeen: now,
+          disconnected: false
+        };
+      });
+
+      // Create new game with active status and dealt cards
+      await database.ref(`games/${newGameCode}`).set({
+        code: newGameCode,
+        host: creatorId,
+        players: newPlayers,
+        chat: {},
+        status: 'active',
+        createdAt: now,
+        lastActivity: now,
+        gameState: {
+          phase: 'bidding',
+          dealer: 0,
+          currentPlayer: 1,
+          scores: [0, 0],
+          history: [],
+          hands: hands,
+          kitty: kitty,
+          deck: remaining,
+          bids: [null, null, null, null],
+          highBid: 0,
+          bidWinner: null,
+          wasBagged: false,
+          trumpSuit: null,
+          tricksWon: [0, 0],
+          playerTricks: [0, 0, 0, 0],
+          roundPts: [0, 0],
+          trickNum: 0,
+          highTrumpInfo: { rank: -1, player: -1 },
+          drawnCardsArray: [],
+          playHistory: [],
+          drawn: [0, 0, 0, 0]
+        }
+      });
+
+      // Set nextGameId on old game to notify other players
+      await database.ref(`games/${oldGameCode}/nextGameId`).set(newGameCode);
+
+      console.log('Rematch game created:', newGameCode);
+      return newGameCode;
+    } catch (error) {
+      console.error('createRematchGame failed:', error);
+      throw error;
+    }
+  },
+
   // Update game state - CRITICAL: Validates no undefined values
   // Helper: Convert Firebase malformed arrays (objects with numeric keys) to real arrays
   ensureArray: (value, defaultValue = []) => {
@@ -947,8 +1039,8 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   const { suit, trumpCount, has5, hasJ } = findBestTrumpSuit(hand);
   const hasAH = hasAceHearts(hand), hasAT = hasAceTrump(hand, suit);
   const highT = countHighTrumps(hand, suit);
-  
-  console.log(`ðŸŽ² BIDDING P${playerIndex}:`, {
+
+  console.log(`🎲 BIDDING P${playerIndex}:`, {
     hand: hand.map(c => c.id),
     bestSuit: suit,
     trumpCount,
@@ -958,30 +1050,127 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     hasAT,
     highT
   });
-  
+
   // Game state analysis
+  const myTeam = getTeam(playerIndex);
   const weNeed = 120 - teamScores;
   const theyNeed = 120 - oppScores;
-  const weClose = weNeed <= 30;
-  const theyClose = theyNeed <= 20;
-  const desperation = theyClose && weNeed > 15;
-  const theyAboutToWin = theyNeed <= 10;
-  const dealerIsOpponent = getTeam(dealer) !== getTeam(playerIndex);
-  
-  // Guaranteed hand - always bid it
+  const oppHasDealer = getTeam(dealer) !== myTeam;
+
+  // DESPERATION MODE: They need <=30, we need >30
+  const desperation = theyNeed <= 30 && weNeed > 30;
+  const theyCanWinWith15 = theyNeed <= 15;
+  const theyCanWinWith20 = theyNeed <= 20;
+
+  // Check if opponent has already bid (their bid is the current high)
+  const oppBidIs15 = currentHighBid === 15 && partnerBid !== 15;
+  const oppBidIs20 = currentHighBid === 20 && partnerBid !== 20;
+  const oppBidIs25 = currentHighBid === 25 && partnerBid !== 25;
+
+  // Calculate success rates based on simulation data (70%+ threshold)
+  const can20At70Pct = (has5 && trumpCount >= 2) ||
+                       (has5 && hasJ) ||
+                       (has5 && hasAH && trumpCount >= 3) ||
+                       (hasJ && hasAH && trumpCount >= 4);
+
+  const can20At75Pct = (has5 && trumpCount >= 3) ||
+                       (has5 && hasJ) ||
+                       (has5 && hasAH);
+
+  console.log(`🎲 Desperation: ${desperation}, theyNeed: ${theyNeed}, weNeed: ${weNeed}`);
+
+  // =========================================================================
+  // DESPERATION BIDDING LOGIC
+  // =========================================================================
+  if (desperation) {
+    console.log(`🚨 DESPERATION MODE - They need ${theyNeed}, we need ${weNeed}`);
+
+    // RULE 1: If opponent bid 15 and they can win with 15, MUST overbid to 20
+    if (oppBidIs15 && theyCanWinWith15) {
+      console.log(`🚨 Opponent bid 15 and can win - MUST bid 20`);
+      return { bid: 20, suit };
+    }
+
+    // RULE 2: If opponent bid 20 and they can win with 20, bid 25 if we're last chance
+    if (oppBidIs20 && theyCanWinWith20 && playerIndex === dealer) {
+      console.log(`🚨 Opponent bid 20 and can win - bidding 25 to stay alive`);
+      return { bid: 25, suit };
+    }
+
+    // RULE 3: If opponent bid 25, let them have it (try to set)
+    if (oppBidIs25) {
+      console.log(`🚨 Opponent bid 25 - letting them have it, try to set`);
+      return { bid: 0, suit: null };
+    }
+
+    // RULE 4: Opponent has dealer - bag strategy
+    if (oppHasDealer && currentHighBid === 0) {
+      if (theyNeed <= 5) {
+        // Bag the dealer unless 75%+ for 20
+        if (can20At75Pct) {
+          console.log(`🚨 They need <=5 but we have 75%+ hand - bidding 20`);
+          return { bid: 20, suit };
+        }
+        console.log(`🚨 They need <=5 - passing to BAG THE DEALER`);
+        return { bid: 0, suit: null };
+      }
+      if (theyNeed <= 10) {
+        // Bid 20 if 70%+ success, else bag
+        if (can20At70Pct) {
+          console.log(`🚨 They need <=10 and we have 70%+ hand - bidding 20`);
+          return { bid: 20, suit };
+        }
+        console.log(`🚨 They need <=10 but weak hand - passing to bag dealer`);
+        return { bid: 0, suit: null };
+      }
+      if (theyNeed <= 15) {
+        // Bid 20 NO MATTER WHAT - cannot let them win for 15
+        console.log(`🚨 They need <=15 with dealer - MUST bid 20`);
+        return { bid: 20, suit };
+      }
+    }
+
+    // RULE 5: Opponent doesn't have dealer - overbid their 15
+    if (!oppHasDealer) {
+      if (oppBidIs15 && theyCanWinWith15) {
+        // If we have 5, bid 20; otherwise pass for partner
+        if (has5) {
+          console.log(`🚨 They bid 15 (can win) - we have 5, bidding 20`);
+          return { bid: 20, suit };
+        }
+        // Let partner handle it if we have nothing
+        if (trumpCount < 2 && !hasJ && !hasAH) {
+          console.log(`🚨 Terrible hand - passing for partner to overbid`);
+          return { bid: 0, suit: null };
+        }
+        // Overbid anyway to block
+        console.log(`🚨 They bid 15 (can win) - overbidding to 20`);
+        return { bid: 20, suit };
+      }
+    }
+
+    // RULE 6: General desperation - preemptive blocking
+    if (theyCanWinWith15 && currentHighBid === 0) {
+      // Preemptive 20 to prevent their 15
+      if (can20At70Pct || has5) {
+        console.log(`🚨 Preemptive 20 to block their potential 15`);
+        return { bid: 20, suit };
+      }
+    }
+  }
+
+  // =========================================================================
+  // GUARANTEED HAND - always bid
+  // =========================================================================
   if (isGuaranteedHand(hand, suit)) {
     if (has5 && hasJ && hasAH && hasAT) return { bid: 30, suit };
     return { bid: 25, suit };
   }
-  
-  // Bag the dealer strategy
-  if (theyAboutToWin && dealerIsOpponent && weNeed >= 25) {
-    const canMake25 = has5 && hasJ && trumpCount >= 4;
-    if (!canMake25) return { bid: 0, suit: null };
-  }
-  
-  // When close to winning - be smart
-  if (weClose && weNeed <= 15) {
+
+  // =========================================================================
+  // WHEN CLOSE TO WINNING - be smart
+  // =========================================================================
+  if (weNeed <= 15) {
     if (has5 && hasJ) {
       if (currentHighBid < 20) return { bid: 20, suit };
     } else if (has5 || (hasJ && trumpCount >= 3)) {
@@ -989,58 +1178,57 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     }
     if (!has5 && !hasJ && trumpCount < 4) return { bid: 0, suit: null };
   }
-  
+
   // Don't overbid partner's 20 unless overwhelming hand
   if (partnerBid === 20 && currentHighBid === 20) {
     const dominated = (has5 && hasJ && hasAH) || (has5 && hasJ && trumpCount >= 4 && highT >= 3);
     if (!dominated) return { bid: 0, suit: null };
   }
-  
-  // Standard bidding - tighter 25 requirements per simulation data
+
+  // =========================================================================
+  // STANDARD BIDDING - Based on 70%+ success rates from simulation
+  // =========================================================================
   let bid = 0;
-  
+
   // 30 bid - need near-guaranteed
-  if (has5 && hasJ && hasAH && (hasAT || trumpCount >= 5)) bid = 30;
-  
-  // 25 bid - MUST have 5 (without 5: only 33% success per simulation)
-  else if (has5 && hasJ && hasAH && trumpCount >= 4) bid = 25;
+  if (has5 && hasJ && hasAH && hasAT) bid = 30;
+  else if (has5 && hasJ && hasAH && trumpCount >= 5) bid = 30;
+
+  // 25 bid - need 70%+ success
+  else if (has5 && hasJ && hasAH && trumpCount >= 3) bid = 25;
+  else if (has5 && hasJ && hasAT && trumpCount >= 4) bid = 25;
   else if (has5 && hasJ && trumpCount >= 4 && highT >= 3) bid = 25;
-  
-  // 20 bid
+
+  // 20 bid - need 70%+ success
+  else if (has5 && hasJ) bid = 20;
+  else if (has5 && hasAH && trumpCount >= 3) bid = 20;
+  else if (has5 && hasAT && trumpCount >= 4) bid = 20;
+  else if (has5 && trumpCount >= 4) bid = 20;
   else if (has5 && trumpCount >= 3) bid = 20;
-  else if (has5 && trumpCount >= 2 && highT >= 2) bid = 20;
   else if (hasJ && hasAH && trumpCount >= 4) bid = 20;
-  
-  // 15 bid
+
+  // 15 bid - safe options (80%+ success)
+  else if (has5 && trumpCount >= 2) bid = 15;
   else if (has5) bid = 15;
   else if (hasJ && trumpCount >= 3) bid = 15;
   else if (hasAH && trumpCount >= 3) bid = 15;
+  else if (hasAH && hasAT && trumpCount >= 3) bid = 15;
   else if (trumpCount >= 4 && highT >= 2) bid = 15;
-  
-  // Desperation bidding
-  if (desperation && bid < 20) {
-    if ((has5 && trumpCount >= 2) || (hasJ && trumpCount >= 3) || (hasAH && trumpCount >= 3)) {
-      bid = Math.max(bid, 20);
-    }
-  }
-  if (desperation && currentHighBid >= 20 && bid < 25) {
-    if ((has5 && hasJ) || (has5 && trumpCount >= 4)) bid = 25;
-  }
-  
+
   // Bid minimum when dealer (last to bid)
   if (bid > currentHighBid && playerIndex === dealer && currentHighBid > 0) {
     bid = Math.min(bid, currentHighBid + 5);
   }
-  
+
   if (bid <= currentHighBid) {
     if (playerIndex === dealer && currentHighBid === 0) {
-      console.log(`â†’ Dealer forced 15`);
+      console.log(`→ Dealer forced 15`);
       return { bid: 15, suit };
     }
-    console.log(`â†’ Passing (bid ${bid} <= current ${currentHighBid})`);
+    console.log(`→ Passing (bid ${bid} <= current ${currentHighBid})`);
     return { bid: 0, suit: null };
   }
-  console.log(`â†’ BIDDING ${bid}${suit}`);
+  console.log(`→ BIDDING ${bid}${suit}`);
   return { bid, suit };
 }
 
@@ -1088,7 +1276,9 @@ function isCardBoss(card, cardsPlayed, trumpSuit) {
     });
     
     // If all higher trump have been played, this is boss
-    return higherTrumpCards.every(c => playedIds.has(c.id));
+    // IMPORTANT: Exclude the card being tested from the higher cards list
+    const relevantHigherCards = higherTrumpCards.filter(c => c.id !== card.id);
+    return relevantHigherCards.every(c => playedIds.has(c.id));
   } else {
     // For offsuit, only K is ever boss (and only if no trump exist)
     return false; // Simplified: offsuit rarely boss in 45s
@@ -2817,7 +3007,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                   fontWeight: 'bold'
                 }}
               >
-                Leaders
+                Leaderboard
               </button>
               <button
                 onClick={() => {
@@ -3439,8 +3629,9 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
           <h3 style={{ color: '#1a5f3f' }}>{game.name}</h3>
           {game.gameState?.phase === 'game-over' ? (() => {
             const scores = game.gameState.scores || [0, 0];
-            const team0Won = scores[0] >= 120;
-            const team1Won = scores[1] >= 120;
+            const winner = game.gameState.winner;
+            const team0Won = winner === 0;
+            const team1Won = winner === 1;
             return (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '14px' }}>✅</span>
@@ -4442,6 +4633,12 @@ function MultiplayerApp() {
     setAppState('lobby');
   };
 
+  const handleRematch = (newGameId) => {
+    console.log('REMATCH: Transitioning to new game:', newGameId);
+    setGameId(newGameId);
+    // Stay in 'playing' state, just change the game ID
+  };
+
   if (appState === 'login') {
     return <LoginScreen onLogin={handleLogin} />;
   }
@@ -4475,11 +4672,12 @@ function MultiplayerApp() {
     return (
       <GameWrapper
         gameId={gameId}
-        userId={userId}  // Changed from playerId
+        userId={userId}
         playerName={playerName}
-        playerAvatar={playerAvatar}  // NEW
+        playerAvatar={playerAvatar}
         mySeat={mySeat}
         onLeaveGame={handleLeaveGame}
+        onRematch={handleRematch}
       />
     );
   }
@@ -4507,7 +4705,7 @@ function relativeToAbsolute(relativePos, mySeatIndex) {
 // GAME WRAPPER WITH FIREBASE SYNC
 // ============================================================================
 
-function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeaveGame }) {  // Updated: playerId → userId, added playerAvatar
+function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeaveGame, onRematch }) {  // Added onRematch → userId, added playerAvatar
   const [gameState, setGameState] = useState(null);
   const [players, setPlayers] = useState({});
   const [disconnectTimer, setDisconnectTimer] = useState(null);
@@ -4591,6 +4789,22 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
     };
   }, [gameId, mySeat]);
 
+  // Listen for nextGameId (rematch signal)
+  useEffect(() => {
+    const nextGameRef = database.ref(`lobby/games/${gameId}/nextGameId`);
+
+    const handleNextGame = (snapshot) => {
+      const nextGameId = snapshot.val();
+      if (nextGameId && onRematch) {
+        console.log('REMATCH detected! Transitioning to:', nextGameId);
+        onRematch(nextGameId);
+      }
+    };
+
+    nextGameRef.on('value', handleNextGame);
+    return () => nextGameRef.off('value', handleNextGame);
+  }, [gameId, onRematch]);
+
   // Initialize game if needed
   useEffect(() => {
     debug.game('GameWrapper: Checking initialization. gameState:', gameState ? 'EXISTS' : 'NULL');
@@ -4641,13 +4855,14 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
   return (
     <MultiplayerGameTable
       gameId={gameId}
-      userId={userId}  // Changed from playerId
+      userId={userId}
       playerName={playerName}
       mySeat={mySeat}
       mySeatIndex={mySeatIndex}
       gameState={gameState}
       players={players}
       onLeaveGame={onLeaveGame}
+      onRematch={onRematch}
     />
   );
 }
@@ -4656,7 +4871,7 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
 // MULTIPLAYER GAME TABLE - Integrates game logic with Firebase sync
 // ============================================================================
 
-function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex, gameState, players, onLeaveGame }) {  // Changed playerId to userId
+function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex, gameState, players, onLeaveGame, onRematch }) {
   // All the game state from the original App component
   const [phase, setPhase] = useState('start');
   const [hands, setHands] = useState([[], [], [], []]);
@@ -5679,8 +5894,19 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           themTotal: newScores[1]
         }];
         
-        // Check for game winner (first to 120)
-        const gameWinner = newScores[0] >= 120 ? 0 : newScores[1] >= 120 ? 1 : null;
+        // Check for game winner (first to 120, bidding team wins ties)
+        let gameWinner = null;
+        const team0Reached120 = newScores[0] >= 120;
+        const team1Reached120 = newScores[1] >= 120;
+        if (team0Reached120 || team1Reached120) {
+          if (team0Reached120 && team1Reached120) {
+            // Both teams reached 120 on same hand - bidding team wins
+            gameWinner = bidWinner % 2;
+            console.log('Both teams reached 120! Bidding team (Team ' + gameWinner + ') wins!');
+          } else {
+            gameWinner = team0Reached120 ? 0 : 1;
+          }
+        }
         
         if (gameWinner !== null) {
           console.log(`🏆 GAME OVER! Team ${gameWinner} wins with ${newScores[gameWinner]} points!`);
@@ -6146,8 +6372,19 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             themTotal: newScores[1]
           }];
           
-          // Check for game winner (first to 120)
-          const gameWinner = newScores[0] >= 120 ? 0 : newScores[1] >= 120 ? 1 : null;
+          // Check for game winner (first to 120, bidding team wins ties)
+          let gameWinner = null;
+          const team0Reached120 = newScores[0] >= 120;
+          const team1Reached120 = newScores[1] >= 120;
+          if (team0Reached120 || team1Reached120) {
+            if (team0Reached120 && team1Reached120) {
+              // Both teams reached 120 on same hand - bidding team wins
+              gameWinner = bidWinner % 2;
+              console.log('Both teams reached 120! Bidding team (Team ' + gameWinner + ') wins!');
+            } else {
+              gameWinner = team0Reached120 ? 0 : 1;
+            }
+          }
           
           if (gameWinner !== null) {
             console.log(`🏆 GAME OVER! Team ${gameWinner} wins with ${newScores[gameWinner]} points!`);
@@ -6277,6 +6514,18 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       drawn: [0, 0, 0, 0]
     });
   }, [updateGameState]);
+
+  // Handle rematch - create new game with same players
+  const handleRematch = useCallback(async () => {
+    console.log('Creating rematch game...');
+    try {
+      const newGameId = await FirebaseAPI.createRematchGame(gameId, players, userId);
+      console.log('Rematch game created:', newGameId);
+      // The nextGameId listener in GameWrapper will handle the transition for all players
+    } catch (error) {
+      console.error('Failed to create rematch:', error);
+    }
+  }, [gameId, players, userId]);
 
   // Render based on phase
   if (phase === 'start') {
@@ -6843,7 +7092,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   Lobby
                 </button>
                 <button
-                  onClick={startGame}
+                  onClick={handleRematch}
                   style={{
                     padding: '12px 24px',
                     fontSize: '16px',
