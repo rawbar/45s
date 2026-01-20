@@ -47,7 +47,7 @@ From `handoff/CLAUDE_CODE_FEATURE_SPECS.md`:
 | 4 | Button Positioning (Mobile) | 30 min | Low | ✅ Done (v2.8.x) |
 | 8 | Clear trump display at round start | 15 min | Low | ✅ Done (v2.11.0) |
 | 13 | Hide bid display until player has bid or passed | 15 min | Low | ✅ Done (v2.11.0) |
-| 14 | Bagging logic (dealer auto-bid 15 + red BAGGED indicator) | 1-2 hrs | Medium | Not done |
+| 14 | Bagging logic (dealer auto-bid 15 + red BAGGED indicator) | 1-2 hrs | Medium | Done (v2.15.0) |
 | 1 | Connected Players Display | 1-2 hrs | Medium | ✅ Done (v2.10.1) |
 | 7 | Round-by-Round Score Modal | 1-2 hrs | Medium | Not done |
 | 9 | Create AI Design Specification Doc | 1 hr | Low | Not done |
