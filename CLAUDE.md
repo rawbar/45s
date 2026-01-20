@@ -6,10 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 45s is a multiplayer card game (traditional Irish trick-taking game) implemented as a single-file React application with Firebase Realtime Database for multiplayer synchronization.
 
+## Deployment
+
+**IMPORTANT:** Unless otherwise specified, all new builds must be deployed to `index.html` in the main repo. This is the file served by GitHub Pages. The working file may have a versioned name (e.g., `45s_v2.7.0.html`) but must be copied to `index.html` before pushing.
+
 ## Version Reference
 
 - **v3.5.9** = Gold standard single-player version (reference for UI and AI strategy)
-- **v2.6.1** = Current multiplayer version (in development)
+- **v2.14.1** = Current multiplayer version
 
 Filenames vary but version number is authoritative. Any file labeled with the same version is identical.
 
@@ -21,7 +25,7 @@ The single-player v3.5.9 is the **GOLD REFERENCE STANDARD** for:
 
 **When fixing bugs or discrepancies in multiplayer, always compare against v3.5.9.**
 
-## Current State: v2.6.1
+## Current State: v2.14.1
 
 - Game table layout is correct and matches design spec
 - Core gameplay works (bidding, trump, discarding, playing, scoring)
