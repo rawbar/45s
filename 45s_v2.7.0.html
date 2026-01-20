@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.14.1';
+const VERSION = '2.15.0';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1876,7 +1876,7 @@ Without:       498471 bids, 35.0% success`}
 }
 
 // Show Hands Modal for debugging - shows cards in play order
-function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, drawnCards, wasBagged, playHistory, bids, mySeatIndex, players }) {
+function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, drawnCards, wasBagged, playHistory, bids, mySeatIndex, players, scores }) {
   if (!isOpen || !hands) return null;
   
   console.log('🎭 ShowHandsModal opened:', {
@@ -1982,6 +1982,12 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
         {trumpSuit && (
           <div style={{ textAlign: 'center', fontSize: '12px', color: '#aaa' }}>
             Trump: <span style={{ fontSize: '18px', color: (trumpSuit === '\u2665' || trumpSuit === '\u2666') ? '#f44336' : '#fff' }}>{trumpSuit}</span>
+          </div>
+        )}
+        {scores && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', fontSize: '12px', marginTop: '4px' }}>
+            <span style={{ color: '#4caf50' }}>N/S: <strong>{scores[0]}</strong></span>
+            <span style={{ color: '#2196f3' }}>E/W: <strong>{scores[1]}</strong></span>
           </div>
         )}
         <div style={{ textAlign: 'center', fontSize: '9px', color: '#888' }}>Cards in play order  ·  Gold border = led trick  ·  Blue dot = drawn card</div>
@@ -4918,6 +4924,12 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const dealtHands = useRef(null);
   const statsUpdated = useRef(false); // Track if stats were updated for this game
 
+  // Reset statsUpdated when gameId changes (for rematch/new game)
+  useEffect(() => {
+    statsUpdated.current = false;
+    console.log('Game ID changed - reset statsUpdated flag');
+  }, [gameId]);
+
   // Update player stats when game ends
   useEffect(() => {
     if (phase === 'game-over' && gameState?.winner !== undefined && !statsUpdated.current) {
@@ -5187,8 +5199,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   // Start game function
 
   // Human player makes a bid
-  const handleBid = useCallback(async (bidAmount) => {
-    console.log('🎲 handleBid called:', { bidAmount, currentPlayer, mySeatIndex, isMyTurn: currentPlayer === mySeatIndex });
+  const handleBid = useCallback(async (bidAmount, isAutoBag = false) => {
+    console.log('🎲 handleBid called:', { bidAmount, currentPlayer, mySeatIndex, isMyTurn: currentPlayer === mySeatIndex, isAutoBag });
     
     if (currentPlayer !== mySeatIndex) {
       console.log('❌ Not your turn to bid! currentPlayer:', currentPlayer, 'mySeatIndex:', mySeatIndex);
@@ -5222,8 +5234,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         }
       }
       
-      // Auto-bag dealer if everyone passed
-      let wasBagged = false;
+      // Auto-bag dealer if everyone passed (or already auto-bagged)
+      let wasBagged = isAutoBag;
       if (maxBid === 0) {
         newBids[dealer] = 15;
         newHighBid = 15;
@@ -5425,7 +5437,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           console.log(`🎯 HUMAN Dealer P${dealer + 1} is BAGGED! All others passed - autobidding 15`);
           // Automatically bid 15 after a short delay
           const autobagTimer = setTimeout(() => {
-            handleBid(15);
+            handleBid(15, true);  // Pass isAutoBag=true
           }, 500);
           return () => clearTimeout(autobagTimer);
         }
@@ -7175,6 +7187,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         bids={bids}
         mySeatIndex={mySeatIndex}
         players={players}
+        scores={scores}
       />
       <HelpModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
