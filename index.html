@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.2';
+const VERSION = '2.17.3';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1189,44 +1189,95 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   }
 
   // =========================================================================
-  // STANDARD BIDDING - Based on 60%+ success rates from 1.1M simulation
+  // STANDARD BIDDING - Tiered thresholds from 1.1M simulation
+  // 15=60%, 20=67%, 25=85%, 30=90% (but only bid 30 if opponent bid 25)
+  // Partner overbid: 20=75%, 25=90%, 30=99%
   // =========================================================================
   let bid = 0;
 
-  // 30 bid - need 60%+ success (from simulation data)
-  // 5_J_AH_T4: 78.65%, 5_J_AH_T5: 96%, 5_J_AT_T4: 69.86%, 5_J_T5: 70.42%
-  if (has5 && hasJ && hasAH && trumpCount >= 4) bid = 30;
-  else if (has5 && hasJ && hasAT && trumpCount >= 4) bid = 30;
-  else if (has5 && hasJ && trumpCount >= 5) bid = 30;
+  // Check if partner has bid
+  const partnerHasBid = partnerBid > 0;
+  // Check if opponent has bid 25 (only then consider bidding 30)
+  const oppBid25 = currentHighBid === 25 && partnerBid !== 25;
 
-  // 25 bid - need 60%+ success (from simulation data)
-  // 5_J_T2: 59.98%, 5_J_T3: 74.84%, 5_AH_T3: 66.07%, 5_AT_T3: 61.69%, 5_T4: 68.64%
-  else if (has5 && hasJ && hasAH) bid = 25;  // 5_J_AH_T3: 87.14%
-  else if (has5 && hasJ && hasAT && trumpCount >= 3) bid = 25;  // 5_J_AT_T3: 81.6%
-  else if (has5 && hasJ && trumpCount >= 2) bid = 25;  // 5_J_T2: 59.98% ~60%
-  else if (has5 && hasAH && trumpCount >= 3) bid = 25;  // 5_AH_T3: 66.07%
-  else if (has5 && hasAT && trumpCount >= 3) bid = 25;  // 5_AT_T3: 61.69%
-  else if (has5 && trumpCount >= 4) bid = 25;  // 5_T4: 68.64%
-  else if (hasJ && hasAH && hasAT && trumpCount >= 4) bid = 25;  // J_AH_AT_T4: 62.5%
+  // -------------------------------------------------------------------------
+  // PARTNER OVERBIDDING LOGIC - stricter thresholds to not hurt partner
+  // -------------------------------------------------------------------------
+  if (partnerHasBid) {
+    // Partner bid 15 -> bid 20 only if 75%+ chance
+    // 5_T3: 80.61%, 5_AH_T2: 80.97%, 5_AT_T2: 75.93%, 5_J: 87%+, J_AH_T3: 75.02%
+    if (partnerBid === 15) {
+      if (has5 && hasJ && hasAH && hasAT && trumpCount >= 5) bid = 30;  // 99%+ - near perfect
+      else if (has5 && hasJ && hasAH && trumpCount >= 4) bid = 25;  // 5_J_AH_T4: 93.75%
+      else if (has5 && hasJ && hasAT && trumpCount >= 4) bid = 25;  // 5_J_AT_T4: 89.73%
+      else if (has5 && hasJ && trumpCount >= 5) bid = 25;  // 5_J_T5: 95.77%
+      else if (has5 && hasJ) bid = 20;  // 5_J_T2: 87.75%
+      else if (has5 && hasAH) bid = 20;  // 5_AH_T2: 80.97%
+      else if (has5 && hasAT) bid = 20;  // 5_AT_T2: 75.93%
+      else if (has5 && trumpCount >= 3) bid = 20;  // 5_T3: 80.61%
+      else if (hasJ && hasAH && trumpCount >= 3) bid = 20;  // J_AH_T3: 75.02%
+      // Otherwise don't overbid partner's 15
+    }
+    // Partner bid 20 -> bid 25 only if 90%+ chance
+    else if (partnerBid === 20) {
+      if (has5 && hasJ && hasAH && hasAT && trumpCount >= 5) bid = 30;  // 99%+
+      else if (has5 && hasJ && hasAH && trumpCount >= 4) bid = 25;  // 93.75%
+      else if (has5 && hasJ && trumpCount >= 5) bid = 25;  // 95.77%
+      // Otherwise don't overbid partner's 20
+    }
+    // Don't overbid partner's 25 unless perfect hand
+    else if (partnerBid === 25) {
+      if (has5 && hasJ && hasAH && hasAT && trumpCount >= 5) bid = 30;  // 99%+
+    }
+  }
+  // -------------------------------------------------------------------------
+  // STANDARD BIDDING (no partner bid yet)
+  // -------------------------------------------------------------------------
+  else {
+    // 30 bid - only if opponent bid 25 AND we have 90%+ chance
+    // 5_J_AH_T5: 96%, 5_J_AT_T5: 94.44%, 5_J_T5: 95.77%
+    if (oppBid25) {
+      if (has5 && hasJ && hasAH && trumpCount >= 5) bid = 30;  // 96%
+      else if (has5 && hasJ && hasAT && trumpCount >= 5) bid = 30;  // 94.44%
+      else if (has5 && hasJ && trumpCount >= 5) bid = 30;  // 95.77%
+    }
 
-  // 20 bid - need 60%+ success (from simulation data)
-  // 5_T1: 62.44%, J_T3: 63.5%, J_AH_T2: 66.3%, J_AT_T2: 62.69%, AH_T4: 64.05%, AT_T4: 61.47%
-  else if (has5) bid = 20;  // 5_T1: 62.44% - ANY hand with 5 can bid 20!
-  else if (hasJ && hasAH && trumpCount >= 2) bid = 20;  // J_AH_T2: 66.3%
-  else if (hasJ && hasAT && trumpCount >= 2) bid = 20;  // J_AT_T2: 62.69%
-  else if (hasJ && trumpCount >= 3) bid = 20;  // J_T3: 63.5%
-  else if (hasAH && hasAT && trumpCount >= 4) bid = 20;  // AH_AT_T4: 71.28%
-  else if (hasAH && trumpCount >= 4) bid = 20;  // AH_T4: 64.05%
-  else if (hasAT && trumpCount >= 4) bid = 20;  // AT_T4: 61.47%
+    // 25 bid - need 85%+ success
+    // 5_J_AH_T3: 87.14%, 5_J_AH_T4: 93.75%, 5_J_AT_T4: 89.73%, 5_J_T4: 89.24%
+    // 5_AH_T5: 89%, 5_AT_T5: 85.71%, 5_J_T5: 95.77%
+    if (bid === 0) {
+      if (has5 && hasJ && hasAH) bid = 25;  // 5_J_AH_T3: 87.14%
+      else if (has5 && hasJ && hasAT && trumpCount >= 4) bid = 25;  // 5_J_AT_T4: 89.73%
+      else if (has5 && hasJ && trumpCount >= 4) bid = 25;  // 5_J_T4: 89.24%
+      else if (has5 && hasAH && trumpCount >= 5) bid = 25;  // 5_AH_T5: 89%
+      else if (has5 && hasAT && trumpCount >= 5) bid = 25;  // 5_AT_T5: 85.71%
+    }
 
-  // 15 bid - need 70%+ success (slightly conservative for minimum bid)
-  // J_T2: 77.53%, AH_T3: 77.66%, AT_T3: 74.65%, NO_HIGH_T4: 79.33%
-  else if (hasJ && trumpCount >= 2) bid = 15;  // J_T2: 77.53%
-  else if (hasAH && trumpCount >= 3) bid = 15;  // AH_T3: 77.66%
-  else if (hasAT && trumpCount >= 3) bid = 15;  // AT_T3: 74.65%
-  else if (trumpCount >= 4) bid = 15;  // NO_HIGH_T4: 79.33%
+    // 20 bid - need 67%+ success
+    // 5_T2: 70.57%, 5_T3: 80.61%, J_T4: 69.37%, J_AH_T3: 75.02%, J_AT_T3: 69%
+    // AH_AT_T4: 71.28%, AH_T5: 71.9%
+    if (bid === 0) {
+      if (has5 && trumpCount >= 2) bid = 20;  // 5_T2: 70.57%
+      else if (hasJ && hasAH && trumpCount >= 3) bid = 20;  // J_AH_T3: 75.02%
+      else if (hasJ && hasAT && trumpCount >= 3) bid = 20;  // J_AT_T3: 69%
+      else if (hasJ && trumpCount >= 4) bid = 20;  // J_T4: 69.37%
+      else if (hasAH && hasAT && trumpCount >= 4) bid = 20;  // AH_AT_T4: 71.28%
+      else if (hasAH && trumpCount >= 5) bid = 20;  // AH_T5: 71.9%
+    }
 
-  // Bid minimum when dealer (last to bid)
+    // 15 bid - need 60%+ success
+    // 5: 93%+, J_T1: 73.42%, J_T2: 77.53%, AH_T2: 72.73%, AT_T2: 68.08%
+    // NO_HIGH_T2: 63.26%, NO_HIGH_T3: 70.15%
+    if (bid === 0) {
+      if (has5) bid = 15;  // 5_T1: 93.43%
+      else if (hasJ) bid = 15;  // J_T1: 73.42%
+      else if (hasAH && trumpCount >= 2) bid = 15;  // AH_T2: 72.73%
+      else if (hasAT && trumpCount >= 2) bid = 15;  // AT_T2: 68.08%
+      else if (trumpCount >= 3) bid = 15;  // NO_HIGH_T3: 70.15%
+    }
+  }
+
+  // Bid minimum when dealer (last to bid) - don't overbid unnecessarily
   if (bid > currentHighBid && playerIndex === dealer && currentHighBid > 0) {
     bid = Math.min(bid, currentHighBid + 5);
   }
@@ -1792,6 +1843,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.3', changes: 'Refinements to AI bidding strategy' },
     { version: '2.17.2', changes: 'Fixed What's New modal to show all recent versions' },
     { version: '2.17.1', changes: 'AI bidding now uses actual 1.1M simulation data at 60% threshold' },
     { version: '2.17.0', changes: 'More aggressive AI bidding, fixed New Game button' },
