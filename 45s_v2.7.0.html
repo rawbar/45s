@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.1';
+const VERSION = '2.17.2';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1792,6 +1792,11 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.2', changes: 'Fixed What's New modal to show all recent versions' },
+    { version: '2.17.1', changes: 'AI bidding now uses actual 1.1M simulation data at 60% threshold' },
+    { version: '2.17.0', changes: 'More aggressive AI bidding, fixed New Game button' },
+    { version: '2.16.2', changes: "What's New modal now shows after login instead of on login screen" },
+    { version: '2.16.1', changes: 'Fixed modal display, lowercase usernames, shortened Leaders button' },
     { version: '2.16.0', changes: "Added What's New modal on version updates" },
     { version: '2.15.0', changes: 'Show Hand modal now displays scores, fixed stats on New Game, fixed bagging indicator' },
     { version: '2.14.1', changes: 'Fixed 120-120 tie - bidding team now wins correctly' },

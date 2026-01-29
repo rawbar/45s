@@ -189,6 +189,8 @@ Format: `vX.Y.Z` (semantic versioning)
 - Minor: New features
 - Patch: Bug fixes
 
-Current: `const VERSION = '2.17.1';`
+Current: `const VERSION = '2.17.2';`
 
 **IMPORTANT:** Always update the version number upon ANY code change. This is mandatory.
+
+**IMPORTANT:** When releasing a new version, ALWAYS update the `versionHistory` array in the `WhatsNewModal` component with the new version and changelog entry. This ensures users see what changed.
