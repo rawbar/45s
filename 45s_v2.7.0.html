@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.3';
+const VERSION = '2.17.4';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1843,6 +1843,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.4', changes: 'Fixed bagging logic for AI dealer' },
     { version: '2.17.3', changes: 'Refinements to AI bidding strategy' },
     { version: "2.17.2", changes: "Fixed What's New modal to show all recent versions" },
     { version: '2.17.1', changes: 'AI bidding now uses actual 1.1M simulation data at 60% threshold' },
@@ -5515,7 +5516,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         const bidsIn = bids.filter(b => b !== null && b !== undefined && b !== -1).length;
         if (bidsIn === 3) {
           const allPassed = bids.every((b, i) => i === dealer || b === 0);
-          if (allPassed && bid === 0) {
+          if (allPassed) {  // Dealer is FORCED to bid 15 regardless of hand strength
             console.log(`🎯 AI Dealer P${dealer + 1} is BAGGED! All others passed - forcing bid to 15`);
             bid = 15;
             wasAutoBagged = true;  // Track that this was an autobag
