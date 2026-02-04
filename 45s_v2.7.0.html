@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.4';
+const VERSION = '2.17.5';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1843,6 +1843,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.5', changes: 'Prevent duplicate username registration' },
     { version: '2.17.4', changes: 'Fixed bagging logic for AI dealer' },
     { version: '2.17.3', changes: 'Refinements to AI bidding strategy' },
     { version: "2.17.2", changes: "Fixed What's New modal to show all recent versions" },
@@ -2224,20 +2225,31 @@ function LoginScreen({ onLogin }) {
     setError(null);
     
     try {
-      // Check if username already taken
-      const check = await checkUsername(username);
-      if (check.exists) {
+      const usernameLower = username.trim().toLowerCase();
+      const userId = generateUserId();
+
+      // Use transaction to atomically claim username (prevents race condition duplicates)
+      const usernameRef = database.ref(`usernames/${usernameLower}`);
+      const result = await usernameRef.transaction((currentValue) => {
+        if (currentValue === null) {
+          // Username not taken, claim it
+          return userId;
+        }
+        // Username already taken, abort transaction
+        return undefined;
+      });
+
+      if (!result.committed) {
         setError('Username already taken');
         setLoading(false);
         return;
       }
-      
+
       // Create new user
-      const userId = generateUserId();
       const pinHash = await hashPin(username, pin);
-      
+
       const newUser = {
-        username: username.trim().toLowerCase(),
+        username: usernameLower,
         pinHash,
         avatar: selectedAvatar,
         createdAt: Date.now(),
@@ -2255,7 +2267,7 @@ function LoginScreen({ onLogin }) {
           streakType: 'W'
         }
       };
-      
+
       await database.ref(`users/${userId}`).set(newUser);
       debug.auth('User created:', userId);
       debug.stats('Initialized stats for:', userId);
