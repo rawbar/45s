@@ -1108,22 +1108,29 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     }
 
     // RULE 4: Opponent has dealer - bag strategy
-    // When opponent is close to winning (needs <=10), we must MAKE 30 to stay alive.
-    // We can bid 20 (they won't overbid), but need a hand that can MAKE 30.
-    // Such hands are rare (5+J, etc). Default: PASS to bag dealer, then SET them.
     if (oppHasDealer && currentHighBid === 0) {
-      if (theyNeed <= 10) {
-        // They need 10 or less. We must make 30 to stay alive.
+      if (theyNeed <= 5) {
+        // They need 5 or less. We must MAKE 30 to survive (25 doesn't save us).
         // Making 30 = win ALL 5 tricks. Requires near-perfect hand.
-        // 5+J alone is NOT enough - need 5+J+AH minimum, ideally with AT too.
         const canMake30 = (has5 && hasJ && hasAH) || (has5 && hasJ && hasAT && trumpCount >= 4);
         if (canMake30) {
-          // Bid 20 - they won't overbid since they're in cruise control
-          console.log(`🚨 They need <= - we can make 30, bidding 20`);
+          console.log(`🚨 They need <=5 - we can make 30, bidding 20`);
           return { bid: 20, suit };
         }
         // Default: pass to BAG the dealer, then try to SET them
-        console.log(`🚨 They need <= - passing to BAG THE DEALER and SET`);
+        console.log(`🚨 They need <=5 - passing to BAG THE DEALER and SET`);
+        return { bid: 0, suit: null };
+      }
+      if (theyNeed <= 10) {
+        // They need 6-10. Making 25 saves the game!
+        // Can bid with a strong 25-capable hand.
+        const canMake25 = has5 || (hasJ && hasAH) || (hasJ && hasAT && trumpCount >= 3) || (hasJ && trumpCount >= 4);
+        if (canMake25) {
+          console.log(`🚨 They need <=10 - we can make 25, bidding 20`);
+          return { bid: 20, suit };
+        }
+        // Weaker hand: pass to bag the dealer and try to set
+        console.log(`🚨 They need <=10 but weak hand - passing to BAG THE DEALER`);
         return { bid: 0, suit: null };
       }
       if (theyNeed <= 15) {
