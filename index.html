@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.10';
+const VERSION = '2.17.11';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1114,8 +1114,9 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     if (oppHasDealer && currentHighBid === 0) {
       if (theyNeed <= 10) {
         // They need 10 or less. We must make 30 to stay alive.
-        // Hands that can make 30 are rare: 5+J, or 5+AH with strong trump support
-        const canMake30 = (has5 && hasJ) || (has5 && hasAH && trumpCount >= 4);
+        // Making 30 = win ALL 5 tricks. Requires near-perfect hand.
+        // 5+J alone is NOT enough - need 5+J+AH minimum, ideally with AT too.
+        const canMake30 = (has5 && hasJ && hasAH) || (has5 && hasJ && hasAT && trumpCount >= 4);
         if (canMake30) {
           // Bid 20 - they won't overbid since they're in cruise control
           console.log(`🚨 They need <= - we can make 30, bidding 20`);
@@ -1852,6 +1853,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.11', changes: 'Stricter threshold for making 30 in desperation (need 5+J+AH)' },
     { version: '2.17.10', changes: 'Fixed desperation bidding - bag and set when opponent near win' },
     { version: '2.17.9', changes: 'Fixed New Game carrying over state from previous game' },
     { version: '2.17.8', changes: 'Fixed New Game button getting stuck on initializing screen' },
