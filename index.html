@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.12';
+const VERSION = '2.17.13';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1123,14 +1123,14 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
       }
       if (theyNeed <= 10) {
         // They need 6-10. Making 25 saves the game!
-        // Can bid with a strong 25-capable hand.
-        const canMake25 = has5 || (hasJ && hasAH) || (hasJ && hasAT && trumpCount >= 3) || (hasJ && trumpCount >= 4);
-        if (canMake25) {
-          console.log(`🚨 They need <=10 - we can make 25, bidding 20`);
+        // Without the 5, opponent can play their 5 and beat us. The 5 is MANDATORY.
+        // Exception: if opponent already bid, we can't bag anyway - take a shot with J+AH.
+        if (has5) {
+          console.log(`🚨 They need <=10 - we have the 5, bidding 20 to make 25`);
           return { bid: 20, suit };
         }
         // Weaker hand: pass to bag the dealer and try to set
-        console.log(`🚨 They need <=10 but weak hand - passing to BAG THE DEALER`);
+        console.log(`🚨 They need <=10 but no 5 - passing to BAG THE DEALER`);
         return { bid: 0, suit: null };
       }
       if (theyNeed <= 15) {
@@ -1860,6 +1860,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.13', changes: 'Desperation: must have 5 of trump to bid when making 25' },
     { version: '2.17.12', changes: 'Desperation: 25 saves game when opponent needs 6-10' },
     { version: '2.17.11', changes: 'Stricter threshold for making 30 in desperation (need 5+J+AH)' },
     { version: '2.17.10', changes: 'Fixed desperation bidding - bag and set when opponent near win' },
