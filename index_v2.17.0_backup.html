@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.10';
+const VERSION = '2.17.0';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -585,7 +585,6 @@ const FirebaseAPI = {
         createdAt: now,
         lastActivity: now,
         gameState: {
-          initialized: true,  // CRITICAL: Required for GameWrapper to show game instead of "Initializing..."
           phase: 'bidding',
           dealer: 0,
           currentPlayer: 1,
@@ -1069,17 +1068,15 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   const oppBidIs25 = currentHighBid === 25 && partnerBid !== 25;
 
   // Calculate success rates based on simulation data (60%+ threshold)
-  // These are used by DESPERATION BIDDING logic
-  const can20At60Pct = has5 ||  // 5_T1: 62.44%
-                       (hasJ && hasAH && trumpCount >= 2) ||  // J_AH_T2: 66.3%
-                       (hasJ && hasAT && trumpCount >= 2) ||  // J_AT_T2: 62.69%
-                       (hasJ && trumpCount >= 3) ||  // J_T3: 63.5%
-                       (hasAH && trumpCount >= 4) ||  // AH_T4: 64.05%
-                       (hasAT && trumpCount >= 4);  // AT_T4: 61.47%
+  const can20At60Pct = (has5 && trumpCount >= 1) ||
+                       (has5 && hasJ) ||
+                       (has5 && hasAH) ||
+                       (hasJ && hasAH && trumpCount >= 3) ||
+                       (hasJ && trumpCount >= 3);
 
-  const can20At65Pct = has5 ||  // 5_T1: 62.44%
-                       (hasJ && hasAH) ||  // J_AH_T2: 66.3%
-                       (hasJ && trumpCount >= 3);  // J_T3: 63.5%
+  const can20At65Pct = (has5 && trumpCount >= 2) ||
+                       (has5 && hasJ) ||
+                       (has5 && hasAH);
 
   console.log(`🎲 Desperation: ${desperation}, theyNeed: ${theyNeed}, weNeed: ${weNeed}`);
 
@@ -1108,21 +1105,23 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     }
 
     // RULE 4: Opponent has dealer - bag strategy
-    // When opponent is close to winning (needs <=10), we must MAKE 30 to stay alive.
-    // We can bid 20 (they won't overbid), but need a hand that can MAKE 30.
-    // Such hands are rare (5+J, etc). Default: PASS to bag dealer, then SET them.
     if (oppHasDealer && currentHighBid === 0) {
-      if (theyNeed <= 10) {
-        // They need 10 or less. We must make 30 to stay alive.
-        // Hands that can make 30 are rare: 5+J, or 5+AH with strong trump support
-        const canMake30 = (has5 && hasJ) || (has5 && hasAH && trumpCount >= 4);
-        if (canMake30) {
-          // Bid 20 - they won't overbid since they're in cruise control
-          console.log(`🚨 They need <= - we can make 30, bidding 20`);
+      if (theyNeed <= 5) {
+        // Bag the dealer unless 75%+ for 20
+        if (can20At65Pct) {
+          console.log(`🚨 They need <=5 but we have 75%+ hand - bidding 20`);
           return { bid: 20, suit };
         }
-        // Default: pass to BAG the dealer, then try to SET them
-        console.log(`🚨 They need <= - passing to BAG THE DEALER and SET`);
+        console.log(`🚨 They need <=5 - passing to BAG THE DEALER`);
+        return { bid: 0, suit: null };
+      }
+      if (theyNeed <= 10) {
+        // Bid 20 if 70%+ success, else bag
+        if (can20At60Pct) {
+          console.log(`🚨 They need <=10 and we have 70%+ hand - bidding 20`);
+          return { bid: 20, suit };
+        }
+        console.log(`🚨 They need <=10 but weak hand - passing to bag dealer`);
         return { bid: 0, suit: null };
       }
       if (theyNeed <= 15) {
@@ -1170,25 +1169,15 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   }
 
   // =========================================================================
-  // CRUISE CONTROL - We're way ahead, be very conservative
-  // (Bag rules still apply if we're dealer and everyone passes)
+  // WHEN CLOSE TO WINNING - be smart
   // =========================================================================
-  const theirScore = oppScores;
-
-  // We need 5 or less, they're at 85 or below: only bid with 90%+ hands
-  if (weNeed <= 5 && theirScore <= 85) {
-    const has90Pct = has5 || (hasJ && trumpCount >= 5) || (hasJ && hasAH && trumpCount >= 4);
-    if (!has90Pct) return { bid: 0, suit: null };
-  }
-  // We need 10 or less, they're at 80 or below: only bid with 85%+ hands
-  else if (weNeed <= 10 && theirScore <= 80) {
-    const has85Pct = has5 || (hasJ && trumpCount >= 4) || (hasJ && hasAH && trumpCount >= 3) || (hasJ && hasAT && trumpCount >= 4);
-    if (!has85Pct) return { bid: 0, suit: null };
-  }
-  // We need 15 or less, they're at 80 or below: only bid with 80%+ hands
-  else if (weNeed <= 15 && theirScore <= 80) {
-    const has80Pct = has5 || (hasJ && trumpCount >= 3) || (hasJ && hasAH && trumpCount >= 2) || (hasAH && trumpCount >= 4) || (hasAT && trumpCount >= 4);
-    if (!has80Pct) return { bid: 0, suit: null };
+  if (weNeed <= 15) {
+    if (has5 && hasJ) {
+      if (currentHighBid < 20) return { bid: 20, suit };
+    } else if (has5 || (hasJ && trumpCount >= 3)) {
+      if (currentHighBid < 15) return { bid: 15, suit };
+    }
+    if (!has5 && !hasJ && trumpCount < 4) return { bid: 0, suit: null };
   }
 
   // Don't overbid partner's 20 unless overwhelming hand
@@ -1198,95 +1187,38 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   }
 
   // =========================================================================
-  // STANDARD BIDDING - Tiered thresholds from 1.1M simulation
-  // 15=60%, 20=67%, 25=85%, 30=90% (but only bid 30 if opponent bid 25)
-  // Partner overbid: 20=75%, 25=90%, 30=99%
+  // STANDARD BIDDING - Based on 60%+ success rates from simulation
   // =========================================================================
   let bid = 0;
 
-  // Check if partner has bid
-  const partnerHasBid = partnerBid > 0;
-  // Check if opponent has bid 25 (only then consider bidding 30)
-  const oppBid25 = currentHighBid === 25 && partnerBid !== 25;
+  // 30 bid - need near-guaranteed
+  if (has5 && hasJ && hasAH && hasAT) bid = 30;
+  else if (has5 && hasJ && hasAH && trumpCount >= 5) bid = 30;
 
-  // -------------------------------------------------------------------------
-  // PARTNER OVERBIDDING LOGIC - stricter thresholds to not hurt partner
-  // -------------------------------------------------------------------------
-  if (partnerHasBid) {
-    // Partner bid 15 -> bid 20 only if 75%+ chance
-    // 5_T3: 80.61%, 5_AH_T2: 80.97%, 5_AT_T2: 75.93%, 5_J: 87%+, J_AH_T3: 75.02%
-    if (partnerBid === 15) {
-      if (has5 && hasJ && hasAH && hasAT && trumpCount >= 5) bid = 30;  // 99%+ - near perfect
-      else if (has5 && hasJ && hasAH && trumpCount >= 4) bid = 25;  // 5_J_AH_T4: 93.75%
-      else if (has5 && hasJ && hasAT && trumpCount >= 4) bid = 25;  // 5_J_AT_T4: 89.73%
-      else if (has5 && hasJ && trumpCount >= 5) bid = 25;  // 5_J_T5: 95.77%
-      else if (has5 && hasJ) bid = 20;  // 5_J_T2: 87.75%
-      else if (has5 && hasAH) bid = 20;  // 5_AH_T2: 80.97%
-      else if (has5 && hasAT) bid = 20;  // 5_AT_T2: 75.93%
-      else if (has5 && trumpCount >= 3) bid = 20;  // 5_T3: 80.61%
-      else if (hasJ && hasAH && trumpCount >= 3) bid = 20;  // J_AH_T3: 75.02%
-      // Otherwise don't overbid partner's 15
-    }
-    // Partner bid 20 -> bid 25 only if 90%+ chance
-    else if (partnerBid === 20) {
-      if (has5 && hasJ && hasAH && hasAT && trumpCount >= 5) bid = 30;  // 99%+
-      else if (has5 && hasJ && hasAH && trumpCount >= 4) bid = 25;  // 93.75%
-      else if (has5 && hasJ && trumpCount >= 5) bid = 25;  // 95.77%
-      // Otherwise don't overbid partner's 20
-    }
-    // Don't overbid partner's 25 unless perfect hand
-    else if (partnerBid === 25) {
-      if (has5 && hasJ && hasAH && hasAT && trumpCount >= 5) bid = 30;  // 99%+
-    }
-  }
-  // -------------------------------------------------------------------------
-  // STANDARD BIDDING (no partner bid yet)
-  // -------------------------------------------------------------------------
-  else {
-    // 30 bid - only if opponent bid 25 AND we have 90%+ chance
-    // 5_J_AH_T5: 96%, 5_J_AT_T5: 94.44%, 5_J_T5: 95.77%
-    if (oppBid25) {
-      if (has5 && hasJ && hasAH && trumpCount >= 5) bid = 30;  // 96%
-      else if (has5 && hasJ && hasAT && trumpCount >= 5) bid = 30;  // 94.44%
-      else if (has5 && hasJ && trumpCount >= 5) bid = 30;  // 95.77%
-    }
+  // 25 bid - need 60%+ success
+  else if (has5 && hasJ && hasAH) bid = 25;
+  else if (has5 && hasJ && hasAT && trumpCount >= 3) bid = 25;
+  else if (has5 && hasJ && trumpCount >= 3 && highT >= 2) bid = 25;
+  else if (has5 && hasAH && trumpCount >= 4) bid = 25;
 
-    // 25 bid - need 85%+ success
-    // 5_J_AH_T3: 87.14%, 5_J_AH_T4: 93.75%, 5_J_AT_T4: 89.73%, 5_J_T4: 89.24%
-    // 5_AH_T5: 89%, 5_AT_T5: 85.71%, 5_J_T5: 95.77%
-    if (bid === 0) {
-      if (has5 && hasJ && hasAH) bid = 25;  // 5_J_AH_T3: 87.14%
-      else if (has5 && hasJ && hasAT && trumpCount >= 4) bid = 25;  // 5_J_AT_T4: 89.73%
-      else if (has5 && hasJ && trumpCount >= 4) bid = 25;  // 5_J_T4: 89.24%
-      else if (has5 && hasAH && trumpCount >= 5) bid = 25;  // 5_AH_T5: 89%
-      else if (has5 && hasAT && trumpCount >= 5) bid = 25;  // 5_AT_T5: 85.71%
-    }
+  // 20 bid - need 60%+ success
+  else if (has5 && hasJ) bid = 20;
+  else if (has5 && hasAH) bid = 20;
+  else if (has5 && hasAT && trumpCount >= 3) bid = 20;
+  else if (has5 && trumpCount >= 3) bid = 20;
+  else if (has5 && trumpCount >= 2) bid = 20;
+  else if (hasJ && hasAH && trumpCount >= 3) bid = 20;
+  else if (hasJ && trumpCount >= 4) bid = 20;
 
-    // 20 bid - need 67%+ success
-    // 5_T2: 70.57%, 5_T3: 80.61%, J_T4: 69.37%, J_AH_T3: 75.02%, J_AT_T3: 69%
-    // AH_AT_T4: 71.28%, AH_T5: 71.9%
-    if (bid === 0) {
-      if (has5 && trumpCount >= 2) bid = 20;  // 5_T2: 70.57%
-      else if (hasJ && hasAH && trumpCount >= 3) bid = 20;  // J_AH_T3: 75.02%
-      else if (hasJ && hasAT && trumpCount >= 3) bid = 20;  // J_AT_T3: 69%
-      else if (hasJ && trumpCount >= 4) bid = 20;  // J_T4: 69.37%
-      else if (hasAH && hasAT && trumpCount >= 4) bid = 20;  // AH_AT_T4: 71.28%
-      else if (hasAH && trumpCount >= 5) bid = 20;  // AH_T5: 71.9%
-    }
+  // 15 bid - safe options (70%+ success)
+  else if (has5) bid = 15;
+  else if (hasJ && trumpCount >= 2) bid = 15;
+  else if (hasAH && trumpCount >= 2) bid = 15;
+  else if (trumpCount >= 4 && highT >= 2) bid = 15;
+  else if (hasAH && hasAT && trumpCount >= 3) bid = 15;
+  else if (trumpCount >= 4 && highT >= 2) bid = 15;
 
-    // 15 bid - need 60%+ success
-    // 5: 93%+, J_T1: 73.42%, J_T2: 77.53%, AH_T2: 72.73%, AT_T2: 68.08%
-    // NO_HIGH_T2: 63.26%, NO_HIGH_T3: 70.15%
-    if (bid === 0) {
-      if (has5) bid = 15;  // 5_T1: 93.43%
-      else if (hasJ) bid = 15;  // J_T1: 73.42%
-      else if (hasAH && trumpCount >= 2) bid = 15;  // AH_T2: 72.73%
-      else if (hasAT && trumpCount >= 2) bid = 15;  // AT_T2: 68.08%
-      else if (trumpCount >= 3) bid = 15;  // NO_HIGH_T3: 70.15%
-    }
-  }
-
-  // Bid minimum when dealer (last to bid) - don't overbid unnecessarily
+  // Bid minimum when dealer (last to bid)
   if (bid > currentHighBid && playerIndex === dealer && currentHighBid > 0) {
     bid = Math.min(bid, currentHighBid + 5);
   }
@@ -1852,19 +1784,6 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
-    { version: '2.17.10', changes: 'Fixed desperation bidding - bag and set when opponent near win' },
-    { version: '2.17.9', changes: 'Fixed New Game carrying over state from previous game' },
-    { version: '2.17.8', changes: 'Fixed New Game button getting stuck on initializing screen' },
-    { version: '2.17.7', changes: 'Improved login screen with clearer new player/returning player options' },
-    { version: '2.17.6', changes: 'Cruise control bidding when way ahead' },
-    { version: '2.17.5', changes: 'Prevent duplicate username registration' },
-    { version: '2.17.4', changes: 'Fixed bagging logic for AI dealer' },
-    { version: '2.17.3', changes: 'Refinements to AI bidding strategy' },
-    { version: "2.17.2", changes: "Fixed What's New modal to show all recent versions" },
-    { version: '2.17.1', changes: 'AI bidding now uses actual 1.1M simulation data at 60% threshold' },
-    { version: '2.17.0', changes: 'More aggressive AI bidding, fixed New Game button' },
-    { version: '2.16.2', changes: "What's New modal now shows after login instead of on login screen" },
-    { version: '2.16.1', changes: 'Fixed modal display, lowercase usernames, shortened Leaders button' },
     { version: '2.16.0', changes: "Added What's New modal on version updates" },
     { version: '2.15.0', changes: 'Show Hand modal now displays scores, fixed stats on New Game, fixed bagging indicator' },
     { version: '2.14.1', changes: 'Fixed 120-120 tie - bidding team now wins correctly' },
@@ -2181,7 +2100,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
 // ============================================================================
 
 function LoginScreen({ onLogin }) {
-  const [mode, setMode] = useState('register'); // 'login' | 'register'
+  const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
@@ -2239,31 +2158,20 @@ function LoginScreen({ onLogin }) {
     setError(null);
     
     try {
-      const usernameLower = username.trim().toLowerCase();
-      const userId = generateUserId();
-
-      // Use transaction to atomically claim username (prevents race condition duplicates)
-      const usernameRef = database.ref(`usernames/${usernameLower}`);
-      const result = await usernameRef.transaction((currentValue) => {
-        if (currentValue === null) {
-          // Username not taken, claim it
-          return userId;
-        }
-        // Username already taken, abort transaction
-        return undefined;
-      });
-
-      if (!result.committed) {
+      // Check if username already taken
+      const check = await checkUsername(username);
+      if (check.exists) {
         setError('Username already taken');
         setLoading(false);
         return;
       }
-
+      
       // Create new user
+      const userId = generateUserId();
       const pinHash = await hashPin(username, pin);
-
+      
       const newUser = {
-        username: usernameLower,
+        username: username.trim().toLowerCase(),
         pinHash,
         avatar: selectedAvatar,
         createdAt: Date.now(),
@@ -2281,7 +2189,7 @@ function LoginScreen({ onLogin }) {
           streakType: 'W'
         }
       };
-
+      
       await database.ref(`users/${userId}`).set(newUser);
       debug.auth('User created:', userId);
       debug.stats('Initialized stats for:', userId);
@@ -2386,61 +2294,12 @@ function LoginScreen({ onLogin }) {
         maxWidth: '450px',
         width: '100%'
       }}>
-        <h1 style={{ marginBottom: '16px', textAlign: 'center', color: '#1a5f3f', fontSize: '22px' }}>
+        <h1 style={{ marginBottom: '5px', textAlign: 'center', color: '#1a5f3f', fontSize: '22px' }}>
           45s Card Game
         </h1>
-
-        {/* Tab selector for Returning/New Player */}
-        <div style={{
-          display: 'flex',
-          marginBottom: '24px',
-          borderRadius: '8px',
-          overflow: 'hidden',
-          border: '2px solid #2d8f5f'
-        }}>
-          <button
-            onClick={() => {
-              setMode('login');
-              setConfirmPin('');
-              setShowAvatarPicker(false);
-              setError(null);
-            }}
-            style={{
-              flex: 1,
-              padding: '12px 16px',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              border: 'none',
-              cursor: 'pointer',
-              background: mode === 'login' ? '#2d8f5f' : 'white',
-              color: mode === 'login' ? 'white' : '#2d8f5f',
-              transition: 'all 0.2s'
-            }}
-          >
-            Returning Player
-          </button>
-          <button
-            onClick={() => {
-              setMode('register');
-              setPin('');
-              setError(null);
-            }}
-            style={{
-              flex: 1,
-              padding: '12px 16px',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              border: 'none',
-              borderLeft: '2px solid #2d8f5f',
-              cursor: 'pointer',
-              background: mode === 'register' ? '#2d8f5f' : 'white',
-              color: mode === 'register' ? 'white' : '#2d8f5f',
-              transition: 'all 0.2s'
-            }}
-          >
-            New Player
-          </button>
-        </div>
+        <p style={{ marginBottom: '24px', textAlign: 'center', color: '#666', fontSize: '14px' }}>
+          {mode === 'register' ? 'Create Your Account' : 'Welcome Back!'}
+        </p>
 
         {error && (
           <div style={{
@@ -2459,13 +2318,13 @@ function LoginScreen({ onLogin }) {
         {/* Username input */}
         <div style={{ marginBottom: '16px' }}>
           <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
-            {mode === 'register' ? 'Choose a Username' : 'Your Username'}
+            Username
           </label>
           <input
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder={mode === 'register' ? "Choose a username" : "Enter your username"}
+            placeholder="Choose a username"
             style={{
               width: '100%',
               padding: '12px',
@@ -2482,7 +2341,7 @@ function LoginScreen({ onLogin }) {
         {/* PIN input */}
         <div style={{ marginBottom: '16px' }}>
           <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
-            {mode === 'register' ? 'Choose a 4-Digit PIN' : 'Your 4-Digit PIN'}
+            4-Digit PIN
           </label>
           <input
             type="password"
@@ -2607,44 +2466,93 @@ function LoginScreen({ onLogin }) {
           </div>
         )}
 
-        {/* Action button - single button based on mode */}
-        {mode === 'login' ? (
-          <button
-            onClick={handleLogin}
-            disabled={loading || !username.trim() || pin.length !== 4}
-            style={{
-              width: '100%',
-              padding: '14px',
-              fontSize: '16px',
-              background: (loading || !username.trim() || pin.length !== 4) ? '#ccc' : '#2d8f5f',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: (loading || !username.trim() || pin.length !== 4) ? 'not-allowed' : 'pointer',
-              fontWeight: 'bold'
-            }}
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        ) : (
-          <button
-            onClick={handleRegister}
-            disabled={loading || !username.trim() || pin.length !== 4 || pin !== confirmPin}
-            style={{
-              width: '100%',
-              padding: '14px',
-              fontSize: '16px',
-              background: (loading || !username.trim() || pin.length !== 4 || pin !== confirmPin) ? '#ccc' : '#2d8f5f',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: (loading || !username.trim() || pin.length !== 4 || pin !== confirmPin) ? 'not-allowed' : 'pointer',
-              fontWeight: 'bold'
-            }}
-          >
-            {loading ? 'Creating Account...' : 'Create Account'}
-          </button>
-        )}
+        {/* Action buttons */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {mode === 'login' ? (
+            <>
+              <button
+                onClick={handleLogin}
+                disabled={loading || !username.trim() || pin.length !== 4}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  fontSize: '16px',
+                  background: (loading || !username.trim() || pin.length !== 4) ? '#ccc' : '#2d8f5f',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: (loading || !username.trim() || pin.length !== 4) ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                {loading ? 'Logging in...' : 'Login'}
+              </button>
+              <button
+                onClick={() => {
+                  setMode('register');
+                  setPin('');
+                  setError(null);
+                }}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  fontSize: '16px',
+                  background: 'white',
+                  color: '#2d8f5f',
+                  border: '2px solid #2d8f5f',
+                  borderRadius: '6px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                Create New Account
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={handleRegister}
+                disabled={loading || !username.trim() || pin.length !== 4 || pin !== confirmPin}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  fontSize: '16px',
+                  background: (loading || !username.trim() || pin.length !== 4 || pin !== confirmPin) ? '#ccc' : '#2d8f5f',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: (loading || !username.trim() || pin.length !== 4 || pin !== confirmPin) ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                {loading ? 'Creating Account...' : 'Register'}
+              </button>
+              <button
+                onClick={() => {
+                  setMode('login');
+                  setConfirmPin('');
+                  setShowAvatarPicker(false);
+                  setError(null);
+                }}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  fontSize: '16px',
+                  background: 'white',
+                  color: '#666',
+                  border: '2px solid #ddd',
+                  borderRadius: '6px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                Back to Login
+              </button>
+            </>
+          )}
+        </div>
 
         <p style={{ 
           marginTop: '16px', 
@@ -4859,7 +4767,6 @@ function MultiplayerApp() {
   if (appState === 'playing') {
     return (
       <GameWrapper
-        key={gameId}
         gameId={gameId}
         userId={userId}
         playerName={playerName}
@@ -5543,7 +5450,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         const bidsIn = bids.filter(b => b !== null && b !== undefined && b !== -1).length;
         if (bidsIn === 3) {
           const allPassed = bids.every((b, i) => i === dealer || b === 0);
-          if (allPassed) {  // Dealer is FORCED to bid 15 regardless of hand strength
+          if (allPassed && bid === 0) {
             console.log(`🎯 AI Dealer P${dealer + 1} is BAGGED! All others passed - forcing bid to 15`);
             bid = 15;
             wasAutoBagged = true;  // Track that this was an autobag
