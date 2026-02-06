@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.11';
+const VERSION = '2.17.12';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1853,6 +1853,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.12', changes: 'Desperation: 25 saves game when opponent needs 6-10' },
     { version: '2.17.11', changes: 'Stricter threshold for making 30 in desperation (need 5+J+AH)' },
     { version: '2.17.10', changes: 'Fixed desperation bidding - bag and set when opponent near win' },
     { version: '2.17.9', changes: 'Fixed New Game carrying over state from previous game' },
