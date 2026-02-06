@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.8';
+const VERSION = '2.17.9';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1854,6 +1854,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.9', changes: 'Fixed New Game carrying over state from previous game' },
     { version: '2.17.8', changes: 'Fixed New Game button getting stuck on initializing screen' },
     { version: '2.17.7', changes: 'Improved login screen with clearer new player/returning player options' },
     { version: '2.17.6', changes: 'Cruise control bidding when way ahead' },
@@ -4859,6 +4860,7 @@ function MultiplayerApp() {
   if (appState === 'playing') {
     return (
       <GameWrapper
+        key={gameId}
         gameId={gameId}
         userId={userId}
         playerName={playerName}
