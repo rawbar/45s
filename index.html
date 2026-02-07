@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.14';
+const VERSION = '2.17.15';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1123,18 +1123,20 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
       }
       if (theyNeed <= 10) {
         // They need 6-10. Making 25 saves the game!
-        // Without the 5, opponent can play their 5 and beat us. The 5 is MANDATORY.
-        if (has5) {
-          console.log(`🚨 They need <=10 - we have the 5, bidding 20 to make 25`);
+        // Just having the 5 isn't enough - need excellent chance of making 25.
+        // 5+J or 5+AH+3trump or 5+AT+4trump gives strong 25 probability.
+        const canMake25 = (has5 && hasJ) || (has5 && hasAH && trumpCount >= 3) || (has5 && hasAT && trumpCount >= 4);
+        if (canMake25) {
+          console.log(`🚨 They need <=10 - strong 25 hand, bidding 20`);
           return { bid: 20, suit };
         }
-        // Exception: if opponent already bid, we can't bag anyway - take a shot with J+AH
-        if (currentHighBid > 0 && hasJ && hasAH) {
-          console.log(`🚨 They need <=10, can't bag, we have J+AH - bidding 20`);
+        // Exception: if opponent already bid, we can't bag anyway - take a shot with 5+strong
+        if (currentHighBid > 0 && has5 && (hasJ || hasAH || hasAT)) {
+          console.log(`🚨 They need <=10, can't bag, we have 5+high - bidding 20`);
           return { bid: 20, suit };
         }
         // Weaker hand: pass to bag the dealer and try to set
-        console.log(`🚨 They need <=10 but no 5 - passing to BAG THE DEALER`);
+        console.log(`🚨 They need <=10 - no strong 25 hand, passing to BAG THE DEALER`);
         return { bid: 0, suit: null };
       }
       if (theyNeed <= 15) {
@@ -1864,6 +1866,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.15', changes: 'Desperation: require 5+J or 5+AH+3trump to bid for 25' },
     { version: '2.17.14', changes: 'Desperation: can bid J+AH if opponent already bid (no bag option)' },
     { version: '2.17.13', changes: 'Desperation: must have 5 of trump to bid when making 25' },
     { version: '2.17.12', changes: 'Desperation: 25 saves game when opponent needs 6-10' },
