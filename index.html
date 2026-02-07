@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.15';
+const VERSION = '2.17.16';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1123,20 +1123,20 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
       }
       if (theyNeed <= 10) {
         // They need 6-10. Making 25 saves the game!
-        // Just having the 5 isn't enough - need excellent chance of making 25.
-        // 5+J or 5+AH+3trump or 5+AT+4trump gives strong 25 probability.
-        const canMake25 = (has5 && hasJ) || (has5 && hasAH && trumpCount >= 3) || (has5 && hasAT && trumpCount >= 4);
+        // Simulation data for making 25: 5+J+2trump=60%, 5+J+3trump=75%, 5+J+4trump=89%
+        // Need 85%+ chance to risk it instead of bagging. Require 5+J+4trump.
+        const canMake25 = (has5 && hasJ && trumpCount >= 4) || (has5 && hasAH && hasAT && trumpCount >= 4);
         if (canMake25) {
-          console.log(`🚨 They need <=10 - strong 25 hand, bidding 20`);
+          console.log(`🚨 They need <=10 - 89%+ chance at 25, bidding 20`);
           return { bid: 20, suit };
         }
-        // Exception: if opponent already bid, we can't bag anyway - take a shot with 5+strong
-        if (currentHighBid > 0 && has5 && (hasJ || hasAH || hasAT)) {
-          console.log(`🚨 They need <=10, can't bag, we have 5+high - bidding 20`);
+        // Exception: if opponent already bid, we can't bag anyway - take a shot with 5+J+3trump (75%)
+        if (currentHighBid > 0 && has5 && hasJ && trumpCount >= 3) {
+          console.log(`🚨 They need <=10, can't bag, we have 5+J+3trump - bidding 20`);
           return { bid: 20, suit };
         }
         // Weaker hand: pass to bag the dealer and try to set
-        console.log(`🚨 They need <=10 - no strong 25 hand, passing to BAG THE DEALER`);
+        console.log(`🚨 They need <=10 - passing to BAG THE DEALER`);
         return { bid: 0, suit: null };
       }
       if (theyNeed <= 15) {
@@ -1866,6 +1866,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.16', changes: 'Desperation: require 5+J+4trump (89%) to bid instead of bagging' },
     { version: '2.17.15', changes: 'Desperation: require 5+J or 5+AH+3trump to bid for 25' },
     { version: '2.17.14', changes: 'Desperation: can bid J+AH if opponent already bid (no bag option)' },
     { version: '2.17.13', changes: 'Desperation: must have 5 of trump to bid when making 25' },
