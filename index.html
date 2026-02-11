@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.17';
+const VERSION = '2.17.18';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1873,6 +1873,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.18', changes: 'Fix login: case-insensitive username lookup, auto-fix legacy mixed-case accounts, recover orphaned registrations' },
     { version: '2.17.17', changes: 'Desperation bidding thresholds for all scenarios (5/10/15/20 needed)' },
     { version: '2.17.16', changes: 'Desperation: require 5+J+4trump (89%) to bid instead of bagging' },
     { version: '2.17.15', changes: 'Desperation: require 5+J or 5+AH+3trump to bid for 25' },
@@ -2231,18 +2232,56 @@ function LoginScreen({ onLogin }) {
     }
   }, []);
 
-  // Check if username exists in Firebase
+  // Check if username exists in Firebase (uses usernames/ index for case-insensitive lookup)
   const checkUsername = async (user) => {
     try {
-      const snapshot = await database.ref('users').orderByChild('username').equalTo(user.toLowerCase()).once('value');
-      const users = snapshot.val();
-      
+      const usernameLower = user.toLowerCase().trim();
+
+      // Primary: use the usernames/ index (always lowercase keys)
+      const indexSnapshot = await database.ref(`usernames/${usernameLower}`).once('value');
+      if (indexSnapshot.exists()) {
+        const userId = indexSnapshot.val();
+        const userSnapshot = await database.ref(`users/${userId}`).once('value');
+        if (userSnapshot.exists()) {
+          const userData = userSnapshot.val();
+          // Fix legacy mixed-case usernames while we're here
+          if (userData.username !== usernameLower) {
+            debug.auth('Fixing legacy mixed-case username:', userData.username, '->', usernameLower);
+            await database.ref(`users/${userId}/username`).set(usernameLower);
+            userData.username = usernameLower;
+          }
+          debug.auth('User found via index:', userId);
+          return { exists: true, userId, userData };
+        }
+        // Orphaned index entry - user record missing (handled by registration)
+        debug.auth('Orphaned username index for:', usernameLower);
+      }
+
+      // Fallback: query users/ directly (for accounts created before usernames/ index existed)
+      const querySnapshot = await database.ref('users').orderByChild('username').equalTo(usernameLower).once('value');
+      const users = querySnapshot.val();
       if (users) {
         const userId = Object.keys(users)[0];
-        debug.auth('User found:', userId);
+        // Backfill the missing usernames/ index entry
+        debug.auth('Backfilling username index for:', usernameLower);
+        await database.ref(`usernames/${usernameLower}`).set(userId);
+        debug.auth('User found via query fallback:', userId);
         return { exists: true, userId, userData: users[userId] };
       }
-      
+
+      // Second fallback: case-insensitive search for legacy mixed-case stored usernames
+      const mixedCaseSnapshot = await database.ref('users').orderByChild('username').equalTo(user.trim()).once('value');
+      const mixedCaseUsers = mixedCaseSnapshot.val();
+      if (mixedCaseUsers) {
+        const userId = Object.keys(mixedCaseUsers)[0];
+        // Fix the stored username and backfill index
+        debug.auth('Found legacy mixed-case user, fixing:', user.trim(), '->', usernameLower);
+        await database.ref(`users/${userId}/username`).set(usernameLower);
+        await database.ref(`usernames/${usernameLower}`).set(userId);
+        mixedCaseUsers[userId].username = usernameLower;
+        return { exists: true, userId, userData: mixedCaseUsers[userId] };
+      }
+
       debug.auth('User not found:', user);
       return { exists: false };
     } catch (err) {
@@ -2282,9 +2321,24 @@ function LoginScreen({ onLogin }) {
       });
 
       if (!result.committed) {
-        setError('Username already taken');
-        setLoading(false);
-        return;
+        // Check for orphaned reservation (username claimed but user record never created)
+        const claimedByUserId = result.snapshot.val();
+        if (claimedByUserId) {
+          const userSnapshot = await database.ref(`users/${claimedByUserId}`).once('value');
+          if (!userSnapshot.exists()) {
+            // Orphaned reservation - clean it up and reclaim
+            debug.auth('Cleaning up orphaned username reservation for:', usernameLower);
+            await usernameRef.set(userId);
+          } else {
+            setError('Username already taken');
+            setLoading(false);
+            return;
+          }
+        } else {
+          setError('Username already taken');
+          setLoading(false);
+          return;
+        }
       }
 
       // Create new user
@@ -2310,7 +2364,14 @@ function LoginScreen({ onLogin }) {
         }
       };
 
-      await database.ref(`users/${userId}`).set(newUser);
+      try {
+        await database.ref(`users/${userId}`).set(newUser);
+      } catch (writeErr) {
+        // User record failed - clean up the username reservation to avoid orphan
+        debug.error('User write failed, cleaning up username reservation:', writeErr);
+        await usernameRef.remove();
+        throw writeErr;
+      }
       debug.auth('User created:', userId);
       debug.stats('Initialized stats for:', userId);
       
