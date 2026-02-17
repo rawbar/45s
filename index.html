@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.21';
+const VERSION = '2.17.22';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1694,15 +1694,23 @@ if (trick.length > 0) {
   const signalDetected = bidderLed && isBidderSignaling(ledCard, trumpSuit, cardsPlayed, bidWinner, trickNum);
   
   // If bidder is signaling for 3rd man high, play trump aggressively even if partner "winning"
+  // But only if our highest trump can actually beat the current trick winner
   if (signalDetected && myPosition === 2 && myTrumps.length > 0) {
-    // Partner (bidder) led weak card as signal - play highest trump
     const highTrump = myTrumps.reduce((best, card) => {
       const r1 = getTrumpRank(best, trumpSuit);
       const r2 = getTrumpRank(card, trumpSuit);
       return r2 > r1 ? card : best;
     });
-    console.log(`ðŸ“¢ BIDDER SIGNAL: P${player} (3rd pos) playing ${highTrump.id} trump in response to bidder's signal`);
-    return highTrump;
+    // Verify our highest trump can actually win before committing it
+    const testTrick = [...trick, highTrump];
+    while (testTrick.length < 4) testTrick.push({rank: '2', suit: '\u2663', id: 'dummy'});
+    const testWinner = determineTrickWinner(testTrick, trumpSuit, leader);
+    if (testWinner === player) {
+      console.log(`\uD83D\uDCE2 BIDDER SIGNAL: P${player} (3rd pos) playing ${highTrump.id} trump in response to bidder's signal`);
+      return highTrump;
+    } else {
+      console.log(`\uD83D\uDCE2 BIDDER SIGNAL: P${player} detected signal but ${highTrump.id} can't beat current trick - falling through`);
+    }
   }
   
   // RULE 1: Partner winning - play lowest (don't steal partner's trick)
@@ -1988,6 +1996,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.22', changes: 'Fix bidder signal response: verify highest trump can beat current trick before playing it' },
     { version: '2.17.21', changes: 'Fix isCardBoss: 5 of trump now always detected as boss, rank filtering applied to all trump cards' },
     { version: '2.17.20', changes: 'Fix boss card bug: AI no longer wastes boss cards on tricks it cannot win' },
     { version: '2.17.19', changes: 'AI intelligence tracking: suit void detection, per-player card tracking, trump renege awareness, void-aware Monte Carlo' },
