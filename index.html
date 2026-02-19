@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.22';
+const VERSION = '2.17.23';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1713,13 +1713,96 @@ if (trick.length > 0) {
     }
   }
   
-  // RULE 1: Partner winning - play lowest (don't steal partner's trick)
+  // RULE 1: Partner winning - strategic response based on card type and remaining threats
   if (partnerWinning) {
-    return playable.reduce((lowest, card) => {
+    const playLowest = () => playable.reduce((lowest, card) => {
       const r1 = isTrump(lowest) ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
       const r2 = isTrump(card) ? getTrumpRank(card, trumpSuit) + 200 : getOffSuitRank(card);
       return r1 < r2 ? lowest : card;
     });
+
+    // Check if any opponents still play after me
+    const voids = knownVoids || [{},{},{},{}];
+    let opponentAfterMe = false;
+    let allRemainingOppsVoidInTrump = true;
+    let allRemainingOppsNoThreat = true; // void in led suit AND trump
+    const ledSuit = trick[0].suit;
+    for (let pos = myPosition + 1; pos < 4; pos++) {
+      const playerIdx = (leader + pos) % 4;
+      if ((playerIdx % 2) !== myTeam) {
+        opponentAfterMe = true;
+        const oppVoids = voids[playerIdx] || {};
+        if (oppVoids.trump !== true) allRemainingOppsVoidInTrump = false;
+        const voidInLedSuit = !!oppVoids[ledSuit];
+        const voidInTrump = oppVoids.trump === true;
+        if (!voidInLedSuit || !voidInTrump) allRemainingOppsNoThreat = false;
+      }
+    }
+
+    // No opponent after me - trick is safe, play low
+    if (!opponentAfterMe) {
+      console.log(`\uD83E\uDDE0 PARTNER WIN: P${player + 1} last to play, partner winning - play low`);
+      return playLowest();
+    }
+
+    const winningCardIsTrump = isTrump(winningCard);
+
+    if (winningCardIsTrump) {
+      // Partner winning with trump
+      const winningTrumpRank = getTrumpRank(winningCard, trumpSuit);
+
+      if (winningTrumpRank >= 97) {
+        // High trump (Q or above) - likely holds, play low
+        console.log(`\uD83E\uDDE0 PARTNER WIN: P${player + 1} partner has high trump ${winningCard.id} - play low`);
+        return playLowest();
+      }
+
+      // Low trump (signal) - respond unless opponents are out of trump
+      if (allRemainingOppsVoidInTrump) {
+        console.log(`\uD83E\uDDE0 PARTNER WIN: P${player + 1} partner has low trump but opponents void in trump - play low`);
+        return playLowest();
+      }
+
+      // Partner signaling with low trump - play highest trump if we can beat the trick
+      if (myTrumps.length > 0) {
+        const highTrump = myTrumps.reduce((best, card) => {
+          const r1 = getTrumpRank(best, trumpSuit);
+          const r2 = getTrumpRank(card, trumpSuit);
+          return r2 > r1 ? card : best;
+        });
+        const testTrick = [...trick, highTrump];
+        while (testTrick.length < 4) testTrick.push({rank: '2', suit: '\u2660', id: 'dummy'});
+        const testWinner = determineTrickWinner(testTrick, trumpSuit, leader);
+        if (testWinner === player) {
+          console.log(`\uD83E\uDDE0 PARTNER WIN: P${player + 1} responding to partner's low trump signal with ${highTrump.id}`);
+          return highTrump;
+        }
+      }
+      // Can't beat partner's trump - just play low
+      return playLowest();
+    } else {
+      // Partner winning with offsuit - vulnerable to being beaten
+      if (allRemainingOppsNoThreat) {
+        // Remaining opponents can't follow suit or trump - safe
+        console.log(`\uD83E\uDDE0 PARTNER WIN: P${player + 1} opponents void in ${ledSuit} and trump - play low`);
+        return playLowest();
+      }
+
+      if (myTrumps.length > 0) {
+        // Trump in with lowest trump to secure the trick
+        const lowestTrump = myTrumps.reduce((lowest, card) => {
+          const r1 = getTrumpRank(lowest, trumpSuit);
+          const r2 = getTrumpRank(card, trumpSuit);
+          return r1 < r2 ? lowest : card;
+        });
+        console.log(`\uD83E\uDDE0 PARTNER WIN: P${player + 1} securing partner's offsuit trick with ${lowestTrump.id}`);
+        return lowestTrump;
+      }
+
+      // No trump - can't secure, play lowest
+      console.log(`\uD83E\uDDE0 PARTNER WIN: P${player + 1} no trump to secure partner's offsuit - play low`);
+      return playLowest();
+    }
   }
   
   // Check if we can beat current winner
@@ -1996,6 +2079,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.23', changes: 'Smarter partner-winning logic: trump in to secure offsuit tricks, respond to low trump signals, use void tracking' },
     { version: '2.17.22', changes: 'Fix bidder signal response: verify highest trump can beat current trick before playing it' },
     { version: '2.17.21', changes: 'Fix isCardBoss: 5 of trump now always detected as boss, rank filtering applied to all trump cards' },
     { version: '2.17.20', changes: 'Fix boss card bug: AI no longer wastes boss cards on tricks it cannot win' },
