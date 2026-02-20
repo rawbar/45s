@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.26';
+const VERSION = '2.17.27';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2096,6 +2096,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.27', changes: 'Tutorial fixes: correct scoring (30pts/round, high trump=10), renege rules, discard rules, tie-at-120 rule, offsuit A\u2666' },
     { version: '2.17.26', changes: 'Fix lobby header layout (avatar below title) + trump ranking shows red vs black number card order' },
     { version: '2.17.25', changes: 'Added Rules & Tutorial modal for new players (Learn to Play walkthrough + Rules Reference)' },
     { version: '2.17.24', changes: '2nd man low exception: trick 3 trump in on offsuit lead when partner has 2+ trump remaining' },
@@ -2351,7 +2352,7 @@ function RulesModal({ isOpen, onClose }) {
       body: "When a card is NOT trump, the ranking depends on the suit color. This is tricky \u2014 in black suits, low number cards rank HIGH!",
       visual: React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '12px', lineHeight: 1.7 } },
         React.createElement('div', { style: { color: '#ff6b6b', fontWeight: 'bold', marginBottom: '4px' } }, '\u2665\u2666 Hearts & Diamonds (high to low):'),
-        React.createElement('div', { style: { marginBottom: '8px' } }, 'K, Q, J, 10, 9, 8, 7, 6, 5, 4, 3, 2, (A)'),
+        React.createElement('div', { style: { marginBottom: '8px' } }, 'K, Q, J, 10, 9, 8, 7, 6, 5, 4, 3, 2, A\u2666'),
         React.createElement('div', { style: { color: '#e8e4d9', fontWeight: 'bold', marginBottom: '4px' } }, '\u2663\u2660 Clubs & Spades (high to low):'),
         React.createElement('div', null, 'K, Q, J, A, 2, 3, 4, 5, 6, 7, 8, 9, 10'),
         React.createElement('div', { style: { color: '#d4af37', fontSize: '11px', marginTop: '6px' } }, 'Note: In black suits, low numbers beat high numbers!')
@@ -2372,10 +2373,10 @@ function RulesModal({ isOpen, onClose }) {
     },
     {
       title: 'Drawing Cards',
-      body: "After trump is selected, the other players may discard unwanted non-trump cards and draw replacements from the deck. Important: you MUST keep all your trump cards \u2014 you cannot discard them!",
+      body: "After trump is selected, the other players may discard unwanted cards and draw replacements from the deck. You must keep at least one card \u2014 you cannot discard your entire hand.",
       visual: React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '12px' } },
-        React.createElement('div', { style: { color: '#4caf50' } }, '\u2713 You can discard non-trump cards'),
-        React.createElement('div', { style: { color: '#ff6b6b' } }, '\u2717 You CANNOT discard trump cards')
+        React.createElement('div', { style: { color: '#4caf50' } }, '\u2713 Discard up to 4 cards and draw replacements'),
+        React.createElement('div', { style: { color: '#ff6b6b' } }, '\u2717 You must keep at least 1 card')
       )
     },
     {
@@ -2390,18 +2391,19 @@ function RulesModal({ isOpen, onClose }) {
     },
     {
       title: 'Reneging',
-      body: "A special 45s rule! The top 3 trump cards (5, Jack, and Ace of Hearts) have a privilege: if a LOWER trump is led, they don't have to follow suit. They can play an off-suit card instead. However, if the 5 of trump is led, ALL cards must follow.",
+      body: "A special 45s rule! The top 3 trump cards (5, Jack, and Ace of Hearts) have a privilege: if a LOWER trump is led, they don't have to follow suit. But only if those are their ONLY trump \u2014 if they also hold lower trump, they must play one of those. If the 5 of trump is led, ALL cards must follow.",
       visual: React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '12px' } },
         React.createElement('div', { style: { color: '#d4af37', marginBottom: '4px' } }, 'Can renege (not follow lower trump):'),
         React.createElement('div', { style: { marginBottom: '6px' } }, '5 of trump, Jack of trump, A\u2665'),
+        React.createElement('div', { style: { color: '#b8b0a0', fontSize: '11px', marginBottom: '4px' } }, 'Only if you have no other trump to play!'),
         React.createElement('div', { style: { color: '#ff6b6b', fontSize: '11px' } }, 'Exception: If 5 of trump is led, everyone must follow!')
       )
     },
     {
       title: 'Scoring',
-      body: "Each of the 5 tricks is worth 5 points (25 points total per round). The bidding team MUST win at least as many points as they bid, or they LOSE that bid amount. The non-bidding team always keeps whatever points they win.",
+      body: "There are 30 points available per round. Four tricks are worth 5 points each, and the trick won by the highest trump card is worth 10. The bidding team MUST win at least as many points as they bid, or they LOSE that bid amount. The non-bidding team always keeps whatever points they win.",
       visual: React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '12px', lineHeight: 1.7 } },
-        React.createElement('div', null, '5 tricks \u00d7 5 points = 25 points per round'),
+        React.createElement('div', null, '4 tricks \u00d7 5 pts + 1 high trump trick \u00d7 10 pts = 30 per round'),
         React.createElement('div', { style: { color: '#4caf50' } }, '\u2713 Bid 20, win 20+ \u2192 Keep your points'),
         React.createElement('div', { style: { color: '#ff6b6b' } }, '\u2717 Bid 20, win 15 \u2192 Lose 20 points!'),
         React.createElement('div', { style: { color: '#b8b0a0', fontSize: '11px', marginTop: '4px' } }, 'Non-bidders always keep what they win')
@@ -2409,11 +2411,12 @@ function RulesModal({ isOpen, onClose }) {
     },
     {
       title: 'Winning the Game',
-      body: "The first team to reach 120 points wins! Work with your partner \u2014 you share a score. Bid wisely, play strategically, and remember: the 5 of trump is king!",
+      body: "The first team to reach 120 points wins! If both teams reach 120 or higher in the same round, the bidding team wins \u2014 even if they have the lower score. Work with your partner, bid wisely, and remember: the 5 of trump is king!",
       visual: React.createElement('div', { style: { textAlign: 'center', margin: '12px 0' } },
         React.createElement('div', { style: { fontSize: '28px', color: '#d4af37', fontWeight: 'bold' } }, '120'),
         React.createElement('div', { style: { fontSize: '13px', color: '#b8b0a0' } }, 'points to win'),
-        React.createElement('div', { style: { marginTop: '8px', fontSize: '12px', color: '#4caf50' } }, 'Good luck and have fun!')
+        React.createElement('div', { style: { marginTop: '8px', fontSize: '11px', color: '#ff6b6b' } }, 'Both reach 120? Bidding team wins!'),
+        React.createElement('div', { style: { marginTop: '6px', fontSize: '12px', color: '#4caf50' } }, 'Good luck and have fun!')
       )
     }
   ];
@@ -2486,13 +2489,13 @@ function RulesModal({ isOpen, onClose }) {
     ),
     scoring: React.createElement('div', null,
       React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' } }, 'Points'),
-      React.createElement('p', { style: { marginBottom: '10px' } }, 'Each trick is worth 5 points. With 5 tricks per round, there are 25 points available each round.'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, 'There are 30 points per round. Four tricks are worth 5 points each, and the trick won by the highest trump is worth 10.'),
       React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Making Your Bid'),
       React.createElement('p', { style: { marginBottom: '10px' } }, 'If the bidding team wins points \u2265 their bid, they keep all points won. If they fall short, they LOSE the bid amount from their score.'),
       React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Non-Bidding Team'),
       React.createElement('p', { style: { marginBottom: '10px' } }, 'The non-bidding team always keeps whatever points they win, no risk.'),
       React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Winning'),
-      React.createElement('p', { style: { marginBottom: '10px' } }, 'First team to 120 points wins. If both teams reach 120 on the same round, the bidding team wins.'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, 'First team to 120 points wins. If both teams reach 120+ in the same round, the bidding team wins \u2014 even with the lower score.'),
       React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', marginTop: '10px', fontSize: '12px', lineHeight: 1.7 } },
         React.createElement('div', { style: { color: '#4caf50' } }, 'Bid 20, win 25 \u2192 Score +25'),
         React.createElement('div', { style: { color: '#ff6b6b' } }, 'Bid 20, win 15 \u2192 Score -20 (set!)'),
