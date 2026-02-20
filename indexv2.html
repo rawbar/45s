@@ -6338,17 +6338,27 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     
     if (!currentPlayerData || !currentPlayerData.isAI) return;
     
-    // AI needs to bid - check hand is available first
-    const hand = hands[currentPlayer];
-    if (!hand || hand.length === 0) {
-      console.log(`⚠️ AI P${currentPlayer + 1} (${currentSeat}) hand not ready yet, waiting for sync...`, { handLength: hand?.length, currentPlayer });
-      return; // useEffect will re-fire when hands updates (hands is in dependency array)
-    }
-
-    console.log(`AI P${currentPlayer + 1} (${currentSeat}) is bidding... hand:`, hand.length, 'cards');
+    // AI needs to bid
+    console.log(`🔍 AI BIDDING DEBUG: P${currentPlayer + 1} (${currentSeat}) turn to bid`, {
+      phase, currentPlayer, mySeatIndex, dealer,
+      bids: JSON.stringify(bids),
+      highBid, bidWinner,
+      handLength: hands[currentPlayer]?.length,
+      resettingRound,
+      allHandLengths: hands.map(h => h?.length || 0)
+    });
 
     const timer = setTimeout(() => {
-      
+      const hand = hands[currentPlayer];
+      if (!hand || hand.length === 0) {
+        console.error(`❌ AI P${currentPlayer + 1} (${currentSeat}) HAND EMPTY inside setTimeout!`, {
+          hand, currentPlayer, handsLengths: hands.map(h => h?.length || 0)
+        });
+        return;
+      }
+
+      console.log(`🤖 AI P${currentPlayer + 1} (${currentSeat}) executing bid, hand: ${hand.length} cards`);
+
       // Use full AI bidding strategy (matches v3.5.9)
       const myTeam = currentPlayer % 2;
       const teamScores = scores[myTeam];
@@ -6426,8 +6436,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         });
       }
     }, 1000);
-    
-    return () => clearTimeout(timer);
+
+    return () => {
+      console.log(`🧹 AI BIDDING CLEANUP: clearing timer for P${currentPlayer + 1} (${currentSeat})`);
+      clearTimeout(timer);
+    };
   }, [resettingRound, phase, currentPlayer, mySeatIndex, players, hands, bids, highBid, bidWinner, dealer, updateGameState, handleBid]);
 
   // AUTOBAG for HUMAN players: If dealer and all 3 others passed, automatically bid 15
