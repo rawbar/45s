@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.24';
+const VERSION = '2.17.25';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2096,6 +2096,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.25', changes: 'Added Rules & Tutorial modal for new players (Learn to Play walkthrough + Rules Reference)' },
     { version: '2.17.24', changes: '2nd man low exception: trick 3 trump in on offsuit lead when partner has 2+ trump remaining' },
     { version: '2.17.23', changes: 'Smarter partner-winning logic: trump in to secure offsuit tricks, respond to low trump signals, use void tracking' },
     { version: '2.17.22', changes: 'Fix bidder signal response: verify highest trump can beat current trick before playing it' },
@@ -2284,6 +2285,291 @@ Without:       498471 bids, 35.0% success`}
         </div>
       )}
     </>
+  );
+}
+
+// Rules & Tutorial Modal - teaches new players how to play 45s
+function RulesModal({ isOpen, onClose }) {
+  const [activeTab, setActiveTab] = useState('tutorial');
+  const [tutorialStep, setTutorialStep] = useState(0);
+  const [referenceTab, setReferenceTab] = useState('overview');
+
+  if (!isOpen) return null;
+
+  const cardStyle = (color) => ({
+    display: 'inline-block',
+    padding: '2px 5px',
+    margin: '1px 2px',
+    background: 'rgba(255,255,255,0.12)',
+    border: '1px solid rgba(212,175,55,0.4)',
+    borderRadius: '3px',
+    fontWeight: 'bold',
+    fontSize: '13px',
+    color: color === 'red' ? '#ff6b6b' : '#e8e4d9'
+  });
+
+  const suitSymbol = (suit) => ({ hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660' }[suit]);
+  const suitColor = (suit) => (suit === 'hearts' || suit === 'diamonds') ? 'red' : 'white';
+
+  const renderCard = (rank, suit) => (
+    React.createElement('span', { style: cardStyle(suitColor(suit)) }, rank + suitSymbol(suit))
+  );
+
+  const tutorialSteps = [
+    {
+      title: 'Welcome to 45s!',
+      body: '45s is a classic Irish trick-taking card game for 4 players in partnerships. Teams are North/South vs East/West. The first team to reach 120 points wins the game.',
+      visual: null
+    },
+    {
+      title: 'The Deal',
+      body: 'The dealer gives 5 cards to each player, plus 3 cards face-down to the "kitty" (a bonus pile). The dealer rotates clockwise each round.',
+      visual: React.createElement('div', { style: { textAlign: 'center', margin: '12px 0', fontSize: '13px', color: '#b8b0a0' } },
+        React.createElement('div', { style: { marginBottom: '4px' } }, 'Each player: 5 cards'),
+        React.createElement('div', null, 'Kitty: 3 cards (face down)')
+      )
+    },
+    {
+      title: 'Trump Ranking',
+      body: "This is what makes 45s unique! Trump cards beat ALL other cards. The ranking from highest to lowest:",
+      visual: React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '13px', lineHeight: 1.8 } },
+        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold' } }, '1. '), '5 of trump ', React.createElement('span', { style: { color: '#999', fontSize: '11px' } }, '(always highest!)')),
+        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold' } }, '2. '), 'Jack of trump'),
+        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold' } }, '3. '), renderCard('A', 'hearts'), ' ', React.createElement('span', { style: { color: '#ff6b6b', fontSize: '11px' } }, '(ALWAYS trump, in every suit!)')),
+        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold' } }, '4. '), 'Ace of trump'),
+        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold' } }, '5. '), 'King of trump'),
+        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold' } }, '6. '), 'Queen of trump'),
+        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold' } }, '7. '), 'Number cards (10, 9, 8...)')
+      )
+    },
+    {
+      title: 'Off-Suit Ranking',
+      body: "When a card is NOT trump, the ranking depends on the suit color. This is tricky \u2014 in black suits, low number cards rank HIGH!",
+      visual: React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '12px', lineHeight: 1.7 } },
+        React.createElement('div', { style: { color: '#ff6b6b', fontWeight: 'bold', marginBottom: '4px' } }, '\u2665\u2666 Hearts & Diamonds (high to low):'),
+        React.createElement('div', { style: { marginBottom: '8px' } }, 'K, Q, J, 10, 9, 8, 7, 6, 5, 4, 3, 2, (A)'),
+        React.createElement('div', { style: { color: '#e8e4d9', fontWeight: 'bold', marginBottom: '4px' } }, '\u2663\u2660 Clubs & Spades (high to low):'),
+        React.createElement('div', null, 'K, Q, J, A, 2, 3, 4, 5, 6, 7, 8, 9, 10'),
+        React.createElement('div', { style: { color: '#d4af37', fontSize: '11px', marginTop: '6px' } }, 'Note: In black suits, low numbers beat high numbers!')
+      )
+    },
+    {
+      title: 'Bidding',
+      body: "Starting left of the dealer, each player bids or passes. Bids are 15, 20, 25, or 30 and represent the points your team promises to win. You must outbid the current highest bid. If everyone passes, the dealer is \"bagged\" \u2014 forced to bid 15.",
+      visual: React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '12px' } },
+        React.createElement('div', { style: { color: '#d4af37', marginBottom: '4px' } }, 'Bid amounts: 15, 20, 25, 30'),
+        React.createElement('div', { style: { color: '#ff6b6b' } }, 'If all pass \u2192 Dealer is BAGGED (forced to bid 15)')
+      )
+    },
+    {
+      title: 'Trump Selection & Kitty',
+      body: "The bid winner chooses the trump suit (hearts, diamonds, clubs, or spades). All cards of that suit become trump and outrank everything else. The bid winner then picks up the 3 kitty cards, looks at all 8 cards, and discards back down to 5.",
+      visual: null
+    },
+    {
+      title: 'Drawing Cards',
+      body: "After trump is selected, the other players may discard unwanted non-trump cards and draw replacements from the deck. Important: you MUST keep all your trump cards \u2014 you cannot discard them!",
+      visual: React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '12px' } },
+        React.createElement('div', { style: { color: '#4caf50' } }, '\u2713 You can discard non-trump cards'),
+        React.createElement('div', { style: { color: '#ff6b6b' } }, '\u2717 You CANNOT discard trump cards')
+      )
+    },
+    {
+      title: 'Playing Tricks',
+      body: "The bid winner leads the first trick. Play goes clockwise. Each player plays one card. You must follow the led suit if you can, OR you may play a trump card instead. If you can't follow suit and have no trump, play anything.",
+      visual: React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '12px', lineHeight: 1.7 } },
+        React.createElement('div', null, '1. Follow the led suit, OR'),
+        React.createElement('div', null, '2. Play a trump card, OR'),
+        React.createElement('div', null, '3. Play any card (if you can\'t do #1 or #2)'),
+        React.createElement('div', { style: { color: '#d4af37', marginTop: '4px', fontSize: '11px' } }, 'Highest trump wins. If no trump, highest of led suit wins.')
+      )
+    },
+    {
+      title: 'Reneging',
+      body: "A special 45s rule! The top 3 trump cards (5, Jack, and Ace of Hearts) have a privilege: if a LOWER trump is led, they don't have to follow suit. They can play an off-suit card instead. However, if the 5 of trump is led, ALL cards must follow.",
+      visual: React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '12px' } },
+        React.createElement('div', { style: { color: '#d4af37', marginBottom: '4px' } }, 'Can renege (not follow lower trump):'),
+        React.createElement('div', { style: { marginBottom: '6px' } }, '5 of trump, Jack of trump, A\u2665'),
+        React.createElement('div', { style: { color: '#ff6b6b', fontSize: '11px' } }, 'Exception: If 5 of trump is led, everyone must follow!')
+      )
+    },
+    {
+      title: 'Scoring',
+      body: "Each of the 5 tricks is worth 5 points (25 points total per round). The bidding team MUST win at least as many points as they bid, or they LOSE that bid amount. The non-bidding team always keeps whatever points they win.",
+      visual: React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '12px', lineHeight: 1.7 } },
+        React.createElement('div', null, '5 tricks \u00d7 5 points = 25 points per round'),
+        React.createElement('div', { style: { color: '#4caf50' } }, '\u2713 Bid 20, win 20+ \u2192 Keep your points'),
+        React.createElement('div', { style: { color: '#ff6b6b' } }, '\u2717 Bid 20, win 15 \u2192 Lose 20 points!'),
+        React.createElement('div', { style: { color: '#b8b0a0', fontSize: '11px', marginTop: '4px' } }, 'Non-bidders always keep what they win')
+      )
+    },
+    {
+      title: 'Winning the Game',
+      body: "The first team to reach 120 points wins! Work with your partner \u2014 you share a score. Bid wisely, play strategically, and remember: the 5 of trump is king!",
+      visual: React.createElement('div', { style: { textAlign: 'center', margin: '12px 0' } },
+        React.createElement('div', { style: { fontSize: '28px', color: '#d4af37', fontWeight: 'bold' } }, '120'),
+        React.createElement('div', { style: { fontSize: '13px', color: '#b8b0a0' } }, 'points to win'),
+        React.createElement('div', { style: { marginTop: '8px', fontSize: '12px', color: '#4caf50' } }, 'Good luck and have fun!')
+      )
+    }
+  ];
+
+  const referenceContent = {
+    overview: React.createElement('div', null,
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' } }, 'Game Overview'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, '45s is a 4-player partnership trick-taking card game.'),
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Teams'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, 'North & South vs East & West. Partners sit across from each other and share a score.'),
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Objective'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, 'First team to 120 points wins.'),
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Round Flow'),
+      React.createElement('ol', { style: { marginLeft: '16px', lineHeight: 1.8 } },
+        React.createElement('li', null, 'Deal 5 cards each + 3 to kitty'),
+        React.createElement('li', null, 'Bidding (15, 20, 25, or 30)'),
+        React.createElement('li', null, 'Trump selection + kitty pickup'),
+        React.createElement('li', null, 'Discard & draw'),
+        React.createElement('li', null, 'Play 5 tricks'),
+        React.createElement('li', null, 'Score the round')
+      )
+    ),
+    trump: React.createElement('div', null,
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' } }, 'Trump Ranking (High to Low)'),
+      React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', marginBottom: '12px', lineHeight: 2 } },
+        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold', display: 'inline-block', width: '20px' } }, '1.'), ' 5 of trump'),
+        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold', display: 'inline-block', width: '20px' } }, '2.'), ' Jack of trump'),
+        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold', display: 'inline-block', width: '20px' } }, '3.'), ' Ace of Hearts ', React.createElement('span', { style: { color: '#ff6b6b', fontSize: '11px' } }, '(always trump!)')),
+        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold', display: 'inline-block', width: '20px' } }, '4.'), ' Ace of trump suit'),
+        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold', display: 'inline-block', width: '20px' } }, '5.'), ' King of trump'),
+        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold', display: 'inline-block', width: '20px' } }, '6.'), ' Queen of trump'),
+        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold', display: 'inline-block', width: '20px' } }, '7.'), ' 10, 9, 8, 7, 6, 4, 3, 2 of trump')
+      ),
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' } }, 'Ace of Hearts'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, 'The Ace of Hearts is ALWAYS the 3rd highest trump, no matter what suit is trump. If hearts is trump, it ranks 3rd (after the 5 and Jack).'),
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' } }, 'Off-Suit Ranking'),
+      React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', lineHeight: 1.8 } },
+        React.createElement('div', { style: { color: '#ff6b6b', fontWeight: 'bold' } }, '\u2665 \u2666 Red suits: K, Q, J, 10, 9, 8, 7, 6, 5, 4, 3, 2'),
+        React.createElement('div', { style: { fontWeight: 'bold', marginTop: '4px' } }, '\u2663 \u2660 Black suits: K, Q, J, A, 2, 3, 4, 5, 6, 7, 8, 9, 10')
+      )
+    ),
+    bidding: React.createElement('div', null,
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' } }, 'Bidding Rules'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, 'Starting left of the dealer, each player bids or passes. You bid the number of points your team expects to win.'),
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Bid Amounts'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, '15, 20, 25, or 30. Each bid must be higher than the current highest bid.'),
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Bagging'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, 'If all players pass, the dealer is "bagged" \u2014 forced to bid 15. The dealer must then pick trump and play the round.'),
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Strategy Tips'),
+      React.createElement('ul', { style: { marginLeft: '16px', lineHeight: 1.8 } },
+        React.createElement('li', null, 'The 5 and Jack of trump are worth bidding on'),
+        React.createElement('li', null, 'Ace of Hearts is always trump \u2014 factor it in'),
+        React.createElement('li', null, 'Remember your partner will help win tricks too'),
+        React.createElement('li', null, 'The kitty gives the bidder 3 extra cards')
+      )
+    ),
+    gameplay: React.createElement('div', null,
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' } }, 'Following Suit'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, 'You must follow the led suit if you can. You may always play trump instead. If you have neither, play anything.'),
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Discarding & Drawing'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, 'After trump is selected, discard unwanted non-trump cards and draw replacements. You MUST keep all trump cards.'),
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Trick Play'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, 'The bid winner leads the first trick. Highest trump played wins. If no trump, highest card of the led suit wins. The trick winner leads the next trick.'),
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Reneging'),
+      React.createElement('p', { style: { marginBottom: '4px' } }, 'The top 3 trump (5, J, A\u2665) can refuse to follow when a lower trump is led. They may play off-suit instead.'),
+      React.createElement('p', { style: { color: '#ff6b6b', fontSize: '12px' } }, 'Exception: When the 5 of trump is led, everyone must follow suit.')
+    ),
+    scoring: React.createElement('div', null,
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' } }, 'Points'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, 'Each trick is worth 5 points. With 5 tricks per round, there are 25 points available each round.'),
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Making Your Bid'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, 'If the bidding team wins points \u2265 their bid, they keep all points won. If they fall short, they LOSE the bid amount from their score.'),
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Non-Bidding Team'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, 'The non-bidding team always keeps whatever points they win, no risk.'),
+      React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Winning'),
+      React.createElement('p', { style: { marginBottom: '10px' } }, 'First team to 120 points wins. If both teams reach 120 on the same round, the bidding team wins.'),
+      React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', marginTop: '10px', fontSize: '12px', lineHeight: 1.7 } },
+        React.createElement('div', { style: { color: '#4caf50' } }, 'Bid 20, win 25 \u2192 Score +25'),
+        React.createElement('div', { style: { color: '#ff6b6b' } }, 'Bid 20, win 15 \u2192 Score -20 (set!)'),
+        React.createElement('div', { style: { color: '#b8b0a0' } }, 'Non-bidder wins 10 \u2192 Score +10 (always)')
+      )
+    )
+  };
+
+  const step = tutorialSteps[tutorialStep];
+  const tabBtnStyle = (active) => ({
+    flex: 1,
+    padding: '8px 4px',
+    background: active ? 'rgba(212,175,55,0.25)' : 'transparent',
+    border: 'none',
+    borderBottom: active ? '2px solid #d4af37' : '2px solid transparent',
+    color: active ? '#d4af37' : '#888',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    cursor: 'pointer'
+  });
+  const refTabStyle = (active) => ({
+    padding: '5px 8px',
+    background: active ? 'rgba(212,175,55,0.2)' : 'transparent',
+    border: active ? '1px solid rgba(212,175,55,0.4)' : '1px solid transparent',
+    borderRadius: '4px',
+    color: active ? '#d4af37' : '#888',
+    fontSize: '11px',
+    fontWeight: 'bold',
+    cursor: 'pointer'
+  });
+
+  return (
+    React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px' } },
+      React.createElement('div', { style: { background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '2px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '440px', maxHeight: '95%', display: 'flex', flexDirection: 'column', overflow: 'hidden' } },
+        // Header
+        React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid rgba(212,175,55,0.3)' } },
+          React.createElement('span', { style: { fontSize: '16px', fontWeight: 'bold', color: '#d4af37' } }, 'How to Play 45s'),
+          React.createElement('div', { onClick: onClose, style: { width: '24px', height: '24px', border: '1px solid #aaa', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '16px', cursor: 'pointer' } }, '\u2715')
+        ),
+        // Tab bar
+        React.createElement('div', { style: { display: 'flex', borderBottom: '1px solid rgba(212,175,55,0.2)' } },
+          React.createElement('button', { onClick: () => setActiveTab('tutorial'), style: tabBtnStyle(activeTab === 'tutorial') }, 'Learn to Play'),
+          React.createElement('button', { onClick: () => setActiveTab('reference'), style: tabBtnStyle(activeTab === 'reference') }, 'Rules Reference')
+        ),
+        // Content
+        React.createElement('div', { style: { flex: 1, overflowY: 'auto', padding: '12px', fontSize: '13px', lineHeight: 1.6, color: '#e8e4d9' } },
+          activeTab === 'tutorial' ? (
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: '11px', color: '#888', textAlign: 'center', marginBottom: '10px' } }, 'Step ' + (tutorialStep + 1) + ' of ' + tutorialSteps.length),
+              React.createElement('h3', { style: { color: '#d4af37', fontSize: '16px', marginBottom: '10px', textAlign: 'center' } }, step.title),
+              React.createElement('p', { style: { marginBottom: '8px' } }, step.body),
+              step.visual,
+              // Navigation
+              React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid rgba(212,175,55,0.2)' } },
+                React.createElement('button', {
+                  onClick: () => setTutorialStep(Math.max(0, tutorialStep - 1)),
+                  disabled: tutorialStep === 0,
+                  style: { padding: '6px 16px', background: tutorialStep === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(212,175,55,0.2)', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '4px', color: tutorialStep === 0 ? '#555' : '#d4af37', fontSize: '12px', fontWeight: 'bold', cursor: tutorialStep === 0 ? 'default' : 'pointer' }
+                }, '\u2190 Back'),
+                // Step dots
+                React.createElement('div', { style: { display: 'flex', gap: '4px' } },
+                  tutorialSteps.map((_, i) => React.createElement('div', { key: i, onClick: () => setTutorialStep(i), style: { width: '7px', height: '7px', borderRadius: '50%', background: i === tutorialStep ? '#d4af37' : 'rgba(255,255,255,0.2)', cursor: 'pointer' } }))
+                ),
+                React.createElement('button', {
+                  onClick: () => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1)),
+                  disabled: tutorialStep === tutorialSteps.length - 1,
+                  style: { padding: '6px 16px', background: tutorialStep === tutorialSteps.length - 1 ? 'rgba(255,255,255,0.05)' : 'rgba(212,175,55,0.2)', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '4px', color: tutorialStep === tutorialSteps.length - 1 ? '#555' : '#d4af37', fontSize: '12px', fontWeight: 'bold', cursor: tutorialStep === tutorialSteps.length - 1 ? 'default' : 'pointer' }
+                }, 'Next \u2192')
+              )
+            )
+          ) : (
+            React.createElement('div', null,
+              // Reference sub-tabs
+              React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '12px', justifyContent: 'center' } },
+                [['overview', 'Overview'], ['trump', 'Trump'], ['bidding', 'Bidding'], ['gameplay', 'Gameplay'], ['scoring', 'Scoring']].map(([key, label]) =>
+                  React.createElement('button', { key: key, onClick: () => setReferenceTab(key), style: refTabStyle(referenceTab === key) }, label)
+                )
+              ),
+              referenceContent[referenceTab]
+            )
+          )
+        )
+      )
+    )
   );
 }
 
@@ -3004,6 +3290,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
 
+  // Rules modal state
+  const [showRules, setShowRules] = useState(false);
+
   // Fetch leaderboard data
   const fetchLeaderboard = async () => {
     setLeaderboardLoading(true);
@@ -3439,34 +3728,35 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
           boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-            {/* Left: 45s title with version */}
-            <div>
-              <h1 style={{ margin: 0, color: '#1a5f3f', fontSize: '28px', fontWeight: 'bold', lineHeight: 1 }}>45s</h1>
-              <span style={{ fontSize: '10px', color: '#999', fontFamily: 'monospace' }}>v{VERSION}</span>
-            </div>
-
-            {/* Right: User box + buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Left: 45s title + version + avatar */}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+              <div>
+                <h1 style={{ margin: 0, color: '#1a5f3f', fontSize: '28px', fontWeight: 'bold', lineHeight: 1 }}>45s</h1>
+                <span style={{ fontSize: '9px', color: '#999', fontFamily: 'monospace' }}>v{VERSION}</span>
+              </div>
               {/* User avatar box - clickable */}
               <div
                 onClick={() => setShowSettings(true)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
+                  gap: '5px',
                   cursor: 'pointer',
                   background: '#f5f5f5',
-                  padding: '4px 10px',
+                  padding: '3px 8px',
                   borderRadius: '6px',
-                  border: '1px solid #ddd'
+                  border: '1px solid #ddd',
+                  marginBottom: '1px'
                 }}
                 title="Click to edit profile"
               >
-                <span style={{ fontSize: '20px' }}>{getAvatarById(playerAvatar).emoji}</span>
-                <span style={{ fontSize: '13px', fontWeight: '500', color: '#333', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName}</span>
+                <span style={{ fontSize: '18px' }}>{getAvatarById(playerAvatar).emoji}</span>
+                <span style={{ fontSize: '12px', fontWeight: '500', color: '#333', maxWidth: '70px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName}</span>
               </div>
+            </div>
 
-              {/* Compact buttons - Order: New, Leaderboard, Logout */}
+            {/* Right: Buttons - New, Leaders, Rules, Logout */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <button
                 onClick={() => setShowCreateGame(true)}
                 disabled={loading}
@@ -3497,6 +3787,21 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                 }}
               >
                 Leaders
+              </button>
+              <button
+                onClick={() => setShowRules(true)}
+                style={{
+                  padding: '6px 10px',
+                  background: '#d4af37',
+                  color: '#000',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 'bold'
+                }}
+              >
+                Rules
               </button>
               <button
                 onClick={() => {
@@ -4083,6 +4388,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
             </div>
           </div>
         )}
+
+        {/* Rules Modal */}
+        <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
     </div>
   );
 }
