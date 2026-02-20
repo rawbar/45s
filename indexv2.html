@@ -777,9 +777,9 @@ const FirebaseAPI = {
           hands: hands,
           kitty: kitty,
           deck: remaining,
-          bids: [null, null, null, null],
+          bids: [-1, -1, -1, -1],
           highBid: 0,
-          bidWinner: null,
+          bidWinner: -1,
           wasBagged: false,
           trumpSuit: null,
           tricksWon: [0, 0],
@@ -5834,9 +5834,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [deck, setDeck] = useState([]);
   const [dealer, setDealer] = useState(0);
   const [currentPlayer, setCurrentPlayer] = useState(0);
-  const [bids, setBids] = useState([null, null, null, null]);
+  const [bids, setBids] = useState([-1, -1, -1, -1]);
   const [highBid, setHighBid] = useState(0);
-  const [bidWinner, setBidWinner] = useState(null);
+  const [bidWinner, setBidWinner] = useState(-1);
   const [trumpSuit, setTrumpSuit] = useState(null);
   const [trick, setTrick] = useState([]);
   const [trickCards, setTrickCards] = useState([]);
@@ -5871,7 +5871,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [roundDrawn, setRoundDrawn] = useState([0, 0, 0, 0]);
   const [cardsPlayed, setCardsPlayed] = useState([]);
   const [playHistory, setPlayHistory] = useState([]);
-  const [roundBids, setRoundBids] = useState([null, null, null, null]);
+  const [roundBids, setRoundBids] = useState([-1, -1, -1, -1]);
   const timer = useRef(null);
   const dealtHands = useRef(null);
   const statsUpdated = useRef(false); // Track if stats were updated for this game
@@ -5954,7 +5954,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   // Sound effects: react to state changes (works for all players via Firebase sync)
   const prevTrickCardsLen = useRef(0);
   const prevPhase = useRef(null);
-  const prevBidsRef = useRef([null, null, null, null]);
+  const prevBidsRef = useRef([-1, -1, -1, -1]);
 
   useEffect(() => {
     // Card played sound - when trickCards grows
@@ -6044,7 +6044,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       
       // Sync bids and normalize to ensure 4 elements
       if (gameState.bids !== undefined) {
-        const normalizedBids = normalizeArray(gameState.bids, 4, null);
+        const normalizedBids = normalizeArray(gameState.bids, 4, -1);
         console.log('📊 Syncing bids - Raw:', gameState.bids, 'Normalized:', normalizedBids, 'My bid:', normalizedBids[mySeatIndex]);
         setBids(normalizedBids);
       }
@@ -6151,7 +6151,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   // Initialize local bids state if gameState has bids
   useEffect(() => {
     if (gameState && gameState.bids) {
-      const normalizedBids = normalizeArray(gameState.bids, 4, null);
+      const normalizedBids = normalizeArray(gameState.bids, 4, -1);
       console.log('🎯 Initializing bids - Raw:', gameState.bids, 'Normalized:', normalizedBids);
       setBids(normalizedBids);
     }
@@ -6172,6 +6172,20 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     return <span style={{ padding: '2px 4px', background: showBagged ? '#c62828' : '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span>{showBagged && <span style={{ marginLeft: '2px' }}>BAGGED</span>}</span>;
   };
 
+  // Sanitize values before Firebase write - Firebase rejects undefined values
+  const sanitizeForFirebase = useCallback((obj) => {
+    if (obj === undefined) return null;
+    if (Array.isArray(obj)) return obj.map(v => sanitizeForFirebase(v));
+    if (obj !== null && typeof obj === 'object') {
+      const clean = {};
+      for (const [k, v] of Object.entries(obj)) {
+        clean[k] = sanitizeForFirebase(v);
+      }
+      return clean;
+    }
+    return obj;
+  }, []);
+
   // Helper to update Firebase
   const updateGameState = useCallback(async (updates) => {
     const timestamp = Date.now();
@@ -6181,18 +6195,21 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       trickNum: updates.trickNum,
       currentPlayer: updates.currentPlayer
     });
-    
+
+    // Sanitize: Firebase rejects undefined values in update() calls
+    const cleanUpdates = sanitizeForFirebase(updates);
+
     try {
       // Always update lastActivity timestamp with every game action
       await database.ref(`lobby/games/${gameId}/gameState`).update({
-        ...updates,
+        ...cleanUpdates,
         lastActivity: timestamp
       });
       console.log(`[${timestamp}] ✓ Firebase write complete`);
     } catch (error) {
       console.error(`[${timestamp}] ✗ Firebase write FAILED:`, error);
     }
-  }, [gameId, mySeatIndex]);
+  }, [gameId, mySeatIndex, sanitizeForFirebase]);
 
   // Clean hands array - remove any undefined/null cards
   const cleanHands = useCallback((hands) => {
@@ -6306,15 +6323,20 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   // Normalize arrays from Firebase (Firebase sometimes corrupts sparse arrays)
   const normalizeArray = useCallback((arr, expectedLength, defaultValue = null) => {
     if (!arr) return new Array(expectedLength).fill(defaultValue);
-    if (Array.isArray(arr) && arr.length === expectedLength) return arr;
-    
+
+    // If already an array with correct length, still sanitize undefined values
+    // Firebase SDK can return arrays with undefined holes from sparse data
+    if (Array.isArray(arr) && arr.length === expectedLength) {
+      return arr.map(v => v === undefined ? defaultValue : v);
+    }
+
     // Firebase may return object with numeric keys
     const normalized = new Array(expectedLength).fill(defaultValue);
     if (typeof arr === 'object') {
       Object.keys(arr).forEach(key => {
         const index = parseInt(key);
         if (!isNaN(index) && index < expectedLength) {
-          normalized[index] = arr[key];
+          normalized[index] = arr[key] !== undefined ? arr[key] : defaultValue;
         }
       });
     }
@@ -6655,7 +6677,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         kitty: newKitty,
         deck: deck,
         bids: freshBids,
-        bidWinner: null,
+        bidWinner: -1,
         highBid: 0,
         wasBagged: false,
         trumpSuit: null,
@@ -6866,17 +6888,17 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       setKnownVoids(newKnownVoids);
 
       // Track if bidder lost a trick
-      if (bidWinner !== null && !bidderLostTrick) {
+      if (bidWinner >= 0 && !bidderLostTrick) {
         const bidderTeam = getTeam(bidWinner);
         if (winnerTeam !== bidderTeam) {
           setBidderLostTrick(true);
           console.log(`🎯 Bidder (P${bidWinner + 1}) lost first trick`);
         }
       }
-      
+
       // Save trick for "Last Trick" display
       setLastTrick({ cards: newTrickCards, winner });
-      
+
       // Animate cards to winner (reduced from 600ms for faster play)
       setAnimating(winner);
       await new Promise(resolve => setTimeout(resolve, 400));
@@ -7403,17 +7425,17 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         setKnownVoids(newKnownVoids);
 
         // Track if bidder lost a trick
-        if (bidWinner !== null && !bidderLostTrick) {
+        if (bidWinner >= 0 && !bidderLostTrick) {
           const bidderTeam = getTeam(bidWinner);
           if (winnerTeam !== bidderTeam) {
             setBidderLostTrick(true);
             console.log(`\uD83E\uDDE0 INTEL: Bidder (P${bidWinner + 1}) lost first trick`);
           }
         }
-        
+
         // Save trick for "Last Trick" display
         setLastTrick({ cards: newTrickCards, winner });
-        
+
         // Animate cards to winner (reduced from 600ms for faster play)
         setAnimating(winner);
         await new Promise(resolve => setTimeout(resolve, 400));
@@ -7621,9 +7643,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       hands: hands, // All hands (we'll add privacy later)
       kitty: kitty,
       deck: remaining,
-      bids: [null, null, null, null],
+      bids: [-1, -1, -1, -1],  // Use -1 (not null) so Firebase stores the values
       highBid: 0,
-      bidWinner: null,
+      bidWinner: -1,  // Use -1 (not null) so Firebase stores it
       wasBagged: false,
       trumpSuit: null,
       tricksWon: [0, 0],
