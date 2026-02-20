@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.30';
+const VERSION = '2.17.29';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2096,7 +2096,6 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
-    { version: '2.17.30', changes: 'Fix AI bidding stall: check hand availability before setTimeout to prevent stale closure' },
     { version: '2.17.29', changes: 'Rules Reference: add A\u2666 to red offsuit ranking, fix discard rule (no trump restriction)' },
     { version: '2.17.28', changes: 'Header layout: avatar under title, version under Logout. Tutorial: fix kitty discard, clearer renege examples' },
     { version: '2.17.27', changes: 'Tutorial fixes: correct scoring (30pts/round, high trump=10), renege rules, discard rules, tie-at-120 rule, offsuit A\u2666' },
@@ -6132,16 +6131,12 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     
     if (!currentPlayerData || !currentPlayerData.isAI) return;
     
-    // AI needs to bid - check hand is available before starting timer
-    const hand = hands[currentPlayer];
-    if (!hand || hand.length === 0) {
-      console.log(`⚠️ AI P${currentPlayer + 1} (${currentSeat}) hand not ready yet, waiting for sync...`);
-      return; // useEffect will re-fire when hands updates (hands is in dependency array)
-    }
-
-    console.log(`AI P${currentPlayer + 1} (${currentSeat}) is bidding... hand: ${hand.length} cards`);
-
+    // AI needs to bid
+    console.log(`AI P${currentPlayer + 1} is bidding...`);
+    
     const timer = setTimeout(() => {
+      const hand = hands[currentPlayer];
+      if (!hand || hand.length === 0) return;
       
       // Use full AI bidding strategy (matches v3.5.9)
       const myTeam = currentPlayer % 2;
