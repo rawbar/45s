@@ -6338,12 +6338,16 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     
     if (!currentPlayerData || !currentPlayerData.isAI) return;
     
-    // AI needs to bid
-    console.log(`AI P${currentPlayer + 1} is bidding...`);
-    
+    // AI needs to bid - check hand is available first
+    const hand = hands[currentPlayer];
+    if (!hand || hand.length === 0) {
+      console.log(`⚠️ AI P${currentPlayer + 1} (${currentSeat}) hand not ready yet, waiting for sync...`, { handLength: hand?.length, currentPlayer });
+      return; // useEffect will re-fire when hands updates (hands is in dependency array)
+    }
+
+    console.log(`AI P${currentPlayer + 1} (${currentSeat}) is bidding... hand:`, hand.length, 'cards');
+
     const timer = setTimeout(() => {
-      const hand = hands[currentPlayer];
-      if (!hand || hand.length === 0) return;
       
       // Use full AI bidding strategy (matches v3.5.9)
       const myTeam = currentPlayer % 2;
