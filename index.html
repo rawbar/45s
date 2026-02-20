@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.29';
+const VERSION = '2.17.30';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2096,6 +2096,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.30', changes: 'Fix AI bidding stall: sanitize undefined values in Firebase writes, fix normalizeArray for sparse arrays' },
     { version: '2.17.29', changes: 'Rules Reference: add A\u2666 to red offsuit ranking, fix discard rule (no trump restriction)' },
     { version: '2.17.28', changes: 'Header layout: avatar under title, version under Logout. Tutorial: fix kitty discard, clearer renege examples' },
     { version: '2.17.27', changes: 'Tutorial fixes: correct scoring (30pts/round, high trump=10), renege rules, discard rules, tie-at-120 rule, offsuit A\u2666' },
@@ -5965,6 +5966,20 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     return <span style={{ padding: '2px 4px', background: showBagged ? '#c62828' : '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span>{showBagged && <span style={{ marginLeft: '2px' }}>BAGGED</span>}</span>;
   };
 
+  // Sanitize values before Firebase write - Firebase rejects undefined values
+  const sanitizeForFirebase = useCallback((obj) => {
+    if (obj === undefined) return null;
+    if (Array.isArray(obj)) return obj.map(v => sanitizeForFirebase(v));
+    if (obj !== null && typeof obj === 'object') {
+      const clean = {};
+      for (const [k, v] of Object.entries(obj)) {
+        clean[k] = sanitizeForFirebase(v);
+      }
+      return clean;
+    }
+    return obj;
+  }, []);
+
   // Helper to update Firebase
   const updateGameState = useCallback(async (updates) => {
     const timestamp = Date.now();
@@ -5974,18 +5989,21 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       trickNum: updates.trickNum,
       currentPlayer: updates.currentPlayer
     });
-    
+
+    // Sanitize: Firebase rejects undefined values in update() calls
+    const cleanUpdates = sanitizeForFirebase(updates);
+
     try {
       // Always update lastActivity timestamp with every game action
       await database.ref(`lobby/games/${gameId}/gameState`).update({
-        ...updates,
+        ...cleanUpdates,
         lastActivity: timestamp
       });
       console.log(`[${timestamp}] ✓ Firebase write complete`);
     } catch (error) {
       console.error(`[${timestamp}] ✗ Firebase write FAILED:`, error);
     }
-  }, [gameId, mySeatIndex]);
+  }, [gameId, mySeatIndex, sanitizeForFirebase]);
 
   // Clean hands array - remove any undefined/null cards
   const cleanHands = useCallback((hands) => {
@@ -6099,15 +6117,20 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   // Normalize arrays from Firebase (Firebase sometimes corrupts sparse arrays)
   const normalizeArray = useCallback((arr, expectedLength, defaultValue = null) => {
     if (!arr) return new Array(expectedLength).fill(defaultValue);
-    if (Array.isArray(arr) && arr.length === expectedLength) return arr;
-    
+
+    // If already an array with correct length, still sanitize undefined values
+    // Firebase SDK can return arrays with undefined holes from sparse data
+    if (Array.isArray(arr) && arr.length === expectedLength) {
+      return arr.map(v => v === undefined ? defaultValue : v);
+    }
+
     // Firebase may return object with numeric keys
     const normalized = new Array(expectedLength).fill(defaultValue);
     if (typeof arr === 'object') {
       Object.keys(arr).forEach(key => {
         const index = parseInt(key);
         if (!isNaN(index) && index < expectedLength) {
-          normalized[index] = arr[key];
+          normalized[index] = arr[key] !== undefined ? arr[key] : defaultValue;
         }
       });
     }
