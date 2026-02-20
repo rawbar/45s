@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.23';
+const VERSION = '2.17.24';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -621,6 +621,7 @@ const FirebaseAPI = {
       });
 
       // Create new game with active status and dealt cards
+      const initialDealer = Math.floor(Math.random() * 4);
       await database.ref(`lobby/games/${newGameCode}`).set({
         code: newGameCode,
         host: creatorId,
@@ -632,8 +633,8 @@ const FirebaseAPI = {
         gameState: {
           initialized: true,  // CRITICAL: Required for GameWrapper to show game instead of "Initializing..."
           phase: 'bidding',
-          dealer: 0,
-          currentPlayer: 1,
+          dealer: initialDealer,
+          currentPlayer: (initialDealer + 1) % 4,
           scores: [0, 0],
           history: [],
           hands: hands,
@@ -1886,7 +1887,23 @@ if (trick.length > 0) {
         if (winner === player) return card;
       }
     }
-    
+
+    // EXCEPTION: Trick 3, offsuit led, I have trump, partner (4th) has 2+ trump remaining
+    // Trump in so partner can shed junk offsuit and save both trump for tricks 4 and 5
+    if (trickNum === 2 && !isTrump(ledCard) && myTrumps.length > 0) {
+      const partnerIdx = (player + 2) % 4;
+      const partnerTrumpEst = intel.players[partnerIdx].estimatedTrumpRemaining;
+      if (partnerTrumpEst >= 2) {
+        const lowestTrump = myTrumps.reduce((lowest, card) => {
+          const r1 = getTrumpRank(lowest, trumpSuit);
+          const r2 = getTrumpRank(card, trumpSuit);
+          return r1 < r2 ? lowest : card;
+        });
+        console.log(`🧠 2ND MAN EXCEPTION: P${player + 1} trick 3 - trumping offsuit lead with ${lowestTrump.id} (partner has ~${partnerTrumpEst} trump left)`);
+        return lowestTrump;
+      }
+    }
+
     // Otherwise play low (2nd man low principle)
     return playable.reduce((lowest, card) => {
       const r1 = isTrump(lowest) ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
@@ -2079,6 +2096,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.24', changes: '2nd man low exception: trick 3 trump in on offsuit lead when partner has 2+ trump remaining' },
     { version: '2.17.23', changes: 'Smarter partner-winning logic: trump in to secure offsuit tricks, respond to low trump signals, use void tracking' },
     { version: '2.17.22', changes: 'Fix bidder signal response: verify highest trump can beat current trick before playing it' },
     { version: '2.17.21', changes: 'Fix isCardBoss: 5 of trump now always detected as boss, rank filtering applied to all trump cards' },
@@ -5310,10 +5328,11 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
         if (!existingState) {
           console.log('Initializing game state (no existing state found)');
           debug.game('GameWrapper: Initializing game state NOW');
+          const initDealer = Math.floor(Math.random() * 4);
           const initialState = {
             phase: 'start',
-            dealer: 0,
-            currentPlayer: 0,
+            dealer: initDealer,
+            currentPlayer: (initDealer + 1) % 4,
             scores: [0, 0],
             initialized: true
           };
@@ -7049,13 +7068,17 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     setKnownVoids([{},{},{},{}]);
     setBidderLostTrick(false);
     
+    // Randomize first dealer
+    const firstDealer = Math.floor(Math.random() * 4);
+    console.log(`🎲 Random first dealer: P${firstDealer + 1}`);
+
     // Save dealer for modal
-    setRoundDealer(0);
-    
+    setRoundDealer(firstDealer);
+
     // Create and shuffle deck
     const deck = createDeck();
     const shuffled = shuffleDeck(deck);
-    
+
     // Deal 5 cards to each player
     const hands = [
       shuffled.slice(0, 5),
@@ -7065,19 +7088,19 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     ];
     const kitty = shuffled.slice(20, 23);
     const remaining = shuffled.slice(23);
-    
+
     console.log('🎲 DEALING:');
     hands.forEach((hand, i) => {
       console.log(`  P${i}: ${hand.length} cards [${hand.map(c => c.id).join(', ')}]`);
     });
     console.log(`  Kitty: ${kitty.length} cards [${kitty.map(c => c.id).join(', ')}]`);
-    
+
     // Update Firebase with dealt cards
     // Note: Each player's hand is stored separately for privacy
     updateGameState({
       phase: 'bidding',
-      dealer: 0,
-      currentPlayer: 1, // Player to left of dealer starts bidding
+      dealer: firstDealer,
+      currentPlayer: (firstDealer + 1) % 4, // Player to left of dealer starts bidding
       scores: [0, 0],
       history: [],
       hands: hands, // All hands (we'll add privacy later)
