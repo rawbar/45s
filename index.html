@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.30';
+const VERSION = '2.17.31';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -640,9 +640,9 @@ const FirebaseAPI = {
           hands: hands,
           kitty: kitty,
           deck: remaining,
-          bids: [null, null, null, null],
+          bids: [-1, -1, -1, -1],
           highBid: 0,
-          bidWinner: null,
+          bidWinner: -1,
           wasBagged: false,
           trumpSuit: null,
           tricksWon: [0, 0],
@@ -2096,6 +2096,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.31', changes: 'Fix bid skipping: use -1 sentinel instead of null for bids/bidWinner (Firebase deletes null values, causing stale state)' },
     { version: '2.17.30', changes: 'Fix AI bidding stall: sanitize undefined values in Firebase writes, fix normalizeArray for sparse arrays' },
     { version: '2.17.29', changes: 'Rules Reference: add A\u2666 to red offsuit ranking, fix discard rule (no trump restriction)' },
     { version: '2.17.28', changes: 'Header layout: avatar under title, version under Logout. Tutorial: fix kitty discard, clearer renege examples' },
@@ -5683,9 +5684,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [deck, setDeck] = useState([]);
   const [dealer, setDealer] = useState(0);
   const [currentPlayer, setCurrentPlayer] = useState(0);
-  const [bids, setBids] = useState([null, null, null, null]);
+  const [bids, setBids] = useState([-1, -1, -1, -1]);
   const [highBid, setHighBid] = useState(0);
-  const [bidWinner, setBidWinner] = useState(null);
+  const [bidWinner, setBidWinner] = useState(-1);
   const [trumpSuit, setTrumpSuit] = useState(null);
   const [trick, setTrick] = useState([]);
   const [trickCards, setTrickCards] = useState([]);
@@ -5838,7 +5839,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       
       // Sync bids and normalize to ensure 4 elements
       if (gameState.bids !== undefined) {
-        const normalizedBids = normalizeArray(gameState.bids, 4, null);
+        const normalizedBids = normalizeArray(gameState.bids, 4, -1);
         console.log('📊 Syncing bids - Raw:', gameState.bids, 'Normalized:', normalizedBids, 'My bid:', normalizedBids[mySeatIndex]);
         setBids(normalizedBids);
       }
@@ -5945,7 +5946,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   // Initialize local bids state if gameState has bids
   useEffect(() => {
     if (gameState && gameState.bids) {
-      const normalizedBids = normalizeArray(gameState.bids, 4, null);
+      const normalizedBids = normalizeArray(gameState.bids, 4, -1);
       console.log('🎯 Initializing bids - Raw:', gameState.bids, 'Normalized:', normalizedBids);
       setBids(normalizedBids);
     }
@@ -6454,7 +6455,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         kitty: newKitty,
         deck: deck,
         bids: freshBids,
-        bidWinner: null,
+        bidWinner: -1,
         highBid: 0,
         wasBagged: false,
         trumpSuit: null,
@@ -6665,7 +6666,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       setKnownVoids(newKnownVoids);
 
       // Track if bidder lost a trick
-      if (bidWinner !== null && !bidderLostTrick) {
+      if (bidWinner >= 0 && !bidderLostTrick) {
         const bidderTeam = getTeam(bidWinner);
         if (winnerTeam !== bidderTeam) {
           setBidderLostTrick(true);
@@ -7202,7 +7203,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         setKnownVoids(newKnownVoids);
 
         // Track if bidder lost a trick
-        if (bidWinner !== null && !bidderLostTrick) {
+        if (bidWinner >= 0 && !bidderLostTrick) {
           const bidderTeam = getTeam(bidWinner);
           if (winnerTeam !== bidderTeam) {
             setBidderLostTrick(true);
@@ -7420,9 +7421,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       hands: hands, // All hands (we'll add privacy later)
       kitty: kitty,
       deck: remaining,
-      bids: [null, null, null, null],
+      bids: [-1, -1, -1, -1],  // Use -1 (not null) so Firebase stores the values
       highBid: 0,
-      bidWinner: null,
+      bidWinner: -1,  // Use -1 (not null) so Firebase stores it
       wasBagged: false,
       trumpSuit: null,
       tricksWon: [0, 0],
