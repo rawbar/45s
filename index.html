@@ -3841,37 +3841,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
               </div>
               <span style={{ fontSize: '8px', color: '#aaa', fontFamily: 'monospace', marginTop: '2px' }}>v{VERSION}</span>
             </div>
-              {/* Clear button - hidden but kept for admin use if needed */}
-              {false && playerName.toLowerCase() === 'robr' && (
-                <button
-                  onClick={() => {
-                    if (window.confirm('Delete ALL games? This cannot be undone!')) {
-                      Promise.all([
-                        database.ref('lobby/games').remove(),
-                        database.ref('games').remove(),
-                        database.ref('lobby/online').remove()
-                      ]).then(() => {
-                        console.log('All data cleared');
-                        window.location.href = window.location.href;
-                      });
-                    }
-                  }}
-                  disabled={loading}
-                  style={{
-                    padding: '6px 10px',
-                    background: loading ? '#ccc' : '#ff9800',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  Clear
-                </button>
-              )}
-            </div>
           </div>
         </div>
 
