@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.27';
+const VERSION = '2.17.28';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2096,6 +2096,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.28', changes: 'Header layout: avatar under title, version under Logout. Tutorial: fix kitty discard, clearer renege examples' },
     { version: '2.17.27', changes: 'Tutorial fixes: correct scoring (30pts/round, high trump=10), renege rules, discard rules, tie-at-120 rule, offsuit A\u2666' },
     { version: '2.17.26', changes: 'Fix lobby header layout (avatar below title) + trump ranking shows red vs black number card order' },
     { version: '2.17.25', changes: 'Added Rules & Tutorial modal for new players (Learn to Play walkthrough + Rules Reference)' },
@@ -2368,7 +2369,7 @@ function RulesModal({ isOpen, onClose }) {
     },
     {
       title: 'Trump Selection & Kitty',
-      body: "The bid winner chooses the trump suit (hearts, diamonds, clubs, or spades). All cards of that suit become trump and outrank everything else. The bid winner then picks up the 3 kitty cards, looks at all 8 cards, and discards back down to 5.",
+      body: "The bid winner chooses the trump suit (hearts, diamonds, clubs, or spades). All cards of that suit become trump and outrank everything else. The bid winner then picks up the 3 kitty cards, looks at all 8 cards, and discards unwanted cards (keeping at least 1). They'll draw back up to 5 in the next phase.",
       visual: null
     },
     {
@@ -2391,12 +2392,13 @@ function RulesModal({ isOpen, onClose }) {
     },
     {
       title: 'Reneging',
-      body: "A special 45s rule! The top 3 trump cards (5, Jack, and Ace of Hearts) have a privilege: if a LOWER trump is led, they don't have to follow suit. But only if those are their ONLY trump \u2014 if they also hold lower trump, they must play one of those. If the 5 of trump is led, ALL cards must follow.",
-      visual: React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '12px' } },
-        React.createElement('div', { style: { color: '#d4af37', marginBottom: '4px' } }, 'Can renege (not follow lower trump):'),
-        React.createElement('div', { style: { marginBottom: '6px' } }, '5 of trump, Jack of trump, A\u2665'),
-        React.createElement('div', { style: { color: '#b8b0a0', fontSize: '11px', marginBottom: '4px' } }, 'Only if you have no other trump to play!'),
-        React.createElement('div', { style: { color: '#ff6b6b', fontSize: '11px' } }, 'Exception: If 5 of trump is led, everyone must follow!')
+      body: "A special 45s rule! Each of the top 3 trump (5, J, A\u2665) can refuse to follow when a trump LOWER than it is led \u2014 but only if their only trump are higher than what was led. If they hold any lower trump, they must play one.",
+      visual: React.createElement('div', { style: { background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '6px', margin: '10px 0', fontSize: '12px', lineHeight: 1.7 } },
+        React.createElement('div', { style: { color: '#d4af37', fontWeight: 'bold', marginBottom: '4px' } }, 'Examples (trump is Spades):'),
+        React.createElement('div', null, 'J\u2660 is led, you hold only A\u2665 \u2192 ', React.createElement('span', { style: { color: '#ff6b6b' } }, 'must play A\u2665'), ' (J outranks A\u2665)'),
+        React.createElement('div', null, 'J\u2660 is led, you hold only 5\u2660 \u2192 ', React.createElement('span', { style: { color: '#4caf50' } }, 'can renege'), ' (5 outranks J)'),
+        React.createElement('div', null, 'Q\u2660 is led, you hold A\u2665 + 9\u2660 \u2192 ', React.createElement('span', { style: { color: '#ff6b6b' } }, 'must play 9\u2660'), ' (you have lower trump)'),
+        React.createElement('div', { style: { color: '#ff6b6b', fontWeight: 'bold', marginTop: '6px' } }, '5 of trump is led \u2192 everyone must follow!')
       )
     },
     {
@@ -3737,106 +3739,108 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
           marginBottom: '8px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-            {/* Left: 45s title on top, version + avatar below */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+            {/* Left: 45s title, avatar directly below */}
             <div>
               <h1 style={{ margin: 0, color: '#1a5f3f', fontSize: '28px', fontWeight: 'bold', lineHeight: 1 }}>45s</h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                <span style={{ fontSize: '9px', color: '#999', fontFamily: 'monospace' }}>v{VERSION}</span>
-                {/* User avatar box - clickable */}
-                <div
-                  onClick={() => setShowSettings(true)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    cursor: 'pointer',
-                    background: '#f5f5f5',
-                    padding: '2px 7px',
-                    borderRadius: '5px',
-                    border: '1px solid #ddd'
-                  }}
-                  title="Click to edit profile"
-                >
-                  <span style={{ fontSize: '16px' }}>{getAvatarById(playerAvatar).emoji}</span>
-                  <span style={{ fontSize: '11px', fontWeight: '500', color: '#333', maxWidth: '70px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName}</span>
-                </div>
+              <div
+                onClick={() => setShowSettings(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  background: '#f5f5f5',
+                  padding: '2px 7px',
+                  borderRadius: '5px',
+                  border: '1px solid #ddd',
+                  marginTop: '3px',
+                  width: 'fit-content'
+                }}
+                title="Click to edit profile"
+              >
+                <span style={{ fontSize: '16px' }}>{getAvatarById(playerAvatar).emoji}</span>
+                <span style={{ fontSize: '11px', fontWeight: '500', color: '#333', maxWidth: '70px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName}</span>
               </div>
             </div>
 
-            {/* Right: Buttons - New, Leaders, Rules, Logout */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <button
-                onClick={() => setShowCreateGame(true)}
-                disabled={loading}
-                style={{
-                  padding: '6px 10px',
-                  background: loading ? '#ccc' : '#2d8f5f',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  fontSize: '12px',
-                  fontWeight: 'bold'
-                }}
-              >
-                + New
-              </button>
-              <button
-                onClick={fetchLeaderboard}
-                style={{
-                  padding: '6px 10px',
-                  background: '#2196f3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: 'bold'
-                }}
-              >
-                Leaders
-              </button>
-              <button
-                onClick={() => setShowRules(true)}
-                style={{
-                  padding: '6px 10px',
-                  background: '#d4af37',
-                  color: '#000',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: 'bold'
-                }}
-              >
-                Rules
-              </button>
-              <button
-                onClick={() => {
-                  if (window.confirm('Log out? You will need to re-enter your PIN.')) {
-                    localStorage.removeItem('userId');
-                    localStorage.removeItem('playerName');
-                    localStorage.removeItem('playerAvatar');
-                    localStorage.removeItem('45s_username');
-                    localStorage.removeItem('45s_userId');
-                    localStorage.removeItem('45s_avatar');
-                    window.location.reload();
-                  }
-                }}
-                style={{
-                  padding: '6px 10px',
-                  background: '#f44336',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: 'bold'
-                }}
-              >
-                Logout
-              </button>
+            {/* Right: Buttons + version below */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <button
+                  onClick={() => setShowCreateGame(true)}
+                  disabled={loading}
+                  style={{
+                    padding: '6px 10px',
+                    background: loading ? '#ccc' : '#2d8f5f',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  + New
+                </button>
+                <button
+                  onClick={fetchLeaderboard}
+                  style={{
+                    padding: '6px 10px',
+                    background: '#2196f3',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  Leaders
+                </button>
+                <button
+                  onClick={() => setShowRules(true)}
+                  style={{
+                    padding: '6px 10px',
+                    background: '#d4af37',
+                    color: '#000',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  Rules
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm('Log out? You will need to re-enter your PIN.')) {
+                      localStorage.removeItem('userId');
+                      localStorage.removeItem('playerName');
+                      localStorage.removeItem('playerAvatar');
+                      localStorage.removeItem('45s_username');
+                      localStorage.removeItem('45s_userId');
+                      localStorage.removeItem('45s_avatar');
+                      window.location.reload();
+                    }
+                  }}
+                  style={{
+                    padding: '6px 10px',
+                    background: '#f44336',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  Logout
+                </button>
+              </div>
+              <span style={{ fontSize: '8px', color: '#aaa', fontFamily: 'monospace', marginTop: '2px' }}>v{VERSION}</span>
+            </div>
               {/* Clear button - hidden but kept for admin use if needed */}
               {false && playerName.toLowerCase() === 'robr' && (
                 <button
