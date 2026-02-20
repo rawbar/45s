@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.25';
+const VERSION = '2.17.26';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2096,6 +2096,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.26', changes: 'Fix lobby header layout (avatar below title) + trump ranking shows red vs black number card order' },
     { version: '2.17.25', changes: 'Added Rules & Tutorial modal for new players (Learn to Play walkthrough + Rules Reference)' },
     { version: '2.17.24', changes: '2nd man low exception: trick 3 trump in on offsuit lead when partner has 2+ trump remaining' },
     { version: '2.17.23', changes: 'Smarter partner-winning logic: trump in to secure offsuit tricks, respond to low trump signals, use void tracking' },
@@ -2339,7 +2340,10 @@ function RulesModal({ isOpen, onClose }) {
         React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold' } }, '4. '), 'Ace of trump'),
         React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold' } }, '5. '), 'King of trump'),
         React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold' } }, '6. '), 'Queen of trump'),
-        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold' } }, '7. '), 'Number cards (10, 9, 8...)')
+        React.createElement('div', { style: { marginTop: '6px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '6px', fontSize: '11px' } },
+          React.createElement('div', { style: { color: '#ff6b6b', marginBottom: '2px' } }, '\u2665\u2666 Red trump: 10, 9, 8, 7, 6, 5, 4, 3, 2'),
+          React.createElement('div', { style: { color: '#b8b0a0' } }, '\u2663\u2660 Black trump: 2, 3, 4, 5, 6, 7, 8, 9, 10')
+        )
       )
     },
     {
@@ -2441,7 +2445,10 @@ function RulesModal({ isOpen, onClose }) {
         React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold', display: 'inline-block', width: '20px' } }, '4.'), ' Ace of trump suit'),
         React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold', display: 'inline-block', width: '20px' } }, '5.'), ' King of trump'),
         React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold', display: 'inline-block', width: '20px' } }, '6.'), ' Queen of trump'),
-        React.createElement('div', null, React.createElement('span', { style: { color: '#d4af37', fontWeight: 'bold', display: 'inline-block', width: '20px' } }, '7.'), ' 10, 9, 8, 7, 6, 4, 3, 2 of trump')
+        React.createElement('div', { style: { marginTop: '6px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '6px', fontSize: '12px', lineHeight: 1.6 } },
+          React.createElement('div', { style: { color: '#ff6b6b' } }, '\u2665\u2666 Red trump: 10, 9, 8, 7, 6, 5, 4, 3, 2'),
+          React.createElement('div', { style: { color: '#b8b0a0' } }, '\u2663\u2660 Black trump: 2, 3, 4, 5, 6, 7, 8, 9, 10')
+        )
       ),
       React.createElement('p', { style: { color: '#d4af37', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' } }, 'Ace of Hearts'),
       React.createElement('p', { style: { marginBottom: '10px' } }, 'The Ace of Hearts is ALWAYS the 3rd highest trump, no matter what suit is trump. If hearts is trump, it ranks 3rd (after the 5 and Jack).'),
@@ -3728,30 +3735,29 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
           boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-            {/* Left: 45s title + version + avatar */}
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
-              <div>
-                <h1 style={{ margin: 0, color: '#1a5f3f', fontSize: '28px', fontWeight: 'bold', lineHeight: 1 }}>45s</h1>
+            {/* Left: 45s title on top, version + avatar below */}
+            <div>
+              <h1 style={{ margin: 0, color: '#1a5f3f', fontSize: '28px', fontWeight: 'bold', lineHeight: 1 }}>45s</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
                 <span style={{ fontSize: '9px', color: '#999', fontFamily: 'monospace' }}>v{VERSION}</span>
-              </div>
-              {/* User avatar box - clickable */}
-              <div
-                onClick={() => setShowSettings(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  cursor: 'pointer',
-                  background: '#f5f5f5',
-                  padding: '3px 8px',
-                  borderRadius: '6px',
-                  border: '1px solid #ddd',
-                  marginBottom: '1px'
-                }}
-                title="Click to edit profile"
-              >
-                <span style={{ fontSize: '18px' }}>{getAvatarById(playerAvatar).emoji}</span>
-                <span style={{ fontSize: '12px', fontWeight: '500', color: '#333', maxWidth: '70px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName}</span>
+                {/* User avatar box - clickable */}
+                <div
+                  onClick={() => setShowSettings(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    cursor: 'pointer',
+                    background: '#f5f5f5',
+                    padding: '2px 7px',
+                    borderRadius: '5px',
+                    border: '1px solid #ddd'
+                  }}
+                  title="Click to edit profile"
+                >
+                  <span style={{ fontSize: '16px' }}>{getAvatarById(playerAvatar).emoji}</span>
+                  <span style={{ fontSize: '11px', fontWeight: '500', color: '#333', maxWidth: '70px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName}</span>
+                </div>
               </div>
             </div>
 
