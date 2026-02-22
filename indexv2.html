@@ -395,7 +395,7 @@ class GameSimulator {
       }
       
       // Opponent winning - check if we can beat them
-      const currentWinningCard = state.currentTrick[winnerPlayer - state.trickLeader].card;
+      const currentWinningCard = state.currentTrick[(winnerPlayer - state.trickLeader + 4) % 4].card;
       const ledSuit = state.currentTrick[0].card.suit;
       const canBeat = playable.some(card => this.cardBeats(card, currentWinningCard, state.trumpSuit, ledSuit));
       

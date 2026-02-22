@@ -24,7 +24,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.31';
+const VERSION = '2.17.32';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -258,7 +258,7 @@ class GameSimulator {
       }
       
       // Opponent winning - check if we can beat them
-      const currentWinningCard = state.currentTrick[winnerPlayer - state.trickLeader].card;
+      const currentWinningCard = state.currentTrick[(winnerPlayer - state.trickLeader + 4) % 4].card;
       const ledSuit = state.currentTrick[0].card.suit;
       const canBeat = playable.some(card => this.cardBeats(card, currentWinningCard, state.trumpSuit, ledSuit));
       
@@ -2096,6 +2096,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.17.32', changes: 'Fix AI hang: Monte Carlo trick index wraparound crash when trickLeader > winnerPlayer' },
     { version: '2.17.31', changes: 'Fix bid skipping: use -1 sentinel instead of null for bids/bidWinner (Firebase deletes null values, causing stale state)' },
     { version: '2.17.30', changes: 'Fix AI bidding stall: sanitize undefined values in Firebase writes, fix normalizeArray for sparse arrays' },
     { version: '2.17.29', changes: 'Rules Reference: add A\u2666 to red offsuit ranking, fix discard rule (no trump restriction)' },
