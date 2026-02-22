@@ -14,17 +14,25 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Audio & Effects -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Palatino Linotype', Palatino, Georgia, serif; overflow: auto; width: 100%; min-height: 100%; }
     html, body, #root { height: 100%; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes cardPlay { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+    @keyframes scoreChange { from { transform: scale(1.3); color: #d4af37; } to { transform: scale(1); } }
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.17.32';
+const VERSION = '2.18.0';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -38,6 +46,135 @@ const debug = {
   reconnect: (...args) => DEBUG && console.log('🔄 RECONNECT:', ...args),
   error: (...args) => console.error('❌ ERROR:', ...args)
 };
+
+// Sound Manager - Web Audio API synthesized sounds
+const SoundManager = (() => {
+  let ctx = null;
+  let muted = localStorage.getItem('45s_soundMuted') === 'true';
+
+  const getCtx = () => {
+    if (!ctx) {
+      try { ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch(e) { return null; }
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  };
+
+  const tone = (freq, duration, type = 'sine', vol = 0.15, delay = 0) => {
+    const c = getCtx();
+    if (!c) return;
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, c.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + delay + duration);
+    osc.connect(gain);
+    gain.connect(c.destination);
+    osc.start(c.currentTime + delay);
+    osc.stop(c.currentTime + delay + duration);
+  };
+
+  const noise = (duration, vol = 0.08) => {
+    const c = getCtx();
+    if (!c) return;
+    const bufSize = c.sampleRate * duration;
+    const buf = c.createBuffer(1, bufSize, c.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+    const src = c.createBufferSource();
+    const gain = c.createGain();
+    const filter = c.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 4000;
+    src.buffer = buf;
+    gain.gain.setValueAtTime(vol, c.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + duration);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(c.destination);
+    src.start();
+    src.stop(c.currentTime + duration);
+  };
+
+  const sounds = {
+    cardPlay: () => {
+      noise(0.06, 0.12);
+      tone(800, 0.05, 'square', 0.04);
+    },
+    cardDeal: () => {
+      noise(0.04, 0.06);
+    },
+    trickWin: () => {
+      tone(523, 0.15, 'sine', 0.12);
+      tone(659, 0.15, 'sine', 0.12, 0.08);
+      tone(784, 0.2, 'sine', 0.10, 0.16);
+    },
+    bidMade: () => {
+      tone(440, 0.1, 'sine', 0.10);
+      tone(554, 0.12, 'sine', 0.10, 0.08);
+    },
+    bidPass: () => {
+      tone(330, 0.15, 'sine', 0.06);
+    },
+    trumpSelect: () => {
+      tone(523, 0.1, 'sine', 0.10);
+      tone(659, 0.1, 'sine', 0.10, 0.08);
+      tone(784, 0.1, 'sine', 0.10, 0.16);
+      tone(1047, 0.2, 'sine', 0.08, 0.24);
+    },
+    roundEnd: () => {
+      tone(392, 0.2, 'sine', 0.10);
+      tone(523, 0.2, 'sine', 0.10, 0.15);
+      tone(659, 0.25, 'sine', 0.08, 0.30);
+    },
+    gameWin: () => {
+      tone(523, 0.15, 'sine', 0.12);
+      tone(659, 0.15, 'sine', 0.12, 0.12);
+      tone(784, 0.15, 'sine', 0.12, 0.24);
+      tone(1047, 0.3, 'sine', 0.12, 0.36);
+      tone(784, 0.1, 'sine', 0.08, 0.50);
+      tone(1047, 0.4, 'sine', 0.10, 0.58);
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+        setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { x: 0.3, y: 0.5 } }), 300);
+        setTimeout(() => confetti({ particleCount: 80, spread: 100, origin: { x: 0.7, y: 0.5 } }), 500);
+      }
+    },
+    gameLose: () => {
+      tone(440, 0.2, 'sine', 0.10);
+      tone(392, 0.2, 'sine', 0.10, 0.15);
+      tone(349, 0.2, 'sine', 0.10, 0.30);
+      tone(262, 0.4, 'sine', 0.08, 0.45);
+    },
+    buttonClick: () => {
+      tone(600, 0.04, 'square', 0.03);
+    },
+    modalOpen: () => {
+      tone(400, 0.08, 'sine', 0.05);
+      tone(600, 0.1, 'sine', 0.04, 0.04);
+    }
+  };
+
+  return {
+    play: (name) => {
+      if (muted) return;
+      try { sounds[name] && sounds[name](); }
+      catch(e) { /* audio not available */ }
+    },
+    toggle: () => {
+      muted = !muted;
+      localStorage.setItem('45s_soundMuted', muted);
+      return muted;
+    },
+    isMuted: () => muted,
+    setMuted: (val) => {
+      muted = val;
+      localStorage.setItem('45s_soundMuted', muted);
+    }
+  };
+})();
 
 // SHA-256 PIN hashing utility
 async function hashPin(username, pin) {
@@ -2096,9 +2233,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
-    { version: '2.17.32', changes: 'Fix AI hang: Monte Carlo trick index wraparound crash when trickLeader > winnerPlayer' },
-    { version: '2.17.31', changes: 'Fix bid skipping: use -1 sentinel instead of null for bids/bidWinner (Firebase deletes null values, causing stale state)' },
-    { version: '2.17.30', changes: 'Fix AI bidding stall: sanitize undefined values in Firebase writes, fix normalizeArray for sparse arrays' },
+    { version: '2.18.0', changes: 'Sound effects (cards, bids, tricks, victory), modal animations, card play animations, confetti on win, mute toggle' },
     { version: '2.17.29', changes: 'Rules Reference: add A\u2666 to red offsuit ranking, fix discard rule (no trump restriction)' },
     { version: '2.17.28', changes: 'Header layout: avatar under title, version under Logout. Tutorial: fix kitty discard, clearer renege examples' },
     { version: '2.17.27', changes: 'Tutorial fixes: correct scoring (30pts/round, high trump=10), renege rules, discard rules, tie-at-120 rule, offsuit A\u2666' },
@@ -2204,8 +2339,8 @@ function HelpModal({ isOpen, onClose }) {
   return (
     <>
       {/* Main Help Modal */}
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px' }}>
-        <div style={{ background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '2px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '400px', maxHeight: '95%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px', animation: 'fadeIn 0.2s ease-out' }}>
+        <div style={{ background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '2px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '400px', maxHeight: '95%', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideUp 0.25s ease-out' }}>
           {/* Modal Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid rgba(212,175,55,0.3)' }}>
             <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#d4af37' }}>Info & Help</span>
@@ -2534,8 +2669,8 @@ function RulesModal({ isOpen, onClose }) {
   });
 
   return (
-    React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px' } },
-      React.createElement('div', { style: { background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '2px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '440px', maxHeight: '95%', display: 'flex', flexDirection: 'column', overflow: 'hidden' } },
+    React.createElement('div', { style: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px', animation: 'fadeIn 0.2s ease-out' } },
+      React.createElement('div', { style: { background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '2px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '440px', maxHeight: '95%', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideUp 0.25s ease-out' } },
         // Header
         React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid rgba(212,175,55,0.3)' } },
           React.createElement('span', { style: { fontSize: '16px', fontWeight: 'bold', color: '#d4af37' } }, 'How to Play 45s'),
@@ -2682,8 +2817,8 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
   };
   
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px' }}>
-      <div style={{ background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '2px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '400px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 0 20px rgba(212, 175, 55, 0.5)' }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px', animation: 'fadeIn 0.2s ease-out' }}>
+      <div style={{ background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '2px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '400px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 0 20px rgba(212, 175, 55, 0.5)', animation: 'slideUp 0.25s ease-out' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#d4af37' }}>
             Hands After Draw <span style={{ fontSize: '10px', color: '#888' }}>v{VERSION}</span>
@@ -3308,6 +3443,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
 
   // Rules modal state
   const [showRules, setShowRules] = useState(false);
+  const [soundMuted, setSoundMuted] = useState(SoundManager.isMuted());
 
   // Fetch leaderboard data
   const fetchLeaderboard = async () => {
@@ -3748,7 +3884,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
             <div>
               <h1 style={{ margin: 0, color: '#1a5f3f', fontSize: '28px', fontWeight: 'bold', lineHeight: 1 }}>45s</h1>
               <div
-                onClick={() => setShowSettings(true)}
+                onClick={() => { SoundManager.play('modalOpen'); setShowSettings(true); }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -3772,7 +3908,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <button
-                  onClick={() => setShowCreateGame(true)}
+                  onClick={() => { SoundManager.play('buttonClick'); setShowCreateGame(true); }}
                   disabled={loading}
                   style={{
                     padding: '6px 10px',
@@ -3788,7 +3924,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                   + New
                 </button>
                 <button
-                  onClick={fetchLeaderboard}
+                  onClick={() => { SoundManager.play('buttonClick'); fetchLeaderboard(); }}
                   style={{
                     padding: '6px 10px',
                     background: '#2196f3',
@@ -3803,7 +3939,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                   Leaders
                 </button>
                 <button
-                  onClick={() => setShowRules(true)}
+                  onClick={() => { SoundManager.play('modalOpen'); setShowRules(true); }}
                   style={{
                     padding: '6px 10px',
                     background: '#d4af37',
@@ -3843,7 +3979,14 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                   Logout
                 </button>
               </div>
-              <span style={{ fontSize: '8px', color: '#aaa', fontFamily: 'monospace', marginTop: '2px' }}>v{VERSION}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                <span
+                  onClick={() => { const m = SoundManager.toggle(); setSoundMuted(m); }}
+                  style={{ fontSize: '14px', cursor: 'pointer', opacity: 0.7, userSelect: 'none' }}
+                  title={soundMuted ? 'Unmute sounds' : 'Mute sounds'}
+                >{soundMuted ? '\uD83D\uDD07' : '\uD83D\uDD0A'}</span>
+                <span style={{ fontSize: '8px', color: '#aaa', fontFamily: 'monospace' }}>v{VERSION}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -4049,10 +4192,12 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            zIndex: 2000
+            zIndex: 2000,
+            animation: 'fadeIn 0.2s ease-out'
           }}>
             <div style={{
               background: 'white',
+              animation: 'slideUp 0.25s ease-out',
               borderRadius: '12px',
               padding: '24px',
               maxWidth: '350px',
@@ -4128,10 +4273,12 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            zIndex: 2000
+            zIndex: 2000,
+            animation: 'fadeIn 0.2s ease-out'
           }}>
             <div style={{
               background: 'white',
+              animation: 'slideUp 0.25s ease-out',
               borderRadius: '12px',
               padding: '24px',
               maxWidth: '400px',
@@ -4222,10 +4369,12 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            zIndex: 2000
+            zIndex: 2000,
+            animation: 'fadeIn 0.2s ease-out'
           }}>
             <div style={{
               background: 'white',
+              animation: 'slideUp 0.25s ease-out',
               borderRadius: '12px',
               padding: '32px',
               maxWidth: '500px',
@@ -5711,6 +5860,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [animating, setAnimating] = useState(null);
   const [wasBagged, setWasBagged] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [soundMuted, setSoundMuted] = useState(SoundManager.isMuted());
   const [knownOutOfTrump, setKnownOutOfTrump] = useState([false, false, false, false]);
   const [knownVoids, setKnownVoids] = useState([{},{},{},{}]);
   // knownVoids[player] = { '♠': true, '♦': true, trump: true|'reneging', possibleTrump: ['J♠','A♥'], noLowTrump: true }
@@ -5721,7 +5871,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [roundDrawn, setRoundDrawn] = useState([0, 0, 0, 0]);
   const [cardsPlayed, setCardsPlayed] = useState([]);
   const [playHistory, setPlayHistory] = useState([]);
-  const [roundBids, setRoundBids] = useState([null, null, null, null]);
+  const [roundBids, setRoundBids] = useState([-1, -1, -1, -1]);
   const timer = useRef(null);
   const dealtHands = useRef(null);
   const statsUpdated = useRef(false); // Track if stats were updated for this game
@@ -5800,6 +5950,60 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       }
     }
   }, [phase, currentPlayer, mySeatIndex, trumpSuit, hands]);
+
+  // Sound effects: react to state changes (works for all players via Firebase sync)
+  const prevTrickCardsLen = useRef(0);
+  const prevPhase = useRef(null);
+  const prevBidsRef = useRef([-1, -1, -1, -1]);
+
+  useEffect(() => {
+    // Card played sound - when trickCards grows
+    if (trickCards.length > prevTrickCardsLen.current && trickCards.length > 0) {
+      SoundManager.play('cardPlay');
+    }
+    prevTrickCardsLen.current = trickCards.length;
+  }, [trickCards.length]);
+
+  useEffect(() => {
+    // Bid sounds - when any player bids
+    if (bids) {
+      for (let i = 0; i < 4; i++) {
+        if (bids[i] !== null && bids[i] !== undefined && (prevBidsRef.current[i] === null || prevBidsRef.current[i] === undefined)) {
+          SoundManager.play(bids[i] > 0 ? 'bidMade' : 'bidPass');
+          break;
+        }
+      }
+      prevBidsRef.current = [...bids];
+    }
+  }, [bids]);
+
+  useEffect(() => {
+    // Phase transition sounds
+    if (phase === prevPhase.current) return;
+    const prev = prevPhase.current;
+    prevPhase.current = phase;
+    if (!prev) return;
+
+    if (phase === 'trump-select' || (prev === 'bidding' && phase === 'discarding')) SoundManager.play('trumpSelect');
+    if (phase === 'round-end') SoundManager.play('roundEnd');
+    if (phase === 'game-over') {
+      const myTeam = mySeatIndex % 2 === 0 ? 0 : 1;
+      const winner = gameState?.winner;
+      if (winner === myTeam) SoundManager.play('gameWin');
+      else SoundManager.play('gameLose');
+    }
+  }, [phase, mySeatIndex, gameState?.winner]);
+
+  // Trick win sound
+  const prevTricksRef = useRef(null);
+  useEffect(() => {
+    if (!tricksWon) return;
+    const totalTricks = tricksWon.reduce((a, b) => a + b, 0);
+    if (prevTricksRef.current !== null && totalTricks > prevTricksRef.current) {
+      SoundManager.play('trickWin');
+    }
+    prevTricksRef.current = totalTricks;
+  }, [tricksWon]);
 
   // Sync local state with Firebase gameState
   useEffect(() => {
@@ -6157,12 +6361,26 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     if (!currentPlayerData || !currentPlayerData.isAI) return;
     
     // AI needs to bid
-    console.log(`AI P${currentPlayer + 1} is bidding...`);
-    
+    console.log(`🔍 AI BIDDING DEBUG: P${currentPlayer + 1} (${currentSeat}) turn to bid`, {
+      phase, currentPlayer, mySeatIndex, dealer,
+      bids: JSON.stringify(bids),
+      highBid, bidWinner,
+      handLength: hands[currentPlayer]?.length,
+      resettingRound,
+      allHandLengths: hands.map(h => h?.length || 0)
+    });
+
     const timer = setTimeout(() => {
       const hand = hands[currentPlayer];
-      if (!hand || hand.length === 0) return;
-      
+      if (!hand || hand.length === 0) {
+        console.error(`❌ AI P${currentPlayer + 1} (${currentSeat}) HAND EMPTY inside setTimeout!`, {
+          hand, currentPlayer, handsLengths: hands.map(h => h?.length || 0)
+        });
+        return;
+      }
+
+      console.log(`🤖 AI P${currentPlayer + 1} (${currentSeat}) executing bid, hand: ${hand.length} cards`);
+
       // Use full AI bidding strategy (matches v3.5.9)
       const myTeam = currentPlayer % 2;
       const teamScores = scores[myTeam];
@@ -6240,8 +6458,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         });
       }
     }, 1000);
-    
-    return () => clearTimeout(timer);
+
+    return () => {
+      console.log(`🧹 AI BIDDING CLEANUP: clearing timer for P${currentPlayer + 1} (${currentSeat})`);
+      clearTimeout(timer);
+    };
   }, [resettingRound, phase, currentPlayer, mySeatIndex, players, hands, bids, highBid, bidWinner, dealer, updateGameState, handleBid]);
 
   // AUTOBAG for HUMAN players: If dealer and all 3 others passed, automatically bid 15
@@ -6674,10 +6895,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           console.log(`🎯 Bidder (P${bidWinner + 1}) lost first trick`);
         }
       }
-      
+
       // Save trick for "Last Trick" display
       setLastTrick({ cards: newTrickCards, winner });
-      
+
       // Animate cards to winner (reduced from 600ms for faster play)
       setAnimating(winner);
       await new Promise(resolve => setTimeout(resolve, 400));
@@ -7211,10 +7432,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             console.log(`\uD83E\uDDE0 INTEL: Bidder (P${bidWinner + 1}) lost first trick`);
           }
         }
-        
+
         // Save trick for "Last Trick" display
         setLastTrick({ cards: newTrickCards, winner });
-        
+
         // Animate cards to winner (reduced from 600ms for faster play)
         setAnimating(winner);
         await new Promise(resolve => setTimeout(resolve, 400));
@@ -7543,24 +7764,32 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           45s <span style={{ fontSize: '8px', color: '#666' }}>v{VERSION}</span>
         </div>
         
-        {/* Help button */}
-        <div 
-          onClick={() => setHelpOpen(true)} 
-          style={{ 
-            width: '20px', 
-            height: '20px', 
-            borderRadius: '50%', 
-            border: '1px solid #d4af37', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            color: '#d4af37', 
-            fontSize: '12px', 
-            cursor: 'pointer', 
-            fontWeight: 'bold' 
-          }}
-        >
-          ?
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Mute toggle */}
+          <span
+            onClick={() => { const m = SoundManager.toggle(); setSoundMuted(m); }}
+            style={{ fontSize: '14px', cursor: 'pointer', opacity: 0.7, userSelect: 'none' }}
+            title={soundMuted ? 'Unmute sounds' : 'Mute sounds'}
+          >{soundMuted ? '\uD83D\uDD07' : '\uD83D\uDD0A'}</span>
+          {/* Help button */}
+          <div
+            onClick={() => { SoundManager.play('modalOpen'); setHelpOpen(true); }}
+            style={{
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              border: '1px solid #d4af37',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#d4af37',
+              fontSize: '12px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            ?
+          </div>
         </div>
         
         <div style={{ fontSize: '12px' }}>
@@ -7700,10 +7929,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                       zIndex: 1,
                       ...pos,
                       transition: isAnimating ? 'all 0.4s ease' : 'none',
-                      transform: isAnimating 
-                        ? `translate(${winPos.x}px, ${winPos.y}px) scale(0.2)` 
+                      transform: isAnimating
+                        ? `translate(${winPos.x}px, ${winPos.y}px) scale(0.2)`
                         : pos.transform,
-                      opacity: isAnimating ? 0 : 1
+                      opacity: isAnimating ? 0 : 1,
+                      animation: !isAnimating ? 'cardPlay 0.2s ease-out' : 'none'
                     }}
                   >
                     <Card card={tc.card} small disabled />
@@ -7882,7 +8112,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             borderRadius: '12px',
             border: '2px solid #d4af37',
             zIndex: 100,
-            minWidth: '400px'
+            minWidth: '400px',
+            animation: 'slideUp 0.3s ease-out'
           }}>
             <div style={{ fontSize: '24px', marginBottom: '20px', textAlign: 'center', color: '#d4af37' }}>
               Round Complete
@@ -7964,7 +8195,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               border: `4px solid ${isWin ? '#4caf50' : '#f44336'}`,
               zIndex: 100,
               minWidth: '500px',
-              textAlign: 'center'
+              textAlign: 'center',
+              animation: 'slideUp 0.3s ease-out'
             }}>
               <div style={{ fontSize: '48px', marginBottom: '24px', color: isWin ? '#4caf50' : '#f44336', fontWeight: 'bold' }}>
                 {isWin ? '🏆 VICTORY!' : '💀 DEFEAT'}
