@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.18.3';
+const VERSION = '2.18.4';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1689,6 +1689,20 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
         while (testTrick.length < 4) testTrick.push({rank: '2', suit: '\u2663', id: 'dummy'});
         const winner = determineTrickWinner(testTrick, trumpSuit, leader);
         if (winner === player) {
+          // PARTNER BOSS-SAVE: bidder's partner following with boss trump should save it
+          // when enemy trump is low — boss still wins on a later trick AND earns the high-trump bonus
+          // Simulation (550k games): partner plays boss in following → offsuit = 94-96% improvement
+          const isPartner = player === (bidWinner + 2) % 4;
+          if (isPartner && trickNum < 5) {
+            const opp1 = (bidWinner + 1) % 4;
+            const opp2 = (bidWinner + 3) % 4;
+            const enemyTrump = (intel.players[opp1]?.estimatedTrumpRemaining || 0) +
+                               (intel.players[opp2]?.estimatedTrumpRemaining || 0);
+            if (enemyTrump <= 1) {
+              console.log(`🎯 BOSS SAVE: P${player + 1} (partner) saving boss ${card.id} - enemy trump ~${enemyTrump}, plays offsuit instead`);
+              break; // fall through to 2nd-man-low → plays offsuit
+            }
+          }
           console.log(`🎯 BOSS CARD: P${player} playing ${card.id} (beats current trick & guaranteed winner)`);
           return card;
         } else {
@@ -2257,6 +2271,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.18.4', changes: 'AI: bidder partner saves boss trump when following with enemy trump ≤1 (94-96% improvement from simulation) — boss more valuable held for future trick + high-trump bonus than spent now' },
     { version: '2.18.3', changes: 'AI play improvements from 550k game simulation: stop leading A♥/A-trump early when not boss (97-100% better to lead offsuit), play low trump when all opponents void (100%), defenders save boss trump when leading (70-85% improvement)' },
     { version: '2.18.2', changes: 'Fix bidding thresholds to use % approach: restore 5+J bid 20 (T2=84%), restore 5+J+AH bid 25 (85.88%), remove J+AT+T3 (64%) and 5+AT+T5 (81%)' },
     { version: '2.18.1', changes: 'Recalibrated bidding thresholds from 5M round simulation: AI bids less aggressively on 20/25, more conservative on J/AH-only hands' },
