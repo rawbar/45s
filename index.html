@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.18.0';
+const VERSION = '2.18.3';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1402,9 +1402,9 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   }
 
   // =========================================================================
-  // STANDARD BIDDING - Tiered thresholds from 1.1M simulation
-  // 15=60%, 20=67%, 25=85%, 30=90% (but only bid 30 if opponent bid 25)
-  // Partner overbid: 20=75%, 25=90%, 30=99%
+  // STANDARD BIDDING - Percentage thresholds from 5M round simulation (v2.18.2)
+  // 15=60%+, 20=67%+, 25=85%+, 30=overbid opp 25 only (75%+)
+  // Partner overbid: 20=75%+, 25=90%+, 30=99%+
   // =========================================================================
   let bid = 0;
 
@@ -1417,18 +1417,16 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   // PARTNER OVERBIDDING LOGIC - stricter thresholds to not hurt partner
   // -------------------------------------------------------------------------
   if (partnerHasBid) {
-    // Partner bid 15 -> bid 20 only if 75%+ chance
-    // 5_T3: 80.61%, 5_AH_T2: 80.97%, 5_AT_T2: 75.93%, 5_J: 87%+, J_AH_T3: 75.02%
+    // Partner bid 15 -> bid 20 only if 75%+ chance (5M round data)
+    // 5_J_T2: 84.34%, 5_AH_T2: 78.42%, 5_T3: 83.02%
+    // REMOVED: 5_AT_T2 (5_T2=72.3% < 75%), J_AH_T3 (70.08% < 75%)
     if (partnerBid === 15) {
-      if (has5 && hasJ && hasAH && hasAT && trumpCount >= 5) bid = 30;  // 99%+ - near perfect
-      else if (has5 && hasJ && hasAH && trumpCount >= 4) bid = 25;  // 5_J_AH_T4: 93.75%
-      else if (has5 && hasJ && hasAT && trumpCount >= 4) bid = 25;  // 5_J_AT_T4: 89.73%
-      else if (has5 && hasJ && trumpCount >= 5) bid = 25;  // 5_J_T5: 95.77%
-      else if (has5 && hasJ) bid = 20;  // 5_J_T2: 87.75%
-      else if (has5 && hasAH) bid = 20;  // 5_AH_T2: 80.97%
-      else if (has5 && hasAT) bid = 20;  // 5_AT_T2: 75.93%
-      else if (has5 && trumpCount >= 3) bid = 20;  // 5_T3: 80.61%
-      else if (hasJ && hasAH && trumpCount >= 3) bid = 20;  // J_AH_T3: 75.02%
+      if (has5 && hasJ && hasAH && hasAT && trumpCount >= 5) bid = 30;  // ~99%+ near perfect
+      else if (has5 && hasJ && hasAH && trumpCount >= 4) bid = 25;  // NEAR_GUARANTEED_30: 96.74%
+      else if (has5 && hasJ && trumpCount >= 4) bid = 25;  // 5_J_T4: 89.01%
+      else if (has5 && hasJ) bid = 20;  // 5_J_T2: 84.34%, 5_J_T3: 92.09%
+      else if (has5 && hasAH) bid = 20;  // 5_AH_T2: 78.42%, 5_AH_T3: 87.53%
+      else if (has5 && trumpCount >= 3) bid = 20;  // 5_T3: 83.02%
       // Otherwise don't overbid partner's 15
     }
     // Partner bid 20 -> bid 25 only if 90%+ chance
@@ -1447,46 +1445,40 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   // STANDARD BIDDING (no partner bid yet)
   // -------------------------------------------------------------------------
   else {
-    // 30 bid - only if opponent bid 25 AND we have 90%+ chance
-    // 5_J_AH_T5: 96%, 5_J_AT_T5: 94.44%, 5_J_T5: 95.77%
+    // 30 bid - only if opponent bid 25, ≥75% threshold (5M round data)
+    // NEAR_GUARANTEED_30 (5+J+AH+T4): 80.62%, 5_J_T5: 75.4%
     if (oppBid25) {
-      if (has5 && hasJ && hasAH && trumpCount >= 5) bid = 30;  // 96%
-      else if (has5 && hasJ && hasAT && trumpCount >= 5) bid = 30;  // 94.44%
-      else if (has5 && hasJ && trumpCount >= 5) bid = 30;  // 95.77%
+      if (has5 && hasJ && hasAH && trumpCount >= 4) bid = 30;  // NEAR_GUARANTEED_30: 80.62%
+      else if (has5 && hasJ && trumpCount >= 5) bid = 30;  // 5_J_T5: 75.4%
     }
 
-    // 25 bid - need 85%+ success
-    // 5_J_AH_T3: 87.14%, 5_J_AH_T4: 93.75%, 5_J_AT_T4: 89.73%, 5_J_T4: 89.24%
-    // 5_AH_T5: 89%, 5_AT_T5: 85.71%, 5_J_T5: 95.77%
+    // 25 bid - ≥85% success threshold (5M round data)
+    // 5_J_AH (any T): 85.88%+ | 5_J_T4: 89.01% | 5_AH_T5: 90.33%
+    // Removed: 5_AT_T5 (81.3% < 85%)
     if (bid === 0) {
-      if (has5 && hasJ && hasAH) bid = 25;  // 5_J_AH_T3: 87.14%
-      else if (has5 && hasJ && hasAT && trumpCount >= 4) bid = 25;  // 5_J_AT_T4: 89.73%
-      else if (has5 && hasJ && trumpCount >= 4) bid = 25;  // 5_J_T4: 89.24%
-      else if (has5 && hasAH && trumpCount >= 5) bid = 25;  // 5_AH_T5: 89%
-      else if (has5 && hasAT && trumpCount >= 5) bid = 25;  // 5_AT_T5: 85.71%
+      if (has5 && hasJ && hasAH) bid = 25;  // 5_J_AH_T3: 85.88%, T4+: 96.74%
+      else if (has5 && hasJ && trumpCount >= 4) bid = 25;  // 5_J_T4: 89.01%
+      else if (has5 && hasAH && trumpCount >= 5) bid = 25;  // 5_AH_T5: 90.33%
     }
 
-    // 20 bid - need 67%+ success
-    // 5_T2: 70.57%, 5_T3: 80.61%, J_T4: 69.37%, J_AH_T3: 75.02%, J_AT_T3: 69%
-    // AH_AT_T4: 71.28%, AH_T5: 71.9%
+    // 20 bid - ≥67% success threshold (5M round data)
+    // 5_J (any T): T2=84.34%, T3=92.09% | 5_AH_T3: 87.53% | 5_T4: 91.67% | J_AH_T5: 84.06%
+    // Removed: J_AT_T3 (64% < 67%)
     if (bid === 0) {
-      if (has5 && trumpCount >= 2) bid = 20;  // 5_T2: 70.57%
-      else if (hasJ && hasAH && trumpCount >= 3) bid = 20;  // J_AH_T3: 75.02%
-      else if (hasJ && hasAT && trumpCount >= 3) bid = 20;  // J_AT_T3: 69%
-      else if (hasJ && trumpCount >= 4) bid = 20;  // J_T4: 69.37%
-      else if (hasAH && hasAT && trumpCount >= 4) bid = 20;  // AH_AT_T4: 71.28%
-      else if (hasAH && trumpCount >= 5) bid = 20;  // AH_T5: 71.9%
+      if (has5 && hasJ) bid = 20;  // 5_J_T2: 84.34%, 5_J_T3: 92.09%
+      else if (has5 && hasAH && trumpCount >= 3) bid = 20;  // 5_AH_T3: 87.53%
+      else if (has5 && trumpCount >= 4) bid = 20;  // 5_T4: 91.67%
+      else if (hasJ && hasAH && trumpCount >= 5) bid = 20;  // J_AH_T5: 84.06%
     }
 
-    // 15 bid - need 60%+ success
-    // 5: 93%+, J_T1: 73.42%, J_T2: 77.53%, AH_T2: 72.73%, AT_T2: 68.08%
-    // NO_HIGH_T2: 63.26%, NO_HIGH_T3: 70.15%
+    // 15 bid - positive EV (5M round data confirms all these categories)
+    // 5_T1: 87.65%, J_T1: 71.0%, AH_T2: 70.61%, AT_T2: 68.98%, NO_HIGH_T3: 69.48%
     if (bid === 0) {
-      if (has5) bid = 15;  // 5_T1: 93.43%
-      else if (hasJ) bid = 15;  // J_T1: 73.42%
-      else if (hasAH && trumpCount >= 2) bid = 15;  // AH_T2: 72.73%
-      else if (hasAT && trumpCount >= 2) bid = 15;  // AT_T2: 68.08%
-      else if (trumpCount >= 3) bid = 15;  // NO_HIGH_T3: 70.15%
+      if (has5) bid = 15;  // 5_T1: 87.65%, EV 11.29
+      else if (hasJ) bid = 15;  // J_T1: 71.0%, J_T2: 76.35%
+      else if (hasAH && trumpCount >= 2) bid = 15;  // AH_T2: 70.61%, EV 6.18
+      else if (hasAT && trumpCount >= 2) bid = 15;  // AT_T2: 68.98%, EV 5.7
+      else if (trumpCount >= 3) bid = 15;  // NO_HIGH_T3: 69.48%, EV 5.84
     }
   }
 
@@ -1683,6 +1675,12 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     for (const card of playable) {
       if (isCardBoss(card, cardsPlayed, trumpSuit)) {
         if (isLeadingTrick) {
+          // Defenders: don't lead boss trump - save it, prefer offsuit to drain bidder team first
+          // Simulation (550k games): defender boss trump leading → offsuit = 70-85% improvement
+          if ((player % 2) !== (bidWinner % 2)) {
+            console.log(`🎯 BOSS CARD: P${player + 1} (defender) has boss ${card.id} - saving, leads offsuit instead`);
+            break; // Exit boss check, fall through to defender leading section (prefers offsuit)
+          }
           console.log(`🎯 BOSS CARD: P${player} leading ${card.id} (guaranteed winner)`);
           return card;
         }
@@ -1709,7 +1707,17 @@ if (isBidder && isLeading) {
   const isTrump = (c) => getTrumpRank(c, trumpSuit) >= 0;
   const trumps = playable.filter(c => isTrump(c));
   const nonTrumps = playable.filter(c => !isTrump(c));
-  
+
+  // AFTER-VOID: If all other players are confirmed trump-void, even low trump wins guaranteed
+  // Simulation (550k games): leading offsuit when all-void = 100% improvement from low trump lead
+  if (trumps.length > 0 && knownOutOfTrump &&
+      [0,1,2,3].filter(i => i !== player).every(i => knownOutOfTrump[i])) {
+    const lowestTrump = trumps.reduce((a, b) =>
+      getTrumpRank(a, trumpSuit) < getTrumpRank(b, trumpSuit) ? a : b);
+    console.log(`🧠 ALL-VOID: P${player + 1} leading ${lowestTrump.id} (all others void in trump, guaranteed win)`);
+    return lowestTrump;
+  }
+
   // ========================================================================
   // ENDGAME TRUMP TIMING (Rounds 4-5)
   // ========================================================================
@@ -1765,9 +1773,13 @@ if (isBidder && isLeading) {
         const r2 = getOffSuitRank(card);
         return r1 < r2 ? lowest : card;
       });
-      // 50/50 choice between highest trump or lowest offsuit
-      const choice = Math.random() < 0.5 ? highestTrump : lowestOffsuit;
-      return choice;
+      // Simulation (550k games): A♥/A-trump leading early when not boss = 97-100% better to lead offsuit
+      // Boss trump case is already handled above by the boss card check (returned before reaching here)
+      if (!isCardBoss(highestTrump, cardsPlayed, trumpSuit)) {
+        console.log(`🧠 TRUMP SAVE: P${player + 1} leading offsuit ${lowestOffsuit.id} (saving non-boss ${highestTrump.id})`);
+        return lowestOffsuit;
+      }
+      return highestTrump;
     }
     
     return highestTrump;
@@ -2025,6 +2037,18 @@ if (trick.length > 0) {
       }
     }
 
+    // AFTER-VOID: All remaining players void in trump → play lowest trump to win guaranteed
+    // Simulation (550k games): 100% improvement - play low trump instead of offsuit when after_void=True
+    if (myTrumps.length > 0 && knownOutOfTrump) {
+      const playersAfterMe = [(leader + 2) % 4, (leader + 3) % 4];
+      if (playersAfterMe.every(p => knownOutOfTrump[p])) {
+        const lowestTrump = myTrumps.reduce((a, b) =>
+          getTrumpRank(a, trumpSuit) < getTrumpRank(b, trumpSuit) ? a : b);
+        console.log(`🧠 2ND AFTER-VOID: P${player + 1} remaining players void in trump, playing ${lowestTrump.id}`);
+        return lowestTrump;
+      }
+    }
+
     // EXCEPTION: Trick 3, offsuit led, I have trump, partner (4th) has 2+ trump remaining
     // Trump in so partner can shed junk offsuit and save both trump for tricks 4 and 5
     if (trickNum === 2 && !isTrump(ledCard) && myTrumps.length > 0) {
@@ -2233,6 +2257,9 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.18.3', changes: 'AI play improvements from 550k game simulation: stop leading A♥/A-trump early when not boss (97-100% better to lead offsuit), play low trump when all opponents void (100%), defenders save boss trump when leading (70-85% improvement)' },
+    { version: '2.18.2', changes: 'Fix bidding thresholds to use % approach: restore 5+J bid 20 (T2=84%), restore 5+J+AH bid 25 (85.88%), remove J+AT+T3 (64%) and 5+AT+T5 (81%)' },
+    { version: '2.18.1', changes: 'Recalibrated bidding thresholds from 5M round simulation: AI bids less aggressively on 20/25, more conservative on J/AH-only hands' },
     { version: '2.18.0', changes: 'Sound effects (cards, bids, tricks, victory), modal animations, card play animations, confetti on win, mute toggle' },
     { version: '2.17.29', changes: 'Rules Reference: add A\u2666 to red offsuit ranking, fix discard rule (no trump restriction)' },
     { version: '2.17.28', changes: 'Header layout: avatar under title, version under Logout. Tutorial: fix kitty discard, clearer renege examples' },
