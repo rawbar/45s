@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.18.4';
+const VERSION = '2.18.5';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1681,6 +1681,22 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
             console.log(`🎯 BOSS CARD: P${player + 1} (defender) has boss ${card.id} - saving, leads offsuit instead`);
             break; // Exit boss check, fall through to defender leading section (prefers offsuit)
           }
+          // Exception: partner very weak (drew 4) + both enemies stronger (drew ≤3 each)
+          // Partner unlikely to have useful trump; save 5 and lead low offsuit to let enemies
+          // spend their trump, then play 5 when a trick is actually at risk.
+          const partnerIdx = (bidWinner + 2) % 4;
+          const opp1Idx = (bidWinner + 1) % 4;
+          const opp2Idx = (bidWinner + 3) % 4;
+          if (cardsDrawn && cardsDrawn[partnerIdx] >= 4 &&
+              cardsDrawn[opp1Idx] <= 3 && cardsDrawn[opp2Idx] <= 3) {
+            const offsuitCards = playable.filter(c => getTrumpRank(c, trumpSuit) < 0);
+            if (offsuitCards.length > 0) {
+              const lowestOffsuit = offsuitCards.reduce((a, b) =>
+                getOffSuitRank(a) < getOffSuitRank(b) ? a : b);
+              console.log(`🧠 BOSS SAVE: P${player + 1} partner drew ${cardsDrawn[partnerIdx]}, enemies drew ${cardsDrawn[opp1Idx]}/${cardsDrawn[opp2Idx]} - saving ${card.id}, leading ${lowestOffsuit.id}`);
+              return lowestOffsuit;
+            }
+          }
           console.log(`🎯 BOSS CARD: P${player} leading ${card.id} (guaranteed winner)`);
           return card;
         }
@@ -2271,6 +2287,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.18.5', changes: 'AI: bidder saves boss 5 when partner drew 4 (weak) and both opponents drew ≤3 (stronger) — leads low offsuit instead to let enemies spend trump before playing the guaranteed winner' },
     { version: '2.18.4', changes: 'AI: bidder partner saves boss trump when following with enemy trump ≤1 (94-96% improvement from simulation) — boss more valuable held for future trick + high-trump bonus than spent now' },
     { version: '2.18.3', changes: 'AI play improvements from 550k game simulation: stop leading A♥/A-trump early when not boss (97-100% better to lead offsuit), play low trump when all opponents void (100%), defenders save boss trump when leading (70-85% improvement)' },
     { version: '2.18.2', changes: 'Fix bidding thresholds to use % approach: restore 5+J bid 20 (T2=84%), restore 5+J+AH bid 25 (85.88%), remove J+AT+T3 (64%) and 5+AT+T5 (81%)' },
