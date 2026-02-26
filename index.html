@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.18.5';
+const VERSION = '2.18.6';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1684,10 +1684,14 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
           // Exception: partner very weak (drew 4) + both enemies stronger (drew ≤3 each)
           // Partner unlikely to have useful trump; save 5 and lead low offsuit to let enemies
           // spend their trump, then play 5 when a trick is actually at risk.
+          // Only applies when bidder has ≤2 trump — with 3+ trump they can win independently
+          // and don't need partner's help (e.g. 5+J+A♥+K should still lead the 5).
           const partnerIdx = (bidWinner + 2) % 4;
           const opp1Idx = (bidWinner + 1) % 4;
           const opp2Idx = (bidWinner + 3) % 4;
-          if (cardsDrawn && cardsDrawn[partnerIdx] >= 4 &&
+          const myTrumpCount = playable.filter(c => getTrumpRank(c, trumpSuit) >= 0).length;
+          if (cardsDrawn && myTrumpCount <= 2 &&
+              cardsDrawn[partnerIdx] >= 4 &&
               cardsDrawn[opp1Idx] <= 3 && cardsDrawn[opp2Idx] <= 3) {
             const offsuitCards = playable.filter(c => getTrumpRank(c, trumpSuit) < 0);
             if (offsuitCards.length > 0) {
@@ -2287,6 +2291,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.18.6', changes: 'AI: fix boss-5-save rule — only apply when bidder has ≤2 trump; with 3+ trump (e.g. 5+J+A♥+K) bidder wins independently and should lead the 5 normally' },
     { version: '2.18.5', changes: 'AI: bidder saves boss 5 when partner drew 4 (weak) and both opponents drew ≤3 (stronger) — leads low offsuit instead to let enemies spend trump before playing the guaranteed winner' },
     { version: '2.18.4', changes: 'AI: bidder partner saves boss trump when following with enemy trump ≤1 (94-96% improvement from simulation) — boss more valuable held for future trick + high-trump bonus than spent now' },
     { version: '2.18.3', changes: 'AI play improvements from 550k game simulation: stop leading A♥/A-trump early when not boss (97-100% better to lead offsuit), play low trump when all opponents void (100%), defenders save boss trump when leading (70-85% improvement)' },
