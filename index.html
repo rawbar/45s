@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.18.6';
+const VERSION = '2.18.7';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2058,19 +2058,8 @@ if (trick.length > 0) {
     }
   }
   
-  // RULE 5: 2nd position - generally play low (2nd man low)
-  // Exception: if we have guaranteed winner, take it
+  // RULE 5: 2nd position - 2nd man low
   if (myPosition === 1) {
-    // Check if we have a card that's guaranteed to win (boss card)
-    for (const card of playable) {
-      if (isCardBoss(card, cardsPlayed, trumpSuit)) {
-        const testTrick = [...trick, card];
-        while (testTrick.length < 4) testTrick.push({rank: '2', suit: '\u2663', id: 'dummy'});
-        const winner = determineTrickWinner(testTrick, trumpSuit, leader);
-        if (winner === player) return card;
-      }
-    }
-
     // AFTER-VOID: All remaining players void in trump → play lowest trump to win guaranteed
     // Simulation (550k games): 100% improvement - play low trump instead of offsuit when after_void=True
     if (myTrumps.length > 0 && knownOutOfTrump) {
@@ -2291,6 +2280,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.18.7', changes: 'AI: restore strict 2nd man low — remove boss-card exception that was causing 5 of trump to be wasted on junk offsuit leads' },
     { version: '2.18.6', changes: 'AI: fix boss-5-save rule — only apply when bidder has ≤2 trump; with 3+ trump (e.g. 5+J+A♥+K) bidder wins independently and should lead the 5 normally' },
     { version: '2.18.5', changes: 'AI: bidder saves boss 5 when partner drew 4 (weak) and both opponents drew ≤3 (stronger) — leads low offsuit instead to let enemies spend trump before playing the guaranteed winner' },
     { version: '2.18.4', changes: 'AI: bidder partner saves boss trump when following with enemy trump ≤1 (94-96% improvement from simulation) — boss more valuable held for future trick + high-trump bonus than spent now' },
