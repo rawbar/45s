@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.18.8';
+const VERSION = '2.19.1';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1744,11 +1744,20 @@ if (isBidder && isLeading) {
 
   // AFTER-VOID: If all other players are confirmed trump-void, even low trump wins guaranteed
   // Simulation (550k games): leading offsuit when all-void = 100% improvement from low trump lead
-  if (trumps.length > 0 && knownOutOfTrump &&
-      [0,1,2,3].filter(i => i !== player).every(i => knownOutOfTrump[i])) {
+  // Also fires when both OPPONENTS are estimated at 0 trump remaining (drew +4, played 2 each)
+  // even if not formally flagged in knownOutOfTrump (they followed trump so no hard flag set)
+  const opp1Idx = (player + 1) % 4;
+  const opp2Idx = (player + 3) % 4;
+  const oppsEstimatedOutOfTrump =
+    (intel.players[opp1Idx]?.estimatedTrumpRemaining || 0) === 0 &&
+    (intel.players[opp2Idx]?.estimatedTrumpRemaining || 0) === 0;
+  if (trumps.length > 0 && (
+      (knownOutOfTrump && [0,1,2,3].filter(i => i !== player).every(i => knownOutOfTrump[i])) ||
+      oppsEstimatedOutOfTrump
+    )) {
     const lowestTrump = trumps.reduce((a, b) =>
       getTrumpRank(a, trumpSuit) < getTrumpRank(b, trumpSuit) ? a : b);
-    console.log(`🧠 ALL-VOID: P${player + 1} leading ${lowestTrump.id} (all others void in trump, guaranteed win)`);
+    console.log(`🧠 ALL-VOID: P${player + 1} leading ${lowestTrump.id} (opponents out/void in trump, guaranteed win)`);
     return lowestTrump;
   }
 
@@ -1916,9 +1925,14 @@ if (trick.length > 0) {
       if ((playerIdx % 2) !== myTeam) {
         opponentAfterMe = true;
         const oppVoids = voids[playerIdx] || {};
-        if (oppVoids.trump !== true) allRemainingOppsVoidInTrump = false;
+        // Treat 'reneging' as void if all their possible trump are in OUR hand
+        // (e.g. J is only possible renege card but WE are holding J)
+        const regeningCardsAllInMyHand = oppVoids.trump === 'reneging' &&
+          (oppVoids.possibleTrump || []).every(id => hand.some(c => c.id === id));
+        const effectivelyVoidInTrump = oppVoids.trump === true || regeningCardsAllInMyHand;
+        if (!effectivelyVoidInTrump) allRemainingOppsVoidInTrump = false;
         const voidInLedSuit = !!oppVoids[ledSuit];
-        const voidInTrump = oppVoids.trump === true;
+        const voidInTrump = effectivelyVoidInTrump;
         if (!voidInLedSuit || !voidInTrump) allRemainingOppsNoThreat = false;
       }
     }
@@ -2281,6 +2295,9 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.19.1', changes: "AI: bidder no longer leads weak offsuit when both opponents are estimated out of trump — leads lowest trump for guaranteed win instead of gifting a trick to opponent's high offsuit" },
+    { version: '2.19.0', changes: 'Firebase connection reliability improvements' },
+    { version: '2.18.9', changes: "AI: partner correctly saves J (boss trump) when opponents are 'reneging-only' with a card already in partner's hand — no longer wastes J on a trick partner already wins" },
     { version: '2.18.8', changes: 'Show Hands modal: gold dot on kitty cards (bidder\'s 3 picked-up cards), blue dot remains for deck draws' },
     { version: '2.18.7', changes: 'AI: restore strict 2nd man low — remove boss-card exception that was causing 5 of trump to be wasted on junk offsuit leads' },
     { version: '2.18.6', changes: 'AI: fix boss-5-save rule — only apply when bidder has ≤2 trump; with 3+ trump (e.g. 5+J+A♥+K) bidder wins independently and should lead the 5 normally' },
@@ -5778,6 +5795,20 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
                 database.ref(`lobby/games/${gameId}/players/${seat}`).update({
                   disconnected: true
                 });
+                // Track if they disconnected while their team was losing
+                const gs = gameStateRef.current;
+                if (gs && gs.phase !== 'game-over' && gs.scores && player.userId) {
+                  const seatIdx = SEAT_TO_INDEX[seat];
+                  if (seatIdx !== undefined) {
+                    const playerTeam = seatIdx % 2;
+                    const opponentTeam = 1 - playerTeam;
+                    if (gs.scores[opponentTeam] > gs.scores[playerTeam]) {
+                      database.ref(`users/${player.userId}/stats`).update({
+                        disconnectsWhileLosing: firebase.database.ServerValue.increment(1)
+                      });
+                    }
+                  }
+                }
               } else if (timeSinceLastSeen <= 30000 && player.disconnected) {
                 // Reconnected
                 console.log(`✅ Player ${seat} (${player.username}) reconnected`);
@@ -5791,13 +5822,28 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
       });
     }, 5000); // Check every 5 seconds
 
+    // Set up server-side disconnect handler for this player
+    const myStatsRef = database.ref(`users/${userId}/stats`);
+    myStatsRef.onDisconnect().update({
+      disconnects: firebase.database.ServerValue.increment(1)
+    });
+
     return () => {
       gameRef.off('value', gameListener);
       playersRef.off('value', playersListener);
       clearInterval(heartbeat);
       clearInterval(disconnectCheck);
+      myStatsRef.onDisconnect().cancel();
     };
-  }, [gameId, mySeat]);
+  }, [gameId, mySeat, userId]);
+
+  // Cancel disconnect tracking when game ends normally
+  useEffect(() => {
+    const phase = gameState?.phase;
+    if (phase === 'game-over') {
+      database.ref(`users/${userId}/stats`).onDisconnect().cancel();
+    }
+  }, [gameState?.phase, userId]);
 
   // Listen for nextGameId (rematch signal)
   useEffect(() => {
