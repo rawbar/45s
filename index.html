@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.19.1';
+const VERSION = '2.19.2';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1681,6 +1681,27 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
             console.log(`🎯 BOSS CARD: P${player + 1} (defender) has boss ${card.id} - saving, leads offsuit instead`);
             break; // Exit boss check, fall through to defender leading section (prefers offsuit)
           }
+          // Partner of bidder leading boss trump:
+          // If bidder still has trump AND both opponents are void/estimated out,
+          // save boss and lead offsuit — bidder can trump in for a separate trick win
+          // e.g. partner has K♠ (boss), bidder has 2♠ remaining, opponents void:
+          //   lead offsuit → bidder trumps in trick 4, partner wins trick 5 with K♠ = extra trick
+          {
+            const pOpp1Idx = (bidWinner + 1) % 4;
+            const pOpp2Idx = (bidWinner + 3) % 4;
+            const isPartnerOfBidder = player !== bidWinner;
+            const bidderTrumpEst = intel.players[bidWinner]?.estimatedTrumpRemaining || 0;
+            const bidderVoid = knownVoids && knownVoids[bidWinner]?.trump === true;
+            const oppsOut = (intel.players[pOpp1Idx]?.estimatedTrumpRemaining || 0) === 0 &&
+                            (intel.players[pOpp2Idx]?.estimatedTrumpRemaining || 0) === 0;
+            const offsuitCards = playable.filter(c => getTrumpRank(c, trumpSuit) < 0);
+            if (isPartnerOfBidder && !bidderVoid && bidderTrumpEst > 0 && oppsOut && offsuitCards.length > 0) {
+              const lowestOffsuit = offsuitCards.reduce((a, b) =>
+                getOffSuitRank(a) < getOffSuitRank(b) ? a : b);
+              console.log(`🧠 PARTNER BOSS SAVE: P${player + 1} saving boss ${card.id} - bidder P${bidWinner + 1} has ~${bidderTrumpEst} trump, opps void, leading ${lowestOffsuit.id}`);
+              return lowestOffsuit;
+            }
+          }
           // Exception: partner very weak (drew 4) + both enemies stronger (drew ≤3 each)
           // Partner unlikely to have useful trump; save 5 and lead low offsuit to let enemies
           // spend their trump, then play 5 when a trick is actually at risk.
@@ -2295,6 +2316,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.19.2', changes: "AI: bidder's partner saves boss trump when bidder still has trump + opponents are void — leads offsuit to give bidder a separate trick win instead of wasting both trump on the same trick" },
     { version: '2.19.1', changes: "AI: bidder no longer leads weak offsuit when both opponents are estimated out of trump — leads lowest trump for guaranteed win instead of gifting a trick to opponent's high offsuit" },
     { version: '2.19.0', changes: 'Firebase connection reliability improvements' },
     { version: '2.18.9', changes: "AI: partner correctly saves J (boss trump) when opponents are 'reneging-only' with a card already in partner's hand — no longer wastes J on a trick partner already wins" },
