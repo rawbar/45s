@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.19.4';
+const VERSION = '2.19.5';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2322,6 +2322,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.19.5', changes: 'Fix: players in active games now stay visible in the online players list — presence heartbeat continues through gameplay, not just the lobby' },
     { version: '2.19.4', changes: "AI: 4th-position player now wins with cheapest possible card instead of wasting boss trump — boss trump saved for a later trick where it wins independently" },
     { version: '2.19.3', changes: "Fix: discard phase now allows keeping all 5 cards when all are trump — button shows 'Keep All' instead of being disabled" },
     { version: '2.19.2', changes: "AI: bidder's partner saves boss trump when bidder still has trump + opponents are void — leads offsuit to give bidder a separate trick win instead of wasting both trump on the same trick" },
@@ -5858,11 +5859,25 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
       disconnects: firebase.database.ServerValue.increment(1)
     });
 
+    // Keep lobby presence alive while in a game so player shows in online list
+    const myPresenceRef = database.ref(`lobby/online/${userId}`);
+    myPresenceRef.update({
+      lastSeen: firebase.database.ServerValue.TIMESTAMP,
+      connected: true
+    });
+    const presenceHeartbeat = setInterval(() => {
+      myPresenceRef.update({
+        lastSeen: firebase.database.ServerValue.TIMESTAMP,
+        connected: true
+      });
+    }, 30000);
+
     return () => {
       gameRef.off('value', gameListener);
       playersRef.off('value', playersListener);
       clearInterval(heartbeat);
       clearInterval(disconnectCheck);
+      clearInterval(presenceHeartbeat);
       myStatsRef.onDisconnect().cancel();
     };
   }, [gameId, mySeat, userId]);
