@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.19.5';
+const VERSION = '2.19.6';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1746,7 +1746,7 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
           }
           // 4th position: never waste boss trump — fall through to cheapest-winner logic
           // Any card that wins is sufficient; boss trump is more valuable on a later trick
-          if (myPosition === 3) {
+          if (trick.length === 3) {
             console.log(`🎯 BOSS CARD: P${player + 1} in 4th pos, saving boss ${card.id} - using min-win instead`);
             break;
           }
@@ -2322,6 +2322,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.19.6', changes: 'Fix: 4th-position min-win now actually works — previous fix used out-of-scope variable (myPosition) that silently evaluated to undefined, breaking the condition' },
     { version: '2.19.5', changes: 'Fix: players in active games now stay visible in the online players list — presence heartbeat continues through gameplay, not just the lobby' },
     { version: '2.19.4', changes: "AI: 4th-position player now wins with cheapest possible card instead of wasting boss trump — boss trump saved for a later trick where it wins independently" },
     { version: '2.19.3', changes: "Fix: discard phase now allows keeping all 5 cards when all are trump — button shows 'Keep All' instead of being disabled" },
