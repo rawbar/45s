@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.19.3';
+const VERSION = '2.19.4';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1744,6 +1744,12 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
               break; // fall through to 2nd-man-low → plays offsuit
             }
           }
+          // 4th position: never waste boss trump — fall through to cheapest-winner logic
+          // Any card that wins is sufficient; boss trump is more valuable on a later trick
+          if (myPosition === 3) {
+            console.log(`🎯 BOSS CARD: P${player + 1} in 4th pos, saving boss ${card.id} - using min-win instead`);
+            break;
+          }
           console.log(`🎯 BOSS CARD: P${player} playing ${card.id} (beats current trick & guaranteed winner)`);
           return card;
         } else {
@@ -2316,6 +2322,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.19.4', changes: "AI: 4th-position player now wins with cheapest possible card instead of wasting boss trump — boss trump saved for a later trick where it wins independently" },
     { version: '2.19.3', changes: "Fix: discard phase now allows keeping all 5 cards when all are trump — button shows 'Keep All' instead of being disabled" },
     { version: '2.19.2', changes: "AI: bidder's partner saves boss trump when bidder still has trump + opponents are void — leads offsuit to give bidder a separate trick win instead of wasting both trump on the same trick" },
     { version: '2.19.1', changes: "AI: bidder no longer leads weak offsuit when both opponents are estimated out of trump — leads lowest trump for guaranteed win instead of gifting a trick to opponent's high offsuit" },
