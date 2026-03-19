@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.19.6';
+const VERSION = '2.19.7';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2322,6 +2322,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.19.7', changes: 'Leaderboard improvements and performance optimisations' },
     { version: '2.19.6', changes: 'Fix: 4th-position min-win now actually works — previous fix used out-of-scope variable (myPosition) that silently evaluated to undefined, breaking the condition' },
     { version: '2.19.5', changes: 'Fix: players in active games now stay visible in the online players list — presence heartbeat continues through gameplay, not just the lobby' },
     { version: '2.19.4', changes: "AI: 4th-position player now wins with cheapest possible card instead of wasting boss trump — boss trump saved for a later trick where it wins independently" },
@@ -3564,6 +3565,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
       for (const [uid, user] of Object.entries(users)) {
         if (user.stats && user.stats.gamesPlayed >= 5) {
           const winRate = Math.round((user.stats.gamesWon / user.stats.gamesPlayed) * 100);
+          const ragequitPenalty = user.stats.disconnectsWhileLosing || 0;
+          const adjustedWinRate = Math.max(0, winRate - ragequitPenalty);
           leaderboard.push({
             odIn: uid,
             username: user.username,
@@ -3571,14 +3574,16 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
             gamesPlayed: user.stats.gamesPlayed,
             gamesWon: user.stats.gamesWon,
             winRate: winRate,
+            adjustedWinRate: adjustedWinRate,
+            ragequitPenalty: ragequitPenalty,
             bestStreak: user.stats.bestStreak || 0
           });
         }
       }
-      
-      // Sort by win rate descending, then by games played
+
+      // Sort by adjusted win rate descending, then by games played
       leaderboard.sort((a, b) => {
-        if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+        if (b.adjustedWinRate !== a.adjustedWinRate) return b.adjustedWinRate - a.adjustedWinRate;
         return b.gamesPlayed - a.gamesPlayed;
       });
       
@@ -4406,8 +4411,11 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                 >x</button>
               </div>
               
-              <div style={{ fontSize: '12px', color: '#666', marginBottom: '16px', textAlign: 'center' }}>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px', textAlign: 'center' }}>
                 Top 10 players by win rate (minimum 5 games)
+              </div>
+              <div style={{ fontSize: '11px', color: '#f44336', marginBottom: '12px', textAlign: 'center' }}>
+                * Ragequit penalty: -1% per rage quit
               </div>
               
               {leaderboardLoading ? (
@@ -4451,8 +4459,11 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                         <div style={{ fontSize: '11px', color: '#666' }}>{player.gamesWon}W / {player.gamesPlayed}G</div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#4caf50' }}>{player.winRate}%</div>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: player.ragequitPenalty > 5 ? '#f44336' : '#4caf50' }}>{player.adjustedWinRate}%</div>
                         <div style={{ fontSize: '10px', color: '#666' }}>Best: {player.bestStreak}</div>
+                        {player.ragequitPenalty > 0 && (
+                          <div style={{ fontSize: '10px', color: '#f44336' }}>-{player.ragequitPenalty}%</div>
+                        )}
                       </div>
                     </div>
                   ))}
