@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.19.8';
+const VERSION = '2.19.9';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2322,7 +2322,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
-    { version: '2.19.8', changes: 'Leaderboard improvements and performance optimisations' },
+    { version: '2.19.9', changes: 'Leaderboard improvements and performance optimisations' },
     { version: '2.19.6', changes: 'Fix: 4th-position min-win now actually works — previous fix used out-of-scope variable (myPosition) that silently evaluated to undefined, breaking the condition' },
     { version: '2.19.5', changes: 'Fix: players in active games now stay visible in the online players list — presence heartbeat continues through gameplay, not just the lobby' },
     { version: '2.19.4', changes: "AI: 4th-position player now wins with cheapest possible card instead of wasting boss trump — boss trump saved for a later trick where it wins independently" },
@@ -5839,18 +5839,24 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
                   disconnected: true
                 });
                 // Track if they disconnected while their team was losing
-                const gs = gameStateRef.current;
-                if (gs && gs.phase !== 'game-over' && gs.scores && player.userId) {
+                if (player.userId) {
                   const seatIdx = SEAT_TO_INDEX[seat];
                   if (seatIdx !== undefined) {
-                    const playerTeam = seatIdx % 2;
-                    const opponentTeam = 1 - playerTeam;
-                    if (gs.scores[opponentTeam] > gs.scores[playerTeam]) {
-                      database.ref(`users/${player.userId}/stats`).update({
-                        disconnectsWhileLosing: firebase.database.ServerValue.increment(1),
-                        currentStreak: 0
-                      });
-                    }
+                    database.ref(`lobby/games/${gameId}/gameState/scores`).once('value', (scoresSnap) => {
+                      const scoreArr = scoresSnap.val();
+                      if (scoreArr) {
+                        const playerTeam = seatIdx % 2;
+                        const opponentTeam = 1 - playerTeam;
+                        const playerScore = scoreArr[playerTeam] || 0;
+                        const oppScore = scoreArr[opponentTeam] || 0;
+                        if (oppScore > playerScore) {
+                          database.ref(`users/${player.userId}/stats`).update({
+                            disconnectsWhileLosing: firebase.database.ServerValue.increment(1),
+                            currentStreak: 0
+                          });
+                        }
+                      }
+                    });
                   }
                 }
               } else if (timeSinceLastSeen <= 30000 && player.disconnected) {
