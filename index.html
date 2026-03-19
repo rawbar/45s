@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.19.10';
+const VERSION = '2.19.11';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1864,7 +1864,23 @@ if (isDefender && isLeading) {
   const isTrump = (c) => getTrumpRank(c, trumpSuit) >= 0;
   const trumps = playable.filter(c => isTrump(c));
   const nonTrumps = playable.filter(c => !isTrump(c));
-  
+
+  // PARTNER TRUMP-LOADED: if partner has 3+ estimated trump remaining and opponents
+  // still have trump, lead our lowest trump to pull opponents' trump now — otherwise
+  // partner's heavy trump hand will clash with opponent trump in later tricks
+  const partnerIdx = (player + 2) % 4;
+  const opp1Idx = (player + 1) % 4;
+  const opp2Idx = (player + 3) % 4;
+  const partnerTrumpEst = intel.players[partnerIdx]?.estimatedTrumpRemaining || 0;
+  const oppsHaveTrump = (intel.players[opp1Idx]?.estimatedTrumpRemaining || 0) > 0 ||
+                        (intel.players[opp2Idx]?.estimatedTrumpRemaining || 0) > 0;
+  if (partnerTrumpEst >= 3 && trumps.length > 0 && nonTrumps.length > 0 && oppsHaveTrump) {
+    const lowestTrump = trumps.reduce((a, b) =>
+      getTrumpRank(a, trumpSuit) < getTrumpRank(b, trumpSuit) ? a : b);
+    console.log(`🤝 PARTNER TRUMP LOAD: P${player + 1} leading lowest trump ${lowestTrump.id} (partner est ${partnerTrumpEst} trump) to clear opponents`);
+    return lowestTrump;
+  }
+
   // Defenders should RARELY lead trump
   // Only lead trump if you have NO offsuit options
   if (nonTrumps.length > 0) {
@@ -2322,6 +2338,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.19.11', changes: 'AI: lead trump when partner is trump-heavy to prevent partner trump clashing with opponents later' },
     { version: '2.19.10', changes: 'Leaderboard improvements and performance optimisations' },
     { version: '2.19.6', changes: 'Fix: 4th-position min-win now actually works — previous fix used out-of-scope variable (myPosition) that silently evaluated to undefined, breaking the condition' },
     { version: '2.19.5', changes: 'Fix: players in active games now stay visible in the online players list — presence heartbeat continues through gameplay, not just the lobby' },
