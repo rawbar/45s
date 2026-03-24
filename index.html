@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.19.13';
+const VERSION = '2.19.14';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2129,15 +2129,28 @@ if (trick.length > 0) {
   
   // RULE 5: 2nd position - 2nd man low
   if (myPosition === 1) {
-    // AFTER-VOID: All remaining players void in trump → play lowest trump to win guaranteed
-    // Simulation (550k games): 100% improvement - play low trump instead of offsuit when after_void=True
-    if (myTrumps.length > 0 && knownOutOfTrump) {
-      const playersAfterMe = [(leader + 2) % 4, (leader + 3) % 4];
-      if (playersAfterMe.every(p => knownOutOfTrump[p])) {
-        const lowestTrump = myTrumps.reduce((a, b) =>
-          getTrumpRank(a, trumpSuit) < getTrumpRank(b, trumpSuit) ? a : b);
-        console.log(`🧠 2ND AFTER-VOID: P${player + 1} remaining players void in trump, playing ${lowestTrump.id}`);
-        return lowestTrump;
+    // AFTER-VOID: All remaining players void in trump → take the trick with minimum winning trump
+    // Uses confirmed knownOutOfTrump OR estimatedTrumpRemaining===0 to catch cases where
+    // a player played their last trump normally (not offsuit renege) so wasn't marked confirmed-void
+    if (myTrumps.length > 0) {
+      const playersAfterMe = [];
+      for (let pos = myPosition + 1; pos < 4; pos++) playersAfterMe.push((leader + pos) % 4);
+      const allSubsequentVoid = playersAfterMe.every(p =>
+        (knownOutOfTrump && knownOutOfTrump[p]) ||
+        (intel.players[p]?.estimatedTrumpRemaining || 0) === 0
+      );
+      if (allSubsequentVoid) {
+        const winningTrumps = myTrumps.filter(c => {
+          const testT = [...trick, c];
+          while (testT.length < 4) testT.push({rank: '2', suit: '\u2663', id: 'dummy'});
+          return determineTrickWinner(testT, trumpSuit, leader) === player;
+        });
+        if (winningTrumps.length > 0) {
+          const lowestWinner = winningTrumps.reduce((a, b) =>
+            getTrumpRank(a, trumpSuit) < getTrumpRank(b, trumpSuit) ? a : b);
+          console.log(`🧠 2ND AFTER-VOID: P${player + 1} all subsequent void, min-win trump ${lowestWinner.id}`);
+          return lowestWinner;
+        }
       }
     }
 
@@ -2350,6 +2363,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.19.14', changes: 'AI: 2nd-position player now takes trick with minimum trump when all subsequent players are estimated void — fixes case where offsuit was played instead, letting opponent steal the trick' },
     { version: '2.19.13', changes: 'AI: never waste boss trump when all remaining players are void — use minimum winning trump in 2nd, 3rd, and 4th position' },
     { version: '2.19.12', changes: 'AI: dealer no longer overbids unnecessarily on guaranteed hands — bids minimum needed to win the auction' },
     { version: '2.19.11', changes: 'AI: lead trump when partner is trump-heavy to prevent partner trump clashing with opponents later' },
