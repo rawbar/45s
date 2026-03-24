@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.19.12';
+const VERSION = '2.19.13';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1748,11 +1748,19 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
               break; // fall through to 2nd-man-low → plays offsuit
             }
           }
-          // 4th position: never waste boss trump — fall through to cheapest-winner logic
-          // Any card that wins is sufficient; boss trump is more valuable on a later trick
-          if (trick.length === 3) {
-            console.log(`🎯 BOSS CARD: P${player + 1} in 4th pos, saving boss ${card.id} - using min-win instead`);
-            break;
+          // If all players AFTER current player are void of trump, any trump wins this trick —
+          // never waste boss trump when minimum trump suffices (covers 2nd, 3rd, and 4th position)
+          {
+            const remainingAfter = [];
+            for (let pos = trick.length + 1; pos < 4; pos++) remainingAfter.push((leader + pos) % 4);
+            const allRemainingVoid = remainingAfter.length === 0 || remainingAfter.every(idx =>
+              (knownVoids && knownVoids[idx]?.trump === true) ||
+              (intel.players[idx]?.estimatedTrumpRemaining || 0) === 0
+            );
+            if (allRemainingVoid) {
+              console.log(`🎯 BOSS CARD: P${player + 1} pos ${trick.length + 1}, all remaining players void — min-win instead of boss ${card.id}`);
+              break;
+            }
           }
           console.log(`🎯 BOSS CARD: P${player} playing ${card.id} (beats current trick & guaranteed winner)`);
           return card;
@@ -2342,6 +2350,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.19.13', changes: 'AI: never waste boss trump when all remaining players are void — use minimum winning trump in 2nd, 3rd, and 4th position' },
     { version: '2.19.12', changes: 'AI: dealer no longer overbids unnecessarily on guaranteed hands — bids minimum needed to win the auction' },
     { version: '2.19.11', changes: 'AI: lead trump when partner is trump-heavy to prevent partner trump clashing with opponents later' },
     { version: '2.19.10', changes: 'Leaderboard improvements and performance optimisations' },
