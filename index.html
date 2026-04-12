@@ -3047,6 +3047,7 @@ function LoginScreen({ onLogin }) {
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
+  const [email, setEmail] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('spade-ace');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -3177,10 +3178,20 @@ function LoginScreen({ onLogin }) {
       // Create new user
       const pinHash = await hashPin(username, pin);
 
+      // Validate email if provided
+      const emailTrimmed = email.trim().toLowerCase();
+      if (emailTrimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
+        setError('Invalid email address');
+        setLoading(false);
+        return;
+      }
+
       const newUser = {
         username: usernameLower,
         pinHash,
         avatar: selectedAvatar,
+        email: emailTrimmed || null,
+        emailPromptShown: emailTrimmed ? true : false,
         createdAt: Date.now(),
         lastLogin: Date.now(),
         currentGame: null,
@@ -3453,6 +3464,32 @@ function LoginScreen({ onLogin }) {
               maxLength={4}
               disabled={loading}
             />
+          </div>
+        )}
+
+        {/* Email (registration only, optional) */}
+        {mode === 'register' && (
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
+              Email <span style={{ fontWeight: 'normal', color: '#888', fontSize: '12px' }}>(optional)</span>
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '14px',
+                border: '2px solid #ddd',
+                borderRadius: '6px'
+              }}
+              disabled={loading}
+            />
+            <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>
+              For game updates, notices, and the occasional survey. Never shared.
+            </div>
           </div>
         )}
 
@@ -5744,6 +5781,9 @@ function MultiplayerApp() {
   const [playerName, setPlayerName] = useState(null);
   const [playerAvatar, setPlayerAvatar] = useState(null);  // NEW
   const [gameId, setGameId] = useState(null);
+  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
+  const [emailPromptValue, setEmailPromptValue] = useState('');
+  const [emailPromptError, setEmailPromptError] = useState('');
 
   // Check if we should show What's New modal
   useEffect(() => {
@@ -5771,6 +5811,13 @@ function MultiplayerApp() {
       setPlayerName(savedPlayerName);
       setPlayerAvatar(savedPlayerAvatar || '👤');
       setAppState('lobby');
+      // One-time email prompt check for auto-login
+      database.ref(`users/${savedUserId}`).once('value', snap => {
+        const userData = snap.val();
+        if (userData && !userData.email && !userData.emailPromptShown) {
+          setShowEmailPrompt(true);
+        }
+      });
     }
   }, []);
 
@@ -5780,13 +5827,41 @@ function MultiplayerApp() {
     setUserId(uid);
     setPlayerName(uname);
     setPlayerAvatar(avatar);
-    
+
     // Save to localStorage for persistence
     localStorage.setItem('userId', uid);
     localStorage.setItem('playerName', uname);
     localStorage.setItem('playerAvatar', avatar);
-    
+
+    // One-time email prompt: show if user has no email and hasn't been asked before
+    database.ref(`users/${uid}`).once('value', snap => {
+      const userData = snap.val();
+      if (userData && !userData.email && !userData.emailPromptShown) {
+        setShowEmailPrompt(true);
+      }
+    });
+
     setAppState('lobby');
+  };
+
+  const handleEmailPromptSave = async () => {
+    const trimmed = emailPromptValue.trim().toLowerCase();
+    if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setEmailPromptError('Please enter a valid email address');
+      return;
+    }
+    await database.ref(`users/${userId}`).update({
+      email: trimmed || null,
+      emailPromptShown: true
+    });
+    setShowEmailPrompt(false);
+    setEmailPromptValue('');
+    setEmailPromptError('');
+  };
+
+  const handleEmailPromptSkip = async () => {
+    await database.ref(`users/${userId}`).update({ emailPromptShown: true });
+    setShowEmailPrompt(false);
   };
 
   const handleJoinGame = (gid, seat) => {
@@ -5824,13 +5899,72 @@ function MultiplayerApp() {
   if (appState === 'lobby') {
     return (
       <>
-        <LobbyScreen 
+        <LobbyScreen
           userId={userId}  // Changed from playerId
           playerName={playerName}
           playerAvatar={playerAvatar}  // NEW
           onJoinGame={handleJoinGame}
         />
         <WhatsNewModal isOpen={showWhatsNew} onClose={handleCloseWhatsNew} />
+
+        {/* One-time email prompt for existing users */}
+        {showEmailPrompt && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.7)', display: 'flex',
+            justifyContent: 'center', alignItems: 'center', zIndex: 3000
+          }}>
+            <div style={{
+              background: 'white', borderRadius: '12px', padding: '32px',
+              maxWidth: '400px', width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            }}>
+              <div style={{ fontSize: '32px', textAlign: 'center', marginBottom: '12px' }}>📬</div>
+              <h2 style={{ textAlign: 'center', color: '#1a5f3f', marginBottom: '12px', fontSize: '18px' }}>
+                Stay in the Loop
+              </h2>
+              <p style={{ color: '#555', fontSize: '14px', marginBottom: '20px', lineHeight: '1.5' }}>
+                Add your email to receive game updates, new features, and the occasional survey.
+                Your email is never shared and you can skip this at any time.
+              </p>
+              <input
+                type="email"
+                value={emailPromptValue}
+                onChange={e => { setEmailPromptValue(e.target.value); setEmailPromptError(''); }}
+                onKeyPress={e => e.key === 'Enter' && handleEmailPromptSave()}
+                placeholder="you@example.com"
+                style={{
+                  width: '100%', padding: '12px', fontSize: '14px',
+                  border: emailPromptError ? '2px solid #f44336' : '2px solid #ddd',
+                  borderRadius: '6px', marginBottom: '8px'
+                }}
+                autoFocus
+              />
+              {emailPromptError && (
+                <div style={{ color: '#f44336', fontSize: '12px', marginBottom: '8px' }}>{emailPromptError}</div>
+              )}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                <button
+                  onClick={handleEmailPromptSave}
+                  style={{
+                    flex: 1, padding: '12px', background: '#2d8f5f', color: 'white',
+                    border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px'
+                  }}
+                >
+                  Save
+                </button>
+                <button
+                  onClick={handleEmailPromptSkip}
+                  style={{
+                    flex: 1, padding: '12px', background: '#e0e0e0', color: '#555',
+                    border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px'
+                  }}
+                >
+                  Skip
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </>
     );
   }
