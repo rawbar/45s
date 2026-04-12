@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.20.8';
+const VERSION = '2.20.9';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1168,12 +1168,19 @@ function shuffleDeck(deck) {
   return s;
 }
 
-function getPlayableCards(hand, trumpSuit, ledCard, ledSuit) {
+function getPlayableCards(hand, trumpSuit, ledCard, ledSuit, options = {}) {
   if (!hand || hand.length === 0) return [];
   if (!ledCard) return hand;
   if (isTrump(ledCard, trumpSuit)) {
     const trumpCards = hand.filter(c => isTrump(c, trumpSuit));
-    if (trumpCards.length === 0) return hand;
+    if (trumpCards.length === 0) {
+      // Follow A♥ rule: when A♥ is led and void in trump, must play a heart if you have one
+      if (options.followAHearts && ledCard.rank === 'A' && ledCard.suit === '\u2665') {
+        const hearts = hand.filter(c => c.suit === '\u2665');
+        if (hearts.length > 0) return hearts;
+      }
+      return hand;
+    }
     const ledRank = getTrumpRank(ledCard, trumpSuit);
     const must = [], canRenege = [];
     for (const c of trumpCards) {
@@ -2383,6 +2390,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.20.9', changes: 'Fix View Round crash (faceUpCard prop). Rejoin banner in lobby. New options: Follow A♥, 30 for 60. House Rules overlay updated.' },
     { version: '2.20.8', changes: '5-Card Draw: face-up card visible to all players (tinted blue in all hand positions). House Rules overlay at game start. No text label.' },
     { version: '2.20.6', changes: 'Leaderboard and stats modal use lastSeen field (updates on connect, not just game end).' },
     { version: '2.20.5', changes: 'Stats modal: score breakdown showing each component, Last Seen updates on every connect (not just game end).' },
@@ -2903,7 +2911,7 @@ function RulesModal({ isOpen, onClose }) {
 }
 
 // Show Hands Modal for debugging - shows cards in play order
-function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, drawnCards, kittyCardIds, wasBagged, playHistory, bids, mySeatIndex, players, scores }) {
+function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, drawnCards, kittyCardIds, wasBagged, playHistory, bids, mySeatIndex, players, scores, faceUpCard = null }) {
   if (!isOpen || !hands) return null;
   
   console.log('🎭 ShowHandsModal opened:', {
@@ -3630,10 +3638,13 @@ function LoginScreen({ onLogin }) {
 }
 function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Updated signature
   const [games, setGames] = useState({});
+  const [rejoinGame, setRejoinGame] = useState(null); // { gameId, seat, name }
   const [showCreateGame, setShowCreateGame] = useState(false);
   const [newGameName, setNewGameName] = useState('');
   const [showGameOptions, setShowGameOptions] = useState(false);
   const [optFiveCardDraw, setOptFiveCardDraw] = useState(false);
+  const [optFollowAHearts, setOptFollowAHearts] = useState(false);
+  const [optThirtyFor60, setOptThirtyFor60] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
@@ -3964,6 +3975,22 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
       }
       
       setGames(validGames);
+
+      // Detect if current user is still seated in an active game (reconnect support)
+      let found = null;
+      for (const [gid, game] of Object.entries(validGames)) {
+        if (game.status === 'playing' || game.status === 'waiting') {
+          for (const [seat, player] of Object.entries(game.players || {})) {
+            if (player && player.userId === userId) {
+              found = { gameId: gid, seat, name: game.name || gid };
+              break;
+            }
+          }
+        }
+        if (found) break;
+      }
+      setRejoinGame(found);
+
       console.log('Games updated (filtered):', Object.keys(validGames).length, 'of', Object.keys(data).length);
     }, (err) => {
       console.error('Error listening to games:', err);
@@ -3996,7 +4023,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
         creatorId: userId,
         createdAt: now,
         lastActivity: now,
-        options: { fiveCardDraw: optFiveCardDraw },
+        options: { fiveCardDraw: optFiveCardDraw, followAHearts: optFollowAHearts, thirtyFor60: optThirtyFor60 },
         players: {}
       });
 
@@ -4325,6 +4352,42 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
           </div>
         )}
 
+        {/* Rejoin banner — shown when user is still seated in an active game */}
+        {rejoinGame && (
+          <div style={{
+            background: '#1a3a2a',
+            border: '2px solid #d4af37',
+            borderRadius: '10px',
+            padding: '14px 18px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}>
+            <div>
+              <div style={{ color: '#d4af37', fontWeight: 'bold', fontSize: '14px' }}>Game in progress</div>
+              <div style={{ color: '#aaa', fontSize: '12px', marginTop: '2px' }}>{rejoinGame.name}</div>
+            </div>
+            <button
+              onClick={() => onJoinGame(rejoinGame.gameId, rejoinGame.seat)}
+              style={{
+                background: '#d4af37',
+                color: '#000',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '8px 18px',
+                fontWeight: 'bold',
+                fontSize: '14px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Rejoin
+            </button>
+          </div>
+        )}
+
         {/* Create Game Form */}
         {showCreateGame && (
           <div style={{
@@ -4355,7 +4418,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
             {showGameOptions && (
               <div style={{ background: '#f5f5f5', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
                 <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#333', marginBottom: '10px' }}>Game Options</div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px', marginBottom: '10px' }}>
                   <input
                     type="checkbox"
                     checked={optFiveCardDraw}
@@ -4366,6 +4429,34 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                     <strong>5-Card Draw</strong>
                     <span style={{ fontSize: '12px', color: '#666', display: 'block' }}>
                       Players may discard all 5 cards. 5th drawn card dealt face-up.
+                    </span>
+                  </span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px', marginBottom: '10px' }}>
+                  <input
+                    type="checkbox"
+                    checked={optFollowAHearts}
+                    onChange={e => setOptFollowAHearts(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <span>
+                    <strong>Follow A♥</strong>
+                    <span style={{ fontSize: '12px', color: '#666', display: 'block' }}>
+                      When A♥ is led, void in trump must play a heart if holding one.
+                    </span>
+                  </span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px' }}>
+                  <input
+                    type="checkbox"
+                    checked={optThirtyFor60}
+                    onChange={e => setOptThirtyFor60(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <span>
+                    <strong>30 for 60</strong>
+                    <span style={{ fontSize: '12px', color: '#666', display: 'block' }}>
+                      After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.
                     </span>
                   </span>
                 </label>
@@ -4395,7 +4486,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                   cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 'bold'
                 }}
               >
-                {optFiveCardDraw ? 'Options ✓' : 'Options'}
+                {(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}
               </button>
               <button
                 onClick={() => {
@@ -4403,6 +4494,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                   setNewGameName('');
                   setShowGameOptions(false);
                   setOptFiveCardDraw(false);
+                  setOptFollowAHearts(false);
+                  setOptThirtyFor60(false);
                 }}
                 disabled={loading}
                 style={{
@@ -6334,6 +6427,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   // 5-Card Draw: face-up card revealed when player swaps all 5
   const [faceUpCard, setFaceUpCard] = useState(null); // { playerId, cardId }
 
+  // 30 for 60 option
+  const [thirtyWasBid, setThirtyWasBid] = useState(false); // someone bid 30 this round
+  const [bidType, setBidType] = useState(null); // '30for60' or null
+
   // House Rules overlay — shown once at game start if any options are active
   const [showHouseRules, setShowHouseRules] = useState(false);
   const houseRulesShown = useRef(false);
@@ -6632,6 +6729,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         setFaceUpCard(null);
       }
 
+      // Sync 30-for-60 state
+      if (gameState.thirtyWasBid !== undefined) setThirtyWasBid(!!gameState.thirtyWasBid);
+      if (gameState.bidType !== undefined) setBidType(gameState.bidType || null);
+
       // Sync play history
       if (gameState.playHistory) {
         console.log('📊 Syncing playHistory:', gameState.playHistory);
@@ -6723,8 +6824,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   // Start game function
 
   // Human player makes a bid
-  const handleBid = useCallback(async (bidAmount, isAutoBag = false) => {
-    console.log('🎲 handleBid called:', { bidAmount, currentPlayer, mySeatIndex, isMyTurn: currentPlayer === mySeatIndex, isAutoBag });
+  const handleBid = useCallback(async (bidAmount, isAutoBag = false, isThirtyFor60 = false) => {
+    console.log('🎲 handleBid called:', { bidAmount, currentPlayer, mySeatIndex, isMyTurn: currentPlayer === mySeatIndex, isAutoBag, isThirtyFor60 });
     
     if (currentPlayer !== mySeatIndex) {
       console.log('❌ Not your turn to bid! currentPlayer:', currentPlayer, 'mySeatIndex:', mySeatIndex);
@@ -6778,9 +6879,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         highBid: newHighBid,
         bidWinner: winner,
         wasBagged: wasBagged,
-        phase: 'trump-select', // Everyone sees trump-select, UI shows buttons only to winner
-        roundBids: newBids,  // Save for modal
-        roundDealer: dealer  // Save for modal
+        phase: 'trump-select',
+        roundBids: newBids,
+        roundDealer: dealer,
+        ...(bidAmount === 30 || thirtyWasBid ? { thirtyWasBid: true } : {}),
+        ...(isThirtyFor60 ? { bidType: '30for60' } : { bidType: null })
       });
     } else {
       // Move to next player
@@ -6790,10 +6893,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         bids: newBids,
         highBid: newHighBid,
         bidWinner: newBidWinner,
-        currentPlayer: nextPlayer
+        currentPlayer: nextPlayer,
+        ...(bidAmount === 30 ? { thirtyWasBid: true } : {})
       });
     }
-  }, [bids, highBid, bidWinner, currentPlayer, mySeatIndex, dealer, updateGameState]);
+  }, [bids, highBid, bidWinner, bidType, thirtyWasBid, currentPlayer, mySeatIndex, dealer, updateGameState]);
 
 
   // DEBUG: Log state changes (minimal dependencies to avoid loop)
@@ -7202,9 +7306,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         highTrumpInfo: { rank: -1, player: -1 },  // ✅ Reset high trump tracking
         drawnCardsArray: [],  // ✅ Reset drawn cards tracking
         kittyCardIds: [],
-        playHistory: [],      // ✅ Reset play history for new round
-        lastTrick: null,    // Clear last trick display
-        faceUpCard: null    // Clear 5-Card Draw face-up card for new round
+        playHistory: [],
+        lastTrick: null,
+        faceUpCard: null,
+        thirtyWasBid: false,
+        bidType: null
       });
       console.log('✓ New round state written with .set()');
       console.log('✓ Bids reset to:', freshBids);
@@ -7252,7 +7358,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     // Check if card is playable
     const ledCard = trickCards.length > 0 ? trickCards[0].card : null;
     const ledSuit = ledCard?.suit;  // Get the led suit
-    const playable = getPlayableCards(hand, trumpSuit, ledCard, ledSuit);  // Pass ledSuit
+    const playable = getPlayableCards(hand, trumpSuit, ledCard, ledSuit, gameOptions);
     
     if (!playable.some(c => c.id === card.id)) {
       alert('Must follow suit!');
@@ -7502,9 +7608,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             }
           }
         } else {
-          // Missed bid - lose bid amount
-          newScores[bidderTeam] -= highBid;
-          console.log(`✗ Team ${bidderTeam} missed bid! -${highBid} points`);
+          // Missed bid - lose bid amount (double penalty for 30-for-60)
+          const penalty = bidType === '30for60' ? 60 : highBid;
+          newScores[bidderTeam] -= penalty;
+          console.log(`✗ Team ${bidderTeam} missed bid! -${penalty} points${bidType === '30for60' ? ' (30 for 60)' : ''}`);
 
           // Track set against the bidder (only the bidder updates their own stats)
           if (bidderIsMe) {
@@ -7522,12 +7629,13 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         
         // Update history for score table
         let usRoundScore, themRoundScore;
+        const setPenalty = bidType === '30for60' ? 60 : highBid;
         if (bidderTeam === 0) {
-          usRoundScore = finalRoundPts[0] >= highBid ? finalRoundPts[0] : -highBid;
+          usRoundScore = finalRoundPts[0] >= highBid ? finalRoundPts[0] : -setPenalty;
           themRoundScore = finalRoundPts[1];
         } else {
           usRoundScore = finalRoundPts[0];
-          themRoundScore = finalRoundPts[1] >= highBid ? finalRoundPts[1] : -highBid;
+          themRoundScore = finalRoundPts[1] >= highBid ? finalRoundPts[1] : -setPenalty;
         }
         
         // Build new history array (will sync to Firebase, then to local state)
@@ -7838,8 +7946,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       if (!hand || hand.length === 0) return;
       
       const ledCard = trickCards.length > 0 ? trickCards[0].card : null;
-      const playable = getPlayableCards(hand, trumpSuit, ledCard);
-      
+      const playable = getPlayableCards(hand, trumpSuit, ledCard, ledCard?.suit, gameOptions);
+
       if (playable.length === 0) {
         console.error('AI has no playable cards!');
         return;
@@ -8222,7 +8330,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   useEffect(() => {
     if (phase !== 'bidding') return;
     if (houseRulesShown.current) return;
-    if (!gameOptions || !gameOptions.fiveCardDraw) return;
+    if (!gameOptions || (!gameOptions.fiveCardDraw && !gameOptions.followAHearts && !gameOptions.thirtyFor60)) return;
     houseRulesShown.current = true;
     setShowHouseRules(true);
     const t = setTimeout(() => setShowHouseRules(false), 4000);
@@ -8626,7 +8734,13 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             }}>
               <div style={{ fontSize: '13px', color: '#d4af37', fontWeight: 'bold', marginBottom: '8px', letterSpacing: '0.05em' }}>HOUSE RULES</div>
               {gameOptions.fiveCardDraw && (
-                <div style={{ fontSize: '13px', color: '#ddeeff' }}>5-Card Draw enabled</div>
+                <div style={{ fontSize: '13px', color: '#ddeeff', marginBottom: '4px' }}>5-Card Draw</div>
+              )}
+              {gameOptions.followAHearts && (
+                <div style={{ fontSize: '13px', color: '#ffcdd2', marginBottom: '4px' }}>Follow A♥</div>
+              )}
+              {gameOptions.thirtyFor60 && (
+                <div style={{ fontSize: '13px', color: '#e1bee7' }}>30 for 60</div>
               )}
               <div style={{ fontSize: '10px', color: '#666', marginTop: '10px' }}>tap to dismiss</div>
             </div>
@@ -8656,14 +8770,31 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   {b}
                 </button>
               ))}
-              <button 
-                onClick={() => handleBid(0)} 
-                style={{ 
-                  padding: '6px 12px', 
-                  fontSize: '12px', 
-                  background: '#c9a227', 
-                  color: '#000', 
-                  border: 'none', 
+              {gameOptions.thirtyFor60 && thirtyWasBid && highBid === 30 && (
+                <button
+                  onClick={() => handleBid(30, false, true)}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    background: '#7b1fa2',
+                    color: '#fff',
+                    border: '2px solid #ce93d8',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  30/60
+                </button>
+              )}
+              <button
+                onClick={() => handleBid(0)}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  background: '#c9a227',
+                  color: '#000',
+                  border: 'none',
                   borderRadius: '4px',
                   cursor: 'pointer'
                 }}
@@ -8965,6 +9096,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         mySeatIndex={mySeatIndex}
         players={players}
         scores={scores}
+        faceUpCard={faceUpCard}
       />
       <HelpModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
