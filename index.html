@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.20.5';
+const VERSION = '2.20.6';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2378,6 +2378,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.20.6', changes: 'Leaderboard and stats modal use lastSeen field (updates on connect, not just game end).' },
     { version: '2.20.5', changes: 'Stats modal: score breakdown showing each component, Last Seen updates on every connect (not just game end).' },
     { version: '2.20.4', changes: 'Stats modal: always show Last Played (Never if not yet set), add scroll for small screens.' },
     { version: '2.20.3', changes: 'Fix player stats modal z-index (was rendering behind leaderboard). Remove skip-prompt text from email modal.' },
@@ -3686,7 +3687,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
           const gw = user.stats.gamesWon || 0;
           const winRate = gp > 0 ? Math.round((gw / gp) * 100) : 0;
           const score = computePlayerScore(user.stats, gp, gw);
-          const lastPlayed = user.stats.lastPlayed || null;
+          const lastSeen = user.stats.lastSeen || user.stats.lastPlayed || null;
           leaderboard.push({
             uid,
             username: user.username,
@@ -3704,7 +3705,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
             comebackWins: user.stats.comebackWins || 0,
             cleanGameWins: user.stats.cleanGameWins || 0,
             gamesQuit: user.stats.gamesQuit || 0,
-            lastPlayed,
+            lastSeen,
           });
         }
       }
@@ -4644,9 +4645,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.username}</div>
                         <div style={{ fontSize: '11px', color: '#666' }}>{player.gamesWon}W / {player.gamesPlayed}G · {player.winRate}%</div>
-                        {player.lastPlayed && (
+                        {player.lastSeen && (
                           <div style={{ fontSize: '10px', color: '#999' }}>
-                            {new Date(player.lastPlayed).toLocaleDateString()}
+                            {new Date(player.lastSeen).toLocaleDateString()}
                           </div>
                         )}
                       </div>
