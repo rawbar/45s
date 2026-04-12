@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.20.9';
+const VERSION = '2.20.10';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2390,6 +2390,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.20.10', changes: 'Fix stale face-up card persisting into next round (Firebase null-delete sync bug).' },
     { version: '2.20.9', changes: 'Fix View Round crash (faceUpCard prop). Rejoin banner in lobby. New options: Follow A♥, 30 for 60. House Rules overlay updated.' },
     { version: '2.20.8', changes: '5-Card Draw: face-up card visible to all players (tinted blue in all hand positions). House Rules overlay at game start. No text label.' },
     { version: '2.20.6', changes: 'Leaderboard and stats modal use lastSeen field (updates on connect, not just game end).' },
@@ -6723,15 +6724,17 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       }
       
       // Sync face-up card (5-Card Draw option)
-      if (gameState.faceUpCard) {
+      // Note: Firebase removes fields written as null, so gameState.faceUpCard will be
+      // undefined (not null) when cleared. Use truthy check to handle both cases.
+      if (gameState.faceUpCard && gameState.faceUpCard.cardId) {
         setFaceUpCard(gameState.faceUpCard);
-      } else if (gameState.faceUpCard === null) {
+      } else {
         setFaceUpCard(null);
       }
 
       // Sync 30-for-60 state
-      if (gameState.thirtyWasBid !== undefined) setThirtyWasBid(!!gameState.thirtyWasBid);
-      if (gameState.bidType !== undefined) setBidType(gameState.bidType || null);
+      setThirtyWasBid(!!gameState.thirtyWasBid);
+      setBidType(gameState.bidType || null);
 
       // Sync play history
       if (gameState.playHistory) {
