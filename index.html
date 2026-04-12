@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.20.2';
+const VERSION = '2.20.3';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2378,6 +2378,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.20.3', changes: 'Fix player stats modal z-index (was rendering behind leaderboard). Remove skip-prompt text from email modal.' },
     { version: '2.20.2', changes: 'Email collection at registration + one-time prompt for existing users (no skip option). Removed rage-quit penalty from scoring and display.' },
     { version: '2.20.0', changes: 'Stats overhaul: new composite scoring system, all-player scrollable leaderboard, per-game achievement summary on win screen. AI: tightened 15-bid threshold — no more junk 3-trump bids. UX: skip Deal Cards screen, sort hand after draw. Options: 5-Card Draw game mode.' },
     { version: '2.19.14', changes: 'AI: 2nd-position player now takes trick with minimum trump when all subsequent players are estimated void — fixes case where offsuit was played instead, letting opponent steal the trick' },
@@ -4455,7 +4456,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            zIndex: 2000,
+            zIndex: 3000,
             animation: 'fadeIn 0.2s ease-out'
           }}>
             <div style={{
@@ -5920,7 +5921,7 @@ function MultiplayerApp() {
               </h2>
               <p style={{ color: '#555', fontSize: '14px', marginBottom: '20px', lineHeight: '1.5' }}>
                 Add your email to receive game updates, new features, and the occasional survey.
-                Your email is never shared and you can skip this at any time.
+                Your email is never shared.
               </p>
               <input
                 type="email"
