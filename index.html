@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.20.3';
+const VERSION = '2.20.4';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2378,6 +2378,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.20.4', changes: 'Stats modal: always show Last Played (Never if not yet set), add scroll for small screens.' },
     { version: '2.20.3', changes: 'Fix player stats modal z-index (was rendering behind leaderboard). Remove skip-prompt text from email modal.' },
     { version: '2.20.2', changes: 'Email collection at registration + one-time prompt for existing users (no skip option). Removed rage-quit penalty from scoring and display.' },
     { version: '2.20.0', changes: 'Stats overhaul: new composite scoring system, all-player scrollable leaderboard, per-game achievement summary on win screen. AI: tightened 15-bid threshold — no more junk 3-trump bids. UX: skip Deal Cards screen, sort hand after draw. Options: 5-Card Draw game mode.' },
@@ -4466,6 +4467,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
               padding: '24px',
               maxWidth: '350px',
               width: '90%',
+              maxHeight: '85vh',
+              overflowY: 'auto',
               boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -4522,7 +4525,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                       {statBox(statsData.comebackWins || 0, 'Comeback Wins', '#fff8e1', '#f57f17')}
                       {statBox(statsData.cleanGameWins || 0, 'Clean Wins', '#e8f5e9', '#388e3c')}
                       {statBox(statsData.gamesQuit || 0, 'Quits', '#fafafa', '#999')}
-                      {statsData.lastPlayed && statBox(new Date(statsData.lastPlayed).toLocaleDateString(), 'Last Played', '#fafafa', '#666')}
+                      {statBox(statsData.lastPlayed ? new Date(statsData.lastPlayed).toLocaleDateString() : 'Never', 'Last Played', '#fafafa', '#666')}
                     </div>
                   </div>
                 );
