@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.20.4';
+const VERSION = '2.20.5';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2378,6 +2378,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.20.5', changes: 'Stats modal: score breakdown showing each component, Last Seen updates on every connect (not just game end).' },
     { version: '2.20.4', changes: 'Stats modal: always show Last Played (Never if not yet set), add scroll for small screens.' },
     { version: '2.20.3', changes: 'Fix player stats modal z-index (was rendering behind leaderboard). Remove skip-prompt text from email modal.' },
     { version: '2.20.2', changes: 'Email collection at registration + one-time prompt for existing users (no skip option). Removed rage-quit penalty from scoring and display.' },
@@ -3764,6 +3765,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
         lastSeen: firebase.database.ServerValue.TIMESTAMP,
         connected: true
       });
+      // Record last seen in user's stats (fires on every connect)
+      database.ref(`users/${userId}/stats`).update({ lastSeen: firebase.database.ServerValue.TIMESTAMP });
     };
 
     // Listen to connection state
@@ -4499,6 +4502,20 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                 const gw = statsData.gamesWon || 0;
                 const winRate = gp > 0 ? Math.round((gw / gp) * 100) : 0;
                 const score = computePlayerScore(statsData, gp, gw);
+                const winPts = winRate * 5;
+                const p30Pts = (statsData.perfect30s || 0) * 2;
+                const b30Pts = (statsData.bid30Made || 0) * 5;
+                const exceedPts = statsData.exceedBidPoints || 0;
+                const setPts = -(statsData.timesSet || 0);
+                const comebackPts = (statsData.comebackWins || 0) * 10;
+                const cleanPts = (statsData.cleanGameWins || 0) * 3;
+                const streakPts = statsData.bestStreak || 0;
+                const breakdownRow = (label, pts) => pts === 0 ? null : (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '3px 0', borderBottom: '1px solid #f0f0f0' }}>
+                    <span style={{ color: '#555' }}>{label}</span>
+                    <span style={{ fontWeight: 'bold', color: pts < 0 ? '#f44336' : '#1a5f3f' }}>{pts > 0 ? '+' : ''}{pts}</span>
+                  </div>
+                );
                 const statBox = (val, label, bg, color) => (
                   <div style={{ background: bg, padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
                     <div style={{ fontSize: '22px', fontWeight: 'bold', color }}>{val}</div>
@@ -4507,9 +4524,23 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                 );
                 return (
                   <div>
-                    <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                    <div style={{ textAlign: 'center', marginBottom: '4px' }}>
                       <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#1a5f3f' }}>{score}</span>
                       <span style={{ fontSize: '14px', color: '#666', marginLeft: '4px' }}>pts</span>
+                    </div>
+                    {/* Score breakdown */}
+                    <div style={{ background: '#f9f9f9', borderRadius: '8px', padding: '10px 12px', marginBottom: '14px' }}>
+                      {breakdownRow(`Win Rate ${winRate}% × 5`, winPts)}
+                      {breakdownRow(`Best Streak ${statsData.bestStreak || 0} × 1`, streakPts)}
+                      {breakdownRow(`Bid 30 Made ${statsData.bid30Made || 0} × 5`, b30Pts)}
+                      {breakdownRow(`Perfect 30s ${statsData.perfect30s || 0} × 2`, p30Pts)}
+                      {breakdownRow(`Comeback Wins ${statsData.comebackWins || 0} × 10`, comebackPts)}
+                      {breakdownRow(`Clean Wins ${statsData.cleanGameWins || 0} × 3`, cleanPts)}
+                      {breakdownRow(`Exceed Bid Pts`, exceedPts)}
+                      {breakdownRow(`Times Set ${statsData.timesSet || 0} × −1`, setPts)}
+                      {winPts === 0 && p30Pts === 0 && b30Pts === 0 && exceedPts === 0 && setPts === 0 && comebackPts === 0 && cleanPts === 0 && streakPts === 0 && (
+                        <div style={{ fontSize: '12px', color: '#999', textAlign: 'center' }}>No points yet</div>
+                      )}
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       {statBox(gp, 'Games Played', '#f5f5f5', '#1a5f3f')}
@@ -4525,7 +4556,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                       {statBox(statsData.comebackWins || 0, 'Comeback Wins', '#fff8e1', '#f57f17')}
                       {statBox(statsData.cleanGameWins || 0, 'Clean Wins', '#e8f5e9', '#388e3c')}
                       {statBox(statsData.gamesQuit || 0, 'Quits', '#fafafa', '#999')}
-                      {statBox(statsData.lastPlayed ? new Date(statsData.lastPlayed).toLocaleDateString() : 'Never', 'Last Played', '#fafafa', '#666')}
+                      {statBox(statsData.lastSeen ? new Date(statsData.lastSeen).toLocaleDateString() : 'Never', 'Last Seen', '#fafafa', '#666')}
                     </div>
                   </div>
                 );
