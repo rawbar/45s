@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.19.14';
+const VERSION = '2.20.0';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -1039,6 +1039,19 @@ function getOffSuitRank(card) {
   return ['10','9','8','7','6','5','4','3','2','A','J','Q','K'].indexOf(rank);
 }
 
+// Sort hand highest-ranked first (trump before offsuit, descending within each group)
+function sortHandByRank(hand, trumpSuit) {
+  if (!hand || !trumpSuit) return hand;
+  return [...hand].sort((a, b) => {
+    const ra = getTrumpRank(a, trumpSuit);
+    const rb = getTrumpRank(b, trumpSuit);
+    if (ra >= 0 && rb >= 0) return rb - ra;
+    if (ra >= 0) return -1;
+    if (rb >= 0) return 1;
+    return getOffSuitRank(b) - getOffSuitRank(a);
+  });
+}
+
 function cardBeats(c1, c2, trumpSuit, ledSuit) {
   const t1 = getTrumpRank(c1, trumpSuit), t2 = getTrumpRank(c2, trumpSuit);
   if (t1 >= 0 && t2 >= 0) return t1 > t2;
@@ -1475,14 +1488,16 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
       else if (hasJ && hasAH && trumpCount >= 5) bid = 20;  // J_AH_T5: 84.06%
     }
 
-    // 15 bid - positive EV (5M round data confirms all these categories)
-    // 5_T1: 87.65%, J_T1: 71.0%, AH_T2: 70.61%, AT_T2: 68.98%, NO_HIGH_T3: 69.48%
+    // 15 bid - tightened threshold (removed junk 3-trump bids)
+    // Must have at least one top-tier trump or specific face-card combo
     if (bid === 0) {
-      if (has5) bid = 15;  // 5_T1: 87.65%, EV 11.29
-      else if (hasJ) bid = 15;  // J_T1: 71.0%, J_T2: 76.35%
-      else if (hasAH && trumpCount >= 2) bid = 15;  // AH_T2: 70.61%, EV 6.18
-      else if (hasAT && trumpCount >= 2) bid = 15;  // AT_T2: 68.98%, EV 5.7
-      else if (trumpCount >= 3) bid = 15;  // NO_HIGH_T3: 69.48%, EV 5.84
+      const hasKT = hasCard(hand, 'K', suit);
+      const hasQT = hasCard(hand, 'Q', suit);
+      if (has5) bid = 15;                                    // lone 5 — highest trump, guarantees 10pts
+      else if (hasJ) bid = 15;                              // J alone or with anything (2nd highest)
+      else if (hasAH && hasAT && trumpCount >= 3) bid = 15; // AH + AT + 1 more
+      else if (hasAH && hasKT && trumpCount >= 3) bid = 15; // AH + KT + 1 more
+      else if (hasAT && hasKT && hasQT) bid = 15;           // AT + KT + QT (3 face cards)
     }
   }
 
@@ -2363,6 +2378,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.20.0', changes: 'Stats overhaul: new composite scoring system, all-player scrollable leaderboard, per-game achievement summary on win screen. AI: tightened 15-bid threshold — no more junk 3-trump bids. UX: skip Deal Cards screen, sort hand after draw. Options: 5-Card Draw game mode.' },
     { version: '2.19.14', changes: 'AI: 2nd-position player now takes trick with minimum trump when all subsequent players are estimated void — fixes case where offsuit was played instead, letting opponent steal the trick' },
     { version: '2.19.13', changes: 'AI: never waste boss trump when all remaining players are void — use minimum winning trump in 2nd, 3rd, and 4th position' },
     { version: '2.19.12', changes: 'AI: dealer no longer overbids unnecessarily on guaranteed hands — bids minimum needed to win the auction' },
@@ -3568,6 +3584,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
   const [games, setGames] = useState({});
   const [showCreateGame, setShowCreateGame] = useState(false);
   const [newGameName, setNewGameName] = useState('');
+  const [showGameOptions, setShowGameOptions] = useState(false);
+  const [optFiveCardDraw, setOptFiveCardDraw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
@@ -3596,6 +3614,20 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
   const [showRules, setShowRules] = useState(false);
   const [soundMuted, setSoundMuted] = useState(SoundManager.isMuted());
 
+  // Compute composite score from stats object
+  const computePlayerScore = (stats, gamesPlayed, gamesWon) => {
+    if (!stats || !gamesPlayed) return 0;
+    const winRate = Math.round((gamesWon / gamesPlayed) * 100);
+    return (winRate * 5)
+      + ((stats.perfect30s || 0) * 2)
+      + ((stats.bid30Made || 0) * 5)
+      + (stats.exceedBidPoints || 0)
+      - (stats.timesSet || 0)
+      + ((stats.comebackWins || 0) * 10)
+      + ((stats.cleanGameWins || 0) * 3)
+      + (stats.bestStreak || 0);
+  };
+
   // Fetch leaderboard data
   const fetchLeaderboard = async () => {
     setLeaderboardLoading(true);
@@ -3605,35 +3637,44 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
       const snapshot = await database.ref('users').once('value');
       const users = snapshot.val() || {};
       
-      // Build leaderboard from users with stats
+      // Build leaderboard from all users with stats
       const leaderboard = [];
       for (const [uid, user] of Object.entries(users)) {
-        if (user.stats && user.stats.gamesPlayed >= 5) {
-          const winRate = Math.round((user.stats.gamesWon / user.stats.gamesPlayed) * 100);
-          const ragequitPenalty = user.stats.disconnectsWhileLosing || 0;
-          const adjustedWinRate = Math.max(0, winRate - ragequitPenalty);
+        if (user.stats && user.stats.gamesPlayed >= 1) {
+          const gp = user.stats.gamesPlayed || 0;
+          const gw = user.stats.gamesWon || 0;
+          const winRate = gp > 0 ? Math.round((gw / gp) * 100) : 0;
+          const score = computePlayerScore(user.stats, gp, gw);
+          const lastPlayed = user.stats.lastPlayed || null;
           leaderboard.push({
-            odIn: uid,
+            uid,
             username: user.username,
             avatar: user.avatar,
-            gamesPlayed: user.stats.gamesPlayed,
-            gamesWon: user.stats.gamesWon,
-            winRate: winRate,
-            adjustedWinRate: adjustedWinRate,
-            ragequitPenalty: ragequitPenalty,
-            bestStreak: user.stats.bestStreak || 0
+            gamesPlayed: gp,
+            gamesWon: gw,
+            gamesLost: user.stats.gamesLost || 0,
+            winRate,
+            score,
+            bestStreak: user.stats.bestStreak || 0,
+            timesSet: user.stats.timesSet || 0,
+            perfect30s: user.stats.perfect30s || 0,
+            bid30Made: user.stats.bid30Made || 0,
+            exceedBidPoints: user.stats.exceedBidPoints || 0,
+            comebackWins: user.stats.comebackWins || 0,
+            cleanGameWins: user.stats.cleanGameWins || 0,
+            gamesQuit: user.stats.gamesQuit || 0,
+            lastPlayed,
           });
         }
       }
 
-      // Sort by adjusted win rate descending, then by games played
+      // Sort by composite score descending, then games played as tiebreaker
       leaderboard.sort((a, b) => {
-        if (b.adjustedWinRate !== a.adjustedWinRate) return b.adjustedWinRate - a.adjustedWinRate;
+        if (b.score !== a.score) return b.score - a.score;
         return b.gamesPlayed - a.gamesPlayed;
       });
-      
-      // Take top 10
-      setLeaderboardData(leaderboard.slice(0, 10));
+
+      setLeaderboardData(leaderboard);
     } catch (err) {
       console.error('Error fetching leaderboard:', err);
       setLeaderboardData([]);
@@ -3905,12 +3946,15 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
         creatorId: userId,
         createdAt: now,
         lastActivity: now,
+        options: { fiveCardDraw: optFiveCardDraw },
         players: {}
       });
 
       console.log('Game created successfully');
       setShowCreateGame(false);
       setNewGameName('');
+      setShowGameOptions(false);
+      setOptFiveCardDraw(false);
     } catch (err) {
       console.error('Error creating game:', err);
       setError('Failed to create game: ' + err.message);
@@ -4258,38 +4302,64 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
               maxLength={30}
               disabled={loading}
             />
-            <div style={{ display: 'flex', gap: '12px' }}>
+            {showGameOptions && (
+              <div style={{ background: '#f5f5f5', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#333', marginBottom: '10px' }}>Game Options</div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px' }}>
+                  <input
+                    type="checkbox"
+                    checked={optFiveCardDraw}
+                    onChange={e => setOptFiveCardDraw(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <span>
+                    <strong>5-Card Draw</strong>
+                    <span style={{ fontSize: '12px', color: '#666', display: 'block' }}>
+                      Players may discard all 5 cards. 5th drawn card dealt face-up.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 onClick={handleCreateGame}
                 disabled={loading}
                 style={{
-                  flex: 1,
-                  padding: '12px',
+                  flex: 1, padding: '12px',
                   background: loading ? '#ccc' : '#2d8f5f',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  fontWeight: 'bold'
+                  color: 'white', border: 'none', borderRadius: '6px',
+                  cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 'bold'
                 }}
               >
                 {loading ? 'Creating...' : 'Create'}
               </button>
               <button
+                onClick={() => setShowGameOptions(v => !v)}
+                disabled={loading}
+                style={{
+                  flex: 1, padding: '12px',
+                  background: showGameOptions ? '#1a5f3f' : '#e0e0e0',
+                  color: showGameOptions ? 'white' : '#333',
+                  border: 'none', borderRadius: '6px',
+                  cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 'bold'
+                }}
+              >
+                {optFiveCardDraw ? 'Options ✓' : 'Options'}
+              </button>
+              <button
                 onClick={() => {
                   setShowCreateGame(false);
                   setNewGameName('');
+                  setShowGameOptions(false);
+                  setOptFiveCardDraw(false);
                 }}
                 disabled={loading}
                 style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: '#ccc',
-                  color: '#333',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  fontWeight: 'bold'
+                  flex: 1, padding: '12px',
+                  background: '#ccc', color: '#333',
+                  border: 'none', borderRadius: '6px',
+                  cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 'bold'
                 }}
               >
                 Cancel
@@ -4382,36 +4452,42 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
               
               {statsLoading ? (
                 <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>Loading stats...</div>
-              ) : statsData && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div style={{ background: '#f5f5f5', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1a5f3f' }}>{statsData.gamesPlayed}</div>
-                    <div style={{ fontSize: '11px', color: '#666' }}>Games Played</div>
+              ) : statsData && (() => {
+                const gp = statsData.gamesPlayed || 0;
+                const gw = statsData.gamesWon || 0;
+                const winRate = gp > 0 ? Math.round((gw / gp) * 100) : 0;
+                const score = computePlayerScore(statsData, gp, gw);
+                const statBox = (val, label, bg, color) => (
+                  <div style={{ background: bg, padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '22px', fontWeight: 'bold', color }}>{val}</div>
+                    <div style={{ fontSize: '10px', color: '#666' }}>{label}</div>
                   </div>
-                  <div style={{ background: '#f5f5f5', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4caf50' }}>
-                      {statsData.gamesPlayed > 0 ? Math.round((statsData.gamesWon / statsData.gamesPlayed) * 100) : 0}%
+                );
+                return (
+                  <div>
+                    <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#1a5f3f' }}>{score}</span>
+                      <span style={{ fontSize: '14px', color: '#666', marginLeft: '4px' }}>pts</span>
                     </div>
-                    <div style={{ fontSize: '11px', color: '#666' }}>Win Rate</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      {statBox(gp, 'Games Played', '#f5f5f5', '#1a5f3f')}
+                      {statBox(winRate + '%', 'Win Rate', '#f5f5f5', '#4caf50')}
+                      {statBox(gw, 'Wins', '#e8f5e9', '#4caf50')}
+                      {statBox(statsData.gamesLost || 0, 'Losses', '#ffebee', '#f44336')}
+                      {statBox(statsData.currentStreak || 0, 'Current Streak', '#fff3e0', '#ff9800')}
+                      {statBox(statsData.bestStreak || 0, 'Best Streak', '#e3f2fd', '#2196f3')}
+                      {statBox(statsData.timesSet || 0, 'Times Set', '#ffebee', '#f44336')}
+                      {statBox(statsData.perfect30s || 0, 'Perfect 30s', '#f3e5f5', '#9c27b0')}
+                      {statBox(statsData.bid30Made || 0, 'Bid 30 Made', '#e8eaf6', '#3f51b5')}
+                      {statBox(statsData.exceedBidPoints || 0, 'Exceed Bid Pts', '#e0f7fa', '#00897b')}
+                      {statBox(statsData.comebackWins || 0, 'Comeback Wins', '#fff8e1', '#f57f17')}
+                      {statBox(statsData.cleanGameWins || 0, 'Clean Wins', '#e8f5e9', '#388e3c')}
+                      {statBox(statsData.gamesQuit || 0, 'Quits', '#fafafa', '#999')}
+                      {statsData.lastPlayed && statBox(new Date(statsData.lastPlayed).toLocaleDateString(), 'Last Played', '#fafafa', '#666')}
+                    </div>
                   </div>
-                  <div style={{ background: '#e8f5e9', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4caf50' }}>{statsData.gamesWon}</div>
-                    <div style={{ fontSize: '11px', color: '#666' }}>Wins</div>
-                  </div>
-                  <div style={{ background: '#ffebee', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f44336' }}>{statsData.gamesLost}</div>
-                    <div style={{ fontSize: '11px', color: '#666' }}>Losses</div>
-                  </div>
-                  <div style={{ background: '#fff3e0', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ff9800' }}>{statsData.currentStreak}</div>
-                    <div style={{ fontSize: '11px', color: '#666' }}>Current Streak</div>
-                  </div>
-                  <div style={{ background: '#e3f2fd', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2196f3' }}>{statsData.bestStreak}</div>
-                    <div style={{ fontSize: '11px', color: '#666' }}>Best Streak</div>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
         )}
@@ -4456,24 +4532,22 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                 >x</button>
               </div>
               
-              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px', textAlign: 'center' }}>
-                Top 10 players by win rate (minimum 5 games)
-              </div>
-              <div style={{ fontSize: '11px', color: '#f44336', marginBottom: '12px', textAlign: 'center' }}>
-                * Ragequit penalty: -1% per rage quit
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '12px', textAlign: 'center' }}>
+                All players · sorted by score
               </div>
               
               {leaderboardLoading ? (
                 <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>Loading...</div>
               ) : leaderboardData.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
-                  No players have completed 5+ games yet
+                  No players yet
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px' }}>
                   {leaderboardData.map((player, index) => (
                     <div
                       key={index}
+                      onClick={() => fetchPlayerStats(player.uid, { username: player.username, avatar: player.avatar })}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -4481,36 +4555,31 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                         padding: '10px',
                         background: index === 0 ? '#fff8e1' : index === 1 ? '#f5f5f5' : index === 2 ? '#fff3e0' : '#fafafa',
                         borderRadius: '8px',
-                        border: index < 3 ? `2px solid ${index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : '#cd7f32'}` : '1px solid #eee'
+                        border: index < 3 ? `2px solid ${index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : '#cd7f32'}` : '1px solid #eee',
+                        cursor: 'pointer'
                       }}
                     >
                       <div style={{
-                        width: '24px',
-                        height: '24px',
-                        borderRadius: '50%',
+                        width: '24px', height: '24px', borderRadius: '50%',
                         background: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#e0e0e0',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        color: index < 3 ? '#fff' : '#666'
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '12px', fontWeight: 'bold', color: index < 3 ? '#fff' : '#666', flexShrink: 0
                       }}>
                         {index + 1}
                       </div>
-                      <div style={{ fontSize: '20px' }}>{getAvatarById(player.avatar).emoji}</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>{player.username}</div>
-                        <div style={{ fontSize: '11px', color: '#666' }}>{player.gamesWon}W / {player.gamesPlayed}G</div>
+                      <div style={{ fontSize: '20px', flexShrink: 0 }}>{getAvatarById(player.avatar).emoji}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.username}</div>
+                        <div style={{ fontSize: '11px', color: '#666' }}>{player.gamesWon}W / {player.gamesPlayed}G · {player.winRate}%</div>
+                        {player.lastPlayed && (
+                          <div style={{ fontSize: '10px', color: '#999' }}>
+                            {new Date(player.lastPlayed).toLocaleDateString()}
+                          </div>
+                        )}
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
-                          {player.ragequitPenalty > 0 && (
-                            <span style={{ fontSize: '11px', color: '#f44336' }}>-{player.ragequitPenalty}%</span>
-                          )}
-                          <span style={{ fontSize: '18px', fontWeight: 'bold', color: player.ragequitPenalty > 5 ? '#f44336' : '#4caf50' }}>{player.adjustedWinRate}%</span>
-                        </div>
-                        <div style={{ fontSize: '10px', color: '#666' }}>Best: {player.bestStreak}</div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#1a5f3f' }}>{player.score}</div>
+                        <div style={{ fontSize: '10px', color: '#666' }}>pts</div>
                       </div>
                     </div>
                   ))}
@@ -5825,6 +5894,7 @@ function relativeToAbsolute(relativePos, mySeatIndex) {
 function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeaveGame, onRematch }) {  // Added onRematch → userId, added playerAvatar
   const [gameState, setGameState] = useState(null);
   const [players, setPlayers] = useState({});
+  const [gameOptions, setGameOptions] = useState({ fiveCardDraw: false });
   const [disconnectTimer, setDisconnectTimer] = useState(null);
   const gameStateRef = useRef(null);
   const mySeatIndex = SEAT_TO_INDEX[mySeat];
@@ -5841,6 +5911,12 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
         gameStateRef.current = data;
         setGameState(data);
       }
+    });
+
+    // Load game options once
+    database.ref(`lobby/games/${gameId}/options`).once('value', snap => {
+      const opts = snap.val();
+      if (opts) setGameOptions(opts);
     });
 
     const playersListener = playersRef.on('value', (snapshot) => {
@@ -5896,12 +5972,13 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
                         const opponentTeam = 1 - playerTeam;
                         const playerScore = scoreArr[playerTeam] || 0;
                         const oppScore = scoreArr[opponentTeam] || 0;
+                        // Track quit (always) — sets before quit already recorded in real-time
+                        const quitUpdate = { gamesQuit: firebase.database.ServerValue.increment(1) };
                         if (oppScore > playerScore) {
-                          database.ref(`users/${player.userId}/stats`).update({
-                            disconnectsWhileLosing: firebase.database.ServerValue.increment(1),
-                            currentStreak: 0
-                          });
+                          quitUpdate.disconnectsWhileLosing = firebase.database.ServerValue.increment(1);
+                          quitUpdate.currentStreak = 0;
                         }
+                        database.ref(`users/${player.userId}/stats`).update(quitUpdate);
                       }
                     });
                   }
@@ -6029,6 +6106,7 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
       mySeatIndex={mySeatIndex}
       gameState={gameState}
       players={players}
+      gameOptions={gameOptions}
       onLeaveGame={onLeaveGame}
       onRematch={onRematch}
     />
@@ -6039,7 +6117,7 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
 // MULTIPLAYER GAME TABLE - Integrates game logic with Firebase sync
 // ============================================================================
 
-function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex, gameState, players, onLeaveGame, onRematch }) {
+function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex, gameState, players, gameOptions = {}, onLeaveGame, onRematch }) {
   // All the game state from the original App component
   const [phase, setPhase] = useState('start');
   const [hands, setHands] = useState([[], [], [], []]);
@@ -6090,53 +6168,83 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const dealtHands = useRef(null);
   const statsUpdated = useRef(false); // Track if stats were updated for this game
 
+  // 5-Card Draw: face-up card revealed when player swaps all 5
+  const [faceUpCard, setFaceUpCard] = useState(null); // { playerId, cardId }
+
+  // Per-game achievement tracking (reset each new game)
+  const [gameTimesSet, setGameTimesSet] = useState(0);
+  const [gamePerfect30s, setGamePerfect30s] = useState(0);
+  const [gameBid30Made, setGameBid30Made] = useState(0);
+  const [gameExceedBidPts, setGameExceedBidPts] = useState(0);
+  const wasSetThisGame = useRef(false); // for cleanGameWins check
+
   // Reset statsUpdated when gameId changes (for rematch/new game)
   useEffect(() => {
     statsUpdated.current = false;
     console.log('Game ID changed - reset statsUpdated flag');
   }, [gameId]);
 
+  const autoStartFired = useRef(false);
+
   // Update player stats when game ends
   useEffect(() => {
     if (phase === 'game-over' && gameState?.winner !== undefined && !statsUpdated.current) {
       statsUpdated.current = true;
       const winningTeam = gameState.winner;
-      
+      const finalScores = gameState.scores || [0, 0];
+
       console.log('Updating player stats - Winner: Team', winningTeam);
-      
+
       // Update stats for all human players
       Object.entries(players).forEach(([seat, player]) => {
         if (player && !player.isAI && player.userId) {
           const seatIndex = SEAT_TO_INDEX[seat];
-          const playerTeam = seatIndex % 2; // 0,2 = team 0; 1,3 = team 1
+          const playerTeam = seatIndex % 2;
           const isWinner = playerTeam === winningTeam;
-          
+          const isMe = player.userId === userId;
+
           console.log(`Updating stats for ${player.username} - ${isWinner ? 'WON' : 'LOST'}`);
-          
-          // Update stats in Firebase
+
           const statsRef = database.ref(`users/${player.userId}/stats`);
           statsRef.transaction((currentStats) => {
             const stats = currentStats || {
-              gamesPlayed: 0,
-              gamesWon: 0,
-              gamesLost: 0,
-              currentStreak: 0,
-              bestStreak: 0
+              gamesPlayed: 0, gamesWon: 0, gamesLost: 0, currentStreak: 0, bestStreak: 0
             };
-            
+
             stats.gamesPlayed = (stats.gamesPlayed || 0) + 1;
-            
+            stats.lastPlayed = Date.now();
+
             if (isWinner) {
               stats.gamesWon = (stats.gamesWon || 0) + 1;
               stats.currentStreak = (stats.currentStreak || 0) + 1;
               if (stats.currentStreak > (stats.bestStreak || 0)) {
                 stats.bestStreak = stats.currentStreak;
               }
+
+              // Comeback win: our team ≤55, opponent ≥90 at game end (retroactive check)
+              const myFinalScore = finalScores[playerTeam] || 0;
+              const oppFinalScore = finalScores[1 - playerTeam] || 0;
+              // Check scores before this winning round — approximate by seeing if opponent was near 90
+              // Use game history to check if at any point opp was ≥90 and we were ≤55
+              const hist = gameState.history || [];
+              const wasComeback = hist.some(h => {
+                const ourTotal = playerTeam === 0 ? h.usTotal : h.themTotal;
+                const oppTotal = playerTeam === 0 ? h.themTotal : h.usTotal;
+                return ourTotal <= 55 && oppTotal >= 90;
+              });
+              if (wasComeback) {
+                stats.comebackWins = (stats.comebackWins || 0) + 1;
+              }
+
+              // Clean game win: won without being personally set this game
+              if (isMe && !wasSetThisGame.current) {
+                stats.cleanGameWins = (stats.cleanGameWins || 0) + 1;
+              }
             } else {
               stats.gamesLost = (stats.gamesLost || 0) + 1;
               stats.currentStreak = 0;
             }
-            
+
             return stats;
           }).then(() => {
             console.log(`Stats updated for ${player.username}`);
@@ -6146,7 +6254,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         }
       });
     }
-  }, [phase, gameState?.winner, players]);
+  }, [phase, gameState?.winner, players, userId]);
 
   // Auto-select non-trump cards during discard phase
   useEffect(() => {
@@ -6350,6 +6458,13 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         setKittyCardIds(new Set(gameState.kittyCardIds));
       }
       
+      // Sync face-up card (5-Card Draw option)
+      if (gameState.faceUpCard) {
+        setFaceUpCard(gameState.faceUpCard);
+      } else if (gameState.faceUpCard === null) {
+        setFaceUpCard(null);
+      }
+
       // Sync play history
       if (gameState.playHistory) {
         console.log('📊 Syncing playHistory:', gameState.playHistory);
@@ -6746,8 +6861,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     }
     
     const keep = hands[mySeatIndex].filter((_, i) => !selected.includes(i));
+    const fiveCardSwap = gameOptions.fiveCardDraw && keep.length === 0;
     
-    if (keep.length < 1) {
+    if (keep.length < 1 && !gameOptions.fiveCardDraw) {
       alert('Must keep at least 1 card!');
       return;
     }
@@ -6781,8 +6897,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       return;
     }
     const newHands = [...hands];
-    newHands[mySeatIndex] = newHand;
-    
+    newHands[mySeatIndex] = sortHandByRank(newHand, trumpSuit);
+
     const newDrawn = [...drawn];
     newDrawn[mySeatIndex] = needToDraw;
     
@@ -6817,16 +6933,21 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         roundDealer: dealer
       });
     } else {
-      await updateGameState({
+      const partialUpdate = {
         hands: cleanHands(newHands),
         deck: newDeck,
         drawn: newDrawn,
         currentPlayer: nextPlayer
-      });
+      };
+      // 5-Card Draw: reveal the 5th drawn card face-up (visible during bidding)
+      if (fiveCardSwap && cardsFromDeck.length === 5) {
+        partialUpdate.faceUpCard = { playerId: mySeatIndex, cardId: cardsFromDeck[4].id };
+      }
+      await updateGameState(partialUpdate);
     }
-    
+
     setSelected([]);
-  }, [currentPlayer, mySeatIndex, hands, selected, deck, drawn, dealer, bidWinner, updateGameState, getPlayerName]);
+  }, [currentPlayer, mySeatIndex, hands, selected, deck, drawn, dealer, bidWinner, gameOptions, updateGameState, getPlayerName]);
 
   // Handle starting next round
   const handleNextRound = useCallback(async () => {
@@ -6915,7 +7036,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         drawnCardsArray: [],  // ✅ Reset drawn cards tracking
         kittyCardIds: [],
         playHistory: [],      // ✅ Reset play history for new round
-        lastTrick: null     // Clear last trick display
+        lastTrick: null,    // Clear last trick display
+        faceUpCard: null    // Clear 5-Card Draw face-up card for new round
       });
       console.log('✓ New round state written with .set()');
       console.log('✓ Bids reset to:', freshBids);
@@ -7182,14 +7304,47 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         });
         
         // Check if bidding team made their bid
+        const bidderSeat = SEAT_NAMES[bidWinner];
+        const bidderIsMe = bidWinner === mySeatIndex;
         if (finalRoundPts[bidderTeam] >= highBid) {
           // Made bid - add points
           newScores[bidderTeam] += finalRoundPts[bidderTeam];
           console.log(`✓ Team ${bidderTeam} made bid! +${finalRoundPts[bidderTeam]} points`);
+
+          // Per-round achievement tracking (only for myself)
+          if (bidderIsMe) {
+            const roundPtsScored = finalRoundPts[bidderTeam];
+            // Exceed bid bonus: +1 per 5 over bid
+            const excess = roundPtsScored - highBid;
+            const exceedBonus = Math.floor(excess / 5);
+            if (exceedBonus > 0) {
+              setGameExceedBidPts(p => p + exceedBonus);
+              database.ref(`users/${userId}/stats`).update({
+                exceedBidPoints: firebase.database.ServerValue.increment(exceedBonus)
+              });
+            }
+            // Perfect 30 / bid 30 made
+            if (roundPtsScored >= 30) {
+              if (highBid === 30) {
+                setGameBid30Made(p => p + 1);
+                database.ref(`users/${userId}/stats`).update({ bid30Made: firebase.database.ServerValue.increment(1) });
+              } else {
+                setGamePerfect30s(p => p + 1);
+                database.ref(`users/${userId}/stats`).update({ perfect30s: firebase.database.ServerValue.increment(1) });
+              }
+            }
+          }
         } else {
           // Missed bid - lose bid amount
           newScores[bidderTeam] -= highBid;
           console.log(`✗ Team ${bidderTeam} missed bid! -${highBid} points`);
+
+          // Track set against the bidder (only the bidder updates their own stats)
+          if (bidderIsMe) {
+            wasSetThisGame.current = true;
+            setGameTimesSet(p => p + 1);
+            database.ref(`users/${userId}/stats`).update({ timesSet: firebase.database.ServerValue.increment(1) });
+          }
         }
         
         // Other team always gets their points
@@ -7416,8 +7571,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       return;
     }
     const newHands = [...hands];
-      newHands[currentPlayer] = newHand;
-      
+      newHands[currentPlayer] = sortHandByRank(newHand, trumpSuit);
+
       const newDrawn = [...drawn];
       newDrawn[currentPlayer] = needToDraw;
       
@@ -7881,6 +8036,21 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     });
   }, [updateGameState]);
 
+  // Auto-trigger startGame when phase is 'start' — skip the Deal Cards screen.
+  // Only the game creator deals to avoid race conditions.
+  useEffect(() => {
+    if (phase !== 'start') return;
+    if (autoStartFired.current) return;
+    database.ref(`lobby/games/${gameId}/creatorId`).once('value', (snap) => {
+      const creatorId = snap.val();
+      if (creatorId === userId) {
+        autoStartFired.current = true;
+        console.log('🎲 Auto-starting game (creator)');
+        startGame();
+      }
+    });
+  }, [phase, gameId, userId, startGame]);
+
   // Handle rematch - create new game with same players
   const handleRematch = useCallback(async () => {
     console.log('Creating rematch game...');
@@ -8246,6 +8416,19 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           </div>
         </div>
 
+        {/* 5-Card Draw: face-up card notification during discarding/bidding */}
+        {faceUpCard && (phase === 'discarding' || phase === 'bidding' || phase === 'trump-select') && (() => {
+          const allCards = [].concat(...hands.filter(Boolean));
+          const card = allCards.find(c => c && c.id === faceUpCard.cardId)
+            || { id: faceUpCard.cardId, rank: faceUpCard.cardId.split('_')[0], suit: {'H':'♥','D':'♦','C':'♣','S':'♠'}[faceUpCard.cardId.split('_')[1]] };
+          const playerName = getPlayerName(faceUpCard.playerId);
+          return (
+            <div style={{ textAlign: 'center', padding: '4px 0', fontSize: '12px', color: '#d4af37' }}>
+              {playerName} swapped 5 — face-up card: <strong>{card.rank}{card.suit}</strong>
+            </div>
+          );
+        })()}
+
         {/* Button Area */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', flexWrap: 'wrap', padding: '4px 0', minHeight: '36px' }}>
           {phase === 'bidding' && currentPlayer === mySeatIndex && (
@@ -8422,7 +8605,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 {isWin ? '🏆 VICTORY!' : '💀 DEFEAT'}
               </div>
               
-              <div style={{ fontSize: '24px', marginBottom: '32px' }}>
+              <div style={{ fontSize: '24px', marginBottom: '20px' }}>
                 <div style={{ marginBottom: '12px' }}>
                   <span style={{ color: isWin ? '#4caf50' : '#aaa' }}>Us: </span>
                   <span style={{ fontWeight: 'bold', color: isWin ? '#4caf50' : '#aaa' }}>
@@ -8436,6 +8619,32 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   </span>
                 </div>
               </div>
+
+              {/* Per-game achievement summary */}
+              {(() => {
+                const items = [];
+                if (gamePerfect30s > 0) items.push({ label: `Perfect 30 ×${gamePerfect30s}`, pts: gamePerfect30s * 2, color: '#9c27b0' });
+                if (gameBid30Made > 0) items.push({ label: `Bid 30 Made ×${gameBid30Made}`, pts: gameBid30Made * 5, color: '#3f51b5' });
+                if (gameExceedBidPts > 0) items.push({ label: `Exceeded Bid`, pts: gameExceedBidPts, color: '#00897b' });
+                if (gameTimesSet > 0) items.push({ label: `Set ×${gameTimesSet}`, pts: -gameTimesSet, color: '#f44336' });
+                if (items.length === 0) return null;
+                const total = items.reduce((s, i) => s + i.pts, 0);
+                return (
+                  <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', marginBottom: '20px', fontSize: '13px' }}>
+                    <div style={{ color: '#aaa', marginBottom: '8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>This Game</div>
+                    {items.map((item, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ color: '#ddd' }}>{item.label}</span>
+                        <span style={{ color: item.color, fontWeight: 'bold' }}>{item.pts > 0 ? '+' : ''}{item.pts}</span>
+                      </div>
+                    ))}
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', marginTop: '8px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#aaa' }}>Achievement pts</span>
+                      <span style={{ color: total >= 0 ? '#4caf50' : '#f44336', fontWeight: 'bold' }}>{total > 0 ? '+' : ''}{total}</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <button
