@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.20.10';
+const VERSION = '2.20.11';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2390,6 +2390,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.20.11', changes: 'Rejoin: exclude game-over games. Write status=game-over to Firebase on game end.' },
     { version: '2.20.10', changes: 'Fix stale face-up card persisting into next round (Firebase null-delete sync bug).' },
     { version: '2.20.9', changes: 'Fix View Round crash (faceUpCard prop). Rejoin banner in lobby. New options: Follow A♥, 30 for 60. House Rules overlay updated.' },
     { version: '2.20.8', changes: '5-Card Draw: face-up card visible to all players (tinted blue in all hand positions). House Rules overlay at game start. No text label.' },
@@ -3980,7 +3981,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
       // Detect if current user is still seated in an active game (reconnect support)
       let found = null;
       for (const [gid, game] of Object.entries(validGames)) {
-        if (game.status === 'playing' || game.status === 'waiting') {
+        const gamePhase = game.gameState?.phase;
+        const isOver = gamePhase === 'game-over' || gamePhase === 'finished';
+        if (!isOver && (game.status === 'playing' || game.status === 'waiting')) {
           for (const [seat, player] of Object.entries(game.players || {})) {
             if (player && player.userId === userId) {
               found = { gameId: gid, seat, name: game.name || gid };
@@ -7682,6 +7685,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             roundDrawn: drawn,          // ✅ Already here
             roundDealer: dealer         // ✅ Already here
           });
+          database.ref(`lobby/games/${gameId}`).update({ status: 'game-over' });
         } else {
           await updateGameState({
             hands: cleanHands(newHands),
@@ -8199,6 +8203,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               roundDrawn: drawn,          // ✅ Already here
               roundDealer: dealer         // ✅ Already here
             });
+            database.ref(`lobby/games/${gameId}`).update({ status: 'game-over' });
           } else {
             await updateGameState({
               hands: cleanHands(newHands),
