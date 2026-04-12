@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.20.11';
+const VERSION = '2.20.12';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2390,6 +2390,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.20.12', changes: 'Rejoin mid-hand: guard auto-start against Firebase phase — prevents redeal when creator rejoins.' },
     { version: '2.20.11', changes: 'Rejoin: exclude game-over games. Write status=game-over to Firebase on game end.' },
     { version: '2.20.10', changes: 'Fix stale face-up card persisting into next round (Firebase null-delete sync bug).' },
     { version: '2.20.9', changes: 'Fix View Round crash (faceUpCard prop). Rejoin banner in lobby. New options: Follow A♥, 30 for 60. House Rules overlay updated.' },
@@ -8321,16 +8322,25 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
   // Auto-trigger startGame when phase is 'start' — skip the Deal Cards screen.
   // Only the game creator deals to avoid race conditions.
+  // Guard: check Firebase gameState.phase first — if the game is already past 'start'
+  // (e.g. a creator rejoining mid-hand), do NOT redeal.
   useEffect(() => {
     if (phase !== 'start') return;
     if (autoStartFired.current) return;
-    database.ref(`lobby/games/${gameId}/creatorId`).once('value', (snap) => {
-      const creatorId = snap.val();
-      if (creatorId === userId) {
+    database.ref(`lobby/games/${gameId}/creatorId`).once('value', (snapCreator) => {
+      const creatorId = snapCreator.val();
+      if (creatorId !== userId) return;
+      // Verify Firebase gameState.phase is also 'start' before dealing
+      database.ref(`lobby/games/${gameId}/gameState/phase`).once('value', (snapPhase) => {
+        const firebasePhase = snapPhase.val();
+        if (firebasePhase && firebasePhase !== 'start') {
+          console.log('🔄 Rejoining mid-game — skipping startGame (Firebase phase:', firebasePhase, ')');
+          return;
+        }
         autoStartFired.current = true;
         console.log('🎲 Auto-starting game (creator)');
         startGame();
-      }
+      });
     });
   }, [phase, gameId, userId, startGame]);
 
