@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.20.12';
+const VERSION = '2.20.13';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2390,6 +2390,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.20.13', changes: 'Rejoin: when seated in multiple active games, offer most recently active one.' },
     { version: '2.20.12', changes: 'Rejoin mid-hand: guard auto-start against Firebase phase — prevents redeal when creator rejoins.' },
     { version: '2.20.11', changes: 'Rejoin: exclude game-over games. Write status=game-over to Firebase on game end.' },
     { version: '2.20.10', changes: 'Fix stale face-up card persisting into next round (Firebase null-delete sync bug).' },
@@ -3980,20 +3981,24 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
       setGames(validGames);
 
       // Detect if current user is still seated in an active game (reconnect support)
-      let found = null;
+      const matches = [];
       for (const [gid, game] of Object.entries(validGames)) {
         const gamePhase = game.gameState?.phase;
         const isOver = gamePhase === 'game-over' || gamePhase === 'finished';
         if (!isOver && (game.status === 'playing' || game.status === 'waiting')) {
           for (const [seat, player] of Object.entries(game.players || {})) {
             if (player && player.userId === userId) {
-              found = { gameId: gid, seat, name: game.name || gid };
+              const ts = (game.gameState?.lastActivity) || game.createdAt || 0;
+              matches.push({ gameId: gid, seat, name: game.name || gid, ts });
               break;
             }
           }
         }
-        if (found) break;
       }
+      // Pick most recently active game
+      const found = matches.length > 0
+        ? matches.sort((a, b) => b.ts - a.ts)[0]
+        : null;
       setRejoinGame(found);
 
       console.log('Games updated (filtered):', Object.keys(validGames).length, 'of', Object.keys(data).length);
