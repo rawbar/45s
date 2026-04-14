@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.20.13';
+const VERSION = '2.21.1';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -2390,6 +2390,8 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.21.1', changes: 'Leaderboard: split into Active (seen within 30 days) and Inactive sections. Inactive players dimmed and unranked.' },
+    { version: '2.21.0', changes: 'Settings gear icon: persistent trick speed (Fast/Medium/Slow) and house rules (pre-fills per-game options). Mute button centered in lobby header.' },
     { version: '2.20.13', changes: 'Rejoin: when seated in multiple active games, offer most recently active one.' },
     { version: '2.20.12', changes: 'Rejoin mid-hand: guard auto-start against Firebase phase — prevents redeal when creator rejoins.' },
     { version: '2.20.11', changes: 'Rejoin: exclude game-over games. Write status=game-over to Firebase on game end.' },
@@ -3677,6 +3679,13 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
   const [showRules, setShowRules] = useState(false);
   const [soundMuted, setSoundMuted] = useState(SoundManager.isMuted());
 
+  // Preferences state (persistent per-user: trick speed + house rules)
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [prefTrickSpeed, setPrefTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'fast');
+  const [prefHouseRules, setPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false });
+  const [editTrickSpeed, setEditTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'fast');
+  const [editPrefHouseRules, setEditPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false });
+
   // Compute composite score from stats object
   const computePlayerScore = (stats, gamesPlayed, gamesWon) => {
     if (!stats || !gamesPlayed) return 0;
@@ -3869,6 +3878,31 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
     };
   }, [userId, playerName, playerAvatar]);
 
+  // Load persistent preferences from Firebase on mount
+  useEffect(() => {
+    if (!userId) return;
+    database.ref(`users/${userId}/prefs`).once('value', (snap) => {
+      const prefs = snap.val() || {};
+      const speed = prefs.trickSpeed || 'fast';
+      const hr = prefs.houseRules || {};
+      const rules = { fiveCardDraw: !!hr.fiveCardDraw, followAHearts: !!hr.followAHearts, thirtyFor60: !!hr.thirtyFor60 };
+      setPrefTrickSpeed(speed);
+      setPrefHouseRules(rules);
+      setEditTrickSpeed(speed);
+      setEditPrefHouseRules(rules);
+      localStorage.setItem('45s_trickSpeed', speed);
+    });
+  }, [userId]);
+
+  // Pre-fill create-game options from persistent house rules when modal opens
+  useEffect(() => {
+    if (showCreateGame) {
+      setOptFiveCardDraw(prefHouseRules.fiveCardDraw);
+      setOptFollowAHearts(prefHouseRules.followAHearts);
+      setOptThirtyFor60(prefHouseRules.thirtyFor60);
+    }
+  }, [showCreateGame]);
+
   useEffect(() => {
     // Clean up old/inactive games on lobby mount
     const cleanupOldGames = async () => {
@@ -4041,7 +4075,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
       setShowCreateGame(false);
       setNewGameName('');
       setShowGameOptions(false);
-      setOptFiveCardDraw(false);
     } catch (err) {
       console.error('Error creating game:', err);
       setError('Failed to create game: ' + err.message);
@@ -4095,6 +4128,21 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
       alert('Failed to save settings: ' + err.message);
     } finally {
       setSettingsSaving(false);
+    }
+  };
+
+  const handleSavePreferences = async () => {
+    try {
+      await database.ref(`users/${userId}/prefs`).set({
+        trickSpeed: editTrickSpeed,
+        houseRules: { fiveCardDraw: editPrefHouseRules.fiveCardDraw, followAHearts: editPrefHouseRules.followAHearts, thirtyFor60: editPrefHouseRules.thirtyFor60 }
+      });
+      localStorage.setItem('45s_trickSpeed', editTrickSpeed);
+      setPrefTrickSpeed(editTrickSpeed);
+      setPrefHouseRules({ ...editPrefHouseRules });
+      setShowPreferences(false);
+    } catch (err) {
+      alert('Failed to save preferences: ' + err.message);
     }
   };
 
@@ -4165,33 +4213,39 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
           marginBottom: '8px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-            {/* Left: 45s title, avatar directly below */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', gap: '8px' }}>
+            {/* Left: 45s title, avatar + gear icon below */}
             <div>
               <h1 style={{ margin: 0, color: '#1a5f3f', fontSize: '28px', fontWeight: 'bold', lineHeight: 1 }}>45s</h1>
-              <div
-                onClick={() => { SoundManager.play('modalOpen'); setShowSettings(true); }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  cursor: 'pointer',
-                  background: '#f5f5f5',
-                  padding: '2px 7px',
-                  borderRadius: '5px',
-                  border: '1px solid #ddd',
-                  marginTop: '3px',
-                  width: 'fit-content'
-                }}
-                title="Click to edit profile"
-              >
-                <span style={{ fontSize: '16px' }}>{getAvatarById(playerAvatar).emoji}</span>
-                <span style={{ fontSize: '11px', fontWeight: '500', color: '#333', maxWidth: '70px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '3px' }}>
+                <div
+                  onClick={() => { SoundManager.play('modalOpen'); setShowSettings(true); }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    cursor: 'pointer',
+                    background: '#f5f5f5',
+                    padding: '2px 7px',
+                    borderRadius: '5px',
+                    border: '1px solid #ddd',
+                    width: 'fit-content'
+                  }}
+                  title="Click to edit profile"
+                >
+                  <span style={{ fontSize: '16px' }}>{getAvatarById(playerAvatar).emoji}</span>
+                  <span style={{ fontSize: '11px', fontWeight: '500', color: '#333', maxWidth: '70px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName}</span>
+                </div>
+                <span
+                  onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setShowPreferences(true); }}
+                  style={{ fontSize: '15px', cursor: 'pointer', opacity: 0.65, userSelect: 'none', padding: '2px 6px', background: '#f5f5f5', borderRadius: '5px', border: '1px solid #ddd', lineHeight: 1.4 }}
+                  title="Preferences"
+                >⚙️</span>
               </div>
             </div>
 
-            {/* Right: Buttons + version below */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+            {/* Right: Buttons + mute/version centered vertically */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <button
                   onClick={() => { SoundManager.play('buttonClick'); setShowCreateGame(true); }}
@@ -4265,7 +4319,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                   Logout
                 </button>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span
                   onClick={() => { const m = SoundManager.toggle(); setSoundMuted(m); }}
                   style={{ fontSize: '14px', cursor: 'pointer', opacity: 0.7, userSelect: 'none' }}
@@ -4503,9 +4557,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                   setShowCreateGame(false);
                   setNewGameName('');
                   setShowGameOptions(false);
-                  setOptFiveCardDraw(false);
-                  setOptFollowAHearts(false);
-                  setOptThirtyFor60(false);
+                  setOptFiveCardDraw(prefHouseRules.fiveCardDraw);
+                  setOptFollowAHearts(prefHouseRules.followAHearts);
+                  setOptThirtyFor60(prefHouseRules.thirtyFor60);
                 }}
                 disabled={loading}
                 style={{
@@ -4718,56 +4772,69 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
               <div style={{ fontSize: '12px', color: '#666', marginBottom: '12px', textAlign: 'center' }}>
                 All players · sorted by score
               </div>
-              
+
               {leaderboardLoading ? (
                 <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>Loading...</div>
               ) : leaderboardData.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
                   No players yet
                 </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px' }}>
-                  {leaderboardData.map((player, index) => (
-                    <div
-                      key={index}
-                      onClick={() => fetchPlayerStats(player.uid, { username: player.username, avatar: player.avatar })}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '10px',
-                        background: index === 0 ? '#fff8e1' : index === 1 ? '#f5f5f5' : index === 2 ? '#fff3e0' : '#fafafa',
-                        borderRadius: '8px',
-                        border: index < 3 ? `2px solid ${index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : '#cd7f32'}` : '1px solid #eee',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <div style={{
-                        width: '24px', height: '24px', borderRadius: '50%',
-                        background: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#e0e0e0',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '12px', fontWeight: 'bold', color: index < 3 ? '#fff' : '#666', flexShrink: 0
-                      }}>
-                        {index + 1}
-                      </div>
-                      <div style={{ fontSize: '20px', flexShrink: 0 }}>{getAvatarById(player.avatar).emoji}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.username}</div>
-                        <div style={{ fontSize: '11px', color: '#666' }}>{player.gamesWon}W / {player.gamesPlayed}G · {player.winRate}%</div>
-                        {player.lastSeen && (
-                          <div style={{ fontSize: '10px', color: '#999' }}>
-                            {new Date(player.lastSeen).toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#1a5f3f' }}>{player.score}</div>
-                        <div style={{ fontSize: '10px', color: '#666' }}>pts</div>
-                      </div>
+              ) : (() => {
+                const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+                const active = leaderboardData.filter(p => p.lastSeen && p.lastSeen > oneMonthAgo);
+                const inactive = leaderboardData.filter(p => !p.lastSeen || p.lastSeen <= oneMonthAgo);
+                const renderRow = (player, rank, dimmed) => (
+                  <div
+                    key={player.uid}
+                    onClick={() => fetchPlayerStats(player.uid, { username: player.username, avatar: player.avatar })}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '12px', padding: '10px',
+                      background: dimmed ? '#f8f8f8' : rank === 0 ? '#fff8e1' : rank === 1 ? '#f5f5f5' : rank === 2 ? '#fff3e0' : '#fafafa',
+                      borderRadius: '8px',
+                      border: !dimmed && rank < 3 ? `2px solid ${rank === 0 ? '#ffd700' : rank === 1 ? '#c0c0c0' : '#cd7f32'}` : '1px solid #eee',
+                      cursor: 'pointer', opacity: dimmed ? 0.5 : 1
+                    }}
+                  >
+                    <div style={{
+                      width: '24px', height: '24px', borderRadius: '50%',
+                      background: dimmed ? '#ccc' : rank === 0 ? '#ffd700' : rank === 1 ? '#c0c0c0' : rank === 2 ? '#cd7f32' : '#e0e0e0',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '12px', fontWeight: 'bold', color: (!dimmed && rank < 3) ? '#fff' : '#666', flexShrink: 0
+                    }}>
+                      {rank + 1}
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div style={{ fontSize: '20px', flexShrink: 0 }}>{getAvatarById(player.avatar).emoji}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.username}</div>
+                      <div style={{ fontSize: '11px', color: '#666' }}>{player.gamesWon}W / {player.gamesPlayed}G · {player.winRate}%</div>
+                      {player.lastSeen ? (
+                        <div style={{ fontSize: '10px', color: '#999' }}>{new Date(player.lastSeen).toLocaleDateString()}</div>
+                      ) : (
+                        <div style={{ fontSize: '10px', color: '#bbb' }}>never seen</div>
+                      )}
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#1a5f3f' }}>{player.score}</div>
+                      <div style={{ fontSize: '10px', color: '#666' }}>pts</div>
+                    </div>
+                  </div>
+                );
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px' }}>
+                    {active.map((player, i) => renderRow(player, i, false))}
+                    {inactive.length > 0 && (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', marginBottom: '2px' }}>
+                          <div style={{ flex: 1, height: '1px', background: '#ddd' }} />
+                          <span style={{ fontSize: '11px', color: '#aaa', whiteSpace: 'nowrap' }}>Inactive (30+ days)</span>
+                          <div style={{ flex: 1, height: '1px', background: '#ddd' }} />
+                        </div>
+                        {inactive.map((player, i) => renderRow(player, i, true))}
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -4941,6 +5008,95 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
 
         {/* Rules Modal */}
         <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
+
+        {/* Preferences Modal */}
+        {showPreferences && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center',
+            alignItems: 'center', zIndex: 2000, animation: 'fadeIn 0.2s ease-out'
+          }}>
+            <div style={{
+              background: 'white', animation: 'slideUp 0.25s ease-out',
+              borderRadius: '12px', padding: '28px', maxWidth: '420px',
+              width: '90%', maxHeight: '90vh', overflow: 'auto',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            }}>
+              <h2 style={{ marginBottom: '20px', color: '#1a5f3f' }}>Preferences</h2>
+
+              {/* Trick Speed */}
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333', marginBottom: '10px' }}>
+                  Trick Display Speed
+                </div>
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
+                  How long all 4 cards stay visible before the trick is cleared.
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {[['fast', 'Fast', '0.6s'], ['medium', 'Medium', '0.9s'], ['slow', 'Slow', '1.2s']].map(([val, label, sub]) => (
+                    <div
+                      key={val}
+                      onClick={() => setEditTrickSpeed(val)}
+                      style={{
+                        flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer',
+                        borderRadius: '8px', border: editTrickSpeed === val ? '2px solid #1a5f3f' : '2px solid #ddd',
+                        background: editTrickSpeed === val ? '#e8f5e9' : '#fafafa',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <div style={{ fontWeight: 'bold', fontSize: '14px', color: editTrickSpeed === val ? '#1a5f3f' : '#333' }}>{label}</div>
+                      <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>{sub}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* House Rules */}
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333', marginBottom: '4px' }}>
+                  Default House Rules
+                </div>
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
+                  These pre-fill when you create a game. You can still override per-game in Options.
+                </div>
+                {[
+                  ['fiveCardDraw', '5-Card Draw', 'Players may discard all 5 cards. 5th drawn card dealt face-up.'],
+                  ['followAHearts', 'Follow A♥', 'When A♥ is led, void in trump must play a heart if holding one.'],
+                  ['thirtyFor60', '30 for 60', 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.']
+                ].map(([key, label, desc]) => (
+                  <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px', marginBottom: '10px' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!editPrefHouseRules[key]}
+                      onChange={e => setEditPrefHouseRules(prev => ({ ...prev, [key]: e.target.checked }))}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <span>
+                      <strong>{label}</strong>
+                      <span style={{ fontSize: '12px', color: '#666', display: 'block' }}>{desc}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Buttons */}
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setShowPreferences(false)}
+                  style={{ padding: '10px 20px', background: '#757575', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSavePreferences}
+                  style={{ padding: '10px 20px', background: '#1a5f3f', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 }
@@ -7439,9 +7595,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         console.error('  ✗ Firebase update FAILED:', error);
       }
       
-      // Wait so players can see the complete trick (reduced from 800ms for faster play)
+      // Wait so players can see the complete trick (speed from user preferences)
+      const trickDisplayMs1 = { fast: 600, medium: 900, slow: 1200 }[localStorage.getItem('45s_trickSpeed') || 'fast'];
       console.log('  → Waiting to show trick...');
-      await new Promise(resolve => setTimeout(resolve, 600));
+      await new Promise(resolve => setTimeout(resolve, trickDisplayMs1));
       
       // Evaluate trick
       const winner = determineTrickWinner(newTrick, trumpSuit, trickLeader);
@@ -8023,8 +8180,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           playHistory: newPlayHistory  // ✅ Sync play history
         });
         
-        // Wait so players can see complete trick (reduced from 800ms for faster play)
-        await new Promise(resolve => setTimeout(resolve, 600));
+        // Wait so players can see complete trick (speed from user preferences)
+        const trickDisplayMs2 = { fast: 600, medium: 900, slow: 1200 }[localStorage.getItem('45s_trickSpeed') || 'fast'];
+        await new Promise(resolve => setTimeout(resolve, trickDisplayMs2));
         
         const winner = determineTrickWinner(newTrick, trumpSuit, trickLeader);
         const winnerTeam = getTeam(winner);
