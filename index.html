@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.21.1';
+const VERSION = '2.21.2';
 const DEBUG = true; // Set to false for production
 
 // Debug logging utility
@@ -711,7 +711,7 @@ const FirebaseAPI = {
   },
 
   // Create rematch game - new game with same players in same seats
-  createRematchGame: async (oldGameCode, players, creatorId) => {
+  createRematchGame: async (oldGameCode, players, creatorId, options = {}) => {
     try {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let newGameCode = '';
@@ -767,6 +767,7 @@ const FirebaseAPI = {
         status: 'active',
         createdAt: now,
         lastActivity: now,
+        options: options,
         gameState: {
           initialized: true,  // CRITICAL: Required for GameWrapper to show game instead of "Initializing..."
           phase: 'bidding',
@@ -2390,6 +2391,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.21.2', changes: 'Rematch carries forward house rules (5-Card Draw, Follow A♥, 30 for 60) from the previous game.' },
     { version: '2.21.1', changes: 'Leaderboard: split into Active (seen within 30 days) and Inactive sections. Inactive players dimmed and unranked.' },
     { version: '2.21.0', changes: 'Settings gear icon: persistent trick speed (Fast/Medium/Slow) and house rules (pre-fills per-game options). Mute button centered in lobby header.' },
     { version: '2.20.13', changes: 'Rejoin: when seated in multiple active games, offer most recently active one.' },
@@ -8521,7 +8523,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const handleRematch = useCallback(async () => {
     console.log('Creating rematch game...');
     try {
-      const newGameId = await FirebaseAPI.createRematchGame(gameId, players, userId);
+      const newGameId = await FirebaseAPI.createRematchGame(gameId, players, userId, gameOptions);
       console.log('Rematch game created:', newGameId);
       // The nextGameId listener in GameWrapper will handle the transition for all players
     } catch (error) {
