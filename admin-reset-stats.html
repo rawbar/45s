@@ -2,63 +2,64 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>45s Admin — Reset Ragequitter Stats</title>
+  <title>45s Admin</title>
   <style>
-    body { font-family: monospace; background: #1a1a1a; color: #eee; padding: 24px; max-width: 750px; margin: 0 auto; }
+    body { font-family: monospace; background: #1a1a1a; color: #eee; padding: 24px; max-width: 900px; margin: 0 auto; }
     h1 { color: #f44336; }
     h2 { color: #aaa; font-size: 14px; font-weight: normal; margin-top: 0; }
     table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
     th { text-align: left; color: #888; border-bottom: 1px solid #333; padding: 6px 8px; }
-    td { padding: 5px 8px; border-bottom: 1px solid #2a2a2a; }
-    .del { background: none; border: 1px solid #f44336; color: #f44336; padding: 2px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; font-family: monospace; }
-    .del:hover { background: #f44336; color: white; }
+    td { padding: 5px 8px; border-bottom: 1px solid #2a2a2a; vertical-align: middle; }
+    .btn { background: none; border: 1px solid #666; color: #aaa; padding: 2px 7px; border-radius: 3px; cursor: pointer; font-size: 11px; font-family: monospace; margin-right: 3px; }
+    .btn:hover { color: white; }
+    .btn-del  { border-color: #f44336; color: #f44336; }
+    .btn-del:hover  { background: #f44336; }
+    .btn-wl   { border-color: #ff9800; color: #ff9800; }
+    .btn-wl:hover   { background: #ff9800; color: #111; }
+    .btn-bdg  { border-color: #9c27b0; color: #9c27b0; }
+    .btn-bdg:hover  { background: #9c27b0; color: white; }
     tr.ragequitter { background: #2a1010; }
-    tr.clean { opacity: 0.4; }
+    tr.clean { opacity: 0.5; }
     .badge { display: inline-block; background: #f44336; color: white; font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-left: 6px; }
     .warn { background: #2a1a1a; border: 1px solid #f44336; padding: 14px 18px; border-radius: 6px; margin: 20px 0; color: #f44336; }
-    .info { background: #1a2a1a; border: 1px solid #4caf50; padding: 10px 14px; border-radius: 6px; margin: 12px 0; color: #4caf50; font-size: 13px; }
-    button { padding: 12px 28px; font-size: 15px; border: none; border-radius: 6px; cursor: pointer; margin-right: 10px; font-family: monospace; }
+    .section-btn { padding: 10px 22px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer; margin-right: 10px; font-family: monospace; }
     #resetBtn { background: #f44336; color: white; }
-    #resetBtn:disabled { background: #555; cursor: default; }
+    #resetBtn:disabled, #resetBadgesBtn:disabled { background: #555; cursor: default; }
     #cancelBtn { background: #333; color: #ccc; }
     #log { margin-top: 20px; background: #111; padding: 14px; border-radius: 6px; font-size: 12px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; }
     .ok { color: #4caf50; }
     .skip { color: #888; }
     .err { color: #f44336; }
+    hr { border-color: #333; margin: 28px 0 16px; }
   </style>
 </head>
 <body>
-  <h1>45s Admin — Reset Ragequitter Stats</h1>
-  <h2>Only resets players with disconnectsWhileLosing &gt; 0. Clean players are unaffected.</h2>
+  <h1>45s Admin</h1>
 
   <div id="status">Loading users from Firebase...</div>
   <table id="userTable" style="display:none">
-    <thead><tr><th>Username</th><th>Email</th><th>Games</th><th>Win%</th><th>Score</th><th>Quits</th><th>DWL</th><th>Last Seen</th><th></th></tr></thead>
+    <thead><tr>
+      <th>Username</th><th>Email</th><th>GP</th><th>Win%</th><th>Score</th><th>Bdg</th><th>Quits</th><th>DWL</th><th>Last Seen</th><th>Actions</th>
+    </tr></thead>
     <tbody id="userRows"></tbody>
   </table>
 
-  <div class="info" id="infoBox" style="display:none">
-    <span id="cleanCount">0</span> clean players (shown dimmed) will NOT be touched.
-  </div>
-
+  <hr>
+  <h2 style="color:#f44336;">Bulk: Reset All Ragequitters</h2>
   <div class="warn" id="warnBox" style="display:none">
-    ⚠️ This will permanently zero all stats for <span id="userCount">0</span> ragequitter(s) highlighted above.<br>
-    Clean players are skipped. This cannot be undone.
+    ⚠️ Zeros ALL stats for <span id="userCount">0</span> ragequitter(s) above. Cannot be undone.
+  </div>
+  <div id="buttons" style="display:none; margin-top:12px;">
+    <button class="section-btn" id="resetBtn">Reset Ragequitters</button>
+    <button class="section-btn" id="cancelBtn" onclick="window.close()">Cancel</button>
   </div>
 
-  <div id="buttons" style="display:none">
-    <button id="resetBtn">Reset Ragequitters</button>
-    <button id="cancelBtn" onclick="window.close()">Cancel</button>
+  <hr>
+  <h2 style="color:#ff9800;">Bulk: Reset All Badges (all players)</h2>
+  <div style="background:#2a1a00; border:1px solid #ff9800; padding:12px 16px; border-radius:6px; color:#ff9800; font-size:13px; margin-bottom:12px;">
+    ⚠️ Clears badge records + zeros badgeScore for every player. Badge icons show unearned until re-earned.
   </div>
-
-  <hr style="border-color:#333; margin: 28px 0 16px;">
-  <h2 style="color:#ff9800; font-size:14px; font-weight:normal;">Badge Reset — All Players</h2>
-  <div class="warn" style="border-color:#ff9800; color:#ff9800; display:block;">
-    ⚠️ Clears all badge records (earned dates) for every player. Badge icons will show as unearned until re-earned in future games. Stats are not affected.
-  </div>
-  <div style="margin-top: 12px;">
-    <button id="resetBadgesBtn" style="background:#ff9800; color:#fff; padding:12px 28px; font-size:15px; border:none; border-radius:6px; cursor:pointer; font-family:monospace;">Reset All Badges</button>
-  </div>
+  <button class="section-btn" id="resetBadgesBtn" style="background:#ff9800; color:#111;">Reset All Badges</button>
 
   <div id="log" style="display:none"></div>
 
@@ -80,55 +81,24 @@
     const db = firebase.database();
 
     const BLANK_STATS = {
-      gamesPlayed: 0,
-      gamesWon: 0,
-      gamesLost: 0,
-      currentStreak: 0,
-      bestStreak: 0,
-      timesSet: 0,
-      perfect30s: 0,
-      bid30Made: 0,
-      exceedBidPoints: 0,
-      comebackWins: 0,
-      cleanGameWins: 0,
-      gamesQuit: 0,
-      disconnectsWhileLosing: 0,
-      setsOn30: 0,
-      setsOn25: 0,
-      setsOn20: 0,
-      badgeScore: 0,
-      bid25Made: 0,
-      bid20Made: 0,
-      bid15Made: 0,
-      bid30For60Made: 0,
-      baggedBidMade: 0,
-      baggedGameWon: 0,
-      fastWins4: 0,
-      fastWins5: 0,
-      fastWins6: 0,
-      trumpSlayerWins: 0,
-      hatTrick: 0,
-      dominant: 0,
-      set3InGame: 0,
-      winAfterSet3: 0,
-      winFromNegative: 0,
-      shutoutWins: 0,
-      fiveCardDrawUsed: 0,
-      wonAfter5Draw: 0,
-      followAHeartsPlayed: 0,
-      exceedBy10: 0,
-      cardSharkStreak: 0,
-      centurionGames: 0,
-      heartbreakerGames: 0,
-      photoFinishGames: 0,
-      // lastSeen preserved — not a competitive stat
+      gamesPlayed: 0, gamesWon: 0, gamesLost: 0,
+      currentStreak: 0, bestStreak: 0,
+      timesSet: 0, perfect30s: 0, bid30Made: 0, exceedBidPoints: 0,
+      comebackWins: 0, cleanGameWins: 0, gamesQuit: 0, disconnectsWhileLosing: 0,
+      setsOn30: 0, setsOn25: 0, setsOn20: 0, badgeScore: 0,
+      bid25Made: 0, bid20Made: 0, bid15Made: 0, bid30For60Made: 0,
+      baggedBidMade: 0, baggedGameWon: 0,
+      fastWins4: 0, fastWins5: 0, fastWins6: 0,
+      trumpSlayerWins: 0, hatTrick: 0, dominant: 0,
+      set3InGame: 0, winAfterSet3: 0, winFromNegative: 0, shutoutWins: 0,
+      fiveCardDrawUsed: 0, wonAfter5Draw: 0, followAHeartsPlayed: 0,
+      exceedBy10: 0, cardSharkStreak: 0, centurionGames: 0,
+      heartbreakerGames: 0, photoFinishGames: 0,
     };
 
     let allUsers = {};
 
-    function isRagequitter(s) {
-      return (s.disconnectsWhileLosing || 0) > 0;
-    }
+    function isRagequitter(s) { return (s.disconnectsWhileLosing || 0) > 0; }
 
     function computeScore(s, gp, gw) {
       if (!s || !gp) return 0;
@@ -140,7 +110,8 @@
         - (s.timesSet || 0)
         + ((s.comebackWins || 0) * 10)
         + ((s.cleanGameWins || 0) * 3)
-        + (s.bestStreak || 0);
+        + (s.bestStreak || 0)
+        + (s.badgeScore || 0);
     }
 
     async function loadUsers() {
@@ -150,7 +121,6 @@
         const tbody = document.getElementById('userRows');
         let rqCount = 0, cleanCount = 0;
 
-        // Sort: ragequitters first
         const entries = Object.entries(allUsers).filter(([, u]) => u && u.username);
         entries.sort(([, a], [, b]) => {
           const aDwl = (a.stats || {}).disconnectsWhileLosing || 0;
@@ -164,23 +134,31 @@
           const gw = s.gamesWon || 0;
           const wr = gp > 0 ? Math.round((gw / gp) * 100) : 0;
           const score = computeScore(s, gp, gw);
+          const bdg = s.badgeScore || 0;
           const lastSeen = s.lastSeen ? new Date(s.lastSeen).toLocaleDateString() : '—';
           const rq = isRagequitter(s);
           const dwl = s.disconnectsWhileLosing || 0;
           const quits = s.gamesQuit || 0;
           const rowClass = rq ? 'ragequitter' : 'clean';
-          const badge = rq ? '<span class="badge">RESET</span>' : '';
-          const email = user.email ? `<a href="mailto:${user.email}" style="color:#4caf50">${user.email}</a>` : '<span style="color:#444">—</span>';
+          const rqBadge = rq ? '<span class="badge">RQ</span>' : '';
+          const email = user.email
+            ? `<a href="mailto:${user.email}" style="color:#4caf50">${user.email}</a>`
+            : '<span style="color:#444">—</span>';
           tbody.innerHTML += `<tr class="${rowClass}" id="row-${uid}">
-            <td>${user.username}${badge}</td>
+            <td>${user.username}${rqBadge}</td>
             <td style="font-size:11px">${email}</td>
-            <td>${gp}</td>
-            <td>${wr}%</td>
-            <td>${score}</td>
+            <td id="gp-${uid}">${gp}</td>
+            <td id="wr-${uid}">${wr}%</td>
+            <td id="sc-${uid}">${score}</td>
+            <td id="bdg-${uid}" style="color:#9c27b0">${bdg > 0 ? bdg : '—'}</td>
             <td>${quits}</td>
             <td style="color:${dwl > 0 ? '#f44336' : '#666'}">${dwl}</td>
             <td>${lastSeen}</td>
-            <td><button class="del" onclick="deleteUser('${uid}', '${user.username}')">Delete</button></td>
+            <td style="white-space:nowrap">
+              <button class="btn btn-wl"  onclick="resetWL('${uid}','${user.username}')">W/L</button>
+              <button class="btn btn-bdg" onclick="resetUserBadges('${uid}','${user.username}')">Bdg</button>
+              <button class="btn btn-del" onclick="deleteUser('${uid}','${user.username}')">Del</button>
+            </td>
           </tr>`;
           if (rq) rqCount++; else cleanCount++;
         }
@@ -188,14 +166,10 @@
         document.getElementById('status').textContent =
           `Loaded ${rqCount + cleanCount} players — ${rqCount} ragequitter(s), ${cleanCount} clean.`;
         document.getElementById('userCount').textContent = rqCount;
-        document.getElementById('cleanCount').textContent = cleanCount;
         document.getElementById('userTable').style.display = 'table';
-        document.getElementById('infoBox').style.display = 'block';
         if (rqCount > 0) {
           document.getElementById('warnBox').style.display = 'block';
           document.getElementById('buttons').style.display = 'block';
-        } else {
-          document.getElementById('status').textContent += ' — nothing to reset.';
         }
       } catch (e) {
         document.getElementById('status').textContent = 'Error loading users: ' + e.message;
@@ -209,6 +183,50 @@
       el.scrollTop = el.scrollHeight;
     }
 
+    // Per-player: reset W/L stats (zeros games played/won/lost + streaks)
+    async function resetWL(uid, username) {
+      if (!window.confirm(`Reset W/L stats for "${username}"?\n\nZeros: gamesPlayed, gamesWon, gamesLost, currentStreak, bestStreak.\nAll other stats preserved. Cannot be undone.`)) return;
+      try {
+        await db.ref(`users/${uid}/stats`).update({
+          gamesPlayed: 0,
+          gamesWon: 0,
+          gamesLost: 0,
+          currentStreak: 0,
+          bestStreak: 0,
+        });
+        document.getElementById(`gp-${uid}`).textContent = '0';
+        document.getElementById(`wr-${uid}`).textContent = '0%';
+        // Recompute score — fetch fresh stats
+        const snap = await db.ref(`users/${uid}/stats`).once('value');
+        const s = snap.val() || {};
+        const newScore = computeScore(s, 0, 0);
+        document.getElementById(`sc-${uid}`).textContent = newScore;
+        log(`  ✓ ${username} — W/L reset`, 'ok');
+      } catch (e) {
+        log(`  ✗ ${username}: ${e.message}`, 'err');
+      }
+    }
+
+    // Per-player: reset badges
+    async function resetUserBadges(uid, username) {
+      if (!window.confirm(`Reset badges for "${username}"?\n\nClears badge records and zeros badgeScore. Cannot be undone.`)) return;
+      try {
+        await db.ref(`users/${uid}/badges`).remove();
+        await db.ref(`users/${uid}/stats/badgeScore`).set(0);
+        document.getElementById(`bdg-${uid}`).textContent = '—';
+        // Recompute score display
+        const snap = await db.ref(`users/${uid}/stats`).once('value');
+        const s = snap.val() || {};
+        const gp = s.gamesPlayed || 0;
+        const gw = s.gamesWon || 0;
+        document.getElementById(`sc-${uid}`).textContent = computeScore(s, gp, gw);
+        log(`  ✓ ${username} — badges reset`, 'ok');
+      } catch (e) {
+        log(`  ✗ ${username}: ${e.message}`, 'err');
+      }
+    }
+
+    // Bulk: reset all ragequitters
     document.getElementById('resetBtn').addEventListener('click', async () => {
       const btn = document.getElementById('resetBtn');
       btn.disabled = true;
@@ -219,14 +237,12 @@
       for (const [uid, user] of Object.entries(allUsers)) {
         if (!user || !user.username) continue;
         const s = user.stats || {};
-        if (!isRagequitter(s)) {
-          skipped++;
-          continue;
-        }
+        if (!isRagequitter(s)) { skipped++; continue; }
         try {
           const resetStats = { ...BLANK_STATS };
           if (s.lastSeen) resetStats.lastSeen = s.lastSeen;
           await db.ref(`users/${uid}/stats`).set(resetStats);
+          await db.ref(`users/${uid}/badges`).remove();
           log(`  ✓ ${user.username} (was DWL=${s.disconnectsWhileLosing})`, 'ok');
           ok++;
         } catch (e) {
@@ -238,21 +254,21 @@
       btn.textContent = 'Done';
     });
 
+    // Bulk: reset all badges
     document.getElementById('resetBadgesBtn').addEventListener('click', async () => {
-      if (!window.confirm('Clear ALL badge records for ALL players?\n\nThis removes earned dates and resets badge icons to unearned. Stats are NOT affected. Cannot be undone.')) return;
+      if (!window.confirm('Clear ALL badge records for ALL players?\n\nRemoves earned dates and zeros badgeScore. Cannot be undone.')) return;
       const btn = document.getElementById('resetBadgesBtn');
       btn.disabled = true;
-      btn.textContent = 'Resetting badges...';
-      log('Clearing badge records for all players...');
+      btn.textContent = 'Resetting...';
+      log('Clearing badges for all players...');
 
-      // Load all users fresh in case table not yet loaded
       let users = allUsers;
       if (Object.keys(users).length === 0) {
         const snap = await db.ref('users').once('value');
         users = snap.val() || {};
       }
 
-      let ok = 0, skipped = 0, fail = 0;
+      let ok = 0, fail = 0;
       for (const [uid, user] of Object.entries(users)) {
         if (!user || !user.username) continue;
         try {
