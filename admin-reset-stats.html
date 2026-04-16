@@ -257,6 +257,7 @@
         if (!user || !user.username) continue;
         try {
           await db.ref(`users/${uid}/badges`).remove();
+          await db.ref(`users/${uid}/stats/badgeScore`).set(0);
           log(`  ✓ ${user.username}`, 'ok');
           ok++;
         } catch (e) {

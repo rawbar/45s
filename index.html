@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.22.8';
+const VERSION = '2.22.9';
 const DEBUG = true; // Set to false for production
 
 // ─── Badge Definitions ───────────────────────────────────────────────────────
@@ -2500,6 +2500,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.22.9', changes: 'Fix badge score on leaderboard: use cached stats.badgeScore (zeroed on reset, updated after each game) instead of recomputing from stat fields. Admin badge reset now also zeros badgeScore in stats.' },
     { version: '2.22.8', changes: 'Fix badge reset: badges tab now uses Firebase badges node as source of truth (reset actually clears displayed badges). End-of-game badge notifications are now tappable — tap to see badge description.' },
     { version: '2.22.3', changes: 'Fix badge false positives: pre-game badge eligibility captured before the stats transaction, so only badges earned in THIS game are notified. Pre-existing qualifiers are silently bootstrapped into Firebase without triggering a notification.' },
     { version: '2.22.2', changes: 'Stats modal redesigned with Stats / Badges tabs. Fixed: modal no longer opens off-screen. Header (avatar + score) is fixed; each tab scrolls independently. Stats tab uses 3-column grid. Badges tab: tap any badge for a detail panel below the grid.' },
@@ -3819,7 +3820,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
       + ((stats.comebackWins || 0) * 10)
       + ((stats.cleanGameWins || 0) * 3)
       + (stats.bestStreak || 0)
-      + getBadgeIds(stats).reduce((sum, id) => sum + (BADGES.find(b => b.id === id)?.pts || 0), 0);
+      + (stats.badgeScore || 0);
   };
 
   // Fetch leaderboard data
@@ -6975,8 +6976,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               toWrite.forEach(id => {
                 badgeUpdates[`users/${userId}/badges/${id}`] = { earnedAt: Date.now() };
               });
+              // Compute total badge score from all qualifying badges and cache in stats
+              const totalBadgeScore = postBadgeIds.reduce((sum, id) => sum + (BADGES.find(b => b.id === id)?.pts || 0), 0);
               return database.ref().update(badgeUpdates).then(() => {
                 console.log(`🏅 Wrote ${toWrite.length} badges to Firebase (${thisGameBadges.length} new this game)`);
+                return database.ref(`users/${userId}/stats/badgeScore`).set(totalBadgeScore);
               }).then(() => {
                 // Only notify + display badges earned in THIS game
                 if (thisGameBadges.length === 0) return;
