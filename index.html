@@ -32,8 +32,117 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.21.3';
+const VERSION = '2.22.0';
 const DEBUG = true; // Set to false for production
+
+// ─── Badge Definitions ───────────────────────────────────────────────────────
+// color tiers: gray=#aaa(1pt), bronze=#cd7f32(2-3pt), silver=#909090(5pt),
+//              sapphire=#1565c0(10pt), gold=#d4af37(15-20pt)
+const BADGES = [
+  // Speed Victories
+  { id:'lightning_round', name:'Lightning Round',  desc:'Win a game in 4 hands',                                    pts:20, sym:'⚡',    color:'#d4af37' },
+  { id:'swift_victory',   name:'Swift Victory',    desc:'Win a game in 5 hands',                                    pts:10, sym:'🚀',    color:'#1565c0' },
+  { id:'quick_game',      name:'Quick Game',       desc:'Win a game in 6 hands',                                    pts:5,  sym:'💨',    color:'#909090' },
+  // Bidding
+  { id:'calling_the_shot',  name:'Calling the Shot',   desc:'Bid 30 and make it',                                   pts:10, sym:'30',   color:'#1565c0' },
+  { id:'double_or_nothing', name:'Double or Nothing',  desc:'Make a 30-for-60 bid',                                 pts:20, sym:'30/60',color:'#d4af37' },
+  { id:'high_roller',       name:'High Roller',         desc:'Bid 25 and make it',                                  pts:5,  sym:'25',   color:'#909090' },
+  { id:'steady_hand',       name:'Steady Hand',         desc:'Bid 20 and make it',                                  pts:3,  sym:'20',   color:'#cd7f32' },
+  { id:'safe_bet',          name:'Safe Bet',             desc:'Bid 15 and make it',                                  pts:1,  sym:'15',   color:'#aaa'    },
+  { id:'making_bail',       name:'Making Bail',          desc:'Make a bagged (forced 15) bid',                       pts:3,  sym:'⚖️',  color:'#cd7f32' },
+  { id:'bailout',           name:'Bailout',              desc:'Win the game on a bagged hand',                       pts:10, sym:'🎪',   color:'#1565c0' },
+  // Round Excellence
+  { id:'perfect_round',   name:'Perfect Round',    desc:'Score all 30 points in a round',                           pts:5,  sym:'30★',  color:'#909090' },
+  { id:'hat_trick',       name:'Hat Trick',        desc:'Score 30 in 3 consecutive rounds in one game',             pts:10, sym:'🎩',   color:'#1565c0' },
+  { id:'trump_slayer',    name:'Trump Slayer',      desc:'Make your bid without holding 5, J, or A♥',               pts:5,  sym:'🗡️',  color:'#909090' },
+  { id:'never_surrender', name:'Never Surrender',  desc:'Win after being set 3+ times in one game',                 pts:5,  sym:'💪',   color:'#909090' },
+  // Defense
+  { id:'giant_killer',  name:'Giant Killer',  desc:"Set an opponent's 30 bid",                                      pts:10, sym:'⚔️',  color:'#1565c0' },
+  { id:'spoiler',       name:'Spoiler',        desc:"Set an opponent's 25 bid",                                      pts:5,  sym:'🛡️',  color:'#909090' },
+  { id:'upset',         name:'Upset',          desc:"Set an opponent's 20 bid",                                      pts:2,  sym:'🥊',   color:'#cd7f32' },
+  { id:'shutdown',      name:'Shutdown',       desc:'Set the opponent 3+ times in one game',                         pts:5,  sym:'🔒',   color:'#909090' },
+  // Comebacks
+  { id:'comeback_kid',  name:'Comeback Kid',   desc:'Win when your team was ≤55 and opponent ≥90',                  pts:10, sym:'↑',    color:'#1565c0' },
+  { id:'never_say_die', name:'Never Say Die',  desc:'Win after your team went negative',                             pts:5,  sym:'🌅',   color:'#909090' },
+  { id:'shutout',       name:'Shutout',         desc:'Win while opponent finishes at 0 or below',                   pts:15, sym:'0',    color:'#d4af37' },
+  // Flawless
+  { id:'untouchable',         name:'Untouchable',          desc:"Win without your team's bidder ever being set",    pts:10, sym:'👑',   color:'#1565c0' },
+  { id:'dominant',            name:'Dominant',              desc:'Your team scored more than the opponent in 4 consecutive rounds', pts:5, sym:'🔥', color:'#909090' },
+  { id:'exceed_expectations', name:'Exceed Expectations',  desc:'Beat your bid by 10+ points in a round',           pts:3,  sym:'+10',  color:'#cd7f32' },
+  // Special Plays
+  { id:'risk_taker',     name:'Risk Taker',      desc:'Discard all 5 cards (5-card draw)',                          pts:1,  sym:'🃏',   color:'#aaa'    },
+  { id:'all_in',         name:'All In',           desc:'Win a game having used 5-card draw',                        pts:5,  sym:'🎰',   color:'#909090' },
+  { id:'follow_the_ace', name:'Follow the Ace',   desc:'Play a heart under the Follow A♥ rule',                    pts:2,  sym:'♥',    color:'#cd7f32' },
+  // Milestones – played
+  { id:'first_blood',     name:'First Blood',     desc:'Win your first game',                                       pts:1,  sym:'⭐',   color:'#aaa'    },
+  { id:'getting_started', name:'Getting Started', desc:'Play 10 games',                                             pts:1,  sym:'🎮',   color:'#aaa'    },
+  { id:'regular',         name:'Regular',          desc:'Play 25 games',                                            pts:2,  sym:'📅',   color:'#cd7f32' },
+  { id:'veteran',         name:'Veteran',           desc:'Play 50 games',                                           pts:3,  sym:'🎖️',  color:'#cd7f32' },
+  { id:'legend',          name:'Legend',            desc:'Play 100 games',                                          pts:5,  sym:'🏆',   color:'#909090' },
+  // Milestones – wins
+  { id:'winner',    name:'Winner',    desc:'Win 10 games',  pts:2, sym:'W10', color:'#cd7f32' },
+  { id:'champion',  name:'Champion',  desc:'Win 25 games',  pts:3, sym:'W25', color:'#cd7f32' },
+  { id:'master',    name:'Master',    desc:'Win 50 games',  pts:5, sym:'W50', color:'#909090' },
+  // Streaks
+  { id:'hot_streak',   name:'Hot Streak',   desc:'Win 3 games in a row',  pts:2,  sym:'3🔥',  color:'#cd7f32' },
+  { id:'on_fire',      name:'On Fire',       desc:'Win 5 games in a row',  pts:5,  sym:'5🔥',  color:'#909090' },
+  { id:'unstoppable',  name:'Unstoppable',  desc:'Win 10 games in a row', pts:15, sym:'10🔥', color:'#d4af37' },
+  // Special Combos
+  { id:'card_shark',    name:'Card Shark',    desc:'Win 3 consecutive games without being set once',  pts:10, sym:'🦈',  color:'#1565c0' },
+  { id:'centurion',     name:'Centurion',     desc:'Win a game with exactly 120 points',               pts:5,  sym:'C',   color:'#909090' },
+  { id:'heartbreaker',  name:'Heartbreaker',  desc:'Lose a game where both teams scored 120+',         pts:10, sym:'💔',  color:'#1565c0' },
+  { id:'photo_finish',  name:'Photo Finish',  desc:'Win a game where both teams scored 120+',          pts:15, sym:'📸',  color:'#d4af37' },
+];
+
+// Check which badges a stats object qualifies for (returns array of badge ids)
+function getBadgeIds(stats) {
+  const s = stats || {};
+  const ids = [];
+  if ((s.fastWins4||0)>=1)           ids.push('lightning_round');
+  if ((s.fastWins5||0)>=1)           ids.push('swift_victory');
+  if ((s.fastWins6||0)>=1)           ids.push('quick_game');
+  if ((s.bid30Made||0)>=1)           ids.push('calling_the_shot');
+  if ((s.bid30For60Made||0)>=1)      ids.push('double_or_nothing');
+  if ((s.bid25Made||0)>=1)           ids.push('high_roller');
+  if ((s.bid20Made||0)>=1)           ids.push('steady_hand');
+  if ((s.bid15Made||0)>=1)           ids.push('safe_bet');
+  if ((s.baggedBidMade||0)>=1)       ids.push('making_bail');
+  if ((s.baggedGameWon||0)>=1)       ids.push('bailout');
+  if ((s.perfect30s||0)>=1)          ids.push('perfect_round');
+  if ((s.hatTrick||0)>=1)            ids.push('hat_trick');
+  if ((s.trumpSlayerWins||0)>=1)     ids.push('trump_slayer');
+  if ((s.winAfterSet3||0)>=1)        ids.push('never_surrender');
+  if ((s.setsOn30||0)>=1)            ids.push('giant_killer');
+  if ((s.setsOn25||0)>=1)            ids.push('spoiler');
+  if ((s.setsOn20||0)>=1)            ids.push('upset');
+  if ((s.set3InGame||0)>=1)          ids.push('shutdown');
+  if ((s.comebackWins||0)>=1)        ids.push('comeback_kid');
+  if ((s.winFromNegative||0)>=1)     ids.push('never_say_die');
+  if ((s.shutoutWins||0)>=1)         ids.push('shutout');
+  if ((s.cleanGameWins||0)>=1)       ids.push('untouchable');
+  if ((s.dominant||0)>=1)            ids.push('dominant');
+  if ((s.exceedBy10||0)>=1)          ids.push('exceed_expectations');
+  if ((s.fiveCardDrawUsed||0)>=1)    ids.push('risk_taker');
+  if ((s.wonAfter5Draw||0)>=1)       ids.push('all_in');
+  if ((s.followAHeartsPlayed||0)>=1) ids.push('follow_the_ace');
+  if ((s.gamesWon||0)>=1)            ids.push('first_blood');
+  if ((s.gamesPlayed||0)>=10)        ids.push('getting_started');
+  if ((s.gamesPlayed||0)>=25)        ids.push('regular');
+  if ((s.gamesPlayed||0)>=50)        ids.push('veteran');
+  if ((s.gamesPlayed||0)>=100)       ids.push('legend');
+  if ((s.gamesWon||0)>=10)           ids.push('winner');
+  if ((s.gamesWon||0)>=25)           ids.push('champion');
+  if ((s.gamesWon||0)>=50)           ids.push('master');
+  if ((s.bestStreak||0)>=3)          ids.push('hot_streak');
+  if ((s.bestStreak||0)>=5)          ids.push('on_fire');
+  if ((s.bestStreak||0)>=10)         ids.push('unstoppable');
+  if ((s.cardSharkStreak||0)>=3)     ids.push('card_shark');
+  if ((s.centurionGames||0)>=1)      ids.push('centurion');
+  if ((s.heartbreakerGames||0)>=1)   ids.push('heartbreaker');
+  if ((s.photoFinishGames||0)>=1)    ids.push('photo_finish');
+  return ids;
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Debug logging utility
 const debug = {
@@ -2391,6 +2500,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.22.0', changes: '42-badge achievement system: earn badges for wins, bids, defense, streaks, and special plays. Badge points add to leaderboard score. Badges shown in stats modal; new badges announced at game end.' },
     { version: '2.21.3', changes: 'Fix end-of-game summary: Comeback Win (+10) and Clean Game Win (+3) were missing from achievement breakdown despite affecting leaderboard score.' },
     { version: '2.21.2', changes: 'Rematch carries forward house rules (5-Card Draw, Follow A♥, 30 for 60) from the previous game.' },
     { version: '2.21.1', changes: 'Leaderboard: split into Active (seen within 30 days) and Inactive sections. Inactive players dimmed and unranked.' },
@@ -3672,6 +3782,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
   const [statsPlayer, setStatsPlayer] = useState(null);
   const [statsData, setStatsData] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [statsPlayerBadges, setStatsPlayerBadges] = useState({});
+  const [statsPlayerId, setStatsPlayerId] = useState(null);
+  const [activeBadge, setActiveBadge] = useState(null);
 
   // Leaderboard modal state
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -3700,7 +3813,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
       - (stats.timesSet || 0)
       + ((stats.comebackWins || 0) * 10)
       + ((stats.cleanGameWins || 0) * 3)
-      + (stats.bestStreak || 0);
+      + (stats.bestStreak || 0)
+      + (stats.badgeScore || 0);
   };
 
   // Fetch leaderboard data
@@ -3762,21 +3876,24 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
   const fetchPlayerStats = async (playerId, playerInfo) => {
     setStatsLoading(true);
     setStatsPlayer(playerInfo);
+    setStatsPlayerId(playerId);
+    setActiveBadge(null);
     setShowStatsModal(true);
-    
+
     try {
-      const snapshot = await database.ref(`users/${playerId}/stats`).once('value');
-      const stats = snapshot.val() || {
-        gamesPlayed: 0,
-        gamesWon: 0,
-        gamesLost: 0,
-        currentStreak: 0,
-        bestStreak: 0
+      const [statsSnap, badgesSnap] = await Promise.all([
+        database.ref(`users/${playerId}/stats`).once('value'),
+        database.ref(`users/${playerId}/badges`).once('value'),
+      ]);
+      const stats = statsSnap.val() || {
+        gamesPlayed: 0, gamesWon: 0, gamesLost: 0, currentStreak: 0, bestStreak: 0
       };
       setStatsData(stats);
+      setStatsPlayerBadges(badgesSnap.val() || {});
     } catch (err) {
       console.error('Error fetching stats:', err);
       setStatsData({ gamesPlayed: 0, gamesWon: 0, gamesLost: 0, currentStreak: 0, bestStreak: 0 });
+      setStatsPlayerBadges({});
     } finally {
       setStatsLoading(false);
     }
@@ -4676,6 +4793,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                 const comebackPts = (statsData.comebackWins || 0) * 10;
                 const cleanPts = (statsData.cleanGameWins || 0) * 3;
                 const streakPts = statsData.bestStreak || 0;
+                const badgePts = statsData.badgeScore || 0;
                 const breakdownRow = (label, pts) => pts === 0 ? null : (
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '3px 0', borderBottom: '1px solid #f0f0f0' }}>
                     <span style={{ color: '#555' }}>{label}</span>
@@ -4704,7 +4822,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                       {breakdownRow(`Clean Wins ${statsData.cleanGameWins || 0} × 3`, cleanPts)}
                       {breakdownRow(`Exceed Bid Pts`, exceedPts)}
                       {breakdownRow(`Times Set ${statsData.timesSet || 0} × −1`, setPts)}
-                      {winPts === 0 && p30Pts === 0 && b30Pts === 0 && exceedPts === 0 && setPts === 0 && comebackPts === 0 && cleanPts === 0 && streakPts === 0 && (
+                      {breakdownRow(`Badge Score`, badgePts)}
+                      {winPts === 0 && p30Pts === 0 && b30Pts === 0 && exceedPts === 0 && setPts === 0 && comebackPts === 0 && cleanPts === 0 && streakPts === 0 && badgePts === 0 && (
                         <div style={{ fontSize: '12px', color: '#999', textAlign: 'center' }}>No points yet</div>
                       )}
                     </div>
@@ -4724,6 +4843,63 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                       {statBox(statsData.gamesQuit || 0, 'Quits', '#fafafa', '#999')}
                       {statBox(statsData.lastSeen ? new Date(statsData.lastSeen).toLocaleDateString() : 'Never', 'Last Seen', '#fafafa', '#666')}
                     </div>
+                    {/* Badges section */}
+                    {(() => {
+                      const earnedIds = getBadgeIds(statsData);
+                      const totalBadgePts = BADGES.filter(b => earnedIds.includes(b.id)).reduce((s, b) => s + b.pts, 0);
+                      return (
+                        <div style={{ marginTop: '18px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>Badges</div>
+                            <div style={{ fontSize: '12px', color: '#666' }}>{earnedIds.length}/{BADGES.length} earned · {totalBadgePts} pts</div>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px' }}>
+                            {BADGES.map(badge => {
+                              const earned = earnedIds.includes(badge.id);
+                              const earnedAt = statsPlayerBadges[badge.id]?.earnedAt;
+                              const isActive = activeBadge === badge.id;
+                              return (
+                                <div key={badge.id} style={{ position: 'relative' }}>
+                                  <div
+                                    onClick={() => setActiveBadge(isActive ? null : badge.id)}
+                                    style={{
+                                      width: '44px', height: '44px', borderRadius: '50%',
+                                      background: earned ? badge.color : '#ddd',
+                                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                      fontSize: badge.sym.length > 2 ? '9px' : '16px',
+                                      color: earned ? '#fff' : '#aaa',
+                                      fontWeight: 'bold', cursor: 'pointer',
+                                      filter: earned ? 'none' : 'grayscale(1)',
+                                      opacity: earned ? 1 : 0.35,
+                                      border: isActive ? '2px solid #333' : '2px solid transparent',
+                                      boxSizing: 'border-box',
+                                    }}
+                                  >{badge.sym}</div>
+                                  {isActive && (
+                                    <div style={{
+                                      position: 'fixed', zIndex: 9999,
+                                      background: '#fff', border: '1px solid #ccc',
+                                      borderRadius: '8px', padding: '10px 12px',
+                                      width: '180px', boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+                                      fontSize: '12px', color: '#333',
+                                      transform: 'translate(-50%, 8px)', left: '50%', top: '100%',
+                                    }}>
+                                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{badge.name}</div>
+                                      <div style={{ color: '#555', marginBottom: '6px' }}>{badge.desc}</div>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span style={{ color: badge.color, fontWeight: 'bold' }}>+{badge.pts} pts</span>
+                                        {earned && earnedAt && <span style={{ color: '#888', fontSize: '11px' }}>{new Date(earnedAt).toLocaleDateString()}</span>}
+                                        {!earned && <span style={{ color: '#aaa', fontStyle: 'italic' }}>Not earned</span>}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })()}
@@ -6610,9 +6786,34 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [gameExceedBidPts, setGameExceedBidPts] = useState(0);
   const wasSetThisGame = useRef(false); // for cleanGameWins check
 
-  // Reset statsUpdated when gameId changes (for rematch/new game)
+  // Extended per-game badge tracking
+  const [gameConsec30s, setGameConsec30s] = useState(0);          // current consecutive perfect-30 rounds
+  const [gameMaxConsec30s, setGameMaxConsec30s] = useState(0);    // max consecutive 30s this game
+  const [gameRoundWins, setGameRoundWins] = useState(0);          // current streak of rounds where we scored > they did
+  const [gameMaxRoundWins, setGameMaxRoundWins] = useState(0);    // max round-win streak this game
+  const [gameOppSets, setGameOppSets] = useState(0);              // times opponent was set this game
+  const [gameFiveCardDrawUsed, setGameFiveCardDrawUsed] = useState(false);
+  const [gameWasBagged, setGameWasBagged] = useState(false);
+  const [newlyEarnedBadges, setNewlyEarnedBadges] = useState([]);
+  const [gameScoreWentNegative, setGameScoreWentNegative] = useState(false);
+
+  // Reset all per-game tracking when gameId changes
   useEffect(() => {
     statsUpdated.current = false;
+    wasSetThisGame.current = false;
+    setGameTimesSet(0);
+    setGamePerfect30s(0);
+    setGameBid30Made(0);
+    setGameExceedBidPts(0);
+    setGameConsec30s(0);
+    setGameMaxConsec30s(0);
+    setGameRoundWins(0);
+    setGameMaxRoundWins(0);
+    setGameOppSets(0);
+    setGameFiveCardDrawUsed(false);
+    setGameWasBagged(false);
+    setNewlyEarnedBadges([]);
+    setGameScoreWentNegative(false);
     console.log('Game ID changed - reset statsUpdated flag');
   }, [gameId]);
 
@@ -6624,6 +6825,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       statsUpdated.current = true;
       const winningTeam = gameState.winner;
       const finalScores = gameState.scores || [0, 0];
+      const hist = gameState.history || [];
+      const roundsPlayed = hist.length;
 
       console.log('Updating player stats - Winner: Team', winningTeam);
 
@@ -6637,6 +6840,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
           console.log(`Updating stats for ${player.username} - ${isWinner ? 'WON' : 'LOST'}`);
 
+          const myFinalScore = finalScores[playerTeam] || 0;
+          const oppFinalScore = finalScores[1 - playerTeam] || 0;
+          const bothTeams120 = myFinalScore >= 120 && oppFinalScore >= 120;
+
           const statsRef = database.ref(`users/${player.userId}/stats`);
           statsRef.transaction((currentStats) => {
             const stats = currentStats || {
@@ -6644,7 +6851,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             };
 
             stats.gamesPlayed = (stats.gamesPlayed || 0) + 1;
-            stats.lastPlayed = Date.now();
+            stats.lastSeen = Date.now();
 
             if (isWinner) {
               stats.gamesWon = (stats.gamesWon || 0) + 1;
@@ -6653,33 +6860,87 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 stats.bestStreak = stats.currentStreak;
               }
 
-              // Comeback win: our team ≤55, opponent ≥90 at game end (retroactive check)
-              const myFinalScore = finalScores[playerTeam] || 0;
-              const oppFinalScore = finalScores[1 - playerTeam] || 0;
-              // Check scores before this winning round — approximate by seeing if opponent was near 90
-              // Use game history to check if at any point opp was ≥90 and we were ≤55
-              const hist = gameState.history || [];
+              // Comeback win
               const wasComeback = hist.some(h => {
                 const ourTotal = playerTeam === 0 ? h.usTotal : h.themTotal;
                 const oppTotal = playerTeam === 0 ? h.themTotal : h.usTotal;
                 return ourTotal <= 55 && oppTotal >= 90;
               });
-              if (wasComeback) {
-                stats.comebackWins = (stats.comebackWins || 0) + 1;
-              }
+              if (wasComeback) stats.comebackWins = (stats.comebackWins || 0) + 1;
 
-              // Clean game win: won without being personally set this game
+              // Clean game win (no set this game — only tracked for isMe)
               if (isMe && !wasSetThisGame.current) {
                 stats.cleanGameWins = (stats.cleanGameWins || 0) + 1;
+              }
+
+              // Speed wins
+              if (isMe) {
+                if (roundsPlayed <= 4) stats.fastWins4 = (stats.fastWins4 || 0) + 1;
+                else if (roundsPlayed === 5) stats.fastWins5 = (stats.fastWins5 || 0) + 1;
+                else if (roundsPlayed === 6) stats.fastWins6 = (stats.fastWins6 || 0) + 1;
+
+                if (gameScoreWentNegative) stats.winFromNegative = (stats.winFromNegative || 0) + 1;
+                if (oppFinalScore <= 0) stats.shutoutWins = (stats.shutoutWins || 0) + 1;
+                if (gameWasBagged) stats.baggedGameWon = (stats.baggedGameWon || 0) + 1;
+                if (gameTimesSet >= 3) stats.winAfterSet3 = (stats.winAfterSet3 || 0) + 1;
+                if (gameMaxConsec30s >= 3) stats.hatTrick = (stats.hatTrick || 0) + 1;
+                if (gameMaxRoundWins >= 4) stats.dominant = (stats.dominant || 0) + 1;
+                if (gameFiveCardDrawUsed) stats.wonAfter5Draw = (stats.wonAfter5Draw || 0) + 1;
+                if (myFinalScore === 120) stats.centurionGames = (stats.centurionGames || 0) + 1;
+                if (bothTeams120) stats.photoFinishGames = (stats.photoFinishGames || 0) + 1;
+                // Card Shark: consecutive wins without being set
+                if (!wasSetThisGame.current) {
+                  stats.cardSharkStreak = (stats.cardSharkStreak || 0) + 1;
+                } else {
+                  stats.cardSharkStreak = 0;
+                }
               }
             } else {
               stats.gamesLost = (stats.gamesLost || 0) + 1;
               stats.currentStreak = 0;
+              if (isMe) {
+                stats.cardSharkStreak = 0; // reset on loss
+                if (bothTeams120) stats.heartbreakerGames = (stats.heartbreakerGames || 0) + 1;
+              }
             }
 
             return stats;
-          }).then(() => {
+          }).then(result => {
             console.log(`Stats updated for ${player.username}`);
+            // Badge award logic — only for isMe (each client awards their own)
+            if (!isMe) return;
+            const updatedStats = result.snapshot.val();
+            if (!updatedStats) return;
+
+            // Compute old badge set (before this game) using reverse logic (subtract this game's increments)
+            // Simpler: just compare getBadgeIds before vs after
+            // "before" would require knowing previous stats — instead use Firebase badges node as ground truth
+            database.ref(`users/${userId}/badges`).once('value').then(badgeSnap => {
+              const existingBadges = badgeSnap.val() || {};
+              const nowEarnedIds = getBadgeIds(updatedStats);
+              const newBadges = nowEarnedIds.filter(id => !existingBadges[id]);
+              if (newBadges.length === 0) return;
+
+              // Write newly earned badges
+              const badgeUpdates = {};
+              let newBadgePts = 0;
+              newBadges.forEach(id => {
+                badgeUpdates[`users/${userId}/badges/${id}`] = { earnedAt: Date.now() };
+                const badge = BADGES.find(b => b.id === id);
+                if (badge) newBadgePts += badge.pts;
+              });
+              return database.ref().update(badgeUpdates).then(() => {
+                if (newBadgePts > 0) {
+                  return database.ref(`users/${userId}/stats/badgeScore`)
+                    .transaction(cur => (cur || 0) + newBadgePts);
+                }
+              }).then(() => {
+                // Show newly earned badge notifications
+                const earned = newBadges.map(id => BADGES.find(b => b.id === id)).filter(Boolean);
+                setNewlyEarnedBadges(earned);
+                console.log('🏅 New badges earned:', earned.map(b => b.name).join(', '));
+              });
+            }).catch(err => console.error('Badge award error:', err));
           }).catch(err => {
             console.error(`Error updating stats for ${player.username}:`, err);
           });
@@ -6917,6 +7178,23 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     if (phase === 'playing') {
       console.log('🔄 Phase changed to playing - resetting trickComplete flag');
       setTrickComplete(false);
+    }
+  }, [phase]);
+
+  // Trump Slayer: capture whether bidder has 5/J/A♥ at start of playing phase
+  const bidderHadTopTrump = useRef(false);
+  useEffect(() => {
+    if (phase === 'playing' && bidWinner !== undefined && trumpSuit && gameState?.hands) {
+      const bidderHand = gameState.hands[bidWinner] || [];
+      const hasTop = bidderHand.some(c => {
+        if (!c) return false;
+        if (c.rank === '5' && c.suit === trumpSuit) return true;
+        if (c.rank === 'J' && c.suit === trumpSuit) return true;
+        if (c.rank === 'A' && c.suit === '\u2665') return true; // A♥ always trump
+        return false;
+      });
+      bidderHadTopTrump.current = hasTop;
+      console.log(`🗡️ Trump Slayer check: bidder P${bidWinner+1} hasTop=${hasTop}`);
     }
   }, [phase]);
   
@@ -7303,6 +7581,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     
     const keep = hands[mySeatIndex].filter((_, i) => !selected.includes(i));
     const fiveCardSwap = gameOptions.fiveCardDraw && keep.length === 0;
+    if (fiveCardSwap) {
+      setGameFiveCardDrawUsed(true);
+      database.ref(`users/${userId}/stats`).update({ fiveCardDrawUsed: firebase.database.ServerValue.increment(1) });
+    }
     
     if (keep.length < 1 && !gameOptions.fiveCardDraw) {
       alert('Must keep at least 1 card!');
@@ -7534,7 +7816,18 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       alert('Must follow suit!');
       return;
     }
-    
+
+    // Follow A♥ badge: track when rule forces a heart play
+    if (gameOptions.followAHearts) {
+      const ledCrd = trickCards.length > 0 ? trickCards[0].card : null;
+      if (ledCrd && ledCrd.rank === 'A' && ledCrd.suit === '\u2665') {
+        const hasTrump = hand.some(c => isTrump(c, trumpSuit));
+        if (!hasTrump && card.suit === '\u2665') {
+          database.ref(`users/${userId}/stats`).update({ followAHeartsPlayed: firebase.database.ServerValue.increment(1) });
+        }
+      }
+    }
+
     console.log(`🃏 ${getPlayerName(mySeatIndex)} plays ${card.id}`);
     
     // Remove card from hand
@@ -7750,12 +8043,13 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         // Check if bidding team made their bid
         const bidderSeat = SEAT_NAMES[bidWinner];
         const bidderIsMe = bidWinner === mySeatIndex;
+        const myTeam = mySeatIndex % 2;
         if (finalRoundPts[bidderTeam] >= highBid) {
           // Made bid - add points
           newScores[bidderTeam] += finalRoundPts[bidderTeam];
           console.log(`✓ Team ${bidderTeam} made bid! +${finalRoundPts[bidderTeam]} points`);
 
-          // Per-round achievement tracking (only for myself)
+          // Per-round achievement tracking (only for myself as bidder)
           if (bidderIsMe) {
             const roundPtsScored = finalRoundPts[bidderTeam];
             // Exceed bid bonus: +1 per 5 over bid
@@ -7767,16 +8061,58 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 exceedBidPoints: firebase.database.ServerValue.increment(exceedBonus)
               });
             }
-            // Perfect 30 / bid 30 made
-            if (roundPtsScored >= 30) {
-              if (highBid === 30) {
-                setGameBid30Made(p => p + 1);
-                database.ref(`users/${userId}/stats`).update({ bid30Made: firebase.database.ServerValue.increment(1) });
+            // exceedBy10 badge: beat bid by 10+
+            if (excess >= 10) {
+              database.ref(`users/${userId}/stats`).update({ exceedBy10: firebase.database.ServerValue.increment(1) });
+            }
+            // bid level made
+            if (highBid === 30 && bidType === '30for60') {
+              database.ref(`users/${userId}/stats`).update({ bid30For60Made: firebase.database.ServerValue.increment(1) });
+            } else if (highBid === 30) {
+              setGameBid30Made(p => p + 1);
+              database.ref(`users/${userId}/stats`).update({ bid30Made: firebase.database.ServerValue.increment(1) });
+            } else if (highBid === 25) {
+              database.ref(`users/${userId}/stats`).update({ bid25Made: firebase.database.ServerValue.increment(1) });
+            } else if (highBid === 20) {
+              database.ref(`users/${userId}/stats`).update({ bid20Made: firebase.database.ServerValue.increment(1) });
+            } else if (highBid === 15) {
+              if (wasBagged) {
+                database.ref(`users/${userId}/stats`).update({ baggedBidMade: firebase.database.ServerValue.increment(1) });
+                setGameWasBagged(true);
               } else {
-                setGamePerfect30s(p => p + 1);
-                database.ref(`users/${userId}/stats`).update({ perfect30s: firebase.database.ServerValue.increment(1) });
+                database.ref(`users/${userId}/stats`).update({ bid15Made: firebase.database.ServerValue.increment(1) });
               }
             }
+            // Perfect 30 (bid < 30 but scored 30)
+            if (roundPtsScored >= 30 && highBid < 30) {
+              setGamePerfect30s(p => p + 1);
+              database.ref(`users/${userId}/stats`).update({ perfect30s: firebase.database.ServerValue.increment(1) });
+            }
+            // Trump Slayer: made bid without 5/J/A♥
+            if (!bidderHadTopTrump.current) {
+              database.ref(`users/${userId}/stats`).update({ trumpSlayerWins: firebase.database.ServerValue.increment(1) });
+            }
+          }
+          // Track consecutive 30-pt rounds and dominant streak (for all players on my team)
+          const myTeamPts = finalRoundPts[myTeam];
+          const oppTeamPts = finalRoundPts[1 - myTeam];
+          if (myTeam === bidderTeam && myTeamPts >= 30) {
+            setGameConsec30s(prev => {
+              const next = prev + 1;
+              setGameMaxConsec30s(m => Math.max(m, next));
+              return next;
+            });
+          } else {
+            setGameConsec30s(0);
+          }
+          if (myTeamPts > oppTeamPts) {
+            setGameRoundWins(prev => {
+              const next = prev + 1;
+              setGameMaxRoundWins(m => Math.max(m, next));
+              return next;
+            });
+          } else {
+            setGameRoundWins(0);
           }
         } else {
           // Missed bid - lose bid amount (double penalty for 30-for-60)
@@ -7784,18 +8120,45 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           newScores[bidderTeam] -= penalty;
           console.log(`✗ Team ${bidderTeam} missed bid! -${penalty} points${bidType === '30for60' ? ' (30 for 60)' : ''}`);
 
-          // Track set against the bidder (only the bidder updates their own stats)
+          // Track set against the bidder
           if (bidderIsMe) {
             wasSetThisGame.current = true;
             setGameTimesSet(p => p + 1);
             database.ref(`users/${userId}/stats`).update({ timesSet: firebase.database.ServerValue.increment(1) });
           }
+          // Track when I'm on the defending team and opponent gets set
+          if (myTeam !== bidderTeam) {
+            const newOppSets = gameOppSets + 1;
+            setGameOppSets(newOppSets);
+            // setsOn30/25/20
+            if (highBid === 30) database.ref(`users/${userId}/stats`).update({ setsOn30: firebase.database.ServerValue.increment(1) });
+            else if (highBid === 25) database.ref(`users/${userId}/stats`).update({ setsOn25: firebase.database.ServerValue.increment(1) });
+            else if (highBid === 20) database.ref(`users/${userId}/stats`).update({ setsOn20: firebase.database.ServerValue.increment(1) });
+            // set3InGame: set opponent 3+ times in one game
+            if (newOppSets >= 3) {
+              database.ref(`users/${userId}/stats`).update({ set3InGame: firebase.database.ServerValue.increment(1) });
+            }
+          }
+          // Round wins streak: defending team gets points, bidding team loses
+          if (myTeam !== bidderTeam) {
+            setGameRoundWins(prev => {
+              const next = prev + 1;
+              setGameMaxRoundWins(m => Math.max(m, next));
+              return next;
+            });
+          } else {
+            setGameRoundWins(0);
+          }
+          setGameConsec30s(0);
         }
         
         // Other team always gets their points
         newScores[1 - bidderTeam] += finalRoundPts[1 - bidderTeam];
         console.log(`Team ${1 - bidderTeam} gets ${finalRoundPts[1 - bidderTeam]} points`);
-        
+
+        // Track if my team's score went negative (for never_say_die badge)
+        if (newScores[myTeam] < 0) setGameScoreWentNegative(true);
+
         console.log('📊 New scores:', newScores);
         
         // Update history for score table
@@ -9175,6 +9538,19 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   </div>
                 );
               })()}
+
+              {/* Newly earned badges */}
+              {newlyEarnedBadges.length > 0 && (
+                <div style={{ background: 'rgba(212,175,55,0.15)', border: '1px solid #d4af37', borderRadius: '8px', padding: '12px', marginBottom: '20px', fontSize: '13px' }}>
+                  <div style={{ color: '#d4af37', marginBottom: '8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>New Badges Earned!</div>
+                  {newlyEarnedBadges.map(badge => (
+                    <div key={badge.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ color: '#eee' }}>🏅 {badge.name}</span>
+                      <span style={{ color: badge.color, fontWeight: 'bold' }}>+{badge.pts} pts</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <button
