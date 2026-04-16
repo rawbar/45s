@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.22.2';
+const VERSION = '2.22.3';
 const DEBUG = true; // Set to false for production
 
 // ─── Badge Definitions ───────────────────────────────────────────────────────
@@ -2500,6 +2500,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.22.3', changes: 'Fix badge false positives: pre-game badge eligibility captured before the stats transaction, so only badges earned in THIS game are notified. Pre-existing qualifiers are silently bootstrapped into Firebase without triggering a notification.' },
     { version: '2.22.2', changes: 'Stats modal redesigned with Stats / Badges tabs. Fixed: modal no longer opens off-screen. Header (avatar + score) is fixed; each tab scrolls independently. Stats tab uses 3-column grid. Badges tab: tap any badge for a detail panel below the grid.' },
     { version: '2.22.1', changes: 'Fix badge score: computed dynamically from stats (not cached badgeScore field) so existing play history earns badges immediately. Fix badge tooltip: replaced per-badge floating tooltip with inline info panel that renders below the grid.' },
     { version: '2.22.0', changes: '42-badge achievement system: earn badges for wins, bids, defense, streaks, and special plays. Badge points add to leaderboard score. Badges shown in stats modal; new badges announced at game end.' },
@@ -6878,7 +6879,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           const bothTeams120 = myFinalScore >= 120 && oppFinalScore >= 120;
 
           const statsRef = database.ref(`users/${player.userId}/stats`);
+          // Capture pre-game badge eligibility inside the transaction callback
+          // so we only notify about badges earned THIS game (not pre-existing qualifiers)
+          let preBadgeIds = new Set();
           statsRef.transaction((currentStats) => {
+            if (currentStats) preBadgeIds = new Set(getBadgeIds(currentStats));
             const stats = currentStats || {
               gamesPlayed: 0, gamesWon: 0, gamesLost: 0, currentStreak: 0, bestStreak: 0
             };
@@ -6940,38 +6945,34 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             return stats;
           }).then(result => {
             console.log(`Stats updated for ${player.username}`);
-            // Badge award logic — only for isMe (each client awards their own)
+            // Badge award — only isMe handles their own badges
             if (!isMe) return;
             const updatedStats = result.snapshot.val();
             if (!updatedStats) return;
 
-            // Compute old badge set (before this game) using reverse logic (subtract this game's increments)
-            // Simpler: just compare getBadgeIds before vs after
-            // "before" would require knowing previous stats — instead use Firebase badges node as ground truth
+            const postBadgeIds = getBadgeIds(updatedStats);
+            // Badges truly earned this game = qualified after but not before
+            const thisGameBadges = postBadgeIds.filter(id => !preBadgeIds.has(id));
+
+            // Also silently bootstrap any pre-existing qualifiers not yet in Firebase
             database.ref(`users/${userId}/badges`).once('value').then(badgeSnap => {
               const existingBadges = badgeSnap.val() || {};
-              const nowEarnedIds = getBadgeIds(updatedStats);
-              const newBadges = nowEarnedIds.filter(id => !existingBadges[id]);
-              if (newBadges.length === 0) return;
+              // Write all qualifying badges not yet recorded (bootstrap + this-game)
+              const toWrite = postBadgeIds.filter(id => !existingBadges[id]);
+              if (toWrite.length === 0) return;
 
-              // Write newly earned badges
               const badgeUpdates = {};
-              let newBadgePts = 0;
-              newBadges.forEach(id => {
+              toWrite.forEach(id => {
                 badgeUpdates[`users/${userId}/badges/${id}`] = { earnedAt: Date.now() };
-                const badge = BADGES.find(b => b.id === id);
-                if (badge) newBadgePts += badge.pts;
               });
               return database.ref().update(badgeUpdates).then(() => {
-                if (newBadgePts > 0) {
-                  return database.ref(`users/${userId}/stats/badgeScore`)
-                    .transaction(cur => (cur || 0) + newBadgePts);
-                }
+                console.log(`🏅 Wrote ${toWrite.length} badges to Firebase (${thisGameBadges.length} new this game)`);
               }).then(() => {
-                // Show newly earned badge notifications
-                const earned = newBadges.map(id => BADGES.find(b => b.id === id)).filter(Boolean);
+                // Only notify + display badges earned in THIS game
+                if (thisGameBadges.length === 0) return;
+                const earned = thisGameBadges.map(id => BADGES.find(b => b.id === id)).filter(Boolean);
                 setNewlyEarnedBadges(earned);
-                console.log('🏅 New badges earned:', earned.map(b => b.name).join(', '));
+                console.log('🏅 New badges earned this game:', earned.map(b => b.name).join(', '));
               });
             }).catch(err => console.error('Badge award error:', err));
           }).catch(err => {
