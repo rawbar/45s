@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.22.1';
+const VERSION = '2.22.2';
 const DEBUG = true; // Set to false for production
 
 // ─── Badge Definitions ───────────────────────────────────────────────────────
@@ -2500,6 +2500,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.22.2', changes: 'Stats modal redesigned with Stats / Badges tabs. Fixed: modal no longer opens off-screen. Header (avatar + score) is fixed; each tab scrolls independently. Stats tab uses 3-column grid. Badges tab: tap any badge for a detail panel below the grid.' },
     { version: '2.22.1', changes: 'Fix badge score: computed dynamically from stats (not cached badgeScore field) so existing play history earns badges immediately. Fix badge tooltip: replaced per-badge floating tooltip with inline info panel that renders below the grid.' },
     { version: '2.22.0', changes: '42-badge achievement system: earn badges for wins, bids, defense, streaks, and special plays. Badge points add to leaderboard score. Badges shown in stats modal; new badges announced at game end.' },
     { version: '2.21.3', changes: 'Fix end-of-game summary: Comeback Win (+10) and Clean Game Win (+3) were missing from achievement breakdown despite affecting leaderboard score.' },
@@ -3786,6 +3787,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
   const [statsPlayerBadges, setStatsPlayerBadges] = useState({});
   const [statsPlayerId, setStatsPlayerId] = useState(null);
   const [activeBadge, setActiveBadge] = useState(null);
+  const [statsTab, setStatsTab] = useState('stats'); // 'stats' | 'badges'
 
   // Leaderboard modal state
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -3879,6 +3881,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
     setStatsPlayer(playerInfo);
     setStatsPlayerId(playerId);
     setActiveBadge(null);
+    setStatsTab('stats');
     setShowStatsModal(true);
 
     try {
@@ -4734,184 +4737,205 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
 
         {/* Player Stats Modal */}
         {showStatsModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.7)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 3000,
-            animation: 'fadeIn 0.2s ease-out'
-          }}>
-            <div style={{
-              background: 'white',
-              animation: 'slideUp 0.25s ease-out',
-              borderRadius: '12px',
-              padding: '24px',
-              maxWidth: '350px',
-              width: '90%',
-              maxHeight: '85vh',
-              overflowY: 'auto',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h2 style={{ margin: 0, color: '#1a5f3f', fontSize: '18px' }}>Player Stats</h2>
-                <button
-                  onClick={() => setShowStatsModal(false)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: '24px',
-                    cursor: 'pointer',
-                    color: '#666'
-                  }}
-                >x</button>
-              </div>
-              
-              {statsPlayer && (
-                <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                  <div style={{ fontSize: '48px', marginBottom: '8px' }}>{getAvatarById(statsPlayer.avatar).emoji}</div>
-                  <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>{statsPlayer.username}</div>
-                </div>
-              )}
-              
-              {statsLoading ? (
-                <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>Loading stats...</div>
-              ) : statsData && (() => {
-                const gp = statsData.gamesPlayed || 0;
-                const gw = statsData.gamesWon || 0;
-                const winRate = gp > 0 ? Math.round((gw / gp) * 100) : 0;
-                const score = computePlayerScore(statsData, gp, gw);
-                const winPts = winRate * 5;
-                const p30Pts = (statsData.perfect30s || 0) * 2;
-                const b30Pts = (statsData.bid30Made || 0) * 5;
-                const exceedPts = statsData.exceedBidPoints || 0;
-                const setPts = -(statsData.timesSet || 0);
-                const comebackPts = (statsData.comebackWins || 0) * 10;
-                const cleanPts = (statsData.cleanGameWins || 0) * 3;
-                const streakPts = statsData.bestStreak || 0;
-                const badgePts = getBadgeIds(statsData).reduce((sum, id) => sum + (BADGES.find(b => b.id === id)?.pts || 0), 0);
-                const breakdownRow = (label, pts) => pts === 0 ? null : (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '3px 0', borderBottom: '1px solid #f0f0f0' }}>
-                    <span style={{ color: '#555' }}>{label}</span>
-                    <span style={{ fontWeight: 'bold', color: pts < 0 ? '#f44336' : '#1a5f3f' }}>{pts > 0 ? '+' : ''}{pts}</span>
-                  </div>
-                );
-                const statBox = (val, label, bg, color) => (
-                  <div style={{ background: bg, padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '22px', fontWeight: 'bold', color }}>{val}</div>
-                    <div style={{ fontSize: '10px', color: '#666' }}>{label}</div>
-                  </div>
-                );
-                return (
-                  <div>
-                    <div style={{ textAlign: 'center', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#1a5f3f' }}>{score}</span>
-                      <span style={{ fontSize: '14px', color: '#666', marginLeft: '4px' }}>pts</span>
+          <div
+            onClick={() => setShowStatsModal(false)}
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.7)',
+              display: 'flex', justifyContent: 'center', alignItems: 'center',
+              zIndex: 3000, animation: 'fadeIn 0.2s ease-out'
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'white', animation: 'slideUp 0.25s ease-out',
+                borderRadius: '12px', width: '92%', maxWidth: '380px',
+                maxHeight: '90vh', display: 'flex', flexDirection: 'column',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+              }}
+            >
+              {/* Fixed header: avatar + name + close */}
+              <div style={{ padding: '16px 20px 0', flexShrink: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                  {statsPlayer && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ fontSize: '36px', lineHeight: 1 }}>{getAvatarById(statsPlayer.avatar).emoji}</div>
+                      <div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#222' }}>{statsPlayer.username}</div>
+                        {!statsLoading && statsData && (
+                          <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#1a5f3f', lineHeight: 1.1 }}>
+                            {computePlayerScore(statsData, statsData.gamesPlayed || 0, statsData.gamesWon || 0)}
+                            <span style={{ fontSize: '12px', color: '#888', fontWeight: 'normal', marginLeft: '3px' }}>pts</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    {/* Score breakdown */}
-                    <div style={{ background: '#f9f9f9', borderRadius: '8px', padding: '10px 12px', marginBottom: '14px' }}>
-                      {breakdownRow(`Win Rate ${winRate}% × 5`, winPts)}
-                      {breakdownRow(`Best Streak ${statsData.bestStreak || 0} × 1`, streakPts)}
-                      {breakdownRow(`Bid 30 Made ${statsData.bid30Made || 0} × 5`, b30Pts)}
-                      {breakdownRow(`Perfect 30s ${statsData.perfect30s || 0} × 2`, p30Pts)}
-                      {breakdownRow(`Comeback Wins ${statsData.comebackWins || 0} × 10`, comebackPts)}
-                      {breakdownRow(`Clean Wins ${statsData.cleanGameWins || 0} × 3`, cleanPts)}
-                      {breakdownRow(`Exceed Bid Pts`, exceedPts)}
-                      {breakdownRow(`Times Set ${statsData.timesSet || 0} × −1`, setPts)}
-                      {breakdownRow(`Badge Score`, badgePts)}
-                      {winPts === 0 && p30Pts === 0 && b30Pts === 0 && exceedPts === 0 && setPts === 0 && comebackPts === 0 && cleanPts === 0 && streakPts === 0 && badgePts === 0 && (
-                        <div style={{ fontSize: '12px', color: '#999', textAlign: 'center' }}>No points yet</div>
+                  )}
+                  <button
+                    onClick={() => setShowStatsModal(false)}
+                    style={{ background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer', color: '#999', lineHeight: 1, padding: '0 0 0 8px' }}
+                  >✕</button>
+                </div>
+
+                {/* Tab bar */}
+                <div style={{ display: 'flex', borderBottom: '2px solid #eee', marginBottom: '0' }}>
+                  {['stats', 'badges'].map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => { setStatsTab(tab); setActiveBadge(null); }}
+                      style={{
+                        flex: 1, padding: '8px 0', background: 'none', border: 'none',
+                        borderBottom: statsTab === tab ? '2px solid #1a5f3f' : '2px solid transparent',
+                        marginBottom: '-2px',
+                        color: statsTab === tab ? '#1a5f3f' : '#999',
+                        fontWeight: statsTab === tab ? 'bold' : 'normal',
+                        fontSize: '14px', cursor: 'pointer', textTransform: 'capitalize',
+                      }}
+                    >{tab === 'badges' && statsData ? (() => {
+                        const n = getBadgeIds(statsData).length;
+                        return `Badges (${n})`;
+                      })() : 'Stats'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Scrollable tab content */}
+              <div style={{ overflowY: 'auto', flex: 1, padding: '16px 20px 20px' }}>
+                {statsLoading ? (
+                  <div style={{ textAlign: 'center', padding: '40px 0', color: '#888' }}>Loading…</div>
+                ) : !statsData ? null : statsTab === 'stats' ? (() => {
+                  const gp = statsData.gamesPlayed || 0;
+                  const gw = statsData.gamesWon || 0;
+                  const winRate = gp > 0 ? Math.round((gw / gp) * 100) : 0;
+                  const winPts = winRate * 5;
+                  const p30Pts = (statsData.perfect30s || 0) * 2;
+                  const b30Pts = (statsData.bid30Made || 0) * 5;
+                  const exceedPts = statsData.exceedBidPoints || 0;
+                  const setPts = -(statsData.timesSet || 0);
+                  const comebackPts = (statsData.comebackWins || 0) * 10;
+                  const cleanPts = (statsData.cleanGameWins || 0) * 3;
+                  const streakPts = statsData.bestStreak || 0;
+                  const badgePts = getBadgeIds(statsData).reduce((sum, id) => sum + (BADGES.find(b => b.id === id)?.pts || 0), 0);
+                  const row = (label, pts) => pts === 0 ? null : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '4px 0', borderBottom: '1px solid #f0f0f0' }}>
+                      <span style={{ color: '#555' }}>{label}</span>
+                      <span style={{ fontWeight: 'bold', color: pts < 0 ? '#f44336' : '#1a5f3f' }}>{pts > 0 ? '+' : ''}{pts}</span>
+                    </div>
+                  );
+                  const box = (val, label, bg, color) => (
+                    <div style={{ background: bg, padding: '10px 6px', borderRadius: '8px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '20px', fontWeight: 'bold', color }}>{val}</div>
+                      <div style={{ fontSize: '10px', color: '#777', marginTop: '2px' }}>{label}</div>
+                    </div>
+                  );
+                  return (
+                    <div>
+                      <div style={{ background: '#f9f9f9', borderRadius: '8px', padding: '10px 12px', marginBottom: '14px' }}>
+                        {row(`Win Rate ${winRate}% × 5`, winPts)}
+                        {row(`Best Streak ${statsData.bestStreak || 0} × 1`, streakPts)}
+                        {row(`Bid 30 Made ${statsData.bid30Made || 0} × 5`, b30Pts)}
+                        {row(`Perfect 30s ${statsData.perfect30s || 0} × 2`, p30Pts)}
+                        {row(`Comeback Wins ${statsData.comebackWins || 0} × 10`, comebackPts)}
+                        {row(`Clean Wins ${statsData.cleanGameWins || 0} × 3`, cleanPts)}
+                        {row(`Exceed Bid Pts`, exceedPts)}
+                        {row(`Times Set ${statsData.timesSet || 0} × −1`, setPts)}
+                        {row(`Badges`, badgePts)}
+                        {[winPts, p30Pts, b30Pts, exceedPts, setPts, comebackPts, cleanPts, streakPts, badgePts].every(v => v === 0) && (
+                          <div style={{ fontSize: '12px', color: '#999', textAlign: 'center' }}>No points yet</div>
+                        )}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                        {box(gp, 'Played', '#f5f5f5', '#1a5f3f')}
+                        {box(gw, 'Wins', '#e8f5e9', '#4caf50')}
+                        {box(winRate + '%', 'Win %', '#f5f5f5', '#4caf50')}
+                        {box(statsData.currentStreak || 0, 'Streak', '#fff3e0', '#ff9800')}
+                        {box(statsData.bestStreak || 0, 'Best Streak', '#e3f2fd', '#2196f3')}
+                        {box(statsData.timesSet || 0, 'Times Set', '#ffebee', '#f44336')}
+                        {box(statsData.perfect30s || 0, 'Perfect 30s', '#f3e5f5', '#9c27b0')}
+                        {box(statsData.bid30Made || 0, 'Bid 30 Made', '#e8eaf6', '#3f51b5')}
+                        {box(statsData.comebackWins || 0, 'Comebacks', '#fff8e1', '#f57f17')}
+                        {box(statsData.cleanGameWins || 0, 'Clean Wins', '#e8f5e9', '#388e3c')}
+                        {box(statsData.gamesQuit || 0, 'Quits', '#fafafa', '#999')}
+                        {box(statsData.lastSeen ? new Date(statsData.lastSeen).toLocaleDateString() : '—', 'Last Seen', '#fafafa', '#666')}
+                      </div>
+                    </div>
+                  );
+                })() : (() => {
+                  // Badges tab
+                  const earnedIds = getBadgeIds(statsData);
+                  const totalBadgePts = earnedIds.reduce((s, id) => s + (BADGES.find(b => b.id === id)?.pts || 0), 0);
+                  const activeBadgeObj = activeBadge ? BADGES.find(b => b.id === activeBadge) : null;
+                  return (
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px', textAlign: 'center' }}>
+                        {earnedIds.length} of {BADGES.length} earned · {totalBadgePts} badge pts
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', marginBottom: '12px' }}>
+                        {BADGES.map(badge => {
+                          const earned = earnedIds.includes(badge.id);
+                          const isActive = activeBadge === badge.id;
+                          return (
+                            <div
+                              key={badge.id}
+                              onClick={() => setActiveBadge(isActive ? null : badge.id)}
+                              title={badge.name}
+                              style={{
+                                width: '38px', height: '38px', borderRadius: '50%',
+                                background: earned ? badge.color : '#ccc',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: badge.sym.length > 2 ? '8px' : '14px',
+                                color: earned ? '#fff' : '#bbb',
+                                fontWeight: 'bold', cursor: 'pointer',
+                                filter: earned ? 'none' : 'grayscale(1)',
+                                opacity: earned ? 1 : 0.3,
+                                outline: isActive ? `3px solid #333` : 'none',
+                                outlineOffset: '2px',
+                                boxSizing: 'border-box',
+                              }}
+                            >{badge.sym}</div>
+                          );
+                        })}
+                      </div>
+                      {activeBadgeObj ? (() => {
+                        const earned = earnedIds.includes(activeBadgeObj.id);
+                        const earnedAt = statsPlayerBadges[activeBadgeObj.id]?.earnedAt;
+                        return (
+                          <div style={{
+                            background: '#f8f8f8', border: `2px solid ${activeBadgeObj.color}`,
+                            borderRadius: '10px', padding: '12px 14px',
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                              <div style={{
+                                width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
+                                background: activeBadgeObj.color,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: activeBadgeObj.sym.length > 2 ? '9px' : '16px',
+                                color: '#fff', fontWeight: 'bold',
+                              }}>{activeBadgeObj.sym}</div>
+                              <div>
+                                <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#222' }}>{activeBadgeObj.name}</div>
+                                <div style={{ fontSize: '12px', color: activeBadgeObj.color, fontWeight: 'bold' }}>+{activeBadgeObj.pts} pts</div>
+                              </div>
+                              {earned && <div style={{ marginLeft: 'auto', fontSize: '20px' }}>✅</div>}
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#444', marginBottom: '4px' }}>{activeBadgeObj.desc}</div>
+                            {earned && earnedAt
+                              ? <div style={{ fontSize: '11px', color: '#888' }}>Earned {new Date(earnedAt).toLocaleDateString()}</div>
+                              : !earned && <div style={{ fontSize: '11px', color: '#bbb', fontStyle: 'italic' }}>Not earned yet</div>
+                            }
+                          </div>
+                        );
+                      })() : (
+                        <div style={{ textAlign: 'center', color: '#bbb', fontSize: '13px', padding: '8px 0' }}>
+                          Tap any badge to see details
+                        </div>
                       )}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      {statBox(gp, 'Games Played', '#f5f5f5', '#1a5f3f')}
-                      {statBox(winRate + '%', 'Win Rate', '#f5f5f5', '#4caf50')}
-                      {statBox(gw, 'Wins', '#e8f5e9', '#4caf50')}
-                      {statBox(statsData.gamesLost || 0, 'Losses', '#ffebee', '#f44336')}
-                      {statBox(statsData.currentStreak || 0, 'Current Streak', '#fff3e0', '#ff9800')}
-                      {statBox(statsData.bestStreak || 0, 'Best Streak', '#e3f2fd', '#2196f3')}
-                      {statBox(statsData.timesSet || 0, 'Times Set', '#ffebee', '#f44336')}
-                      {statBox(statsData.perfect30s || 0, 'Perfect 30s', '#f3e5f5', '#9c27b0')}
-                      {statBox(statsData.bid30Made || 0, 'Bid 30 Made', '#e8eaf6', '#3f51b5')}
-                      {statBox(statsData.exceedBidPoints || 0, 'Exceed Bid Pts', '#e0f7fa', '#00897b')}
-                      {statBox(statsData.comebackWins || 0, 'Comeback Wins', '#fff8e1', '#f57f17')}
-                      {statBox(statsData.cleanGameWins || 0, 'Clean Wins', '#e8f5e9', '#388e3c')}
-                      {statBox(statsData.gamesQuit || 0, 'Quits', '#fafafa', '#999')}
-                      {statBox(statsData.lastSeen ? new Date(statsData.lastSeen).toLocaleDateString() : 'Never', 'Last Seen', '#fafafa', '#666')}
-                    </div>
-                    {/* Badges section */}
-                    {(() => {
-                      const earnedIds = getBadgeIds(statsData);
-                      const totalBadgePts = BADGES.filter(b => earnedIds.includes(b.id)).reduce((s, b) => s + b.pts, 0);
-                      const activeBadgeObj = activeBadge ? BADGES.find(b => b.id === activeBadge) : null;
-                      return (
-                        <div style={{ marginTop: '18px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
-                            <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>Badges</div>
-                            <div style={{ fontSize: '12px', color: '#666' }}>{earnedIds.length}/{BADGES.length} earned · {totalBadgePts} pts</div>
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
-                            {BADGES.map(badge => {
-                              const earned = earnedIds.includes(badge.id);
-                              const isActive = activeBadge === badge.id;
-                              return (
-                                <div
-                                  key={badge.id}
-                                  onClick={() => setActiveBadge(isActive ? null : badge.id)}
-                                  title={badge.name}
-                                  style={{
-                                    width: '40px', height: '40px', borderRadius: '50%',
-                                    background: earned ? badge.color : '#ccc',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: badge.sym.length > 2 ? '8px' : '15px',
-                                    color: earned ? '#fff' : '#999',
-                                    fontWeight: 'bold', cursor: 'pointer',
-                                    filter: earned ? 'none' : 'grayscale(1)',
-                                    opacity: earned ? 1 : 0.3,
-                                    border: isActive ? '2px solid #333' : '2px solid transparent',
-                                    boxSizing: 'border-box',
-                                  }}
-                                >{badge.sym}</div>
-                              );
-                            })}
-                          </div>
-                          {/* Info panel — shows below grid when a badge is tapped */}
-                          {activeBadgeObj && (() => {
-                            const earned = earnedIds.includes(activeBadgeObj.id);
-                            const earnedAt = statsPlayerBadges[activeBadgeObj.id]?.earnedAt;
-                            return (
-                              <div style={{
-                                marginTop: '10px', background: '#f5f5f5', border: `1px solid ${activeBadgeObj.color}`,
-                                borderRadius: '8px', padding: '10px 12px', fontSize: '13px',
-                              }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                  <div style={{
-                                    width: '30px', height: '30px', borderRadius: '50%',
-                                    background: activeBadgeObj.color, display: 'flex', alignItems: 'center',
-                                    justifyContent: 'center', fontSize: '12px', color: '#fff', fontWeight: 'bold', flexShrink: 0,
-                                  }}>{activeBadgeObj.sym}</div>
-                                  <div>
-                                    <div style={{ fontWeight: 'bold', color: '#222' }}>{activeBadgeObj.name}</div>
-                                    <div style={{ fontSize: '11px', color: activeBadgeObj.color, fontWeight: 'bold' }}>+{activeBadgeObj.pts} pts</div>
-                                  </div>
-                                </div>
-                                <div style={{ color: '#555', marginBottom: '4px' }}>{activeBadgeObj.desc}</div>
-                                {earned && earnedAt && <div style={{ fontSize: '11px', color: '#888' }}>Earned {new Date(earnedAt).toLocaleDateString()}</div>}
-                                {!earned && <div style={{ fontSize: '11px', color: '#aaa', fontStyle: 'italic' }}>Not earned yet</div>}
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                );
-              })()}
+                  );
+                })()}
+              </div>
             </div>
           </div>
         )}
