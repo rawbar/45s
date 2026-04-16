@@ -32,7 +32,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.22.5';
+const VERSION = '2.22.6';
 const DEBUG = true; // Set to false for production
 
 // ─── Badge Definitions ───────────────────────────────────────────────────────
@@ -4450,7 +4450,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame }) {  // Upd
                   title={soundMuted ? 'Unmute sounds' : 'Mute sounds'}
                 >{soundMuted ? '\uD83D\uDD07' : '\uD83D\uDD0A'}</span>
                 <span style={{ fontSize: '8px', color: '#aaa', fontFamily: 'monospace' }}>v{VERSION}</span>
-                {playerName === 'rawbar' && (
+                {playerName?.toLowerCase() === 'rawbar' && (
                   <a
                     href="admin-reset-stats.html"
                     target="_blank"
