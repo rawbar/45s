@@ -51,6 +51,15 @@
     <button id="cancelBtn" onclick="window.close()">Cancel</button>
   </div>
 
+  <hr style="border-color:#333; margin: 28px 0 16px;">
+  <h2 style="color:#ff9800; font-size:14px; font-weight:normal;">Badge Reset — All Players</h2>
+  <div class="warn" style="border-color:#ff9800; color:#ff9800; display:block;">
+    ⚠️ Clears all badge records (earned dates) for every player. Badge icons will show as unearned until re-earned in future games. Stats are not affected.
+  </div>
+  <div style="margin-top: 12px;">
+    <button id="resetBadgesBtn" style="background:#ff9800; color:#fff; padding:12px 28px; font-size:15px; border:none; border-radius:6px; cursor:pointer; font-family:monospace;">Reset All Badges</button>
+  </div>
+
   <div id="log" style="display:none"></div>
 
   <!-- Firebase -->
@@ -224,6 +233,36 @@
         }
       }
       log(`\nDone. ${ok} reset, ${skipped} skipped (clean), ${fail} failed.`, 'ok');
+      btn.textContent = 'Done';
+    });
+
+    document.getElementById('resetBadgesBtn').addEventListener('click', async () => {
+      if (!window.confirm('Clear ALL badge records for ALL players?\n\nThis removes earned dates and resets badge icons to unearned. Stats are NOT affected. Cannot be undone.')) return;
+      const btn = document.getElementById('resetBadgesBtn');
+      btn.disabled = true;
+      btn.textContent = 'Resetting badges...';
+      log('Clearing badge records for all players...');
+
+      // Load all users fresh in case table not yet loaded
+      let users = allUsers;
+      if (Object.keys(users).length === 0) {
+        const snap = await db.ref('users').once('value');
+        users = snap.val() || {};
+      }
+
+      let ok = 0, skipped = 0, fail = 0;
+      for (const [uid, user] of Object.entries(users)) {
+        if (!user || !user.username) continue;
+        try {
+          await db.ref(`users/${uid}/badges`).remove();
+          log(`  ✓ ${user.username}`, 'ok');
+          ok++;
+        } catch (e) {
+          log(`  ✗ ${user.username}: ${e.message}`, 'err');
+          fail++;
+        }
+      }
+      log(`\nDone. ${ok} cleared, ${fail} failed.`, 'ok');
       btn.textContent = 'Done';
     });
 
