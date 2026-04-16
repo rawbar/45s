@@ -33,7 +33,7 @@
 
   <div id="status">Loading users from Firebase...</div>
   <table id="userTable" style="display:none">
-    <thead><tr><th>Username</th><th>Games</th><th>Win%</th><th>Score</th><th>Quits</th><th>DWL</th><th>Last Seen</th><th></th></tr></thead>
+    <thead><tr><th>Username</th><th>Email</th><th>Games</th><th>Win%</th><th>Score</th><th>Quits</th><th>DWL</th><th>Last Seen</th><th></th></tr></thead>
     <tbody id="userRows"></tbody>
   </table>
 
@@ -170,8 +170,10 @@
           const quits = s.gamesQuit || 0;
           const rowClass = rq ? 'ragequitter' : 'clean';
           const badge = rq ? '<span class="badge">RESET</span>' : '';
+          const email = user.email ? `<a href="mailto:${user.email}" style="color:#4caf50">${user.email}</a>` : '<span style="color:#444">—</span>';
           tbody.innerHTML += `<tr class="${rowClass}" id="row-${uid}">
             <td>${user.username}${badge}</td>
+            <td style="font-size:11px">${email}</td>
             <td>${gp}</td>
             <td>${wr}%</td>
             <td>${score}</td>
