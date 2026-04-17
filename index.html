@@ -17,6 +17,7 @@
   <!-- Audio & Effects -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.0.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Palatino Linotype', Palatino, Georgia, serif; overflow: auto; width: 100%; min-height: 100%; }
@@ -25,6 +26,7 @@
     @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes cardPlay { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
     @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+    @keyframes voicePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     @keyframes scoreChange { from { transform: scale(1.3); color: #d4af37; } to { transform: scale(1); } }
   </style>
 </head>
@@ -32,7 +34,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.22.9';
+const VERSION = '2.23.0';
 const DEBUG = true; // Set to false for production
 
 // ─── Badge Definitions ───────────────────────────────────────────────────────
@@ -284,6 +286,65 @@ const SoundManager = (() => {
     }
   };
 })();
+
+// ─── Voice Chat (Agora) ──────────────────────────────────────────────────────
+const VoiceChat = (() => {
+  const APP_ID = '5a005fca7bf0401c9df7fd6665a99c28';
+  let _client = null;
+  let _localTrack = null;
+  let _active = false;
+  let _muted = false;
+  let _onSpeaking = null;
+
+  return {
+    get active() { return _active; },
+    get muted() { return _muted; },
+
+    onSpeaking(cb) { _onSpeaking = cb; },
+
+    async join(gameId, userId) {
+      if (_active) return;
+      if (typeof AgoraRTC === 'undefined') { console.warn('🎙 Agora SDK not loaded'); return; }
+      try {
+        _client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+        _client.enableAudioVolumeIndicator();
+        _client.on('volume-indicator', (vols) => { if (_onSpeaking) _onSpeaking(vols); });
+        await _client.join(APP_ID, gameId, null, userId);
+        _localTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        await _client.publish([_localTrack]);
+        _active = true;
+        _muted = false;
+        console.log('🎙 Voice joined channel:', gameId);
+      } catch (e) {
+        console.error('🎙 Voice join failed:', e);
+        throw e;
+      }
+    },
+
+    async leave() {
+      if (!_active) return;
+      try {
+        if (_localTrack) { _localTrack.close(); _localTrack = null; }
+        if (_client) { await _client.leave(); _client = null; }
+      } catch (e) { console.warn('🎙 Voice leave error:', e); }
+      _active = false;
+      _muted = false;
+      console.log('🎙 Voice left');
+    },
+
+    async setMuted(muted) {
+      if (!_localTrack) return;
+      await _localTrack.setMuted(muted);
+      _muted = muted;
+    },
+
+    async toggleMute() {
+      await this.setMuted(!_muted);
+      return _muted;
+    },
+  };
+})();
+// ─────────────────────────────────────────────────────────────────────────────
 
 // SHA-256 PIN hashing utility
 async function hashPin(username, pin) {
@@ -2500,6 +2561,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.23.0', changes: 'Voice chat via Agora: Join Voice in the waiting room to talk with other human players. Mic mute button in-game. Speaking indicators (🎙) on player names light up green when talking. Voice state persists through reconnects. All players fully control their own mic — voice only activates when another human is present.' },
     { version: '2.22.9', changes: 'Fix badge score on leaderboard: use cached stats.badgeScore (zeroed on reset, updated after each game) instead of recomputing from stat fields. Admin badge reset now also zeros badgeScore in stats.' },
     { version: '2.22.8', changes: 'Fix badge reset: badges tab now uses Firebase badges node as source of truth (reset actually clears displayed badges). End-of-game badge notifications are now tappable — tap to see badge description.' },
     { version: '2.22.3', changes: 'Fix badge false positives: pre-game badge eligibility captured before the stats transaction, so only badges earned in THIS game are notified. Pre-existing qualifiers are silently bootstrapped into Firebase without triggering a notification.' },
@@ -5634,6 +5696,9 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [myReady, setMyReady] = useState(false); // PHASE 2.1: Track my ready state
+  const [voiceEnabled, setVoiceEnabled] = useState(VoiceChat.active);
+  const [voiceMuted, setVoiceMuted] = useState(VoiceChat.muted);
+  const [voiceUsers, setVoiceUsers] = useState({});  // uid → { enabled, muted }
 
   useEffect(() => {
     const gameRef = database.ref(`lobby/games/${gameId}`);
@@ -5691,6 +5756,39 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
       clearInterval(heartbeat);
     };
   }, [gameId, userId, mySeat]);  // Changed playerId to userId
+
+  // Voice: listen to who's in voice chat
+  useEffect(() => {
+    const voiceRef = database.ref(`lobby/games/${gameId}/voice`);
+    const listener = voiceRef.on('value', snap => {
+      setVoiceUsers(snap.val() || {});
+    });
+    return () => voiceRef.off('value', listener);
+  }, [gameId]);
+
+  const handleJoinVoice = async () => {
+    try {
+      await VoiceChat.join(gameId, userId);
+      await database.ref(`lobby/games/${gameId}/voice/${userId}`).set({ enabled: true, muted: false });
+      setVoiceEnabled(true);
+      setVoiceMuted(false);
+    } catch (e) {
+      setError('Mic access denied or voice unavailable: ' + e.message);
+    }
+  };
+
+  const handleLeaveVoice = async () => {
+    await VoiceChat.leave();
+    await database.ref(`lobby/games/${gameId}/voice/${userId}`).remove();
+    setVoiceEnabled(false);
+  };
+
+  const handleToggleVoiceMute = async () => {
+    const muted = await VoiceChat.toggleMute();
+    await database.ref(`lobby/games/${gameId}/voice/${userId}`).update({ muted });
+    setVoiceMuted(muted);
+  };
+
   // PHASE 2.1: Toggle ready state
   const handleToggleReady = async () => {
     const newReady = !myReady;
@@ -6226,6 +6324,51 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
           </div>
         </div>
 
+        {/* Voice Chat */}
+        {(() => {
+          const humanPlayers = Object.values(game.players || {}).filter(p => p && !p.isAI);
+          const otherHumans = humanPlayers.filter(p => p.userId !== userId);
+          const hasOtherHumans = otherHumans.length > 0;
+          const voiceUsersList = Object.values(voiceUsers).filter(v => v && v.enabled);
+          return (
+            <div style={{ background: '#f0f7f0', border: '1px solid #c8e6c9', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: '13px', color: '#2d8f5f', fontWeight: 'bold' }}>
+                  🎙 Voice Chat
+                  {voiceUsersList.length > 0 && <span style={{ marginLeft: '8px', fontSize: '11px', color: '#666', fontWeight: 'normal' }}>{voiceUsersList.length} in voice</span>}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {voiceEnabled && (
+                    <button
+                      onClick={handleToggleVoiceMute}
+                      style={{ padding: '4px 10px', fontSize: '12px', background: voiceMuted ? '#ff9800' : '#4caf50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    >{voiceMuted ? '🔇 Unmute' : '🎙 Mute'}</button>
+                  )}
+                  <button
+                    onClick={voiceEnabled ? handleLeaveVoice : handleJoinVoice}
+                    disabled={!hasOtherHumans && !voiceEnabled}
+                    title={!hasOtherHumans && !voiceEnabled ? 'Need another human player to use voice' : ''}
+                    style={{ padding: '4px 12px', fontSize: '12px', background: voiceEnabled ? '#f44336' : (hasOtherHumans ? '#2d8f5f' : '#ccc'), color: 'white', border: 'none', borderRadius: '4px', cursor: (!hasOtherHumans && !voiceEnabled) ? 'not-allowed' : 'pointer' }}
+                  >{voiceEnabled ? 'Leave Voice' : 'Join Voice'}</button>
+                </div>
+              </div>
+              {voiceUsersList.length > 0 && (
+                <div style={{ marginTop: '6px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {Object.entries(voiceUsers).filter(([,v]) => v && v.enabled).map(([uid, v]) => {
+                    const player = Object.values(game.players || {}).find(p => p && p.userId === uid);
+                    if (!player) return null;
+                    return (
+                      <span key={uid} style={{ fontSize: '11px', color: v.muted ? '#aaa' : '#2d8f5f', background: 'white', border: '1px solid #c8e6c9', borderRadius: '10px', padding: '2px 8px' }}>
+                        {v.muted ? '🔇' : '🎙'} {player.username}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         <div style={{ display: 'flex', gap: '12px' }}>
           {/* PHASE 2.1: Ready/Unready button for non-creators */}
           {!isCreator && (
@@ -6543,6 +6686,23 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
   const gameStateRef = useRef(null);
   const mySeatIndex = SEAT_TO_INDEX[mySeat];
 
+  // Voice: rejoin if player had voice enabled before (handles reconnects)
+  useEffect(() => {
+    if (!VoiceChat.active) {
+      database.ref(`lobby/games/${gameId}/voice/${userId}`).once('value', snap => {
+        if (snap.val()?.enabled) {
+          VoiceChat.join(gameId, userId).catch(e => console.warn('🎙 Voice rejoin failed:', e));
+        }
+      });
+    }
+    return () => {
+      // Leave voice when exiting the game entirely
+      VoiceChat.leave().then(() => {
+        database.ref(`lobby/games/${gameId}/voice/${userId}`).remove().catch(() => {});
+      });
+    };
+  }, [gameId]);
+
   // Listen to game state from Firebase
   useEffect(() => {
     const gameRef = database.ref(`lobby/games/${gameId}/gameState`);
@@ -6797,6 +6957,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [wasBagged, setWasBagged] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [soundMuted, setSoundMuted] = useState(SoundManager.isMuted());
+  const [voiceActive, setVoiceActive] = useState(VoiceChat.active);
+  const [voiceMuted, setVoiceMuted] = useState(VoiceChat.muted);
+  const [voiceUsers, setVoiceUsers] = useState({});    // uid → { enabled, muted }
+  const [speakingUids, setSpeakingUids] = useState({}); // uid → true when speaking
   const [knownOutOfTrump, setKnownOutOfTrump] = useState([false, false, false, false]);
   const [knownVoids, setKnownVoids] = useState([{},{},{},{}]);
   // knownVoids[player] = { '♠': true, '♦': true, trump: true|'reneging', possibleTrump: ['J♠','A♥'], noLowTrump: true }
@@ -7414,6 +7578,30 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     const player = players[seat];
     return player ? player.username : `P${playerIndex + 1}`;
   }, [players]);
+
+  const getPlayerUserId = useCallback((playerIndex) => {
+    const seat = SEAT_NAMES[playerIndex];
+    return players[seat]?.userId || null;
+  }, [players]);
+
+  // Voice: listen to voice node + speaking indicators
+  useEffect(() => {
+    const voiceRef = database.ref(`lobby/games/${gameId}/voice`);
+    const listener = voiceRef.on('value', snap => {
+      setVoiceUsers(snap.val() || {});
+    });
+    VoiceChat.onSpeaking((vols) => {
+      const speaking = {};
+      vols.forEach(v => { if (v.level > 5) speaking[v.uid] = true; });
+      setSpeakingUids(speaking);
+    });
+    setVoiceActive(VoiceChat.active);
+    setVoiceMuted(VoiceChat.muted);
+    return () => {
+      voiceRef.off('value', listener);
+      VoiceChat.onSpeaking(null);
+    };
+  }, [gameId]);
   
   const isPlayerDisconnected = useCallback((playerIndex) => {
     const seat = SEAT_NAMES[playerIndex];
@@ -9037,6 +9225,14 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Voice mute toggle — only shown when in voice */}
+          {voiceActive && (
+            <span
+              onClick={async () => { const m = await VoiceChat.toggleMute(); setVoiceMuted(m); database.ref(`lobby/games/${gameId}/voice/${userId}`).update({ muted: m }); }}
+              style={{ fontSize: '14px', cursor: 'pointer', opacity: 0.9, userSelect: 'none' }}
+              title={voiceMuted ? 'Unmute mic' : 'Mute mic'}
+            >{voiceMuted ? '🔇' : '🎙'}</span>
+          )}
           {/* Mute toggle */}
           <span
             onClick={() => { const m = SoundManager.toggle(); setSoundMuted(m); }}
@@ -9084,7 +9280,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         {/* North Player (Partner) */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', padding: '2px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '16px' }}>
-            <span style={{ fontSize: '11px', color: '#aaa' }}>{getPlayerName(visualPositions.top)}</span>
+            <span style={{ fontSize: '11px', color: '#aaa' }}>{getPlayerName(visualPositions.top)}{(() => { const uid = getPlayerUserId(visualPositions.top); const speaking = uid && speakingUids[uid]; const inVoice = uid && voiceUsers[uid]?.enabled && !voiceUsers[uid]?.muted; return inVoice ? <span style={{ marginLeft: '3px', fontSize: '10px', color: speaking ? '#4caf50' : '#aaa', animation: speaking ? 'voicePulse 0.8s infinite' : 'none' }}>🎙</span> : null; })()}</span>
             <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>
               {dealer === visualPositions.top && <DealerBadge />}
             </div>
@@ -9113,7 +9309,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           
           {/* West Player */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '50px' }}>
-            <div style={{ fontSize: '10px', color: '#aaa', textAlign: 'center' }}>{getPlayerName(visualPositions.left)}</div>
+            <div style={{ fontSize: '10px', color: '#aaa', textAlign: 'center' }}>{getPlayerName(visualPositions.left)}{(() => { const uid = getPlayerUserId(visualPositions.left); const speaking = uid && speakingUids[uid]; const inVoice = uid && voiceUsers[uid]?.enabled && !voiceUsers[uid]?.muted; return inVoice ? <span style={{ marginLeft: '2px', fontSize: '9px', color: speaking ? '#4caf50' : '#aaa' }}>🎙</span> : null; })()}</div>
             <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {dealer === visualPositions.left && <DealerBadge />}
             </div>
@@ -9233,7 +9429,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
           {/* East Player */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '50px' }}>
-            <div style={{ fontSize: '10px', color: '#aaa', textAlign: 'center' }}>{getPlayerName(visualPositions.right)}</div>
+            <div style={{ fontSize: '10px', color: '#aaa', textAlign: 'center' }}>{getPlayerName(visualPositions.right)}{(() => { const uid = getPlayerUserId(visualPositions.right); const speaking = uid && speakingUids[uid]; const inVoice = uid && voiceUsers[uid]?.enabled && !voiceUsers[uid]?.muted; return inVoice ? <span style={{ marginLeft: '2px', fontSize: '9px', color: speaking ? '#4caf50' : '#aaa' }}>🎙</span> : null; })()}</div>
             <div style={{ height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {dealer === visualPositions.right && <DealerBadge />}
             </div>
@@ -9263,7 +9459,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             <div style={{ minWidth: '60px', display: 'flex', justifyContent: 'center' }}>
               <TricksWonDisplay count={playerTricks[mySeatIndex]} hasHighTrump={highTrumpInfo.player === mySeatIndex} />
             </div>
-            <span style={{ fontSize: '11px', color: '#aaa' }}>{getPlayerName(mySeatIndex)}</span>
+            <span style={{ fontSize: '11px', color: '#aaa' }}>{getPlayerName(mySeatIndex)}{voiceActive && <span style={{ marginLeft: '3px', fontSize: '10px', color: voiceMuted ? '#f44336' : (speakingUids[userId] ? '#4caf50' : '#aaa') }}>{voiceMuted ? '🔇' : '🎙'}</span>}</span>
             <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }}>
               {dealer === mySeatIndex && <DealerBadge />}
             </div>
