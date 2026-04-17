@@ -34,7 +34,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.23.1';
+const VERSION = '2.23.2';
 const DEBUG = true; // Set to false for production
 
 // ─── Badge Definitions ───────────────────────────────────────────────────────
@@ -295,17 +295,7 @@ const VoiceChat = (() => {
   let _active = false;
   let _muted = false;
   let _onSpeaking = null;
-  let _onAutoplayFailed = null;
-  let _remoteUsers = 0;
-  let _statusLog = [];   // visible diagnostics
 
-  function _log(msg) {
-    const entry = new Date().toLocaleTimeString() + ' ' + msg;
-    _statusLog = [entry, ..._statusLog.slice(0, 9)];
-    console.log('🎙', msg);
-  }
-
-  // iOS audio unlock — call inside a user-gesture handler
   function _unlockAudio() {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -319,58 +309,34 @@ const VoiceChat = (() => {
   return {
     get active() { return _active; },
     get muted() { return _muted; },
-    get remoteUsers() { return _remoteUsers; },
-    get statusLog() { return _statusLog; },
 
     onSpeaking(cb) { _onSpeaking = cb; },
-    onAutoplayFailed(cb) { _onAutoplayFailed = cb; },
 
     async join(gameId, userId) {
       if (_active) return;
       if (typeof AgoraRTC === 'undefined') {
-        throw new Error('Agora SDK not loaded — check internet connection and reload');
+        throw new Error('Agora SDK not loaded — check connection and reload');
       }
       _unlockAudio();
-      _log('Joining channel...');
-
-      // Sanitize channel name (Agora max 64 bytes, strip leading hyphens if needed)
       const channel = String(gameId).replace(/^-+/, '').slice(0, 64) || 'default';
       const uid = String(userId).replace(/^-+/, '').slice(0, 64);
-      _log('Channel: ' + channel + ' UID: ' + uid);
 
       _client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-
-      // Handle iOS autoplay failure
-      AgoraRTC.onAudioAutoplayFailed = () => {
-        _log('Audio autoplay blocked — need tap to enable');
-        if (_onAutoplayFailed) _onAutoplayFailed();
-      };
-
       _client.on('user-published', async (user, mediaType) => {
         await _client.subscribe(user, mediaType);
-        if (mediaType === 'audio') {
-          user.audioTrack.play();
-          _remoteUsers++;
-          _log('Remote user audio playing (' + _remoteUsers + ' remote)');
-        }
+        if (mediaType === 'audio') user.audioTrack.play();
       });
-      _client.on('user-unpublished', (user, mediaType) => {
-        if (mediaType === 'audio') { _remoteUsers = Math.max(0, _remoteUsers - 1); }
-      });
-
       _client.enableAudioVolumeIndicator();
       _client.on('volume-indicator', (vols) => { if (_onSpeaking) _onSpeaking(vols); });
 
       try {
         await _client.join(APP_ID, channel, null, uid);
-        _log('Channel joined');
         _localTrack = await AgoraRTC.createMicrophoneAudioTrack();
         await _client.publish([_localTrack]);
         _active = true;
         _muted = false;
-        _log('Mic published. Remote users in channel: ' + _client.remoteUsers.length);
+        console.log('🎙 Voice joined:', channel);
       } catch (e) {
-        _log('JOIN FAILED: ' + e.message);
         _client = null;
         throw e;
       }
@@ -381,11 +347,10 @@ const VoiceChat = (() => {
       try {
         if (_localTrack) { _localTrack.close(); _localTrack = null; }
         if (_client) { await _client.leave(); _client = null; }
-      } catch (e) { _log('Leave error: ' + e.message); }
+      } catch (e) { console.warn('🎙 leave error:', e); }
       _active = false;
       _muted = false;
-      _remoteUsers = 0;
-      _log('Left voice');
+      console.log('🎙 Voice left');
     },
 
     async setMuted(muted) {
@@ -397,13 +362,6 @@ const VoiceChat = (() => {
     async toggleMute() {
       await this.setMuted(!_muted);
       return _muted;
-    },
-
-    // Force-play all remote audio tracks (iOS autoplay workaround)
-    resumeAudio() {
-      if (!_client) return;
-      _client.remoteUsers.forEach(u => { if (u.audioTrack) { u.audioTrack.play(); _log('Force-resumed audio for ' + u.uid); } });
-      _unlockAudio();
     },
   };
 })();
@@ -2624,7 +2582,8 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
-    { version: '2.23.1', changes: 'Fix voice audio: subscribe to and play remote audio tracks via user-published event (was missing in 2.23.0 — both sides published but nobody listened). Add iOS autoplay unlock. Add diagnostics panel showing connection log and remote user count.' },
+    { version: '2.23.2', changes: 'Voice: disconnect on Leave Game (waiting room and in-game). Firebase onDisconnect cleans up voice entry if browser closes abruptly. Remove debug diagnostics.' },
+    { version: '2.23.1', changes: 'Fix voice audio: subscribe to and play remote audio tracks (was missing in 2.23.0). iOS audio unlock on join.' },
     { version: '2.23.0', changes: 'Voice chat via Agora: Join Voice in the waiting room to talk with other human players. Mic mute button in-game. Speaking indicators on player names. Voice state persists through reconnects.' },
     { version: '2.22.9', changes: 'Fix badge score on leaderboard: use cached stats.badgeScore (zeroed on reset, updated after each game) instead of recomputing from stat fields. Admin badge reset now also zeros badgeScore in stats.' },
     { version: '2.22.8', changes: 'Fix badge reset: badges tab now uses Firebase badges node as source of truth (reset actually clears displayed badges). End-of-game badge notifications are now tappable — tap to see badge description.' },
@@ -5763,8 +5722,6 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
   const [voiceEnabled, setVoiceEnabled] = useState(VoiceChat.active);
   const [voiceMuted, setVoiceMuted] = useState(VoiceChat.muted);
   const [voiceUsers, setVoiceUsers] = useState({});  // uid → { enabled, muted }
-  const [voiceDiag, setVoiceDiag] = useState(false); // show diagnostics panel
-  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
 
   useEffect(() => {
     const gameRef = database.ref(`lobby/games/${gameId}`);
@@ -5834,9 +5791,10 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
 
   const handleJoinVoice = async () => {
     try {
-      VoiceChat.onAutoplayFailed(() => setAutoplayBlocked(true));
       await VoiceChat.join(gameId, userId);
-      await database.ref(`lobby/games/${gameId}/voice/${userId}`).set({ enabled: true, muted: false });
+      const voiceRef = database.ref(`lobby/games/${gameId}/voice/${userId}`);
+      await voiceRef.set({ enabled: true, muted: false });
+      voiceRef.onDisconnect().remove(); // clean up if browser closes
       setVoiceEnabled(true);
       setVoiceMuted(false);
     } catch (e) {
@@ -5922,19 +5880,22 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
   const handleLeaveGame = async () => {
     setLoading(true);
     try {
-      console.log('Leaving game...');
-      
+      // Disconnect voice before leaving
+      if (VoiceChat.active) {
+        await VoiceChat.leave();
+        await database.ref(`lobby/games/${gameId}/voice/${userId}`).remove();
+      }
+
       await database.ref(`lobby/games/${gameId}/players/${mySeat}`).remove();
-      
+
       // Check if any players left
       const snapshot = await database.ref(`lobby/games/${gameId}/players`).once('value');
       const players = snapshot.val();
-      
+
       if (!players || Object.keys(players).length === 0) {
-        console.log('Last player left, deleting game');
         await database.ref(`lobby/games/${gameId}`).remove();
       }
-      
+
       onLeaveGame();
     } catch (err) {
       console.error('Error leaving game:', err);
@@ -6431,26 +6392,6 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                       </span>
                     );
                   })}
-                </div>
-              )}
-              {/* iOS autoplay fix */}
-              {autoplayBlocked && (
-                <div style={{ marginTop: '8px', background: '#fff3e0', border: '1px solid #ff9800', borderRadius: '6px', padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '12px', color: '#e65100' }}>Tap to enable audio playback</span>
-                  <button onClick={() => { VoiceChat.resumeAudio(); setAutoplayBlocked(false); }} style={{ padding: '4px 12px', background: '#ff9800', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}>Enable Audio</button>
-                </div>
-              )}
-              {/* Diagnostics toggle */}
-              {voiceEnabled && (
-                <div style={{ marginTop: '6px' }}>
-                  <span onClick={() => setVoiceDiag(v => !v)} style={{ fontSize: '10px', color: '#aaa', cursor: 'pointer', textDecoration: 'underline' }}>
-                    {voiceDiag ? 'hide' : 'diagnostics'} (remote: {VoiceChat.remoteUsers})
-                  </span>
-                  {voiceDiag && (
-                    <div style={{ marginTop: '4px', background: '#111', borderRadius: '4px', padding: '6px 8px', fontSize: '10px', color: '#0f0', fontFamily: 'monospace', maxHeight: '80px', overflowY: 'auto' }}>
-                      {VoiceChat.statusLog.map((l, i) => <div key={i}>{l}</div>)}
-                    </div>
-                  )}
                 </div>
               )}
             </div>
