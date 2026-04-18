@@ -34,7 +34,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.23.2';
+const VERSION = '2.23.3';
 const DEBUG = true; // Set to false for production
 
 // ─── Badge Definitions ───────────────────────────────────────────────────────
@@ -325,6 +325,13 @@ const VoiceChat = (() => {
       _client.on('user-published', async (user, mediaType) => {
         await _client.subscribe(user, mediaType);
         if (mediaType === 'audio') user.audioTrack.play();
+      });
+      _client.on('user-left', () => {
+        // If no remote users remain, leave — no point staying in an empty channel
+        if (_client && _client.remoteUsers.length === 0) {
+          console.log('🎙 Last remote user left — auto-disconnecting voice');
+          VoiceChat.leave();
+        }
       });
       _client.enableAudioVolumeIndicator();
       _client.on('volume-indicator', (vols) => { if (_onSpeaking) _onSpeaking(vols); });
@@ -2582,7 +2589,8 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
-    { version: '2.23.2', changes: 'Voice: disconnect on Leave Game (waiting room and in-game). Firebase onDisconnect cleans up voice entry if browser closes abruptly. Remove debug diagnostics.' },
+    { version: '2.23.3', changes: 'Voice: auto-disconnect when game ends (game-over phase). Auto-disconnect when last remote user leaves the channel. Prevents runaway Agora billing.' },
+    { version: '2.23.2', changes: 'Voice: disconnect on Leave Game (waiting room and in-game). Firebase onDisconnect cleans up voice entry if browser closes abruptly.' },
     { version: '2.23.1', changes: 'Fix voice audio: subscribe to and play remote audio tracks (was missing in 2.23.0). iOS audio unlock on join.' },
     { version: '2.23.0', changes: 'Voice chat via Agora: Join Voice in the waiting room to talk with other human players. Mic mute button in-game. Speaking indicators on player names. Voice state persists through reconnects.' },
     { version: '2.22.9', changes: 'Fix badge score on leaderboard: use cached stats.badgeScore (zeroed on reset, updated after each game) instead of recomputing from stat fields. Admin badge reset now also zeros badgeScore in stats.' },
@@ -7247,6 +7255,12 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       const winner = gameState?.winner;
       if (winner === myTeam) SoundManager.play('gameWin');
       else SoundManager.play('gameLose');
+      // Disconnect voice — game is over, no reason to keep billing
+      if (VoiceChat.active) {
+        VoiceChat.leave();
+        database.ref(`lobby/games/${gameId}/voice/${userId}`).remove();
+        setVoiceActive(false);
+      }
     }
   }, [phase, mySeatIndex, gameState?.winner]);
 
