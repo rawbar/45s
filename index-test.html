@@ -761,6 +761,9 @@
     box-shadow: 0 3px 5px rgba(0,0,0,0.4), 0 1px 1px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.95), 0 0 8px rgba(100,170,230,0.4);
   }
 
+  /* ── Show Hands modal: always show suit symbols on cards ── */
+  .ir-show-hands-cards .cp-card .corner .su { display: block !important; font-size: 8px; }
+
   /* ── Irish dealer chip ── */
   .theme-irish .v3-dealer-chip {
     width: 26px; height: 26px;
@@ -1712,7 +1715,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.16';
+const VERSION = '2.27.17';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4377,6 +4380,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.17', date: 'Apr 2026', changes: ['Show Hands modal: full Irish Card Room redesign (bottom sheet, Cinzel/brass, compass layout, avatar+name headers, Irish bid badges). Fixed: suit symbols now always visible on cards in the modal.'] },
     { version: '2.27.16', date: 'Apr 2026', changes: ['Badge detail: now a floating centered modal (tap badge to open, tap backdrop or × to close). Bid flash: large "20♥"/"PASS"/"BAGGED" animates at bidder compass position. Diamond announce: big bid result flashes center screen when trump is set. Dealer chip: glowing brass indicator (Irish theme)'] },
     { version: '2.27.15', date: 'Apr 2026', changes: ['Polish: widen side seat columns (56→62px) so E/W nameplate ovals are no longer clipped at screen edges'] },
     { version: '2.27.14', date: 'Apr 2026', changes: ['Score strip: hand score now left of running total; tap-to-expand all rounds. Trick overlay: moved in-flow above score strip (no longer covers hand), suit symbols visible on small cards, WebkitBackdropFilter added'] },
@@ -4943,90 +4947,81 @@ function RulesModal({ isOpen, onClose }) {
   );
 }
 
-// Show Hands Modal for debugging - shows cards in play order
+// Show Hands Modal — Irish Card Room themed
 function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, drawnCards, kittyCardIds, wasBagged, playHistory, bids, mySeatIndex, players, scores, faceUpCard = null }) {
   if (!isOpen || !hands) return null;
-  
-  console.log('🎭 ShowHandsModal opened:', {
-    playHistoryLength: playHistory ? playHistory.length : 0,
-    drawnCardsSize: drawnCards ? drawnCards.size : 0,
-    bids,
-    drawn,
-    mySeatIndex
-  });
-  
-  // NO ROTATION - everyone sees the same view
-  // Position 0 = North (top), 1 = East (left), 2 = South (bottom), 3 = West (right)
-  
-  // Get player name from players object
+
+  const brass = '#c9a24a', brassHi = '#f6d778';
+
   const getPlayerName = (playerIdx) => {
     const seatNames = ['North', 'East', 'South', 'West'];
     const seat = seatNames[playerIdx];
     const player = players && players[seat];
-    return player ? player.username : `P${playerIdx + 1}`;  // Fixed: player.username → player.username
+    return player ? player.username : seatNames[playerIdx];
   };
-  
-  const renderHand = (playerIdx, label) => {
+
+  const getAvatar = (playerIdx) => {
+    const seatNames = ['North', 'East', 'South', 'West'];
+    const player = players && players[seatNames[playerIdx]];
+    return player ? getAvatarById(player.avatar).emoji : '🂠';
+  };
+
+  const renderHand = (playerIdx) => {
     const hand = hands[playerIdx] || [];
     const isDealer = dealer === playerIdx;
     const isBidder = bidWinner === playerIdx;
-    const playerBid = (bids && bids[playerIdx] !== undefined) ? bids[playerIdx] : null;
-    
-    if (playerIdx === 0) { // Log once for debugging
-      console.log('ShowHandsModal bids:', bids);
-    }
-    
-    // Sort cards by play order if playHistory exists
+    const playerBid = (bids && bids[playerIdx] !== undefined && bids[playerIdx] !== -1) ? bids[playerIdx] : null;
+    const isBag = isBidder && wasBagged;
+    const isMe = playerIdx === mySeatIndex;
+
+    // Sort by play order
     let sortedHand = [...hand];
     if (playHistory && playHistory.length > 0) {
       const playOrder = {};
-      playHistory.forEach((play, idx) => {
-        if (play.player === playerIdx) {
-          playOrder[play.card.id] = idx;
-        }
-      });
-      sortedHand.sort((a, b) => {
-        const orderA = playOrder[a.id] !== undefined ? playOrder[a.id] : 999;
-        const orderB = playOrder[b.id] !== undefined ? playOrder[b.id] : 999;
-        return orderA - orderB;
-      });
+      playHistory.forEach((play, idx) => { if (play.player === playerIdx) playOrder[play.card.id] = idx; });
+      sortedHand.sort((a, b) => (playOrder[a.id] ?? 999) - (playOrder[b.id] ?? 999));
     }
-    
+
+    const nameColor = isMe ? '#6bb6ff' : brassHi;
+
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#aaa' }}>
-          <span>{label || getPlayerName(playerIdx)}</span>
-          {isDealer && <span style={{ padding: '1px 3px', background: '#d4af37', color: '#000', borderRadius: '2px', fontSize: '8px', fontWeight: 'bold' }}>DEALER</span>}
-          <span style={{ color: '#ffd700' }}>+{drawn[playerIdx] || 0}</span>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+        {/* Player header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ fontSize: '14px', lineHeight: 1 }}>{getAvatar(playerIdx)}</span>
+          <span style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', fontWeight: 700, color: nameColor }}>{getPlayerName(playerIdx)}</span>
+          {isDealer && <span style={{ padding: '1px 4px', background: 'radial-gradient(circle at 35% 30%, #f6d778, #c9a24a)', borderRadius: '10px', fontSize: '8px', fontWeight: 700, color: '#180b03', fontFamily: "'Cinzel', serif" }}>D</span>}
+          {drawn[playerIdx] > 0 && <span style={{ fontSize: '9px', color: brass, fontFamily: "'Merriweather', serif", fontWeight: 900 }}>+{drawn[playerIdx]}</span>}
         </div>
-        {/* Show bid - gray for non-winners, blue for winner, red if bagged */}
+        {/* Bid badge */}
         {playerBid !== null && (
-          <span style={{ 
-            padding: '2px 4px', 
-            background: isBidder ? (wasBagged ? '#c62828' : '#2196f3') : '#555', 
-            borderRadius: '3px', 
-            fontSize: '10px', 
-            color: isBidder ? '#fff' : '#aaa'
+          <span style={{
+            padding: '2px 7px', borderRadius: '4px', fontSize: '10px',
+            fontFamily: "'Cinzel', serif", fontWeight: 700,
+            background: isBag ? 'rgba(139,26,31,0.85)' : isBidder ? 'rgba(10,40,20,0.9)' : 'rgba(10,20,10,0.7)',
+            border: `1px solid ${isBag ? '#ef4444' : isBidder ? brass : 'rgba(201,162,74,0.25)'}`,
+            color: isBag ? '#ff6b6b' : isBidder ? brassHi : 'rgba(201,162,74,0.55)',
           }}>
             {playerBid === 0 ? 'Pass' : playerBid}
-            {isBidder && trumpSuit && <span style={{ color: (trumpSuit === '\u2665' || trumpSuit === '\u2666') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span>}
-            {isBidder && wasBagged && <span style={{ marginLeft: '2px' }}>BAGGED</span>}
+            {isBidder && trumpSuit && <span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#e87070' : brassHi, marginLeft: '2px' }}>{trumpSuit}</span>}
+            {isBag && <span style={{ marginLeft: '4px', fontSize: '9px' }}>BAGGED</span>}
           </span>
         )}
-        <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        {/* Cards */}
+        <div className="ir-show-hands-cards" style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', justifyContent: 'center' }}>
           {sortedHand.map((c, i) => {
-            // Show play order number on each card
             const playIdx = playHistory ? playHistory.findIndex(p => p.player === playerIdx && p.card.id === c.id) : -1;
             const trickNum = playIdx >= 0 && playHistory[playIdx] ? playHistory[playIdx].trick : null;
-            // Check if this card led its trick - find first card of this trick number
-            const ledTrick = playIdx >= 0 && trickNum !== null && playHistory && 
-                            playHistory.findIndex(p => p.trick === trickNum) === playIdx;
+            const ledTrick = playIdx >= 0 && trickNum !== null && playHistory &&
+              playHistory.findIndex(p => p.trick === trickNum) === playIdx;
             return (
               <div key={i} style={{ position: 'relative' }}>
-                <div style={{ border: ledTrick ? '2px solid #d4af37' : 'none', borderRadius: '4px' }}>
+                <div style={{ border: ledTrick ? `2px solid ${brassHi}` : '2px solid transparent', borderRadius: '5px' }}>
                   <Card card={c} small disabled wasDrawn={drawnCards && drawnCards.has(c.id)} wasKitty={kittyCardIds && kittyCardIds.has(c.id)} isFaceUp={faceUpCard && faceUpCard.cardId === c.id} />
                 </div>
-                {trickNum !== null && <div style={{ position: 'absolute', top: '-6px', right: '-6px', width: '14px', height: '14px', borderRadius: '50%', background: ledTrick ? '#d4af37' : '#666', color: ledTrick ? '#000' : '#fff', fontSize: '9px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{trickNum + 1}</div>}
+                {trickNum !== null && (
+                  <div style={{ position: 'absolute', top: '-5px', right: '-5px', width: '13px', height: '13px', borderRadius: '50%', background: ledTrick ? brassHi : 'rgba(30,30,30,0.9)', border: ledTrick ? 'none' : '1px solid rgba(201,162,74,0.35)', color: ledTrick ? '#1a0e03' : brass, fontSize: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cinzel', serif" }}>{trickNum + 1}</div>
+                )}
               </div>
             );
           })}
@@ -5034,50 +5029,70 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
       </div>
     );
   };
-  
+
+  const isRed = trumpSuit === '♥' || trumpSuit === '♦';
+
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px', animation: 'fadeIn 0.2s ease-out' }}>
-      <div style={{ background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)', border: '2px solid #d4af37', borderRadius: '8px', width: '100%', maxWidth: '400px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 0 20px rgba(212, 175, 55, 0.5)', animation: 'slideUp 0.25s ease-out' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#d4af37' }}>
-            Hands After Draw <span style={{ fontSize: '10px', color: '#888' }}>v{VERSION}</span>
-            <div style={{ fontSize: '9px', color: '#888', fontWeight: 'normal' }}>
-              {hands && `[${hands.map((h, i) => `P${i+1}:${h.length}`).join(' ')}]`}
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1200, display: 'flex', justifyContent: 'center', alignItems: 'flex-end', padding: '0', animation: 'fadeIn 0.2s ease-out' }}>
+      {/* Irish bottom-sheet panel */}
+      <div style={{ background: 'rgba(12,6,2,0.97)', borderTop: `2px solid ${brass}`, borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px', maxHeight: '90dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideUp 0.25s ease-out', boxShadow: '0 -8px 40px rgba(0,0,0,0.8)' }}>
+
+        {/* Header bar */}
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 10px' }}>
+          <div>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: '16px', fontWeight: 700, background: `linear-gradient(135deg, ${brassHi}, ${brass})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Round Summary</div>
+            {trumpSuit && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+                <span style={{ fontFamily: "'Merriweather', serif", fontStyle: 'italic', fontSize: '11px', color: 'rgba(251,246,228,0.45)' }}>Trump</span>
+                <span style={{ fontSize: '20px', color: isRed ? '#e87070' : brassHi, lineHeight: 1 }}>{trumpSuit}</span>
+                {highBid > 0 && <span style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', color: brass }}>· {wasBagged ? 'BAGGED ' : ''}{highBid}</span>}
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {scores && (
+              <div style={{ display: 'flex', gap: '10px', fontSize: '12px' }}>
+                <span style={{ fontFamily: "'Cinzel', serif", color: '#6ec97a' }}>N/S <strong>{scores[0]}</strong></span>
+                <span style={{ fontFamily: "'Cinzel', serif", color: '#6bb6ff' }}>E/W <strong>{scores[1]}</strong></span>
+              </div>
+            )}
+            <button onClick={onClose} style={{ width: '28px', height: '28px', border: `1px solid rgba(201,162,74,0.4)`, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', color: brass, fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div style={{ height: '1px', background: `linear-gradient(90deg, transparent, rgba(201,162,74,0.35), transparent)`, flexShrink: 0 }} />
+
+        {/* Scrollable hands */}
+        <div style={{ overflowY: 'auto', padding: '12px 14px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+          {/* Compass layout: North on top, E/W sides, South bottom */}
+          {renderHand(0)}
+
+          <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-start' }}>
+            {renderHand(3)}
+            {renderHand(1)}
+          </div>
+
+          {renderHand(2)}
+
+          {/* Legend */}
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', paddingTop: '4px' }}>
+            {[
+              { dot: brassHi, label: 'led trick', border: true },
+              { dot: '#1565c0', label: 'drawn from deck' },
+              { dot: '#d4af37', label: 'from kitty' },
+            ].map(({ dot, label, border }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: border ? '2px' : '50%', background: dot, border: border ? `1px solid ${dot}` : 'none', flexShrink: 0 }} />
+                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: '9px', color: 'rgba(251,246,228,0.4)' }}>{label}</span>
+              </div>
+            ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ width: '13px', height: '13px', borderRadius: '50%', background: brass, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '7px', color: '#1a0e03', fontWeight: 700, fontFamily: "'Cinzel', serif" }}>1</div>
+              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: '9px', color: 'rgba(251,246,228,0.4)' }}>play order</span>
             </div>
-          </span>
-          <div onClick={onClose} style={{ width: '24px', height: '24px', border: '1px solid #aaa', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#aaa', fontSize: '16px', cursor: 'pointer' }}>✕</div>
-        </div>
-        {trumpSuit && (
-          <div style={{ textAlign: 'center', fontSize: '12px', color: '#aaa' }}>
-            Trump: <span style={{ fontSize: '18px', color: (trumpSuit === '\u2665' || trumpSuit === '\u2666') ? '#f44336' : '#fff' }}>{trumpSuit}</span>
           </div>
-        )}
-        {scores && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', fontSize: '12px', marginTop: '4px' }}>
-            <span style={{ color: '#4caf50' }}>N/S: <strong>{scores[0]}</strong></span>
-            <span style={{ color: '#2196f3' }}>E/W: <strong>{scores[1]}</strong></span>
-          </div>
-        )}
-        <div style={{ textAlign: 'center', fontSize: '9px', color: '#888' }}>Cards in play order  ·  Gold border = led trick  ·  Blue dot = drawn  ·  <span style={{ color: '#d4af37' }}>Gold dot = kitty</span></div>
-        
-        {/* North (0) at top */}
-        {renderHand(0, getPlayerName(0))}
-        
-        {/* East (1) and West (3) on sides */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {renderHand(3, getPlayerName(3))}
-          {renderHand(1, getPlayerName(1))}
-        </div>
-        
-        {/* South (2) at bottom */}
-        {renderHand(2, getPlayerName(2))}
-        
-        {/* Text list of all cards for debugging/screenshots */}
-        <div style={{ borderTop: '1px solid rgba(212,175,55,0.3)', paddingTop: '8px', fontSize: '10px', fontFamily: 'monospace', color: '#aaa' }}>
-          <div>P1 ({getPlayerName(0)}): {hands[0] ? hands[0].map(c => c.id).join(', ') : 'N/A'}</div>
-          <div>P2 ({getPlayerName(1)}): {hands[1] ? hands[1].map(c => c.id).join(', ') : 'N/A'}</div>
-          <div>P3 ({getPlayerName(2)}): {hands[2] ? hands[2].map(c => c.id).join(', ') : 'N/A'}</div>
-          <div>P4 ({getPlayerName(3)}): {hands[3] ? hands[3].map(c => c.id).join(', ') : 'N/A'}</div>
         </div>
       </div>
     </div>
