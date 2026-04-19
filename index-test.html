@@ -1729,7 +1729,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.23';
+const VERSION = '2.27.24';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4394,6 +4394,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.24', date: 'Apr 2026', changes: ['Lobby: playing game rows now show human player names. GameWrapper: re-registers onDisconnect for lobby presence so browser-close clears online status. Lobby presence cleanup now runs every 5 min (not just at mount) to evict long-idle ghosts.'] },
     { version: '2.27.23', date: 'Apr 2026', changes: ['Exit/lobby button (🚪) added to topbar controls. Diamond announce moved inside v3-rail so it centers over the card table circle. E/W card columns fixed-height (min-height 218px) so player area stays static during discard.'] },
     { version: '2.27.22', date: 'Apr 2026', changes: ['Irish theming: house rules overlay (brass border, Cinzel title, uniform parchment text), leaderboard rows (dark felt bg, brass accents), settings modal (dark bg, brass border, styled inputs/buttons). Removed non-Irish fallback branches from round-end and game-over overlays.'] },
     { version: '2.27.21', date: 'Apr 2026', changes: ['Show Hands: mid-size cards with large center suit symbol; corner suits hidden. CSS scales mid cards to 34px so 5 still fit side-by-side for E/W.'] },
@@ -6286,11 +6287,13 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       }
     };
 
-    // Delay cleanup to avoid race conditions
+    // Run cleanup once on load (delayed) and then every 5 minutes
     setTimeout(cleanupStale, 5000);
+    const cleanupInterval = setInterval(cleanupStale, 5 * 60 * 1000);
 
     return () => {
       clearInterval(heartbeatInterval);
+      clearInterval(cleanupInterval);
       connectedRef.off('value', connectedListener);
       onlineRef.off('value', onlineListener);
       // Mark self as offline on unmount
@@ -6637,6 +6640,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       const isOpen = game.status === 'waiting';
       const isPlaying = game.status === 'playing';
       const takenSeats = seatKeys.filter(s => players[s]);
+      const humanPlayers = seatKeys.map(s => players[s]).filter(p => p && !p.isAI);
       return (
         <div
           key={gameId}
@@ -6653,7 +6657,13 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="irlb-game-name">{game.name || gameId}</div>
             <div className="irlb-game-sub">
-              {isOpen ? `${takenSeats.length} of 4 seated` : isPlaying ? 'In progress' : 'Finished'}
+              {isOpen
+                ? `${takenSeats.length} of 4 seated`
+                : isPlaying
+                ? humanPlayers.length > 0
+                  ? humanPlayers.map(p => p.username).join(' · ')
+                  : 'In progress'
+                : 'Finished'}
             </div>
           </div>
           <div className="irlb-seat-pips">
@@ -10166,9 +10176,14 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
 
     // Keep lobby presence alive while in a game so player shows in online list
     const myPresenceRef = database.ref(`lobby/online/${userId}`);
-    myPresenceRef.update({
-      lastSeen: firebase.database.ServerValue.TIMESTAMP,
-      connected: true
+    myPresenceRef.onDisconnect().update({
+      connected: false,
+      lastSeen: firebase.database.ServerValue.TIMESTAMP
+    }).then(() => {
+      myPresenceRef.update({
+        lastSeen: firebase.database.ServerValue.TIMESTAMP,
+        connected: true
+      });
     });
     const presenceHeartbeat = setInterval(() => {
       myPresenceRef.update({
@@ -10184,6 +10199,7 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
       clearInterval(disconnectCheck);
       clearInterval(presenceHeartbeat);
       myStatsRef.onDisconnect().cancel();
+      myPresenceRef.update({ connected: false });
     };
   }, [gameId, mySeat, userId]);
 
