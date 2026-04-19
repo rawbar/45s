@@ -1751,7 +1751,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.31';
+const VERSION = '2.27.32';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -10386,7 +10386,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [drawn, setDrawn] = useState([0, 0, 0, 0]);
   const [drawnCards, setDrawnCards] = useState(new Set());
   const [drawAnimCards, setDrawAnimCards] = useState(new Set());
+  const [drawAnimOpponents, setDrawAnimOpponents] = useState({});
   const prevDrawnCardsRef = useRef(new Set());
+  const prevDrawnCountsRef = useRef([0,0,0,0]);
   const [kittyCardIds, setKittyCardIds] = useState(new Set());
   const [animating, setAnimating] = useState(null);
   const [dealAnimActive, setDealAnimActive] = useState(false);
@@ -10696,7 +10698,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     }
   }, [phase]);
 
-  // Animate newly drawn cards sliding into hand
+  // Animate newly drawn cards sliding into hand (me)
   useEffect(() => {
     if (currentThemeId !== 'irish') return;
     const prev = prevDrawnCardsRef.current;
@@ -10707,6 +10709,26 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     const t = setTimeout(() => setDrawAnimCards(new Set()), 900);
     return () => clearTimeout(t);
   }, [drawnCards]);
+
+  // Animate draw for opponents — detect when drawn[pos] increases
+  useEffect(() => {
+    if (currentThemeId !== 'irish') return;
+    const prev = prevDrawnCountsRef.current;
+    const updates = {};
+    [0,1,2,3].forEach(pos => {
+      if (pos === mySeatIndex) return;
+      const newCount = drawn[pos] || 0;
+      const oldCount = prev[pos] || 0;
+      if (newCount > oldCount) {
+        updates[pos] = { count: newCount, ts: Date.now() };
+      }
+    });
+    prevDrawnCountsRef.current = [0,1,2,3].map(p => drawn[p] || 0);
+    if (Object.keys(updates).length === 0) return;
+    setDrawAnimOpponents(prev => ({ ...prev, ...updates }));
+    const t = setTimeout(() => setDrawAnimOpponents({}), 900);
+    return () => clearTimeout(t);
+  }, [drawn]);
 
   // Trick win sound
   const prevTricksRef = useRef(null);
@@ -12765,6 +12787,26 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     };
   };
 
+  // Draw animation for opponent cards — applies to cards that appeared after discard
+  const DRAW_DIR_OFFSETS = { top: [0, -120], left: [-120, 0], right: [120, 0] };
+  const opponentDrawAnimStyle = (pos, cardIndex, handLen) => {
+    if (currentThemeId !== 'irish') return {};
+    const anim = drawAnimOpponents[pos];
+    if (!anim) return {};
+    const drawnCount = anim.count;
+    const originalCount = handLen - drawnCount;
+    if (cardIndex < originalCount) return {};
+    const dir = Object.entries(visualPositions).find(([, s]) => s === pos)?.[0] || 'top';
+    const [dx, dy] = DRAW_DIR_OFFSETS[dir] || [0, -120];
+    const stagger = (cardIndex - originalCount) * 80;
+    return {
+      animation: `dealIn 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both`,
+      animationDelay: `${stagger}ms`,
+      '--deal-dx': `${dx}px`,
+      '--deal-dy': `${dy}px`,
+    };
+  };
+
   const getPlayerHand = (pos) => hands[pos] || [];
 
   return (
@@ -12853,9 +12895,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               <div className="v3-facedown-row">
                 {getPlayerHand(pos).map((card, i) => {
                   const thisFaceUp = faceUpCard && card && faceUpCard.cardId === card.id;
+                  const hand = getPlayerHand(pos);
+                  const fs = { ...dealAnimStyle(pos, i), ...opponentDrawAnimStyle(pos, i, hand.length) };
                   return thisFaceUp
                     ? <Card key={i} card={card} small disabled isFaceUp />
-                    : <Card key={i} card={{}} faceDown small fanStyle={dealAnimStyle(pos, i)} />;
+                    : <Card key={i} card={{}} faceDown small fanStyle={fs} />;
                 })}
               </div>
               <TricksWonDisplay count={playerTricks[pos]} hasHighTrump={highTrumpInfo.player === pos} />
@@ -12890,9 +12934,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 <div className="v3-facedown-col">
                   {getPlayerHand(pos).map((card, i) => {
                     const thisFaceUp = faceUpCard && card && faceUpCard.cardId === card.id;
+                    const hand = getPlayerHand(pos);
+                    const fs = { ...dealAnimStyle(pos, i), ...opponentDrawAnimStyle(pos, i, hand.length) };
                     return thisFaceUp
                       ? <Card key={i} card={card} small disabled isFaceUp />
-                      : <Card key={i} card={{}} faceDown small fanStyle={dealAnimStyle(pos, i)} />;
+                      : <Card key={i} card={{}} faceDown small fanStyle={fs} />;
                   })}
                 </div>
                 <TricksWonDisplay count={playerTricks[pos]} hasHighTrump={highTrumpInfo.player === pos} vertical />
@@ -13058,9 +13104,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 <div className="v3-facedown-col">
                   {getPlayerHand(pos).map((card, i) => {
                     const thisFaceUp = faceUpCard && card && faceUpCard.cardId === card.id;
+                    const hand = getPlayerHand(pos);
+                    const fs = { ...dealAnimStyle(pos, i), ...opponentDrawAnimStyle(pos, i, hand.length) };
                     return thisFaceUp
                       ? <Card key={i} card={card} small disabled isFaceUp />
-                      : <Card key={i} card={{}} faceDown small fanStyle={dealAnimStyle(pos, i)} />;
+                      : <Card key={i} card={{}} faceDown small fanStyle={fs} />;
                   })}
                 </div>
                 <TricksWonDisplay count={playerTricks[pos]} hasHighTrump={highTrumpInfo.player === pos} vertical />
@@ -13546,15 +13594,15 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
       {/* Score Table + Last Trick strip at Bottom */}
       <div style={{
-        padding: (history.length > 0 || (lastTrick && phase === 'playing' && currentThemeId === 'irish')) ? '6px 16px 0' : '0',
+        padding: (history.length > 0 || (phase === 'playing' && currentThemeId === 'irish')) ? '6px 16px 0' : '0',
         background: history.length > 0 ? 'rgba(0,0,0,0.4)' : 'transparent',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         gap: '4px'
       }}>
-        {/* Irish last trick strip — sits above score table, below hand */}
-        {lastTrick && phase === 'playing' && currentThemeId === 'irish' && (
+        {/* Irish last trick strip — always reserved during playing to prevent layout shift */}
+        {phase === 'playing' && currentThemeId === 'irish' && (
           <div style={{
             width: '100%',
             display: 'flex',
@@ -13562,15 +13610,17 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             justifyContent: 'center',
             gap: '4px',
             padding: '3px 6px',
-            background: 'rgba(10,30,15,0.82)',
-            WebkitBackdropFilter: 'blur(4px)',
-            backdropFilter: 'blur(4px)',
-            border: '1px solid rgba(201,162,74,0.35)',
+            background: lastTrick ? 'rgba(10,30,15,0.82)' : 'transparent',
+            WebkitBackdropFilter: lastTrick ? 'blur(4px)' : 'none',
+            backdropFilter: lastTrick ? 'blur(4px)' : 'none',
+            border: lastTrick ? '1px solid rgba(201,162,74,0.35)' : '1px solid transparent',
             borderRadius: '6px',
             whiteSpace: 'nowrap',
+            visibility: lastTrick ? 'visible' : 'hidden',
+            minHeight: '32px',
           }}>
             <span style={{ fontSize: '9px', color: 'rgba(201,162,74,0.7)', fontFamily: "'Cinzel', serif", letterSpacing: '0.5px', marginRight: '2px' }}>Last</span>
-            {lastTrick.cards.map((tc, i) => {
+            {lastTrick && lastTrick.cards.map((tc, i) => {
               const isWinner = tc.player === lastTrick.winner;
               return (
                 <div key={i} style={{ position: 'relative' }}>
