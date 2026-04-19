@@ -1750,7 +1750,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.26';
+const VERSION = '2.27.27';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4415,6 +4415,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.27', date: 'Apr 2026', changes: ['Preferences modal: full Irish theming (dark walnut, brass border, Cinzel/Merriweather). Theme selector moved from Profile Settings into Preferences where it is discoverable. Custom brass checkboxes for house rules.'] },
     { version: '2.27.26', date: 'Apr 2026', changes: ['Fix: diamond announce keyframes had translate(-50%,-50%) baked in — double-shifted it up-left after move to v3-rail. Removed translate from keyframes; centering now handled by outer wrapper only.'] },
     { version: '2.27.25', date: 'Apr 2026', changes: ['Deal animation: cards slide in from dealer direction on new round, with kitty 3-card reveal in center (3–kitty–2 sequence). Bidding blocked until animation completes. Lobby game rows now show "In progress" + player names.'] },
     { version: '2.27.24', date: 'Apr 2026', changes: ['Lobby: playing game rows now show human player names. GameWrapper: re-registers onDisconnect for lobby presence so browser-close clears online status. Lobby presence cleanup now runs every 5 min (not just at mount) to evict long-idle ghosts.'] },
@@ -7302,13 +7303,56 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               <h2 style={{ marginBottom: '24px', fontFamily: "'Cinzel', serif", color: '#f6d778' }}>Profile Settings</h2>
               <div style={{ marginBottom: '20px' }}><label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontFamily: "'Merriweather', serif", fontStyle: 'italic', color: 'rgba(201,162,74,0.8)' }}>Username</label><input type="text" value={editUsername} onChange={(e) => setEditUsername(e.target.value)} maxLength={20} style={{ width: '100%', padding: '12px', fontSize: '16px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(201,162,74,0.3)', borderRadius: '6px', color: '#e8e4d9', outline: 'none' }} /></div>
               <div style={{ marginBottom: '24px' }}><label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontFamily: "'Merriweather', serif", fontStyle: 'italic', color: 'rgba(201,162,74,0.8)' }}>Avatar</label><div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', border: '1px solid rgba(201,162,74,0.3)', borderRadius: '6px', cursor: 'pointer', background: 'rgba(255,255,255,0.05)' }} onClick={() => setShowAvatarPicker(!showAvatarPicker)}><div style={{ fontSize: '32px' }}>{getAvatarById(editAvatar).emoji}</div><div style={{ flex: 1 }}><div style={{ fontSize: '14px', fontWeight: 'bold', color: '#e8e4d9' }}>{getAvatarById(editAvatar).name}</div><div style={{ fontSize: '12px', color: 'rgba(201,162,74,0.6)' }}>Click to change</div></div></div>{showAvatarPicker && (<div style={{ marginTop: '12px', padding: '12px', border: '1px solid rgba(201,162,74,0.3)', borderRadius: '6px', maxHeight: '200px', overflowY: 'auto', background: 'rgba(10,30,15,0.6)' }}><div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>{AVATARS.map(avatar => (<div key={avatar.id} onClick={() => { setEditAvatar(avatar.id); setShowAvatarPicker(false); }} style={{ fontSize: '32px', padding: '8px', cursor: 'pointer', textAlign: 'center', borderRadius: '6px', border: editAvatar === avatar.id ? '2px solid #c9a24a' : '2px solid transparent', background: editAvatar === avatar.id ? 'rgba(201,162,74,0.15)' : 'transparent', transition: 'all 0.2s' }} title={avatar.name}>{avatar.emoji}</div>))}</div></div>)}</div>
-              <div style={{ marginBottom: '24px' }}>
-                <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1.5px', color: '#888', textTransform: 'uppercase', marginBottom: '12px' }}>THEME</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '8px' }}>
+                <button onClick={() => setShowSettings(false)} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.07)', color: 'rgba(232,228,217,0.7)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '6px', cursor: 'pointer', fontFamily: "'Cinzel', serif", fontWeight: 'bold' }}>Cancel</button>
+                <button onClick={handleSaveSettings} disabled={settingsSaving} style={{ flex: 1, padding: '12px', background: settingsSaving ? 'rgba(255,255,255,0.07)' : 'linear-gradient(180deg, #f6d778 0%, #c9a24a 50%, #9a7630 100%)', color: settingsSaving ? 'rgba(201,162,74,0.3)' : '#1a0e03', border: settingsSaving ? '1px solid rgba(201,162,74,0.15)' : '1px solid rgba(0,0,0,0.5)', borderRadius: '6px', cursor: settingsSaving ? 'not-allowed' : 'pointer', fontFamily: "'Cinzel', serif", fontWeight: 'bold', boxShadow: settingsSaving ? 'none' : '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)' }}>{settingsSaving ? 'Saving…' : 'Save'}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showRules && <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />}
+
+        {showPreferences && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, animation: 'fadeIn 0.2s ease-out' }}>
+            <div style={{ background: 'rgba(12,6,2,0.97)', border: '2px solid #c9a24a', color: '#e8e4d9', animation: 'slideUp 0.25s ease-out', borderRadius: '12px', padding: '28px', maxWidth: '420px', width: '90%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.7)' }}>
+              <h2 style={{ marginBottom: '20px', fontFamily: "'Cinzel', serif", color: '#f6d778', fontSize: '18px' }}>Preferences</h2>
+
+              {/* Trick Speed */}
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1.5px', color: 'rgba(201,162,74,0.6)', textTransform: 'uppercase', marginBottom: '10px', fontFamily: "'Cinzel', serif" }}>Trick Speed</div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {['fast', 'medium', 'slow'].map(speed => (
+                    <button key={speed} onClick={() => setEditTrickSpeed(speed)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: editTrickSpeed === speed ? '2px solid #c9a24a' : '1px solid rgba(201,162,74,0.25)', background: editTrickSpeed === speed ? 'rgba(201,162,74,0.15)' : 'rgba(255,255,255,0.04)', color: editTrickSpeed === speed ? '#f6d778' : 'rgba(232,228,217,0.6)', fontWeight: editTrickSpeed === speed ? 'bold' : 'normal', cursor: 'pointer', fontSize: '13px', textTransform: 'capitalize', fontFamily: "'Cinzel', serif" }}>{speed}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* House Rules */}
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1.5px', color: 'rgba(201,162,74,0.6)', textTransform: 'uppercase', marginBottom: '10px', fontFamily: "'Cinzel', serif" }}>House Rules</div>
+                <div style={{ fontSize: '11px', color: 'rgba(232,228,217,0.4)', fontFamily: "'Merriweather', serif", fontStyle: 'italic', marginBottom: '12px' }}>Default for new games you create</div>
+                {[{ key: 'fiveCardDraw', label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' }, { key: 'followAHearts', label: 'Follow A♥', desc: "When A♥ is led, void in trump must play a heart if holding one." }, { key: 'thirtyFor60', label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' }].map(({ key, label, desc }) => (
+                  <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', marginBottom: '14px' }}>
+                    <div onClick={() => setEditPrefHouseRules(prev => ({ ...prev, [key]: !prev[key] }))} style={{ marginTop: '2px', width: '18px', height: '18px', borderRadius: '3px', border: editPrefHouseRules[key] ? '2px solid #c9a24a' : '2px solid rgba(201,162,74,0.35)', background: editPrefHouseRules[key] ? 'rgba(201,162,74,0.2)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                      {editPrefHouseRules[key] && <span style={{ color: '#f6d778', fontSize: '12px', fontWeight: 'bold', lineHeight: 1 }}>✓</span>}
+                    </div>
+                    <span>
+                      <span style={{ fontFamily: "'Cinzel', serif", fontSize: '13px', fontWeight: '700', color: '#e8e4d9' }}>{label}</span>
+                      <span style={{ fontSize: '11px', color: 'rgba(232,228,217,0.5)', display: 'block', marginTop: '2px', fontFamily: "'Merriweather', serif", fontStyle: 'italic' }}>{desc}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Theme */}
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1.5px', color: 'rgba(201,162,74,0.6)', textTransform: 'uppercase', marginBottom: '12px', fontFamily: "'Cinzel', serif" }}>Theme</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   {THEME_ORDER.map(tid => {
                     const theme = THEMES[tid]; const isUnlocked = theme.unlocked(myStats); const isActive = (activeTheme || currentThemeId) === tid;
                     const progress = theme.progressStat ? Math.min(myStats?.[theme.progressStat] || 0, theme.progressOf) : 0;
-                    return (<div key={tid} onClick={() => setShowThemePreview(tid)} style={{ width: '140px', borderRadius: '10px', overflow: 'hidden', border: isActive ? '3px solid #c9a24a' : '2px solid #ddd', cursor: 'pointer', boxShadow: isActive ? '0 0 12px rgba(201,162,74,0.4)' : '0 2px 6px rgba(0,0,0,0.1)', transition: 'all 0.2s', position: 'relative', background: '#fff' }}>
+                    return (<div key={tid} onClick={() => setShowThemePreview(tid)} style={{ width: '140px', borderRadius: '10px', overflow: 'hidden', border: isActive ? '3px solid #c9a24a' : '2px solid rgba(201,162,74,0.2)', cursor: 'pointer', boxShadow: isActive ? '0 0 12px rgba(201,162,74,0.4)' : 'none', transition: 'all 0.2s', position: 'relative', background: '#fff' }}>
                       <div className={tid === 'irish' ? 'theme-tile-thumb-irish' : 'theme-tile-thumb-cyberpunk'} style={{ height: '88px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: tid === 'irish' ? 'radial-gradient(ellipse at center, #1f7a3f 0%, #13572a 55%, #093a1a 100%)' : 'radial-gradient(ellipse at center, #060e1e 0%, #030609 100%)', border: tid === 'irish' ? '2px solid #c9a24a' : '2px solid rgba(0,229,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>{tid === 'irish' ? '♠' : '◈'}</div>
                         {[0,1,2].map(n => (<div key={n} style={{ position: 'absolute', top: `${10 + n * 6}px`, left: `${14 + n * 4}px`, width: '14px', height: '20px', borderRadius: '2px', background: tid === 'irish' ? 'linear-gradient(135deg, #1a6b3a 0%, #0b3d1c 100%)' : '#040a12', border: tid === 'irish' ? '1px solid rgba(201,162,74,0.6)' : '1px solid rgba(0,229,255,0.4)', transform: `rotate(${(n-1)*8}deg)` }} />))}
@@ -7325,6 +7369,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   })}
                 </div>
               </div>
+
+              {/* Theme preview overlay */}
               {showThemePreview && (() => {
                 const theme = THEMES[showThemePreview]; const isUnlocked = theme.unlocked(myStats); const isAlreadyActive = (activeTheme || currentThemeId) === showThemePreview;
                 return (<div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 9999, animation: 'fadeIn 0.2s' }}>
@@ -7333,36 +7379,14 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '24px', textAlign: 'center', maxWidth: '260px' }}>{isUnlocked ? (isAlreadyActive ? 'This theme is currently active.' : 'Tap Apply to switch to this theme.') : theme.unlockHint}</div>
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <button onClick={() => setShowThemePreview(null)} style={{ padding: '12px 24px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', background: 'transparent', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Back</button>
-                    {isUnlocked && !isAlreadyActive && (<button onClick={() => { if (onThemeChange) onThemeChange(showThemePreview); setShowThemePreview(null); setShowSettings(false); }} style={{ padding: '12px 24px', borderRadius: '8px', border: 'none', background: theme.id === 'irish' ? 'linear-gradient(135deg, #f6d778, #c9a24a)' : 'linear-gradient(135deg, #00e5ff, #0077aa)', color: theme.id === 'irish' ? '#1a0e00' : '#fff', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}>Apply Theme</button>)}
+                    {isUnlocked && !isAlreadyActive && (<button onClick={() => { if (onThemeChange) onThemeChange(showThemePreview); setShowThemePreview(null); setShowPreferences(false); }} style={{ padding: '12px 24px', borderRadius: '8px', border: 'none', background: theme.id === 'irish' ? 'linear-gradient(135deg, #f6d778, #c9a24a)' : 'linear-gradient(135deg, #00e5ff, #0077aa)', color: theme.id === 'irish' ? '#1a0e00' : '#fff', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}>Apply Theme</button>)}
                   </div>
                 </div>);
               })()}
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '8px' }}>
-                <button onClick={() => setShowSettings(false)} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.07)', color: 'rgba(232,228,217,0.7)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '6px', cursor: 'pointer', fontFamily: "'Cinzel', serif", fontWeight: 'bold' }}>Cancel</button>
-                <button onClick={handleSaveSettings} disabled={settingsSaving} style={{ flex: 1, padding: '12px', background: settingsSaving ? 'rgba(255,255,255,0.07)' : 'linear-gradient(180deg, #f6d778 0%, #c9a24a 50%, #9a7630 100%)', color: settingsSaving ? 'rgba(201,162,74,0.3)' : '#1a0e03', border: settingsSaving ? '1px solid rgba(201,162,74,0.15)' : '1px solid rgba(0,0,0,0.5)', borderRadius: '6px', cursor: settingsSaving ? 'not-allowed' : 'pointer', fontFamily: "'Cinzel', serif", fontWeight: 'bold', boxShadow: settingsSaving ? 'none' : '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)' }}>{settingsSaving ? 'Saving…' : 'Save'}</button>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {showRules && <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />}
-
-        {showPreferences && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
-            <div style={{ background: 'white', borderRadius: '12px', padding: '28px', maxWidth: '420px', width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
-              <h2 style={{ marginBottom: '20px', color: '#1a5f3f' }}>Preferences</h2>
-              <div style={{ marginBottom: '18px' }}><div style={{ fontSize: '13px', fontWeight: 'bold', color: '#333', marginBottom: '8px' }}>Trick Speed</div><div style={{ display: 'flex', gap: '8px' }}>{['fast', 'medium', 'slow'].map(speed => (<button key={speed} onClick={() => setEditTrickSpeed(speed)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: editTrickSpeed === speed ? '2px solid #2d8f5f' : '1px solid #ddd', background: editTrickSpeed === speed ? '#e8f5e9' : 'white', color: editTrickSpeed === speed ? '#1a5f3f' : '#333', fontWeight: editTrickSpeed === speed ? 'bold' : 'normal', cursor: 'pointer', fontSize: '13px', textTransform: 'capitalize' }}>{speed}</button>))}</div></div>
-              <div style={{ marginBottom: '18px' }}><div style={{ fontSize: '13px', fontWeight: 'bold', color: '#333', marginBottom: '8px' }}>House Rules (Default for New Games)</div>
-                {[{ key: 'fiveCardDraw', label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' }, { key: 'followAHearts', label: 'Follow A♥', desc: "When A♥ is led, void in trump must play a heart if holding one." }, { key: 'thirtyFor60', label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' }].map(({ key, label, desc }) => (
-                  <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '14px', marginBottom: '12px' }}>
-                    <input type="checkbox" checked={editPrefHouseRules[key]} onChange={e => setEditPrefHouseRules(prev => ({ ...prev, [key]: e.target.checked }))} style={{ marginTop: '3px', width: '18px', height: '18px', cursor: 'pointer' }} />
-                    <span><strong>{label}</strong><span style={{ fontSize: '12px', color: '#666', display: 'block' }}>{desc}</span></span>
-                  </label>
-                ))}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button onClick={() => setShowPreferences(false)} style={{ padding: '10px 20px', background: '#757575', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' }}>Cancel</button>
-                <button onClick={handleSavePreferences} style={{ padding: '10px 20px', background: '#1a5f3f', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}>Save</button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '4px' }}>
+                <button onClick={() => setShowPreferences(false)} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.07)', color: 'rgba(232,228,217,0.7)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '6px', cursor: 'pointer', fontFamily: "'Cinzel', serif", fontWeight: 'bold' }}>Cancel</button>
+                <button onClick={handleSavePreferences} style={{ flex: 1, padding: '12px', background: 'linear-gradient(180deg, #f6d778 0%, #c9a24a 50%, #9a7630 100%)', color: '#1a0e03', border: '1px solid rgba(0,0,0,0.5)', borderRadius: '6px', cursor: 'pointer', fontFamily: "'Cinzel', serif", fontWeight: 'bold', boxShadow: '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)' }}>Save</button>
               </div>
             </div>
           </div>
