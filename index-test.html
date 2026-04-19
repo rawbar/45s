@@ -1514,7 +1514,7 @@
   .irlb-screen { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
   .irlb-scroll {
     flex: 1; overflow-y: auto; overflow-x: hidden;
-    padding: 12px 12px 100px; position: relative; z-index: 3;
+    padding: 12px 12px 16px; position: relative; z-index: 3;
     display: flex; flex-direction: column; gap: 8px;
     scrollbar-width: thin; scrollbar-color: rgba(201,162,74,0.25) transparent;
   }
@@ -1594,7 +1594,7 @@
   }
   .irlb-empty-sub { font-size: 13px; color: rgba(232,228,217,0.4); line-height: 1.55; max-width: 240px; }
   .irlb-create-wrap {
-    position: absolute; bottom: 0; left: 0; right: 0; z-index: 8;
+    flex-shrink: 0; z-index: 8;
     padding: 12px 16px 24px;
     background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 60%, transparent 100%);
   }
@@ -1679,7 +1679,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.4';
+const VERSION = '2.27.7';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4290,6 +4290,8 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.6', date: 'Apr 2026', changes: ['Irish stats modal: visible close button top-right'] },
+    { version: '2.27.5', date: 'Apr 2026', changes: ['Irish lobby: pinned Create button, leaderboard last seen'] },
     { version: '2.27.4', date: 'Apr 2026', changes: ['Irish stats modal: visual fixes to match approved mockup'] },
     { version: '2.27.3', date: 'Apr 2026', changes: ['Seat picker: compass layout (N/S/E/W as compass points)'] },
     { version: '2.27.2', date: 'Apr 2026', changes: ['Fix seat selection: choose seat before entering waiting room — seat picker modal on Irish lobby game row click'] },
@@ -6550,6 +6552,15 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       const earnedBadges = Object.keys(player.badgesObj || {});
       const topBadgeId = earnedBadges.length > 0 ? earnedBadges[0] : null;
       const topBadge = topBadgeId ? BADGES.find(b => b.id === topBadgeId) : null;
+      const lbIsOnline = player.lastSeen && (Date.now() - player.lastSeen) < 5 * 60 * 1000;
+      let lbLastSeenStr = null;
+      if (player.lastSeen) {
+        const diff = Date.now() - player.lastSeen;
+        const mins = Math.floor(diff / 60000);
+        const hrs = Math.floor(diff / 3600000);
+        const days = Math.floor(diff / 86400000);
+        lbLastSeenStr = mins < 1 ? 'just now' : mins < 60 ? `${mins}m ago` : hrs < 24 ? `${hrs}h ago` : `${days}d ago`;
+      }
       return (
         <div
           key={player.uid}
@@ -6563,6 +6574,11 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="irlb-lb-username">{player.username}</div>
             <div className="irlb-lb-stats">{player.gamesPlayed} games · {player.winRate}% win</div>
+            {(lbIsOnline || lbLastSeenStr) && (
+              <div style={{ fontSize: '10px', color: lbIsOnline ? 'rgba(93,208,132,0.6)' : 'rgba(251,246,228,0.35)', marginTop: '1px' }}>
+                {lbIsOnline ? 'Online now' : lbLastSeenStr}
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', marginLeft: 'auto', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'baseline' }}>
@@ -6890,8 +6906,21 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                 }}
               >
                 {/* Drag pill */}
-                <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
+                <div style={{ flexShrink: 0, position: 'relative', display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
                   <div style={{ width: '32px', height: '4px', borderRadius: '2px', background: isMe ? 'rgba(107,182,255,0.4)' : 'rgba(201,162,74,0.4)' }} />
+                  <button
+                    onClick={() => setShowStatsModal(false)}
+                    style={{
+                      position: 'absolute', top: '50%', right: '16px', transform: 'translateY(-50%)',
+                      width: '32px', height: '32px', borderRadius: '50%',
+                      background: 'rgba(201,162,74,0.15)',
+                      border: '1px solid rgba(201,162,74,0.3)',
+                      color: '#c9a24a', fontSize: '16px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', zIndex: 10,
+                      lineHeight: 1, padding: 0,
+                    }}
+                  >✕</button>
                 </div>
 
                 {/* Scrollable content */}
@@ -7183,11 +7212,11 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
             >
               <div
                 onClick={e => e.stopPropagation()}
-                style={{ background: 'rgba(12,6,2,0.96)', border: '1px solid #c9a24a', borderRadius: '16px', padding: '24px', maxWidth: '340px', width: '90%', boxShadow: '0 12px 48px rgba(0,0,0,0.7)', animation: 'slideUp 0.25s ease-out' }}
+                style={{ background: 'rgba(12,6,2,0.96)', border: '1px solid #c9a24a', borderRadius: '16px', padding: '16px', maxWidth: '340px', width: '90%', maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 12px 48px rgba(0,0,0,0.7)', animation: 'slideUp 0.25s ease-out' }}
               >
-                <div style={{ fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '17px', color: '#f6d778', letterSpacing: '1.5px', textAlign: 'center', marginBottom: '6px' }}>Choose Your Seat</div>
-                <div style={{ fontFamily: 'Merriweather, serif', fontStyle: 'italic', fontSize: '13px', color: 'rgba(201,162,74,0.7)', textAlign: 'center', marginBottom: '20px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spGameName}</div>
-                <div style={{ display: 'grid', gridTemplateAreas: '". north ." "west center east" ". south ."', gridTemplateColumns: '1fr auto 1fr', gridTemplateRows: 'auto auto auto', gap: '8px', marginBottom: '16px', minHeight: '280px', alignItems: 'center', justifyItems: 'center' }}>
+                <div style={{ fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '16px', color: '#f6d778', letterSpacing: '1.5px', textAlign: 'center', marginBottom: '6px' }}>Choose Your Seat</div>
+                <div style={{ fontFamily: 'Merriweather, serif', fontStyle: 'italic', fontSize: '12px', color: 'rgba(201,162,74,0.7)', textAlign: 'center', marginBottom: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spGameName}</div>
+                <div style={{ display: 'grid', gridTemplateAreas: '". north ." "west center east" ". south ."', gridTemplateColumns: '1fr auto 1fr', gridTemplateRows: 'auto auto auto', gap: '6px', marginBottom: '12px', minHeight: '220px', alignItems: 'center', justifyItems: 'center' }}>
                   {['North', 'South', 'East', 'West'].map(seat => {
                     const occupant = spPlayers[seat];
                     const isTaken = !!occupant;
@@ -7200,8 +7229,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                         style={{
                           gridArea: area,
                           width: '88px',
-                          minHeight: '64px',
-                          padding: '10px 8px',
+                          minHeight: '56px',
+                          padding: '8px 6px',
                           borderRadius: '8px',
                           border: isTaken ? '1px solid rgba(201,162,74,0.2)' : '1px solid #c9a24a',
                           background: isTaken ? 'rgba(255,255,255,0.04)' : 'linear-gradient(180deg, rgba(201,162,74,0.12) 0%, rgba(19,87,42,0.25) 100%)',
@@ -7228,13 +7257,13 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     );
                   })}
                   {/* Center felt circle */}
-                  <div style={{ gridArea: 'center', width: '52px', height: '52px', borderRadius: '50%', background: '#13572a', border: '2px solid #c9a24a', boxShadow: '0 0 10px rgba(201,162,74,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ gridArea: 'center', width: '44px', height: '44px', borderRadius: '50%', background: '#13572a', border: '2px solid #c9a24a', boxShadow: '0 0 10px rgba(201,162,74,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontFamily: 'Cinzel, serif', fontSize: '10px', fontWeight: 700, color: '#c9a24a', letterSpacing: '1px' }}>45s</span>
                   </div>
                 </div>
                 <button
                   onClick={() => setSelectedGameId(null)}
-                  style={{ width: '100%', padding: '11px', background: 'transparent', border: '1px solid rgba(201,162,74,0.4)', borderRadius: '10px', color: '#c9a24a', fontFamily: 'Cinzel, serif', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer' }}
+                  style={{ width: '100%', padding: '8px', background: 'transparent', border: '1px solid rgba(201,162,74,0.4)', borderRadius: '10px', color: '#c9a24a', fontFamily: 'Cinzel, serif', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer' }}
                 >Cancel</button>
               </div>
             </div>
