@@ -1679,7 +1679,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.8';
+const VERSION = '2.27.9';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4336,6 +4336,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.9', date: 'Apr 2026', changes: ['Fix stats modal: remove duplicate old white modal that was rendering on top of Irish bottom sheet'] },
     { version: '2.27.8', date: 'Apr 2026', changes: ['Irish game table: bidding visuals (nameplate glow, bid status, current-high indicator), score strip redesign, round/game-over modals, BAGGED indicator, trick overlay — no layout shift'] },
     { version: '2.27.6', date: 'Apr 2026', changes: ['Irish stats modal: visible close button top-right'] },
     { version: '2.27.5', date: 'Apr 2026', changes: ['Irish lobby: pinned Create button, leaderboard last seen'] },
@@ -7752,8 +7753,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
         </div>
       </div>
 
-        {/* Player Stats Modal */}
-        {showStatsModal && (
+        {/* Player Stats Modal — OLD REMOVED, Irish version rendered above */}
+        {false && (
           <div
             onClick={() => setShowStatsModal(false)}
             style={{

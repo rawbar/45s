@@ -1679,7 +1679,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.7';
+const VERSION = '2.27.9';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4255,15 +4255,64 @@ function Card({ card, onClick, disabled, selected, small, mid, faceDown, playabl
 }
 
 function ScoreTable({ roundHistory, mySeatIndex }) {
-  const [expanded, setExpanded] = useState(false);
   if (roundHistory.length === 0) return null;
-  const maxVis = 2, needsCollapse = roundHistory.length > maxVis;
-  const visible = (!needsCollapse || expanded) ? roundHistory : roundHistory.slice(-maxVis);
-  
-  // Determine viewer's team - swap display if viewer is on Team 1
+  const isIrish = currentThemeId === 'irish';
   const myTeam = mySeatIndex % 2;
   const swapColumns = myTeam === 1;
-  
+
+  if (isIrish) {
+    // Irish: condensed strip — last 2 rounds only, ~56px, no expand
+    const visible = roundHistory.slice(-2);
+    const startIdx = roundHistory.length - visible.length;
+    return (
+      <div style={{
+        width: '100%',
+        background: 'rgba(12,6,2,0.82)',
+        borderTop: '1px solid #c9a24a',
+        borderRadius: '0 0 4px 4px',
+        padding: '4px 10px',
+        boxSizing: 'border-box',
+        flexShrink: 0,
+      }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
+          <thead>
+            <tr>
+              <th style={{ padding: '1px 3px', fontSize: '9px', color: 'rgba(201,162,74,0.55)', fontFamily: "'Inter', sans-serif", fontWeight: 400, letterSpacing: '0.5px', width: '18px' }}>R</th>
+              <th style={{ padding: '1px 3px', fontSize: '9px', color: '#5dd084', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '0.5px' }}>US</th>
+              <th style={{ padding: '1px 3px', fontSize: '9px', color: 'rgba(93,208,132,0.5)', fontFamily: "'Inter', sans-serif", fontWeight: 400 }}>+pts</th>
+              <th style={{ padding: '1px 3px', fontSize: '9px', color: '#ef7c74', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '0.5px' }}>THEM</th>
+              <th style={{ padding: '1px 3px', fontSize: '9px', color: 'rgba(239,124,116,0.5)', fontFamily: "'Inter', sans-serif", fontWeight: 400 }}>+pts</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((r, i) => {
+              const rn = startIdx + i + 1;
+              const usRoundScore = swapColumns ? r.themRoundScore : r.usRoundScore;
+              const usTotal = swapColumns ? r.themTotal : r.usTotal;
+              const themRoundScore = swapColumns ? r.usRoundScore : r.themRoundScore;
+              const themTotal = swapColumns ? r.usTotal : r.themTotal;
+              const usDelta = usRoundScore < 0 ? `(${Math.abs(usRoundScore)})` : `+${usRoundScore}`;
+              const themDelta = themRoundScore < 0 ? `(${Math.abs(themRoundScore)})` : `+${themRoundScore}`;
+              return (
+                <tr key={i}>
+                  <td style={{ padding: '1px 3px', fontSize: '9px', color: 'rgba(201,162,74,0.5)', fontFamily: "'Cinzel', serif" }}>{rn}</td>
+                  <td style={{ padding: '1px 3px', fontSize: '11px', color: '#5dd084', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>{usTotal}</td>
+                  <td style={{ padding: '1px 3px', fontSize: '9px', color: usRoundScore < 0 ? '#ef7c74' : 'rgba(93,208,132,0.7)', fontFamily: "'Inter', sans-serif" }}>{usDelta}</td>
+                  <td style={{ padding: '1px 3px', fontSize: '11px', color: '#ef7c74', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>{themTotal}</td>
+                  <td style={{ padding: '1px 3px', fontSize: '9px', color: themRoundScore < 0 ? 'rgba(239,124,116,0.5)' : 'rgba(239,124,116,0.7)', fontFamily: "'Inter', sans-serif" }}>{themDelta}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  // Non-Irish: original behaviour
+  const [expanded, setExpanded] = React.useState(false);
+  const maxVis = 2, needsCollapse = roundHistory.length > maxVis;
+  const visible = (!needsCollapse || expanded) ? roundHistory : roundHistory.slice(-maxVis);
   return (
     <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '4px', padding: '4px', fontSize: '10px' }}>
       {needsCollapse && <div onClick={() => setExpanded(!expanded)} style={{ textAlign: 'center', color: '#aaa', cursor: 'pointer', fontSize: '9px' }}>{expanded ? '\u25BC less' : `\u25B2 +${roundHistory.length - maxVis}`}</div>}
@@ -4271,13 +4320,10 @@ function ScoreTable({ roundHistory, mySeatIndex }) {
         <thead><tr><th style={{ padding: '1px 2px', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>R</th><th colSpan="2" style={{ padding: '1px 2px', borderBottom: '1px solid rgba(255,255,255,0.2)', color: '#4caf50' }}>US</th><th colSpan="2" style={{ padding: '1px 2px', borderBottom: '1px solid rgba(255,255,255,0.2)', color: '#f44336' }}>THEM</th></tr></thead>
         <tbody>{visible.map((r, i) => {
           const rn = expanded || !needsCollapse ? i + 1 : roundHistory.length - maxVis + i + 1;
-          
-          // Swap columns if viewer is on Team 1
           const usRoundScore = swapColumns ? r.themRoundScore : r.usRoundScore;
           const usTotal = swapColumns ? r.themTotal : r.usTotal;
           const themRoundScore = swapColumns ? r.usRoundScore : r.themRoundScore;
           const themTotal = swapColumns ? r.usTotal : r.themTotal;
-          
           return (<tr key={i}><td style={{ padding: '1px 2px' }}>{rn}</td><td style={{ padding: '1px 2px', color: '#4caf50' }}>{usRoundScore < 0 ? `(${Math.abs(usRoundScore)})` : usRoundScore}</td><td style={{ padding: '1px 2px', color: '#4caf50', fontWeight: 'bold' }}>{usTotal}</td><td style={{ padding: '1px 2px', color: '#f44336' }}>{themRoundScore < 0 ? `(${Math.abs(themRoundScore)})` : themRoundScore}</td><td style={{ padding: '1px 2px', color: '#f44336', fontWeight: 'bold' }}>{themTotal}</td></tr>);
         })}</tbody>
       </table>
@@ -4290,6 +4336,8 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.9', date: 'Apr 2026', changes: ['Fix stats modal: remove duplicate old white modal that was rendering on top of Irish bottom sheet'] },
+    { version: '2.27.8', date: 'Apr 2026', changes: ['Irish game table: bidding visuals (nameplate glow, bid status, current-high indicator), score strip redesign, round/game-over modals, BAGGED indicator, trick overlay — no layout shift'] },
     { version: '2.27.6', date: 'Apr 2026', changes: ['Irish stats modal: visible close button top-right'] },
     { version: '2.27.5', date: 'Apr 2026', changes: ['Irish lobby: pinned Create button, leaderboard last seen'] },
     { version: '2.27.4', date: 'Apr 2026', changes: ['Irish stats modal: visual fixes to match approved mockup'] },
@@ -5939,9 +5987,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
 
   // Preferences state (persistent per-user: trick speed + house rules)
   const [showPreferences, setShowPreferences] = useState(false);
-  const [prefTrickSpeed, setPrefTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'fast');
+  const [prefTrickSpeed, setPrefTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'medium');
   const [prefHouseRules, setPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false });
-  const [editTrickSpeed, setEditTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'fast');
+  const [editTrickSpeed, setEditTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'medium');
   const [editPrefHouseRules, setEditPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false });
 
   // Irish lobby tab state ('games' | 'leaderboard')
@@ -6179,7 +6227,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
     if (!userId) return;
     database.ref(`users/${userId}/prefs`).once('value', (snap) => {
       const prefs = snap.val() || {};
-      const speed = prefs.trickSpeed || 'fast';
+      const speed = prefs.trickSpeed || 'medium';
       const hr = prefs.houseRules || {};
       const rules = { fiveCardDraw: !!hr.fiveCardDraw, followAHearts: !!hr.followAHearts, thirtyFor60: !!hr.thirtyFor60 };
       setPrefTrickSpeed(speed);
@@ -7705,8 +7753,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
         </div>
       </div>
 
-        {/* Player Stats Modal */}
-        {showStatsModal && (
+        {/* Player Stats Modal — OLD REMOVED, Irish version rendered above */}
+        {false && (
           <div
             onClick={() => setShowStatsModal(false)}
             style={{
@@ -10655,19 +10703,40 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     }
   }, [gameState?.bids, normalizeArray]);
 
-  // Bid indicator with BAGGED support - matches v3.5.9
+  // Returns extra inline style for a nameplate when this player is the current high bidder during bidding
+  const bidHighlightStyle = (pi) => {
+    if (currentThemeId !== 'irish') return {};
+    if (phase !== 'bidding' && phase !== 'trump-select') return {};
+    if (bidWinner !== pi || highBid <= 0) return {};
+    return { boxShadow: '0 0 12px rgba(246,215,120,0.6), 0 0 0 2px #f6d778' };
+  };
+
+  // Bid indicator with BAGGED support — Irish themed
   const bidIndicator = (pi) => {
+    const isIrishTheme = currentThemeId === 'irish';
     if (phase === 'bidding' || phase === 'trump-select') {  // Show bids during bidding AND trump selection
       if (bids[pi] === null || bids[pi] === undefined || bids[pi] === -1) return null; // Hide until player has bid or passed
       const showBagged = wasBagged && pi === bidWinner && bids[pi] === 15;
       if (bids[pi] === 0) {
+        if (isIrishTheme) return <span style={{ padding: '2px 6px', background: 'rgba(10,40,20,0.85)', border: '1px solid rgba(201,162,74,0.35)', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: 'rgba(201,162,74,0.65)', fontFamily: "'Merriweather', serif", fontStyle: 'italic' }}>Pass</span>;
         return <span style={{ padding: '2px 4px', background: '#c9a227', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#000' }}>Pass</span>;
       }
-      return <span style={{ padding: '2px 4px', background: showBagged ? '#c62828' : '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{bids[pi]}{showBagged && <span style={{ marginLeft: '2px' }}>BAGGED</span>}</span>; 
+      if (showBagged) {
+        if (isIrishTheme) return <span style={{ padding: '2px 6px', background: 'rgba(139,26,31,0.85)', border: '1px solid #ef4444', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#ff6b6b', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>BAGGED</span>;
+        return <span style={{ padding: '2px 4px', background: '#c62828', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{bids[pi]}<span style={{ marginLeft: '2px' }}>BAGGED</span></span>;
+      }
+      if (isIrishTheme) return <span style={{ padding: '2px 6px', background: 'rgba(10,40,20,0.85)', border: '1px solid #c9a24a', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#f6d778', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>{bids[pi]}</span>;
+      return <span style={{ padding: '2px 4px', background: '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{bids[pi]}</span>;
     }
     if (bidWinner !== pi || !trumpSuit) return null;
     const showBagged = wasBagged && pi === bidWinner;
-    return <span style={{ padding: '2px 4px', background: showBagged ? '#c62828' : '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span>{showBagged && <span style={{ marginLeft: '2px' }}>BAGGED</span>}</span>;
+    if (showBagged) {
+      if (isIrishTheme) return <span style={{ padding: '2px 6px', background: 'rgba(139,26,31,0.85)', border: '1px solid #ef4444', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#ff6b6b', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>BAGGED</span>;
+      return <span style={{ padding: '2px 4px', background: '#c62828', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span><span style={{ marginLeft: '2px' }}>BAGGED</span></span>;
+    }
+    const suitColor = (trumpSuit === '♥' || trumpSuit === '♦') ? '#e07070' : '#f6d778';
+    if (isIrishTheme) return <span style={{ padding: '2px 6px', background: 'rgba(10,40,20,0.85)', border: '1px solid #c9a24a', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', fontFamily: "'Cinzel', serif", fontWeight: 700, color: '#f6d778' }}>{highBid}<span style={{ color: suitColor, marginLeft: '2px' }}>{trumpSuit}</span></span>;
+    return <span style={{ padding: '2px 4px', background: '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span></span>;
   };
 
   // Sanitize values before Firebase write - Firebase rejects undefined values
@@ -11364,7 +11433,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       }
       
       // Wait so players can see the complete trick (speed from user preferences)
-      const trickDisplayMs1 = { fast: 600, medium: 900, slow: 1200 }[localStorage.getItem('45s_trickSpeed') || 'fast'];
+      const trickDisplayMs1 = { fast: 600, medium: 900, slow: 1200 }[localStorage.getItem('45s_trickSpeed') || 'medium'];
       console.log('  → Waiting to show trick...');
       await new Promise(resolve => setTimeout(resolve, trickDisplayMs1));
       
@@ -12019,7 +12088,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         });
         
         // Wait so players can see complete trick (speed from user preferences)
-        const trickDisplayMs2 = { fast: 600, medium: 900, slow: 1200 }[localStorage.getItem('45s_trickSpeed') || 'fast'];
+        const trickDisplayMs2 = { fast: 600, medium: 900, slow: 1200 }[localStorage.getItem('45s_trickSpeed') || 'medium'];
         await new Promise(resolve => setTimeout(resolve, trickDisplayMs2));
         
         const winner = determineTrickWinner(newTrick, trumpSuit, trickLeader);
@@ -12505,7 +12574,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '8px 0 4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div className={nameplateClass}>
+                <div className={nameplateClass} style={bidHighlightStyle(pos)}>
                   <span className="v3-avatar-chip">{avatarEmoji}</span>
                   {getPlayerName(pos)}
                   {inVoice && <span style={{ marginLeft: '4px', fontSize: '10px', color: speaking ? 'var(--team-us)' : 'rgba(201,162,74,0.5)', animation: speaking ? 'voicePulse 0.8s infinite' : 'none' }}>🎙</span>}
@@ -12544,7 +12613,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             const inVoice = uid && voiceUsers[uid]?.enabled && !voiceUsers[uid]?.muted;
             return (
               <div className="v3-side-seat">
-                <div className={nameplateClass}>
+                <div className={nameplateClass} style={bidHighlightStyle(pos)}>
                   <span className="v3-avatar-chip">{avatarEmoji}</span>
                   {getPlayerName(pos)}
                 </div>
@@ -12623,11 +12692,18 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
                     {/* Status text when no cards */}
                     {(!trickCards || trickCards.length === 0) && (
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: '0 12px' }}>
+                      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: '0 12px', gap: '4px' }}>
                         {phase === 'bidding' && `${getPlayerName(currentPlayer)} bidding`}
                         {phase === 'trump-select' && `${getPlayerName(bidWinner)} picks trump`}
                         {phase === 'discarding' && `${getPlayerName(currentPlayer)} discarding`}
                         {phase === 'playing' && `Trick ${trickNum + 1}`}
+                        {(phase === 'bidding' || phase === 'trump-select') && currentThemeId === 'irish' && highBid > 0 && bidWinner >= 0 && (
+                          <div style={{ fontSize: '10px', fontFamily: "'Cinzel', serif", color: (trumpSuit && (trumpSuit === '♥' || trumpSuit === '♦')) ? '#e07070' : '#c9a24a', letterSpacing: '0.5px', lineHeight: 1.2 }}>
+                            <span style={{ color: '#f6d778' }}>{highBid}</span>
+                            {trumpSuit && <span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#e07070' : '#f6d778', marginLeft: '2px' }}>{trumpSuit}</span>}
+                            <span style={{ color: 'rgba(201,162,74,0.6)', marginLeft: '3px', fontSize: '9px' }}>· {SEAT_NAMES[bidWinner]}</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -12650,7 +12726,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             const inVoice = uid && voiceUsers[uid]?.enabled && !voiceUsers[uid]?.muted;
             return (
               <div className="v3-side-seat">
-                <div className={nameplateClass}>
+                <div className={nameplateClass} style={bidHighlightStyle(pos)}>
                   <span className="v3-avatar-chip">{avatarEmoji}</span>
                   {getPlayerName(pos)}
                 </div>
@@ -12683,7 +12759,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             <div className="v3-me-area">
               <div className="v3-me-row">
                 <TricksWonDisplay count={playerTricks[pos]} hasHighTrump={highTrumpInfo.player === pos} />
-                <div className={nameplateClass}>
+                <div className={nameplateClass} style={bidHighlightStyle(pos)}>
                   <span className="v3-avatar-chip">{avatarEmoji}</span>
                   {getPlayerName(pos)}
                   {voiceActive && <span style={{ marginLeft: '4px', fontSize: '10px', color: voiceMuted ? '#f44336' : (speakingUids[userId] ? 'var(--team-us)' : 'rgba(201,162,74,0.5)') }}>{voiceMuted ? '🔇' : '🎙'}</span>}
@@ -12916,88 +12992,207 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         </div>
 
         {/* Round End Overlay */}
-        {phase === 'round-end' && (
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            background: 'rgba(0,0,0,0.9)',
-            padding: '32px',
-            borderRadius: '12px',
-            border: '2px solid #d4af37',
-            zIndex: 100,
-            minWidth: '400px',
-            animation: 'slideUp 0.3s ease-out'
-          }}>
-            <div style={{ fontSize: '24px', marginBottom: '20px', textAlign: 'center', color: '#d4af37' }}>
-              Round Complete
-            </div>
-            
-            <div style={{ marginBottom: '20px', fontSize: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span>High Bid:</span>
-                <span style={{ color: '#ffd700' }}>{highBid} ({getPlayerName(bidWinner)})</span>
+        {phase === 'round-end' && (() => {
+          const isIrish = currentThemeId === 'irish';
+          const myTeam = mySeatIndex % 2;
+          const usPoints = myTeam === 0 ? roundPts[0] : roundPts[1];
+          const themPoints = myTeam === 0 ? roundPts[1] : roundPts[0];
+          const bidderName = bidWinner >= 0 ? getPlayerName(bidWinner) : '—';
+          const suitColor = trumpSuit && (trumpSuit === '♥' || trumpSuit === '♦') ? '#e07070' : '#f6d778';
+          if (isIrish) return (
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'rgba(12,6,2,0.96)',
+              padding: '24px 28px',
+              borderRadius: '10px',
+              border: '1px solid #c9a24a',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(201,162,74,0.15)',
+              zIndex: 100,
+              minWidth: '280px',
+              maxWidth: '340px',
+              animation: 'slideUp 0.3s ease-out',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: '18px', fontWeight: 700, background: 'linear-gradient(135deg, #f6d778 0%, #c9a24a 60%, #f6d778 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', marginBottom: '16px', letterSpacing: '1px' }}>
+                Round Complete
               </div>
-              {(() => {
-                const myTeam = mySeatIndex % 2;
-                const usPoints = myTeam === 0 ? roundPts[0] : roundPts[1];
-                const themPoints = myTeam === 0 ? roundPts[1] : roundPts[0];
-                return (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                      <span>Us:</span>
-                      <span style={{ color: '#4caf50' }}>{usPoints} points</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                      <span>Them:</span>
-                      <span style={{ color: '#f44336' }}>{themPoints} points</span>
-                    </div>
-                  </>
-                );
-              })()}
+              <div style={{ marginBottom: '16px', fontSize: '12px', color: 'rgba(232,228,217,0.8)', fontFamily: "'Inter', sans-serif" }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '4px 0', borderBottom: '1px solid rgba(201,162,74,0.2)' }}>
+                  <span style={{ color: 'rgba(201,162,74,0.7)' }}>Bid</span>
+                  <span style={{ fontFamily: "'Cinzel', serif", color: '#f6d778' }}>{highBid}<span style={{ color: suitColor, marginLeft: '3px' }}>{trumpSuit || ''}</span> <span style={{ color: 'rgba(232,228,217,0.6)', fontSize: '10px' }}>· {bidderName}</span></span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ color: '#5dd084', fontWeight: 600 }}>US</span>
+                  <span style={{ fontFamily: "'Cinzel', serif", color: '#5dd084', fontSize: '15px', fontWeight: 700 }}>{usPoints < 0 ? `(${Math.abs(usPoints)})` : `+${usPoints}`}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#ef7c74', fontWeight: 600 }}>THEM</span>
+                  <span style={{ fontFamily: "'Cinzel', serif", color: '#ef7c74', fontSize: '15px', fontWeight: 700 }}>{themPoints < 0 ? `(${Math.abs(themPoints)})` : `+${themPoints}`}</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                <button onClick={() => setShowHandsOpen(true)} style={{ padding: '8px 16px', fontSize: '11px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'rgba(10,40,20,0.8)', color: '#c9a24a', border: '1px solid rgba(201,162,74,0.45)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px' }}>View Round</button>
+                <button onClick={handleNextRound} style={{ padding: '8px 20px', fontSize: '12px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'linear-gradient(180deg, #f6d778 0%, #c9a24a 50%, #9a7630 100%)', color: '#1a0e03', border: '1px solid rgba(0,0,0,0.5)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px', boxShadow: '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)' }}>Next Round</button>
+              </div>
             </div>
-
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => setShowHandsOpen(true)}
-                style={{
-                  padding: '12px 24px',
-                  fontSize: '16px',
-                  background: '#2196f3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer'
-                }}
-              >
-                View Round
-              </button>
-              <button
-                onClick={handleNextRound}
-                style={{
-                  padding: '12px 24px',
-                  fontSize: '16px',
-                  background: '#4caf50',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold'
-                }}
-              >
-                Next Round
-              </button>
+          );
+          return (
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'rgba(0,0,0,0.9)',
+              padding: '32px',
+              borderRadius: '12px',
+              border: '2px solid #d4af37',
+              zIndex: 100,
+              minWidth: '400px',
+              animation: 'slideUp 0.3s ease-out'
+            }}>
+              <div style={{ fontSize: '24px', marginBottom: '20px', textAlign: 'center', color: '#d4af37' }}>Round Complete</div>
+              <div style={{ marginBottom: '20px', fontSize: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span>High Bid:</span>
+                  <span style={{ color: '#ffd700' }}>{highBid} ({bidderName})</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span>Us:</span>
+                  <span style={{ color: '#4caf50' }}>{usPoints} points</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span>Them:</span>
+                  <span style={{ color: '#f44336' }}>{themPoints} points</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button onClick={() => setShowHandsOpen(true)} style={{ padding: '12px 24px', fontSize: '16px', background: '#2196f3', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>View Round</button>
+                <button onClick={handleNextRound} style={{ padding: '12px 24px', fontSize: '16px', background: '#4caf50', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Next Round</button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Game Over Overlay */}
         {phase === 'game-over' && (() => {
           const winner = gameState && gameState.winner !== undefined ? gameState.winner : null;
           const myTeam = mySeatIndex % 2;
           const isWin = winner === myTeam;
-          
+          const isIrish = currentThemeId === 'irish';
+
+          // Achievement items (shared)
+          const achieveItems = [];
+          if (gamePerfect30s > 0) achieveItems.push({ label: `Perfect 30 ×${gamePerfect30s}`, pts: gamePerfect30s * 2, color: isIrish ? '#c9a24a' : '#9c27b0' });
+          if (gameBid30Made > 0) achieveItems.push({ label: `Bid 30 Made ×${gameBid30Made}`, pts: gameBid30Made * 5, color: isIrish ? '#f6d778' : '#3f51b5' });
+          if (gameExceedBidPts > 0) achieveItems.push({ label: `Exceeded Bid`, pts: gameExceedBidPts, color: isIrish ? '#5dd084' : '#00897b' });
+          if (gameTimesSet > 0) achieveItems.push({ label: `Set ×${gameTimesSet}`, pts: -gameTimesSet, color: isIrish ? '#ef7c74' : '#f44336' });
+          if (isWin) {
+            const hist = gameState?.history || [];
+            const wasComeback = hist.some(h => {
+              const ourT = myTeam === 0 ? (h.usTotal || 0) : (h.themTotal || 0);
+              const oppT = myTeam === 0 ? (h.themTotal || 0) : (h.usTotal || 0);
+              return ourT <= 55 && oppT >= 90;
+            });
+            if (wasComeback) achieveItems.push({ label: 'Comeback Win', pts: 10, color: isIrish ? '#f6d778' : '#ff9800' });
+            if (!wasSetThisGame.current) achieveItems.push({ label: 'Clean Game Win', pts: 3, color: isIrish ? '#5dd084' : '#4caf50' });
+          }
+          const achieveTotal = achieveItems.reduce((s, x) => s + x.pts, 0);
+
+          if (isIrish) return (
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'rgba(12,6,2,0.96)',
+              padding: '24px 28px',
+              borderRadius: '12px',
+              border: `1px solid ${isWin ? '#c9a24a' : 'rgba(239,68,68,0.7)'}`,
+              boxShadow: isWin
+                ? '0 8px 40px rgba(0,0,0,0.85), 0 0 24px rgba(246,215,120,0.12)'
+                : '0 8px 40px rgba(0,0,0,0.85), 0 0 24px rgba(139,26,31,0.2)',
+              zIndex: 100,
+              minWidth: '280px',
+              maxWidth: '340px',
+              textAlign: 'center',
+              animation: 'slideUp 0.3s ease-out',
+            }}>
+              {/* Title */}
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: isWin ? '26px' : '22px', fontWeight: 700, marginBottom: '6px',
+                background: isWin
+                  ? 'linear-gradient(135deg, #f6d778 0%, #c9a24a 50%, #f6d778 100%)'
+                  : 'linear-gradient(135deg, #ef7c74 0%, #c0392b 60%, #ef7c74 100%)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                letterSpacing: '2px',
+              }}>
+                {isWin ? 'VICTORY' : 'DEFEATED'}
+              </div>
+              {isWin && <div style={{ fontSize: '20px', marginBottom: '12px', letterSpacing: '4px', color: 'rgba(246,215,120,0.5)' }}>· · ·</div>}
+              {!isWin && <div style={{ marginBottom: '12px' }}></div>}
+
+              {/* Scores */}
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '16px' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '9px', color: '#5dd084', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>US</div>
+                  <div style={{ fontSize: '32px', fontFamily: "'Cinzel', serif", fontWeight: 700, color: '#5dd084', lineHeight: 1 }}>{scores[myTeam]}</div>
+                </div>
+                <div style={{ width: '1px', background: 'rgba(201,162,74,0.25)', margin: '4px 0' }}></div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '9px', color: '#ef7c74', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>THEM</div>
+                  <div style={{ fontSize: '32px', fontFamily: "'Cinzel', serif", fontWeight: 700, color: '#ef7c74', lineHeight: 1 }}>{scores[1 - myTeam]}</div>
+                </div>
+              </div>
+
+              {/* Achievement summary */}
+              {achieveItems.length > 0 && (
+                <div style={{ background: 'rgba(10,40,20,0.6)', border: '1px solid rgba(201,162,74,0.2)', borderRadius: '6px', padding: '10px 12px', marginBottom: '14px', fontSize: '11px', textAlign: 'left' }}>
+                  <div style={{ color: 'rgba(201,162,74,0.6)', marginBottom: '6px', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1.5px', fontFamily: "'Inter', sans-serif" }}>This Game</div>
+                  {achieveItems.map((item, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                      <span style={{ color: 'rgba(232,228,217,0.8)', fontFamily: "'Inter', sans-serif" }}>{item.label}</span>
+                      <span style={{ color: item.color, fontWeight: 700, fontFamily: "'Cinzel', serif" }}>{item.pts > 0 ? '+' : ''}{item.pts}</span>
+                    </div>
+                  ))}
+                  <div style={{ borderTop: '1px solid rgba(201,162,74,0.2)', marginTop: '6px', paddingTop: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'rgba(201,162,74,0.6)', fontFamily: "'Inter', sans-serif", fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px' }}>Achievement pts</span>
+                    <span style={{ color: achieveTotal >= 0 ? '#5dd084' : '#ef7c74', fontWeight: 700, fontFamily: "'Cinzel', serif" }}>{achieveTotal > 0 ? '+' : ''}{achieveTotal}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Badges */}
+              {newlyEarnedBadges.length > 0 && (
+                <div style={{ background: 'rgba(201,162,74,0.08)', border: '1px solid rgba(201,162,74,0.3)', borderRadius: '6px', padding: '10px 12px', marginBottom: '14px', fontSize: '11px' }}>
+                  <div style={{ color: '#c9a24a', marginBottom: '6px', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1.5px', fontFamily: "'Inter', sans-serif" }}>New Badges · tap for details</div>
+                  {newlyEarnedBadges.map(badge => (
+                    <div key={badge.id}>
+                      <div onClick={() => setExpandedBadge(expandedBadge === badge.id ? null : badge.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px', cursor: 'pointer', padding: '3px 4px', borderRadius: '4px', background: expandedBadge === badge.id ? 'rgba(201,162,74,0.1)' : 'transparent' }}>
+                        <span style={{ color: '#e8e4d9', fontFamily: "'Inter', sans-serif" }}>🏅 {badge.name}</span>
+                        <span style={{ color: '#f6d778', fontWeight: 700, fontFamily: "'Cinzel', serif" }}>+{badge.pts}</span>
+                      </div>
+                      {expandedBadge === badge.id && (
+                        <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '4px', padding: '6px 8px', marginBottom: '4px', fontSize: '10px' }}>
+                          <div style={{ color: '#c9a24a', fontWeight: 700, marginBottom: '2px', fontFamily: "'Cinzel', serif" }}>{badge.sym} {badge.name}</div>
+                          <div style={{ color: 'rgba(232,228,217,0.7)', fontFamily: "'Inter', sans-serif" }}>{badge.desc}</div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button onClick={() => setShowHandsOpen(true)} style={{ padding: '8px 14px', fontSize: '11px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'rgba(10,40,20,0.8)', color: '#c9a24a', border: '1px solid rgba(201,162,74,0.45)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px' }}>View Round</button>
+                <button onClick={onLeaveGame} style={{ padding: '8px 14px', fontSize: '11px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'rgba(20,10,4,0.8)', color: 'rgba(232,228,217,0.7)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px' }}>Lobby</button>
+                <button onClick={handleRematch} style={{ padding: '8px 16px', fontSize: '12px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'linear-gradient(180deg, #f6d778 0%, #c9a24a 50%, #9a7630 100%)', color: '#1a0e03', border: '1px solid rgba(0,0,0,0.5)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px', boxShadow: '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)' }}>New Game</button>
+              </div>
+            </div>
+          );
+
           return (
             <div style={{
               position: 'absolute',
@@ -13016,70 +13211,37 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               <div style={{ fontSize: '48px', marginBottom: '24px', color: isWin ? '#4caf50' : '#f44336', fontWeight: 'bold' }}>
                 {isWin ? '🏆 VICTORY!' : '💀 DEFEAT'}
               </div>
-              
               <div style={{ fontSize: '24px', marginBottom: '20px' }}>
                 <div style={{ marginBottom: '12px' }}>
                   <span style={{ color: isWin ? '#4caf50' : '#aaa' }}>Us: </span>
-                  <span style={{ fontWeight: 'bold', color: isWin ? '#4caf50' : '#aaa' }}>
-                    {scores[myTeam]}
-                  </span>
+                  <span style={{ fontWeight: 'bold', color: isWin ? '#4caf50' : '#aaa' }}>{scores[myTeam]}</span>
                 </div>
                 <div>
                   <span style={{ color: isWin ? '#aaa' : '#f44336' }}>Them: </span>
-                  <span style={{ fontWeight: 'bold', color: isWin ? '#aaa' : '#f44336' }}>
-                    {scores[1 - myTeam]}
-                  </span>
+                  <span style={{ fontWeight: 'bold', color: isWin ? '#aaa' : '#f44336' }}>{scores[1 - myTeam]}</span>
                 </div>
               </div>
-
-              {/* Per-game achievement summary */}
-              {(() => {
-                const items = [];
-                if (gamePerfect30s > 0) items.push({ label: `Perfect 30 ×${gamePerfect30s}`, pts: gamePerfect30s * 2, color: '#9c27b0' });
-                if (gameBid30Made > 0) items.push({ label: `Bid 30 Made ×${gameBid30Made}`, pts: gameBid30Made * 5, color: '#3f51b5' });
-                if (gameExceedBidPts > 0) items.push({ label: `Exceeded Bid`, pts: gameExceedBidPts, color: '#00897b' });
-                if (gameTimesSet > 0) items.push({ label: `Set ×${gameTimesSet}`, pts: -gameTimesSet, color: '#f44336' });
-                if (isWin) {
-                  // Comeback win: was there any point in history where we were ≤55 and they were ≥90?
-                  const hist = gameState?.history || [];
-                  const wasComeback = hist.some(h => {
-                    const ourT = myTeam === 0 ? (h.usTotal || 0) : (h.themTotal || 0);
-                    const oppT = myTeam === 0 ? (h.themTotal || 0) : (h.usTotal || 0);
-                    return ourT <= 55 && oppT >= 90;
-                  });
-                  if (wasComeback) items.push({ label: 'Comeback Win', pts: 10, color: '#ff9800' });
-                  // Clean game win: won without being set once
-                  if (!wasSetThisGame.current) items.push({ label: 'Clean Game Win', pts: 3, color: '#4caf50' });
-                }
-                if (items.length === 0) return null;
-                const total = items.reduce((s, i) => s + i.pts, 0);
-                return (
-                  <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', marginBottom: '20px', fontSize: '13px' }}>
-                    <div style={{ color: '#aaa', marginBottom: '8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>This Game</div>
-                    {items.map((item, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ color: '#ddd' }}>{item.label}</span>
-                        <span style={{ color: item.color, fontWeight: 'bold' }}>{item.pts > 0 ? '+' : ''}{item.pts}</span>
-                      </div>
-                    ))}
-                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', marginTop: '8px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#aaa' }}>Achievement pts</span>
-                      <span style={{ color: total >= 0 ? '#4caf50' : '#f44336', fontWeight: 'bold' }}>{total > 0 ? '+' : ''}{total}</span>
+              {achieveItems.length > 0 && (
+                <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', marginBottom: '20px', fontSize: '13px' }}>
+                  <div style={{ color: '#aaa', marginBottom: '8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>This Game</div>
+                  {achieveItems.map((item, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ color: '#ddd' }}>{item.label}</span>
+                      <span style={{ color: item.color, fontWeight: 'bold' }}>{item.pts > 0 ? '+' : ''}{item.pts}</span>
                     </div>
+                  ))}
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', marginTop: '8px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#aaa' }}>Achievement pts</span>
+                    <span style={{ color: achieveTotal >= 0 ? '#4caf50' : '#f44336', fontWeight: 'bold' }}>{achieveTotal > 0 ? '+' : ''}{achieveTotal}</span>
                   </div>
-                );
-              })()}
-
-              {/* Newly earned badges */}
+                </div>
+              )}
               {newlyEarnedBadges.length > 0 && (
                 <div style={{ background: 'rgba(212,175,55,0.15)', border: '1px solid #d4af37', borderRadius: '8px', padding: '12px', marginBottom: '20px', fontSize: '13px' }}>
                   <div style={{ color: '#d4af37', marginBottom: '8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>New Badges Earned! · tap to see details</div>
                   {newlyEarnedBadges.map(badge => (
                     <div key={badge.id}>
-                      <div
-                        onClick={() => setExpandedBadge(expandedBadge === badge.id ? null : badge.id)}
-                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', cursor: 'pointer', padding: '4px 6px', borderRadius: '6px', background: expandedBadge === badge.id ? 'rgba(255,255,255,0.08)' : 'transparent' }}
-                      >
+                      <div onClick={() => setExpandedBadge(expandedBadge === badge.id ? null : badge.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', cursor: 'pointer', padding: '4px 6px', borderRadius: '6px', background: expandedBadge === badge.id ? 'rgba(255,255,255,0.08)' : 'transparent' }}>
                         <span style={{ color: '#eee' }}>🏅 {badge.name}</span>
                         <span style={{ color: badge.color, fontWeight: 'bold' }}>+{badge.pts} pts</span>
                       </div>
@@ -13093,102 +13255,91 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   ))}
                 </div>
               )}
-
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => setShowHandsOpen(true)}
-                  style={{
-                    padding: '12px 24px',
-                    fontSize: '16px',
-                    background: '#2196f3',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  View Round
-                </button>
-                <button
-                  onClick={onLeaveGame}
-                  style={{
-                    padding: '12px 24px',
-                    fontSize: '16px',
-                    background: '#666',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Lobby
-                </button>
-                <button
-                  onClick={handleRematch}
-                  style={{
-                    padding: '12px 24px',
-                    fontSize: '16px',
-                    background: '#d4af37',
-                    color: '#000',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  New Game
-                </button>
+                <button onClick={() => setShowHandsOpen(true)} style={{ padding: '12px 24px', fontSize: '16px', background: '#2196f3', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>View Round</button>
+                <button onClick={onLeaveGame} style={{ padding: '12px 24px', fontSize: '16px', background: '#666', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Lobby</button>
+                <button onClick={handleRematch} style={{ padding: '12px 24px', fontSize: '16px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>New Game</button>
               </div>
             </div>
           );
         })()}
       </div>
 
+      {/* Last Trick — absolute overlay, never pushes layout */}
+      {lastTrick && phase === 'playing' && currentThemeId === 'irish' && (
+        <div style={{
+          position: 'absolute',
+          bottom: '62px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(10,30,15,0.82)',
+          backdropFilter: 'blur(4px)',
+          border: '1px solid rgba(201,162,74,0.35)',
+          borderRadius: '6px',
+          padding: '4px 8px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          pointerEvents: 'none',
+          zIndex: 10,
+          whiteSpace: 'nowrap',
+        }}>
+          <span style={{ fontSize: '9px', color: 'rgba(201,162,74,0.7)', fontFamily: "'Cinzel', serif", letterSpacing: '0.5px', marginRight: '2px' }}>Last</span>
+          {lastTrick.cards.map((tc, i) => {
+            const isWinner = tc.player === lastTrick.winner;
+            return (
+              <div key={i} style={{ position: 'relative' }}>
+                <Card card={tc.card} small disabled />
+                {isWinner && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '-5px',
+                    right: '-5px',
+                    background: '#5dd084',
+                    borderRadius: '50%',
+                    width: '11px',
+                    height: '11px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '7px',
+                    color: '#0a1a0a',
+                    fontWeight: 'bold',
+                  }}>✓</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {lastTrick && phase === 'playing' && currentThemeId !== 'irish' && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '2px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
+            <span style={{ fontSize: '9px', color: '#aaa' }}>Last:</span>
+            {lastTrick.cards.map((tc, i) => {
+              const isWinner = tc.player === lastTrick.winner;
+              return (
+                <div key={i} style={{ position: 'relative' }}>
+                  <Card card={tc.card} small disabled />
+                  {isWinner && (
+                    <div style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#4caf50', borderRadius: '50%', width: '12px', height: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px' }}>✓</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Score Table at Bottom */}
       <div style={{
-        padding: (lastTrick && phase === 'playing') || history.length > 0 ? '6px 16px' : '0',
-        background: (lastTrick && phase === 'playing') || history.length > 0 ? 'rgba(0,0,0,0.4)' : 'transparent',
+        padding: history.length > 0 ? '6px 16px' : '0',
+        background: history.length > 0 ? 'rgba(0,0,0,0.4)' : 'transparent',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         gap: '4px'
       }}>
-        {/* Last Trick */}
-        {lastTrick && phase === 'playing' && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {lastTrick && phase === 'playing' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '2px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
-              <span style={{ fontSize: '9px', color: '#aaa' }}>Last:</span>
-              {lastTrick.cards.map((tc, i) => {
-                const isWinner = tc.player === lastTrick.winner;
-                return (
-                  <div key={i} style={{ position: 'relative' }}>
-                    <Card card={tc.card} small disabled />
-                    {isWinner && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '-6px',
-                        right: '-6px',
-                        background: '#4caf50',
-                        borderRadius: '50%',
-                        width: '12px',
-                        height: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '8px'
-                      }}>
-                        ✓
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        )}
-
         {/* Score table */}
         <ScoreTable roundHistory={history} mySeatIndex={mySeatIndex} />
       </div>
