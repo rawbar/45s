@@ -33,7 +33,7 @@
   <!-- v3 Irish Card Room — Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Merriweather:wght@700;900&family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Merriweather:ital,wght@1,400;700;900&family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 
   <!-- v3 Irish Card Room — Design System -->
   <style>
@@ -1679,7 +1679,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.3';
+const VERSION = '2.27.4';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4290,6 +4290,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.4', date: 'Apr 2026', changes: ['Irish stats modal: visual fixes to match approved mockup'] },
     { version: '2.27.3', date: 'Apr 2026', changes: ['Seat picker: compass layout (N/S/E/W as compass points)'] },
     { version: '2.27.2', date: 'Apr 2026', changes: ['Fix seat selection: choose seat before entering waiting room — seat picker modal on Irish lobby game row click'] },
     { version: '2.27.1', date: 'Apr 2026', changes: ['Irish Card Room theme: Player stats modal — bottom sheet with walnut surface, brass accents, single-scroll layout, hero stats card, 3-col grid, badge 5-col grid with detail panel'] },
@@ -6995,10 +6996,13 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                                 key={badge.id}
                                 onClick={() => setActiveBadge(isActive ? null : badge.id)}
                                 title={badge.name}
-                                style={{
+                                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+                              >
+                                <div style={{
                                   position: 'relative',
+                                  width: '44px', height: '44px', flexShrink: 0,
+                                  borderRadius: '50%', aspectRatio: '1',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  aspectRatio: '1', borderRadius: '50%', cursor: 'pointer',
                                   background: earned ? felt : 'rgba(18,14,10,0.7)',
                                   border: isActive ? '2.5px solid #f6d778' : `1.5px solid ${earned ? '#c9a24a' : 'rgba(255,255,255,0.1)'}`,
                                   boxShadow: isActive
@@ -7007,10 +7011,11 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                                   fontSize: badge.sym.length > 2 ? '10px' : '22px',
                                   color: earned ? '#fff' : '#bbb',
                                   fontWeight: 'bold',
-                                }}
-                              >
-                                <span style={{ opacity: earned ? 1 : 0.22, lineHeight: 1 }}>{badge.sym}</span>
-                                {!earned && <span style={{ position: 'absolute', bottom: '-1px', right: '-1px', fontSize: '11px', lineHeight: 1 }}>🔒</span>}
+                                }}>
+                                  <span style={{ opacity: earned ? 1 : 0.22, lineHeight: 1 }}>{badge.sym}</span>
+                                  {!earned && <span style={{ position: 'absolute', bottom: '-1px', right: '-1px', fontSize: '11px', lineHeight: 1 }}>🔒</span>}
+                                </div>
+                                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '9px', color: 'rgba(232,228,217,0.45)', textAlign: 'center', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>{badge.name}</div>
                               </div>
                             );
                           })}
@@ -7034,7 +7039,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                                 </div>
                                 <div style={{ flex: 1 }}>
                                   <div style={{ fontFamily: 'Cinzel, serif', fontSize: '18px', fontWeight: '700', background: 'linear-gradient(135deg, #f6d778, #c9a24a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', lineHeight: '1.1' }}>{activeBadgeObj.name}</div>
-                                  <div style={{ fontFamily: 'Merriweather, serif', fontStyle: 'italic', fontSize: '12px', color: 'rgba(251,246,228,0.6)', marginTop: '5px', lineHeight: '1.5' }}>{activeBadgeObj.desc}</div>
+                                  <div style={{ fontFamily: 'Merriweather, serif', fontStyle: 'italic', fontSize: '13px', color: 'rgba(251,246,228,0.6)', marginTop: '5px', lineHeight: '1.5' }}>{activeBadgeObj.desc}</div>
                                   {earned && earnedAt && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '6px' }}>
                                       <span style={{ fontSize: '13px', color: '#5dd084' }}>✓</span>
