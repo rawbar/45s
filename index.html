@@ -1040,11 +1040,16 @@
   }
   /* Face-up card (5-Card Draw): cyan tint — visible to all players */
   .theme-cyberpunk .cp-card.face-up {
-    border-color: #00e5ff;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.03), 0 0 12px rgba(0,229,255,0.5);
+    background:
+      linear-gradient(140deg, rgba(0,229,255,0.18) 0%, transparent 28%),
+      linear-gradient(180deg, #0a2035 0%, #051525 100%);
+    border: 2px solid #00e5ff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.7), inset 0 1px 0 rgba(0,229,255,0.15), 0 0 18px rgba(0,229,255,0.55), 0 0 6px rgba(0,229,255,0.9);
   }
+  .theme-cyberpunk .cp-card.face-up .corner { color: #00e5ff; }
+  .theme-cyberpunk .cp-card.face-up.red .corner { color: #ff1a75; }
   .theme-cyberpunk .cp-card.face-up .center {
-    filter: drop-shadow(0 0 8px #00e5ff);
+    filter: drop-shadow(0 0 10px currentColor);
   }
 
   /* ── Center table ── */
