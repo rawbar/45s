@@ -778,12 +778,14 @@
     animation: dealerGlow 1.4s ease-in-out infinite;
   }
 
-  /* ── Side seat nameplates: clamp width so they never bleed off screen ── */
+  /* ── Side seat nameplates: constrain so they never bleed off screen ── */
+  .v3-side-seat { width: 72px; }
   .v3-side-seat .v3-nameplate {
-    max-width: 60px; overflow: hidden; white-space: nowrap; font-size: 9px;
+    max-width: 72px; overflow: hidden; white-space: nowrap; font-size: 9.5px;
+    padding: 2px 7px 2px 3px;
   }
   .v3-side-seat .v3-nameplate .v3-avatar-chip {
-    width: 16px; height: 16px; font-size: 10px; margin-right: 4px; flex-shrink: 0;
+    width: 17px; height: 17px; font-size: 11px; margin-right: 4px; flex-shrink: 0;
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -1722,7 +1724,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.18';
+const VERSION = '2.27.19';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4387,6 +4389,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.19', date: 'Apr 2026', changes: ['Side seat width 72px: names no longer cut off. Diamond announce: CSS border-triangle callout arrow (brass + glow) instead of Unicode character, points toward winning bidder.'] },
     { version: '2.27.18', date: 'Apr 2026', changes: ['Side seat nameplates: max-width 60px so they never bleed off-screen. Dealer chip: red pulsing glow animation. Bid flash: fixed race condition (dedicated ref, no longer stomped by sound effect). Diamond announce: directional arrow points toward winning bidder\'s compass seat.'] },
     { version: '2.27.17', date: 'Apr 2026', changes: ['Show Hands modal: full Irish Card Room redesign (bottom sheet, Cinzel/brass, compass layout, avatar+name headers, Irish bid badges). Fixed: suit symbols now always visible on cards in the modal.'] },
     { version: '2.27.16', date: 'Apr 2026', changes: ['Badge detail: now a floating centered modal (tap badge to open, tap backdrop or × to close). Bid flash: large "20♥"/"PASS"/"BAGGED" animates at bidder compass position. Diamond announce: big bid result flashes center screen when trump is set. Dealer chip: glowing brass indicator (Irish theme)'] },
@@ -12969,36 +12972,43 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           );
         })()}
 
-        {/* Irish diamond announce — large bid result with arrow toward winner */}
+        {/* Irish diamond announce — brass callout with CSS arrow pointing at winner */}
         {diamondAnim && currentThemeId === 'irish' && (() => {
           const { bidWinner: bw, highBid: hb, trumpSuit: ts } = diamondAnim;
           const isRed = ts === '♥' || ts === '♦';
           const suitColor = isRed ? '#e87070' : '#f6d778';
-          const dir = bw === visualPositions.top ? '↑' : bw === visualPositions.right ? '→' : bw === visualPositions.bottom ? '↓' : '←';
-          const arrowTop = bw === visualPositions.top;
+          const dir = bw === visualPositions.top ? 'top'
+                    : bw === visualPositions.right ? 'right'
+                    : bw === visualPositions.bottom ? 'bottom' : 'left';
+          // CSS border-triangle arrow, brass + glowing
+          const arrowGlow = 'drop-shadow(0 0 6px rgba(201,162,74,0.85))';
+          const triBase = { position: 'absolute', width: 0, height: 0, filter: arrowGlow };
+          const arrow = dir === 'top'
+            ? <div style={{ ...triBase, top: '-22px', left: '50%', transform: 'translateX(-50%)', borderLeft: '18px solid transparent', borderRight: '18px solid transparent', borderBottom: '22px solid #c9a24a' }} />
+            : dir === 'bottom'
+            ? <div style={{ ...triBase, bottom: '-22px', left: '50%', transform: 'translateX(-50%)', borderLeft: '18px solid transparent', borderRight: '18px solid transparent', borderTop: '22px solid #c9a24a' }} />
+            : dir === 'right'
+            ? <div style={{ ...triBase, right: '-22px', top: '50%', transform: 'translateY(-50%)', borderTop: '18px solid transparent', borderBottom: '18px solid transparent', borderLeft: '22px solid #c9a24a' }} />
+            : <div style={{ ...triBase, left: '-22px', top: '50%', transform: 'translateY(-50%)', borderTop: '18px solid transparent', borderBottom: '18px solid transparent', borderRight: '22px solid #c9a24a' }} />;
           return (
             <div style={{ position: 'absolute', top: '50%', left: '50%', zIndex: 400, pointerEvents: 'none' }}>
               <div style={{
+                position: 'relative',
                 animation: 'diamondAnnounce 2.1s ease-out forwards',
-                fontFamily: "'Cinzel', serif",
-                fontWeight: 700,
-                background: 'rgba(6,24,12,0.9)',
+                fontFamily: "'Cinzel', serif", fontWeight: 700,
+                background: 'rgba(6,24,12,0.92)',
                 border: '2px solid #c9a24a',
                 borderRadius: '14px',
-                padding: '8px 16px 10px',
-                backdropFilter: 'blur(6px)',
-                WebkitBackdropFilter: 'blur(6px)',
-                boxShadow: '0 0 32px rgba(201,162,74,0.4), 0 8px 24px rgba(0,0,0,0.7)',
-                textAlign: 'center',
-                whiteSpace: 'nowrap',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
+                padding: '10px 20px',
+                backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+                boxShadow: '0 0 36px rgba(201,162,74,0.45), 0 8px 28px rgba(0,0,0,0.75)',
+                textAlign: 'center', whiteSpace: 'nowrap',
               }}>
-                {arrowTop && <span style={{ fontSize: '22px', color: '#c9a24a', lineHeight: 1 }}>{dir}</span>}
-                <span style={{ fontSize: '52px', lineHeight: 1 }}>
+                {arrow}
+                <span style={{ fontSize: '54px', lineHeight: 1 }}>
                   <span style={{ color: '#f6d778' }}>{hb}</span>
-                  <span style={{ color: suitColor, marginLeft: '3px' }}>{ts}</span>
+                  <span style={{ color: suitColor, marginLeft: '4px' }}>{ts}</span>
                 </span>
-                {!arrowTop && <span style={{ fontSize: '22px', color: '#c9a24a', lineHeight: 1 }}>{dir}</span>}
               </div>
             </div>
           );
