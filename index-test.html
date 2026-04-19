@@ -30,6 +30,10 @@
     @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
     @keyframes voicePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     @keyframes scoreChange { from { transform: scale(1.3); color: #d4af37; } to { transform: scale(1); } }
+    @keyframes dealerGlow {
+      0%, 100% { box-shadow: 0 0 6px rgba(239,68,68,0.5), 0 0 0 1px rgba(239,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.5); }
+      50%       { box-shadow: 0 0 18px rgba(239,68,68,0.95), 0 0 0 3px rgba(239,68,68,0.55), inset 0 1px 0 rgba(255,255,255,0.5); }
+    }
     @keyframes bidFlashAnim {
       0%   { opacity: 0; transform: scale(0.55); }
       20%  { opacity: 1; transform: scale(1.15); }
@@ -770,13 +774,16 @@
     background: radial-gradient(circle at 35% 30%, #f6d778, #c9a24a 60%, #a07828);
     border: 1.5px solid #f6d778;
     font-family: 'Cinzel', serif; font-size: 11px; font-weight: 700;
-    color: #180b03;
-    box-shadow:
-      0 0 10px rgba(246,215,120,0.55),
-      0 0 0 1px rgba(246,215,120,0.25),
-      inset 0 1px 0 rgba(255,255,255,0.5),
-      inset 0 -1px 0 rgba(0,0,0,0.2);
-    text-shadow: none;
+    color: #180b03; text-shadow: none;
+    animation: dealerGlow 1.4s ease-in-out infinite;
+  }
+
+  /* ── Side seat nameplates: clamp width so they never bleed off screen ── */
+  .v3-side-seat .v3-nameplate {
+    max-width: 60px; overflow: hidden; white-space: nowrap; font-size: 9px;
+  }
+  .v3-side-seat .v3-nameplate .v3-avatar-chip {
+    width: 16px; height: 16px; font-size: 10px; margin-right: 4px; flex-shrink: 0;
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -1715,7 +1722,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.17';
+const VERSION = '2.27.18';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4380,6 +4387,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.18', date: 'Apr 2026', changes: ['Side seat nameplates: max-width 60px so they never bleed off-screen. Dealer chip: red pulsing glow animation. Bid flash: fixed race condition (dedicated ref, no longer stomped by sound effect). Diamond announce: directional arrow points toward winning bidder\'s compass seat.'] },
     { version: '2.27.17', date: 'Apr 2026', changes: ['Show Hands modal: full Irish Card Room redesign (bottom sheet, Cinzel/brass, compass layout, avatar+name headers, Irish bid badges). Fixed: suit symbols now always visible on cards in the modal.'] },
     { version: '2.27.16', date: 'Apr 2026', changes: ['Badge detail: now a floating centered modal (tap badge to open, tap backdrop or × to close). Bid flash: large "20♥"/"PASS"/"BAGGED" animates at bidder compass position. Diamond announce: big bid result flashes center screen when trump is set. Dealer chip: glowing brass indicator (Irish theme)'] },
     { version: '2.27.15', date: 'Apr 2026', changes: ['Polish: widen side seat columns (56→62px) so E/W nameplate ovals are no longer clipped at screen edges'] },
@@ -10280,6 +10288,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [trumpSuit, setTrumpSuit] = useState(null);
   const [bidFlash, setBidFlash] = useState(null);
   const [diamondAnim, setDiamondAnim] = useState(null);
+  const bidFlashPrevRef = useRef([-1,-1,-1,-1]);
   const prevTrumpRef = useRef(null);
   const [trick, setTrick] = useState([]);
   const [trickCards, setTrickCards] = useState([]);
@@ -10778,23 +10787,23 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
   // Bid flash: show large floating bid announcement at bidder's compass position
   useEffect(() => {
-    if (currentThemeId !== 'irish' || phase !== 'bidding') { prevBidsRef.current = [...bids]; return; }
-    const prev = prevBidsRef.current;
+    if (currentThemeId !== 'irish') { bidFlashPrevRef.current = [...bids]; return; }
+    const prev = bidFlashPrevRef.current;
     bids.forEach((bid, pi) => {
       const wasUnset = prev[pi] === undefined || prev[pi] === null || prev[pi] < 0;
       const nowSet = bid !== undefined && bid !== null && bid >= 0;
       if (wasUnset && nowSet) {
         const isBag = wasBagged && pi === bidWinner && bid === 15;
         let text, color;
-        if (isBag)       { text = 'BAGGED'; color = '#ff6b6b'; }
+        if (isBag)          { text = 'BAGGED'; color = '#ff6b6b'; }
         else if (bid === 0) { text = 'PASS';   color = 'rgba(201,162,74,0.7)'; }
-        else               { text = String(bid); color = '#f6d778'; }
+        else                { text = String(bid); color = '#f6d778'; }
         setBidFlash({ pos: pi, text, color });
         setTimeout(() => setBidFlash(null), 950);
       }
     });
-    prevBidsRef.current = [...bids];
-  }, [bids, phase]);
+    bidFlashPrevRef.current = [...bids];
+  }, [bids]);
 
   // Diamond announce: fired once when trumpSuit is first set (bid resolved)
   useEffect(() => {
@@ -12960,31 +12969,36 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           );
         })()}
 
-        {/* Irish diamond announce — large bid result shown when trump is set */}
+        {/* Irish diamond announce — large bid result with arrow toward winner */}
         {diamondAnim && currentThemeId === 'irish' && (() => {
-          const { highBid: hb, trumpSuit: ts } = diamondAnim;
+          const { bidWinner: bw, highBid: hb, trumpSuit: ts } = diamondAnim;
           const isRed = ts === '♥' || ts === '♦';
           const suitColor = isRed ? '#e87070' : '#f6d778';
+          const dir = bw === visualPositions.top ? '↑' : bw === visualPositions.right ? '→' : bw === visualPositions.bottom ? '↓' : '←';
+          const arrowTop = bw === visualPositions.top;
           return (
             <div style={{ position: 'absolute', top: '50%', left: '50%', zIndex: 400, pointerEvents: 'none' }}>
               <div style={{
                 animation: 'diamondAnnounce 2.1s ease-out forwards',
                 fontFamily: "'Cinzel', serif",
                 fontWeight: 700,
-                fontSize: '52px',
-                lineHeight: 1,
-                background: 'rgba(6,24,12,0.88)',
+                background: 'rgba(6,24,12,0.9)',
                 border: '2px solid #c9a24a',
                 borderRadius: '14px',
-                padding: '10px 18px',
+                padding: '8px 16px 10px',
                 backdropFilter: 'blur(6px)',
                 WebkitBackdropFilter: 'blur(6px)',
                 boxShadow: '0 0 32px rgba(201,162,74,0.4), 0 8px 24px rgba(0,0,0,0.7)',
                 textAlign: 'center',
                 whiteSpace: 'nowrap',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
               }}>
-                <span style={{ color: '#f6d778' }}>{hb}</span>
-                <span style={{ color: suitColor, marginLeft: '4px' }}>{ts}</span>
+                {arrowTop && <span style={{ fontSize: '22px', color: '#c9a24a', lineHeight: 1 }}>{dir}</span>}
+                <span style={{ fontSize: '52px', lineHeight: 1 }}>
+                  <span style={{ color: '#f6d778' }}>{hb}</span>
+                  <span style={{ color: suitColor, marginLeft: '3px' }}>{ts}</span>
+                </span>
+                {!arrowTop && <span style={{ fontSize: '22px', color: '#c9a24a', lineHeight: 1 }}>{dir}</span>}
               </div>
             </div>
           );
