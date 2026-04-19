@@ -23,6 +23,7 @@
     html { height: 100%; height: -webkit-fill-available; }
     body { font-family: 'Palatino Linotype', Palatino, Georgia, serif; overflow: hidden; width: 100%; height: 100%; height: -webkit-fill-available; }
     #root { height: 100%; overflow: hidden; }
+    .fs-screen { height: 100vh; height: -webkit-fill-available; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes cardPlay { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
@@ -1683,7 +1684,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.12';
+const VERSION = '2.27.13';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4340,6 +4341,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.13', date: 'Apr 2026', changes: ['Fix waiting room cut off: replace minHeight:100vh with fs-screen class (100dvh + -webkit-fill-available) so Start Game button stays on screen'] },
     { version: '2.27.12', date: 'Apr 2026', changes: ['iOS Safari support: add -webkit-fill-available fallback on html/body and lobby container'] },
     { version: '2.27.11', date: 'Apr 2026', changes: ['Fix lobby on mobile Chrome: use 100dvh so layout fits within browser chrome bounds; body overflow hidden to stop page scroll'] },
     { version: '2.27.10', date: 'Apr 2026', changes: ['Fix lobby: page no longer scrolls — tabs and Create Game button now stay pinned'] },
@@ -9336,10 +9338,7 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
     const isFull = playerCount >= 4;
 
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
+      <div className="fs-screen" style={{
         color: '#e8e4d9',
         fontFamily: 'Inter, sans-serif',
         backgroundColor: IR.walnut,
