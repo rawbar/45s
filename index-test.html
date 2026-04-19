@@ -1751,7 +1751,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.30';
+const VERSION = '2.27.31';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4416,6 +4416,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.31', date: 'Apr 2026', changes: ['Draw animation: cards slide in from center-table when drawn after discard. Detects newly added drawnCards IDs, animates with dealIn from above for 0.55s.'] },
     { version: '2.27.30', date: 'Apr 2026', changes: ['Exit button now shows themed Leave Game confirm modal (dark walnut, brass border, Cinzel) instead of browser system dialog. No more system dialogs going forward.'] },
     { version: '2.27.29', date: 'Apr 2026', changes: ['Deal animation: all 4 players animated in 3-3-3-3-kitty-2-2-2-2 sequence. 150ms stagger per card, kitty appears after first round, bidding locked until ~4.5s. All positions use getDealDelay helper keyed by deal order from dealer+1.'] },
     { version: '2.27.28', date: 'Apr 2026', changes: ['Kitty cards stay on table through bidding/trump-select; fly toward bid winner when trump is chosen. Deal cards slowed (0.65s, 300ms stagger, 3.5s lock). Kitty flies with direction-specific keyframes.'] },
@@ -10384,6 +10385,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [history, setHistory] = useState([]);
   const [drawn, setDrawn] = useState([0, 0, 0, 0]);
   const [drawnCards, setDrawnCards] = useState(new Set());
+  const [drawAnimCards, setDrawAnimCards] = useState(new Set());
+  const prevDrawnCardsRef = useRef(new Set());
   const [kittyCardIds, setKittyCardIds] = useState(new Set());
   const [animating, setAnimating] = useState(null);
   const [dealAnimActive, setDealAnimActive] = useState(false);
@@ -10692,6 +10695,18 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       setKittyFlying(null);
     }
   }, [phase]);
+
+  // Animate newly drawn cards sliding into hand
+  useEffect(() => {
+    if (currentThemeId !== 'irish') return;
+    const prev = prevDrawnCardsRef.current;
+    const newCards = [...drawnCards].filter(id => !prev.has(id));
+    prevDrawnCardsRef.current = new Set(drawnCards);
+    if (newCards.length === 0) return;
+    setDrawAnimCards(new Set(newCards));
+    const t = setTimeout(() => setDrawAnimCards(new Set()), 900);
+    return () => clearTimeout(t);
+  }, [drawnCards]);
 
   // Trick win sound
   const prevTricksRef = useRef(null);
@@ -13101,7 +13116,12 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     zIndex: isPlayable ? 10 : (fanCfg.z[i] || 1),
                     position: 'relative',
                   } : undefined;
-                  const mergedFanStyle = { ...(fanStyle || {}), ...dealAnimStyle(pos, i) };
+                  const drawAnim = drawAnimCards.has(card.id) && currentThemeId === 'irish' ? {
+                    animation: `dealIn 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both`,
+                    '--deal-dx': '0px',
+                    '--deal-dy': '-140px',
+                  } : {};
+                  const mergedFanStyle = { ...(fanStyle || {}), ...dealAnimStyle(pos, i), ...drawAnim };
                   return (
                     <Card
                       key={card.id}
