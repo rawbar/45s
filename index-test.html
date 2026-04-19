@@ -41,10 +41,10 @@
       100% { opacity: 0; transform: scale(0.75); }
     }
     @keyframes diamondAnnounce {
-      0%   { opacity: 0; transform: translate(-50%,-50%) scale(0.4); }
-      18%  { opacity: 1; transform: translate(-50%,-50%) scale(1.12); }
-      65%  { opacity: 1; transform: translate(-50%,-50%) scale(1);    }
-      100% { opacity: 0; transform: translate(-50%,-50%) scale(0.5);  }
+      0%   { opacity: 0; transform: scale(0.4); }
+      18%  { opacity: 1; transform: scale(1.12); }
+      65%  { opacity: 1; transform: scale(1);    }
+      100% { opacity: 0; transform: scale(0.5);  }
     }
   </style>
 
@@ -1750,7 +1750,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.25';
+const VERSION = '2.27.26';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4415,6 +4415,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.26', date: 'Apr 2026', changes: ['Fix: diamond announce keyframes had translate(-50%,-50%) baked in — double-shifted it up-left after move to v3-rail. Removed translate from keyframes; centering now handled by outer wrapper only.'] },
     { version: '2.27.25', date: 'Apr 2026', changes: ['Deal animation: cards slide in from dealer direction on new round, with kitty 3-card reveal in center (3–kitty–2 sequence). Bidding blocked until animation completes. Lobby game rows now show "In progress" + player names.'] },
     { version: '2.27.24', date: 'Apr 2026', changes: ['Lobby: playing game rows now show human player names. GameWrapper: re-registers onDisconnect for lobby presence so browser-close clears online status. Lobby presence cleanup now runs every 5 min (not just at mount) to evict long-idle ghosts.'] },
     { version: '2.27.23', date: 'Apr 2026', changes: ['Exit/lobby button (🚪) added to topbar controls. Diamond announce moved inside v3-rail so it centers over the card table circle. E/W card columns fixed-height (min-height 218px) so player area stays static during discard.'] },
