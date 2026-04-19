@@ -1729,7 +1729,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.21';
+const VERSION = '2.27.22';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4394,6 +4394,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.22', date: 'Apr 2026', changes: ['Irish theming: house rules overlay (brass border, Cinzel title, uniform parchment text), leaderboard rows (dark felt bg, brass accents), settings modal (dark bg, brass border, styled inputs/buttons). Removed non-Irish fallback branches from round-end and game-over overlays.'] },
     { version: '2.27.21', date: 'Apr 2026', changes: ['Show Hands: mid-size cards with large center suit symbol; corner suits hidden. CSS scales mid cards to 34px so 5 still fit side-by-side for E/W.'] },
     { version: '2.27.20', date: 'Apr 2026', changes: ['Show Hands: restored original centered-panel layout (cards no longer wrap). Irish theming: dark walnut panel, brass border/glow, Cinzel names, avatar emojis, Irish bid badges. Cards 5-across per player, nowrap enforced.'] },
     { version: '2.27.19', date: 'Apr 2026', changes: ['Side seat width 72px: names no longer cut off. Diamond announce: CSS border-triangle callout arrow (brass + glow) instead of Unicode character, points toward winning bidder.'] },
@@ -7241,18 +7242,18 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
 
         {showLeaderboard && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, animation: 'fadeIn 0.2s ease-out' }}>
-            <div style={{ background: 'white', animation: 'slideUp 0.25s ease-out', borderRadius: '12px', padding: '24px', maxWidth: '400px', width: '90%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+            <div style={{ background: 'rgba(12,6,2,0.97)', border: '2px solid #c9a24a', animation: 'slideUp 0.25s ease-out', borderRadius: '12px', padding: '24px', maxWidth: '400px', width: '90%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.7)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h2 style={{ margin: 0, color: '#1a5f3f', fontSize: '18px' }}>Leaderboard</h2>
-                <button onClick={() => setShowLeaderboard(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#666' }}>x</button>
+                <h2 style={{ margin: 0, fontFamily: "'Cinzel', serif", color: '#f6d778', fontSize: '18px' }}>Leaderboard</h2>
+                <button onClick={() => setShowLeaderboard(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: 'rgba(201,162,74,0.7)' }}>x</button>
               </div>
-              <div style={{ fontSize: '12px', color: '#666', marginBottom: '12px', textAlign: 'center' }}>All players · sorted by score</div>
-              {leaderboardLoading ? (<div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>Loading...</div>) : leaderboardData.length === 0 ? (<div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>No players yet</div>) : (() => {
+              <div style={{ fontSize: '12px', color: 'rgba(201,162,74,0.6)', marginBottom: '12px', textAlign: 'center', fontFamily: "'Merriweather', serif", fontStyle: 'italic' }}>All players · sorted by score</div>
+              {leaderboardLoading ? (<div style={{ textAlign: 'center', padding: '20px', color: 'rgba(232,228,217,0.5)' }}>Loading...</div>) : leaderboardData.length === 0 ? (<div style={{ textAlign: 'center', padding: '20px', color: 'rgba(232,228,217,0.5)' }}>No players yet</div>) : (() => {
                 const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
                 const active = leaderboardData.filter(p => p.lastSeen && p.lastSeen > oneMonthAgo);
                 const inactive = leaderboardData.filter(p => !p.lastSeen || p.lastSeen <= oneMonthAgo);
-                const renderRow = (player, rank, dimmed) => (<div key={player.uid} onClick={() => fetchPlayerStats(player.uid, { username: player.username, avatar: player.avatar })} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', background: dimmed ? '#f8f8f8' : rank === 0 ? '#fff8e1' : rank === 1 ? '#f5f5f5' : rank === 2 ? '#fff3e0' : '#fafafa', borderRadius: '8px', border: !dimmed && rank < 3 ? `2px solid ${rank === 0 ? '#ffd700' : rank === 1 ? '#c0c0c0' : '#cd7f32'}` : '1px solid #eee', cursor: 'pointer', opacity: dimmed ? 0.5 : 1 }}><div style={{ width: '24px', height: '24px', borderRadius: '50%', background: dimmed ? '#ccc' : rank === 0 ? '#ffd700' : rank === 1 ? '#c0c0c0' : rank === 2 ? '#cd7f32' : '#e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', color: (!dimmed && rank < 3) ? '#fff' : '#666', flexShrink: 0 }}>{rank + 1}</div><div style={{ fontSize: '20px', flexShrink: 0 }}>{getAvatarById(player.avatar).emoji}</div><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.username}</div><div style={{ fontSize: '11px', color: '#666' }}>{player.gamesWon}W / {player.gamesPlayed}G · {player.winRate}%</div>{player.lastSeen ? (<div style={{ fontSize: '10px', color: '#999' }}>{new Date(player.lastSeen).toLocaleDateString()}</div>) : (<div style={{ fontSize: '10px', color: '#bbb' }}>never seen</div>)}</div><div style={{ textAlign: 'right', flexShrink: 0 }}><div style={{ fontSize: '18px', fontWeight: 'bold', color: '#1a5f3f' }}>{player.score}</div><div style={{ fontSize: '10px', color: '#666' }}>pts</div></div></div>);
-                return (<div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px' }}>{active.map((player, i) => renderRow(player, i, false))}{inactive.length > 0 && (<><div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', marginBottom: '2px' }}><div style={{ flex: 1, height: '1px', background: '#ddd' }} /><span style={{ fontSize: '11px', color: '#aaa', whiteSpace: 'nowrap' }}>Inactive (30+ days)</span><div style={{ flex: 1, height: '1px', background: '#ddd' }} /></div>{inactive.map((player, i) => renderRow(player, i, true))}</>)}</div>);
+                const renderRow = (player, rank, dimmed) => (<div key={player.uid} onClick={() => fetchPlayerStats(player.uid, { username: player.username, avatar: player.avatar })} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', background: dimmed ? 'rgba(10,30,15,0.3)' : 'rgba(10,30,15,0.6)', borderRadius: '8px', border: !dimmed && rank < 3 ? `2px solid ${rank === 0 ? '#ffd700' : rank === 1 ? '#c0c0c0' : '#cd7f32'}` : '1px solid rgba(201,162,74,0.2)', cursor: 'pointer', opacity: dimmed ? 0.5 : 1 }}><div style={{ width: '24px', height: '24px', borderRadius: '50%', background: dimmed ? 'rgba(201,162,74,0.2)' : rank === 0 ? '#ffd700' : rank === 1 ? '#c0c0c0' : rank === 2 ? '#cd7f32' : 'rgba(201,162,74,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', color: (!dimmed && rank < 3) ? '#1a0e03' : '#c9a24a', flexShrink: 0, fontFamily: "'Cinzel', serif" }}>{rank + 1}</div><div style={{ fontSize: '20px', flexShrink: 0 }}>{getAvatarById(player.avatar).emoji}</div><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 'bold', fontSize: '14px', color: '#e8e4d9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.username}</div><div style={{ fontSize: '11px', color: 'rgba(232,228,217,0.55)' }}>{player.gamesWon}W / {player.gamesPlayed}G · {player.winRate}%</div>{player.lastSeen ? (<div style={{ fontSize: '10px', color: 'rgba(201,162,74,0.45)' }}>{new Date(player.lastSeen).toLocaleDateString()}</div>) : (<div style={{ fontSize: '10px', color: 'rgba(201,162,74,0.3)' }}>never seen</div>)}</div><div style={{ textAlign: 'right', flexShrink: 0 }}><div style={{ fontSize: '18px', fontWeight: 'bold', color: '#c9a24a', fontFamily: "'Cinzel', serif" }}>{player.score}</div><div style={{ fontSize: '10px', color: 'rgba(201,162,74,0.5)' }}>pts</div></div></div>);
+                return (<div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px' }}>{active.map((player, i) => renderRow(player, i, false))}{inactive.length > 0 && (<><div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', marginBottom: '2px' }}><div style={{ flex: 1, height: '1px', background: 'rgba(201,162,74,0.2)' }} /><span style={{ fontSize: '11px', color: 'rgba(201,162,74,0.45)', whiteSpace: 'nowrap' }}>Inactive (30+ days)</span><div style={{ flex: 1, height: '1px', background: 'rgba(201,162,74,0.2)' }} /></div>{inactive.map((player, i) => renderRow(player, i, true))}</>)}</div>);
               })()}
             </div>
           </div>
@@ -7260,10 +7261,10 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
 
         {showSettings && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, animation: 'fadeIn 0.2s ease-out' }}>
-            <div style={{ background: 'white', animation: 'slideUp 0.25s ease-out', borderRadius: '12px', padding: '32px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
-              <h2 style={{ marginBottom: '24px', color: '#1a5f3f' }}>Profile Settings</h2>
-              <div style={{ marginBottom: '20px' }}><label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>Username</label><input type="text" value={editUsername} onChange={(e) => setEditUsername(e.target.value)} maxLength={20} style={{ width: '100%', padding: '12px', fontSize: '16px', border: '2px solid #ddd', borderRadius: '6px' }} /></div>
-              <div style={{ marginBottom: '24px' }}><label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>Avatar</label><div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', border: '2px solid #ddd', borderRadius: '6px', cursor: 'pointer', background: '#f5f5f5' }} onClick={() => setShowAvatarPicker(!showAvatarPicker)}><div style={{ fontSize: '32px' }}>{getAvatarById(editAvatar).emoji}</div><div style={{ flex: 1 }}><div style={{ fontSize: '14px', fontWeight: 'bold' }}>{getAvatarById(editAvatar).name}</div><div style={{ fontSize: '12px', color: '#666' }}>Click to change</div></div></div>{showAvatarPicker && (<div style={{ marginTop: '12px', padding: '12px', border: '2px solid #ddd', borderRadius: '6px', maxHeight: '200px', overflowY: 'auto', background: 'white' }}><div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>{AVATARS.map(avatar => (<div key={avatar.id} onClick={() => { setEditAvatar(avatar.id); setShowAvatarPicker(false); }} style={{ fontSize: '32px', padding: '8px', cursor: 'pointer', textAlign: 'center', borderRadius: '6px', border: editAvatar === avatar.id ? '2px solid #2d8f5f' : '2px solid transparent', background: editAvatar === avatar.id ? '#e8f5e9' : 'white', transition: 'all 0.2s' }} title={avatar.name}>{avatar.emoji}</div>))}</div></div>)}</div>
+            <div style={{ background: 'rgba(12,6,2,0.97)', border: '2px solid #c9a24a', color: '#e8e4d9', animation: 'slideUp 0.25s ease-out', borderRadius: '12px', padding: '32px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.7)' }}>
+              <h2 style={{ marginBottom: '24px', fontFamily: "'Cinzel', serif", color: '#f6d778' }}>Profile Settings</h2>
+              <div style={{ marginBottom: '20px' }}><label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontFamily: "'Merriweather', serif", fontStyle: 'italic', color: 'rgba(201,162,74,0.8)' }}>Username</label><input type="text" value={editUsername} onChange={(e) => setEditUsername(e.target.value)} maxLength={20} style={{ width: '100%', padding: '12px', fontSize: '16px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(201,162,74,0.3)', borderRadius: '6px', color: '#e8e4d9', outline: 'none' }} /></div>
+              <div style={{ marginBottom: '24px' }}><label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontFamily: "'Merriweather', serif", fontStyle: 'italic', color: 'rgba(201,162,74,0.8)' }}>Avatar</label><div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', border: '1px solid rgba(201,162,74,0.3)', borderRadius: '6px', cursor: 'pointer', background: 'rgba(255,255,255,0.05)' }} onClick={() => setShowAvatarPicker(!showAvatarPicker)}><div style={{ fontSize: '32px' }}>{getAvatarById(editAvatar).emoji}</div><div style={{ flex: 1 }}><div style={{ fontSize: '14px', fontWeight: 'bold', color: '#e8e4d9' }}>{getAvatarById(editAvatar).name}</div><div style={{ fontSize: '12px', color: 'rgba(201,162,74,0.6)' }}>Click to change</div></div></div>{showAvatarPicker && (<div style={{ marginTop: '12px', padding: '12px', border: '1px solid rgba(201,162,74,0.3)', borderRadius: '6px', maxHeight: '200px', overflowY: 'auto', background: 'rgba(10,30,15,0.6)' }}><div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>{AVATARS.map(avatar => (<div key={avatar.id} onClick={() => { setEditAvatar(avatar.id); setShowAvatarPicker(false); }} style={{ fontSize: '32px', padding: '8px', cursor: 'pointer', textAlign: 'center', borderRadius: '6px', border: editAvatar === avatar.id ? '2px solid #c9a24a' : '2px solid transparent', background: editAvatar === avatar.id ? 'rgba(201,162,74,0.15)' : 'transparent', transition: 'all 0.2s' }} title={avatar.name}>{avatar.emoji}</div>))}</div></div>)}</div>
               <div style={{ marginBottom: '24px' }}>
                 <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1.5px', color: '#888', textTransform: 'uppercase', marginBottom: '12px' }}>THEME</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -7300,8 +7301,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                 </div>);
               })()}
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '8px' }}>
-                <button onClick={() => setShowSettings(false)} style={{ flex: 1, padding: '12px', background: '#ccc', color: '#333', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
-                <button onClick={handleSaveSettings} disabled={settingsSaving} style={{ flex: 1, padding: '12px', background: settingsSaving ? '#ccc' : '#2d8f5f', color: 'white', border: 'none', borderRadius: '6px', cursor: settingsSaving ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>{settingsSaving ? 'Saving…' : 'Save'}</button>
+                <button onClick={() => setShowSettings(false)} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.07)', color: 'rgba(232,228,217,0.7)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '6px', cursor: 'pointer', fontFamily: "'Cinzel', serif", fontWeight: 'bold' }}>Cancel</button>
+                <button onClick={handleSaveSettings} disabled={settingsSaving} style={{ flex: 1, padding: '12px', background: settingsSaving ? 'rgba(255,255,255,0.07)' : 'linear-gradient(180deg, #f6d778 0%, #c9a24a 50%, #9a7630 100%)', color: settingsSaving ? 'rgba(201,162,74,0.3)' : '#1a0e03', border: settingsSaving ? '1px solid rgba(201,162,74,0.15)' : '1px solid rgba(0,0,0,0.5)', borderRadius: '6px', cursor: settingsSaving ? 'not-allowed' : 'pointer', fontFamily: "'Cinzel', serif", fontWeight: 'bold', boxShadow: settingsSaving ? 'none' : '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)' }}>{settingsSaving ? 'Saving…' : 'Save'}</button>
               </div>
             </div>
           </div>
@@ -13051,25 +13052,25 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             }}
           >
             <div style={{
-              background: 'rgba(0,0,0,0.82)',
-              border: '1px solid #d4af37',
+              background: 'rgba(12,6,2,0.9)',
+              border: '1px solid #c9a24a',
               borderRadius: '10px',
               padding: '16px 24px',
               textAlign: 'center',
-              color: '#fff',
+              color: '#e8e4d9',
               minWidth: '200px'
             }}>
-              <div style={{ fontSize: '13px', color: '#d4af37', fontWeight: 'bold', marginBottom: '8px', letterSpacing: '0.05em' }}>HOUSE RULES</div>
+              <div style={{ fontSize: '13px', fontFamily: "'Cinzel', serif", color: '#f6d778', fontWeight: 'bold', marginBottom: '8px', letterSpacing: '0.05em' }}>HOUSE RULES</div>
               {gameOptions.fiveCardDraw && (
-                <div style={{ fontSize: '13px', color: '#ddeeff', marginBottom: '4px' }}>5-Card Draw</div>
+                <div style={{ fontSize: '13px', color: 'rgba(251,246,228,0.85)', marginBottom: '4px' }}>5-Card Draw</div>
               )}
               {gameOptions.followAHearts && (
-                <div style={{ fontSize: '13px', color: '#ffcdd2', marginBottom: '4px' }}>Follow A♥</div>
+                <div style={{ fontSize: '13px', color: 'rgba(251,246,228,0.85)', marginBottom: '4px' }}>Follow A♥</div>
               )}
               {gameOptions.thirtyFor60 && (
-                <div style={{ fontSize: '13px', color: '#e1bee7' }}>30 for 60</div>
+                <div style={{ fontSize: '13px', color: 'rgba(251,246,228,0.85)' }}>30 for 60</div>
               )}
-              <div style={{ fontSize: '10px', color: '#666', marginTop: '10px' }}>tap to dismiss</div>
+              <div style={{ fontSize: '10px', color: 'rgba(201,162,74,0.4)', marginTop: '10px' }}>tap to dismiss</div>
             </div>
           </div>
         )}
@@ -13230,41 +13231,6 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               </div>
             </div>
           );
-          return (
-            <div style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              background: 'rgba(0,0,0,0.9)',
-              padding: '32px',
-              borderRadius: '12px',
-              border: '2px solid #d4af37',
-              zIndex: 100,
-              minWidth: '400px',
-              animation: 'slideUp 0.3s ease-out'
-            }}>
-              <div style={{ fontSize: '24px', marginBottom: '20px', textAlign: 'center', color: '#d4af37' }}>Round Complete</div>
-              <div style={{ marginBottom: '20px', fontSize: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span>High Bid:</span>
-                  <span style={{ color: '#ffd700' }}>{highBid} ({bidderName})</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span>Us:</span>
-                  <span style={{ color: '#4caf50' }}>{usPoints} points</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span>Them:</span>
-                  <span style={{ color: '#f44336' }}>{themPoints} points</span>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button onClick={() => setShowHandsOpen(true)} style={{ padding: '12px 24px', fontSize: '16px', background: '#2196f3', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>View Round</button>
-                <button onClick={handleNextRound} style={{ padding: '12px 24px', fontSize: '16px', background: '#4caf50', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Next Round</button>
-              </div>
-            </div>
-          );
         })()}
 
         {/* Game Over Overlay */}
@@ -13384,75 +13350,6 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             </div>
           );
 
-          return (
-            <div style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              background: 'rgba(0,0,0,0.95)',
-              padding: '48px',
-              borderRadius: '16px',
-              border: `4px solid ${isWin ? '#4caf50' : '#f44336'}`,
-              zIndex: 100,
-              minWidth: '500px',
-              textAlign: 'center',
-              animation: 'slideUp 0.3s ease-out'
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '24px', color: isWin ? '#4caf50' : '#f44336', fontWeight: 'bold' }}>
-                {isWin ? '🏆 VICTORY!' : '💀 DEFEAT'}
-              </div>
-              <div style={{ fontSize: '24px', marginBottom: '20px' }}>
-                <div style={{ marginBottom: '12px' }}>
-                  <span style={{ color: isWin ? '#4caf50' : '#aaa' }}>Us: </span>
-                  <span style={{ fontWeight: 'bold', color: isWin ? '#4caf50' : '#aaa' }}>{scores[myTeam]}</span>
-                </div>
-                <div>
-                  <span style={{ color: isWin ? '#aaa' : '#f44336' }}>Them: </span>
-                  <span style={{ fontWeight: 'bold', color: isWin ? '#aaa' : '#f44336' }}>{scores[1 - myTeam]}</span>
-                </div>
-              </div>
-              {achieveItems.length > 0 && (
-                <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', marginBottom: '20px', fontSize: '13px' }}>
-                  <div style={{ color: '#aaa', marginBottom: '8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>This Game</div>
-                  {achieveItems.map((item, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ color: '#ddd' }}>{item.label}</span>
-                      <span style={{ color: item.color, fontWeight: 'bold' }}>{item.pts > 0 ? '+' : ''}{item.pts}</span>
-                    </div>
-                  ))}
-                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', marginTop: '8px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#aaa' }}>Achievement pts</span>
-                    <span style={{ color: achieveTotal >= 0 ? '#4caf50' : '#f44336', fontWeight: 'bold' }}>{achieveTotal > 0 ? '+' : ''}{achieveTotal}</span>
-                  </div>
-                </div>
-              )}
-              {newlyEarnedBadges.length > 0 && (
-                <div style={{ background: 'rgba(212,175,55,0.15)', border: '1px solid #d4af37', borderRadius: '8px', padding: '12px', marginBottom: '20px', fontSize: '13px' }}>
-                  <div style={{ color: '#d4af37', marginBottom: '8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px' }}>New Badges Earned! · tap to see details</div>
-                  {newlyEarnedBadges.map(badge => (
-                    <div key={badge.id}>
-                      <div onClick={() => setExpandedBadge(expandedBadge === badge.id ? null : badge.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', cursor: 'pointer', padding: '4px 6px', borderRadius: '6px', background: expandedBadge === badge.id ? 'rgba(255,255,255,0.08)' : 'transparent' }}>
-                        <span style={{ color: '#eee' }}>🏅 {badge.name}</span>
-                        <span style={{ color: badge.color, fontWeight: 'bold' }}>+{badge.pts} pts</span>
-                      </div>
-                      {expandedBadge === badge.id && (
-                        <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '6px', padding: '8px 10px', marginBottom: '6px', fontSize: '12px' }}>
-                          <div style={{ color: badge.color, fontWeight: 'bold', marginBottom: '3px' }}>{badge.sym} {badge.name}</div>
-                          <div style={{ color: '#ccc' }}>{badge.desc}</div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button onClick={() => setShowHandsOpen(true)} style={{ padding: '12px 24px', fontSize: '16px', background: '#2196f3', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>View Round</button>
-                <button onClick={onLeaveGame} style={{ padding: '12px 24px', fontSize: '16px', background: '#666', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Lobby</button>
-                <button onClick={handleRematch} style={{ padding: '12px 24px', fontSize: '16px', background: '#d4af37', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>New Game</button>
-              </div>
-            </div>
-          );
         })()}
       </div>
 
