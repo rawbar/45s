@@ -1751,7 +1751,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.28';
+const VERSION = '2.27.29';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4416,6 +4416,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.29', date: 'Apr 2026', changes: ['Deal animation: all 4 players animated in 3-3-3-3-kitty-2-2-2-2 sequence. 150ms stagger per card, kitty appears after first round, bidding locked until ~4.5s. All positions use getDealDelay helper keyed by deal order from dealer+1.'] },
     { version: '2.27.28', date: 'Apr 2026', changes: ['Kitty cards stay on table through bidding/trump-select; fly toward bid winner when trump is chosen. Deal cards slowed (0.65s, 300ms stagger, 3.5s lock). Kitty flies with direction-specific keyframes.'] },
     { version: '2.27.27', date: 'Apr 2026', changes: ['Preferences modal: full Irish theming (dark walnut, brass border, Cinzel/Merriweather). Theme selector moved from Profile Settings into Preferences where it is discoverable. Custom brass checkboxes for house rules.'] },
     { version: '2.27.26', date: 'Apr 2026', changes: ['Fix: diamond announce keyframes had translate(-50%,-50%) baked in — double-shifted it up-left after move to v3-rail. Removed translate from keyframes; centering now handled by outer wrapper only.'] },
@@ -10670,12 +10671,13 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     prevPhaseForDealRef.current = phase;
     if (currentThemeId !== 'irish') return;
     if (phase === 'bidding' && prev !== 'bidding') {
-      // New round: deal cards, kitty appears on table and stays
+      // New round: deal all 4 players (3+kitty+2), lock bidding until done
+      // 12 first-round cards + 3 kitty + 8 second-round = 23 × 150ms stagger
+      // Last card delay = SECOND_ROUND_START + (3*2+1)*150 = 1800+750+150 = ~3300ms + 650ms anim = ~4000ms
       setDealAnimActive(true);
       setKittyFlying(null);
       setKittyOnTable(true);
-      // Cards fully dealt at ~2.1s; keep bidding locked until 3.5s
-      setTimeout(() => setDealAnimActive(false), 3500);
+      setTimeout(() => setDealAnimActive(false), 4500);
     }
     if (phase === 'discarding' && (prev === 'trump-select' || prev === 'bidding')) {
       // Trump selected — kitty flies toward bid winner then disappears
@@ -12722,6 +12724,30 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const DEAL_OFFSETS = { top: [0, -180], bottom: [0, 200], left: [-220, 0], right: [220, 0] };
   const [dealDX, dealDY] = DEAL_OFFSETS[dealerDir] || [0, -180];
 
+  // Deal sequence: 3 to each player in order, 3 kitty, 2 to each in order
+  // 150ms stagger per card. Returns delay in ms, or null if not animating.
+  const DEAL_STAGGER = 150;
+  const KITTY_START = 12 * DEAL_STAGGER; // after 12 first-round cards
+  const SECOND_ROUND_START = KITTY_START + 3 * DEAL_STAGGER; // after kitty
+  const getDealDelay = (seatIndex, cardIndex) => {
+    if (!dealAnimActive || currentThemeId !== 'irish') return null;
+    const dealOrder = [0,1,2,3].map(i => (dealer + 1 + i) % 4);
+    const p = dealOrder.indexOf(seatIndex);
+    if (p < 0) return null;
+    if (cardIndex < 3) return (p * 3 + cardIndex) * DEAL_STAGGER;
+    return SECOND_ROUND_START + (p * 2 + (cardIndex - 3)) * DEAL_STAGGER;
+  };
+  const dealAnimStyle = (seatIndex, cardIndex) => {
+    const delay = getDealDelay(seatIndex, cardIndex);
+    if (delay === null) return {};
+    return {
+      animation: `dealIn 0.65s cubic-bezier(0.22, 0.61, 0.36, 1) both`,
+      animationDelay: `${delay}ms`,
+      '--deal-dx': `${dealDX}px`,
+      '--deal-dy': `${dealDY}px`,
+    };
+  };
+
   const getPlayerHand = (pos) => hands[pos] || [];
 
   return (
@@ -12812,7 +12838,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   const thisFaceUp = faceUpCard && card && faceUpCard.cardId === card.id;
                   return thisFaceUp
                     ? <Card key={i} card={card} small disabled isFaceUp />
-                    : <Card key={i} card={{}} faceDown small />;
+                    : <Card key={i} card={{}} faceDown small fanStyle={dealAnimStyle(pos, i)} />;
                 })}
               </div>
               <TricksWonDisplay count={playerTricks[pos]} hasHighTrump={highTrumpInfo.player === pos} />
@@ -12849,7 +12875,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     const thisFaceUp = faceUpCard && card && faceUpCard.cardId === card.id;
                     return thisFaceUp
                       ? <Card key={i} card={card} small disabled isFaceUp />
-                      : <Card key={i} card={{}} faceDown small />;
+                      : <Card key={i} card={{}} faceDown small fanStyle={dealAnimStyle(pos, i)} />;
                   })}
                 </div>
                 <TricksWonDisplay count={playerTricks[pos]} hasHighTrump={highTrumpInfo.player === pos} vertical />
@@ -12939,7 +12965,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 <div className="deal-kitty-overlay" style={{
                   animation: kittyFlying
                     ? `kittyFly${kittyFlying.charAt(0).toUpperCase() + kittyFlying.slice(1)} 0.6s cubic-bezier(0.4, 0, 1, 1) forwards`
-                    : 'kittyAppear 0.4s ease-out both'
+                    : `kittyAppear 0.4s ease-out both`,
+                  animationDelay: (!kittyFlying && dealAnimActive) ? `${12 * 150}ms` : '0ms',
                 }}>
                   {[0,1,2].map(k => (
                     <div key={k} className="cp-card large back" />
@@ -13016,7 +13043,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     const thisFaceUp = faceUpCard && card && faceUpCard.cardId === card.id;
                     return thisFaceUp
                       ? <Card key={i} card={card} small disabled isFaceUp />
-                      : <Card key={i} card={{}} faceDown small />;
+                      : <Card key={i} card={{}} faceDown small fanStyle={dealAnimStyle(pos, i)} />;
                   })}
                 </div>
                 <TricksWonDisplay count={playerTricks[pos]} hasHighTrump={highTrumpInfo.player === pos} vertical />
@@ -13072,16 +13099,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     zIndex: isPlayable ? 10 : (fanCfg.z[i] || 1),
                     position: 'relative',
                   } : undefined;
-                  const dealDelay = dealAnimActive && currentThemeId === 'irish'
-                    ? (i < 3 ? i * 300 : 1200 + (i - 3) * 300)
-                    : 0;
-                  const dealAnimStyle = dealAnimActive && currentThemeId === 'irish' ? {
-                    animation: `dealIn 0.65s cubic-bezier(0.22, 0.61, 0.36, 1) both`,
-                    animationDelay: `${dealDelay}ms`,
-                    '--deal-dx': `${dealDX}px`,
-                    '--deal-dy': `${dealDY}px`,
-                  } : {};
-                  const mergedFanStyle = { ...(fanStyle || {}), ...dealAnimStyle };
+                  const mergedFanStyle = { ...(fanStyle || {}), ...dealAnimStyle(pos, i) };
                   return (
                     <Card
                       key={card.id}
