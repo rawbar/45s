@@ -5735,7 +5735,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
                 <span
-                  onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setShowPreferences(true); }}
+                  onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
                   style={{ fontSize: '13px', cursor: 'pointer', opacity: 0.6, userSelect: 'none' }}
                   title="Preferences"
                 >⚙️</span>
@@ -6907,6 +6907,69 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     </span>
                   </label>
                 ))}
+              </div>
+
+              {/* Theme */}
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333', marginBottom: '10px' }}>Theme</div>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  {THEME_ORDER.map(tid => {
+                    const th = THEMES[tid];
+                    const isUnlocked = th.unlocked(myStats);
+                    const isActive = (activeTheme || currentThemeId) === tid;
+                    const progress = th.progressStat ? Math.min(myStats?.[th.progressStat] || 0, th.progressOf) : 0;
+                    return (
+                      <div
+                        key={tid}
+                        onClick={() => setShowThemePreview(tid)}
+                        style={{
+                          width: '140px', borderRadius: '10px', overflow: 'hidden',
+                          border: isActive ? '3px solid #c9a24a' : '2px solid #ddd',
+                          cursor: 'pointer',
+                          boxShadow: isActive ? '0 0 12px rgba(201,162,74,0.4)' : '0 2px 6px rgba(0,0,0,0.1)',
+                          transition: 'all 0.2s', position: 'relative', background: '#fff'
+                        }}
+                      >
+                        {/* Mini thumbnail */}
+                        <div
+                          className={tid === 'irish' ? 'theme-tile-thumb-irish' : 'theme-tile-thumb-cyberpunk'}
+                          style={{ height: '88px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <div style={{
+                            width: '50px', height: '50px', borderRadius: '50%',
+                            background: tid === 'irish'
+                              ? 'radial-gradient(ellipse at center, #1f7a3f 0%, #13572a 55%, #093a1a 100%)'
+                              : 'radial-gradient(ellipse at center, #060e1e 0%, #030609 100%)',
+                            border: tid === 'irish' ? '2px solid #c9a24a' : '2px solid rgba(0,229,255,0.5)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px'
+                          }}>
+                            {tid === 'irish' ? '♠' : '◈'}
+                          </div>
+                          {!isUnlocked && (
+                            <div style={{
+                              position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)',
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                            }}>
+                              <span style={{ fontSize: '20px' }}>🔒</span>
+                              <div style={{ width: '70%', height: '4px', background: 'rgba(255,255,255,0.2)', borderRadius: '2px' }}>
+                                <div style={{ width: `${(progress / th.progressOf) * 100}%`, height: '100%', background: '#c9a24a', borderRadius: '2px' }} />
+                              </div>
+                              <span style={{ fontSize: '9px', color: '#ddd' }}>{progress} / {th.progressOf} games</span>
+                            </div>
+                          )}
+                          {isActive && isUnlocked && (
+                            <div style={{ position: 'absolute', top: '6px', right: '6px', background: '#c9a24a', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>✓</div>
+                          )}
+                        </div>
+                        <div style={{ padding: '6px 8px', borderTop: '1px solid #eee' }}>
+                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#333' }}>{th.name}</div>
+                          {!isUnlocked && <div style={{ fontSize: '10px', color: '#999', marginTop: '1px' }}>{th.unlockHint}</div>}
+                          {isActive && <div style={{ fontSize: '10px', color: '#c9a24a', marginTop: '1px' }}>Active</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Buttons */}
