@@ -1724,7 +1724,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.19';
+const VERSION = '2.27.20';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4389,6 +4389,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.20', date: 'Apr 2026', changes: ['Show Hands: restored original centered-panel layout (cards no longer wrap). Irish theming: dark walnut panel, brass border/glow, Cinzel names, avatar emojis, Irish bid badges. Cards 5-across per player, nowrap enforced.'] },
     { version: '2.27.19', date: 'Apr 2026', changes: ['Side seat width 72px: names no longer cut off. Diamond announce: CSS border-triangle callout arrow (brass + glow) instead of Unicode character, points toward winning bidder.'] },
     { version: '2.27.18', date: 'Apr 2026', changes: ['Side seat nameplates: max-width 60px so they never bleed off-screen. Dealer chip: red pulsing glow animation. Bid flash: fixed race condition (dedicated ref, no longer stomped by sound effect). Diamond announce: directional arrow points toward winning bidder\'s compass seat.'] },
     { version: '2.27.17', date: 'Apr 2026', changes: ['Show Hands modal: full Irish Card Room redesign (bottom sheet, Cinzel/brass, compass layout, avatar+name headers, Irish bid badges). Fixed: suit symbols now always visible on cards in the modal.'] },
@@ -4958,7 +4959,7 @@ function RulesModal({ isOpen, onClose }) {
   );
 }
 
-// Show Hands Modal — Irish Card Room themed
+// Show Hands Modal — original layout with Irish Card Room theming
 function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, drawnCards, kittyCardIds, wasBagged, playHistory, bids, mySeatIndex, players, scores, faceUpCard = null }) {
   if (!isOpen || !hands) return null;
 
@@ -4977,7 +4978,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
     return player ? getAvatarById(player.avatar).emoji : '🂠';
   };
 
-  const renderHand = (playerIdx) => {
+  const renderHand = (playerIdx, label) => {
     const hand = hands[playerIdx] || [];
     const isDealer = dealer === playerIdx;
     const isBidder = bidWinner === playerIdx;
@@ -4993,33 +4994,31 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
       sortedHand.sort((a, b) => (playOrder[a.id] ?? 999) - (playOrder[b.id] ?? 999));
     }
 
-    const nameColor = isMe ? '#6bb6ff' : brassHi;
-
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
-        {/* Player header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <span style={{ fontSize: '14px', lineHeight: 1 }}>{getAvatar(playerIdx)}</span>
-          <span style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', fontWeight: 700, color: nameColor }}>{getPlayerName(playerIdx)}</span>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+        {/* Name row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ fontSize: '13px', lineHeight: 1 }}>{getAvatar(playerIdx)}</span>
+          <span style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', fontWeight: 700, color: isMe ? '#6bb6ff' : brassHi }}>{label || getPlayerName(playerIdx)}</span>
           {isDealer && <span style={{ padding: '1px 4px', background: 'radial-gradient(circle at 35% 30%, #f6d778, #c9a24a)', borderRadius: '10px', fontSize: '8px', fontWeight: 700, color: '#180b03', fontFamily: "'Cinzel', serif" }}>D</span>}
-          {drawn[playerIdx] > 0 && <span style={{ fontSize: '9px', color: brass, fontFamily: "'Merriweather', serif", fontWeight: 900 }}>+{drawn[playerIdx]}</span>}
+          <span style={{ fontFamily: "'Merriweather', serif", fontWeight: 900, fontSize: '9px', color: brass }}>+{drawn[playerIdx] || 0}</span>
         </div>
         {/* Bid badge */}
         {playerBid !== null && (
           <span style={{
-            padding: '2px 7px', borderRadius: '4px', fontSize: '10px',
+            padding: '2px 6px', borderRadius: '3px', fontSize: '10px',
             fontFamily: "'Cinzel', serif", fontWeight: 700,
-            background: isBag ? 'rgba(139,26,31,0.85)' : isBidder ? 'rgba(10,40,20,0.9)' : 'rgba(10,20,10,0.7)',
+            background: isBag ? 'rgba(139,26,31,0.85)' : isBidder ? 'rgba(10,40,20,0.85)' : 'rgba(10,20,10,0.6)',
             border: `1px solid ${isBag ? '#ef4444' : isBidder ? brass : 'rgba(201,162,74,0.25)'}`,
-            color: isBag ? '#ff6b6b' : isBidder ? brassHi : 'rgba(201,162,74,0.55)',
+            color: isBag ? '#ff6b6b' : isBidder ? brassHi : 'rgba(201,162,74,0.5)',
           }}>
             {playerBid === 0 ? 'Pass' : playerBid}
             {isBidder && trumpSuit && <span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#e87070' : brassHi, marginLeft: '2px' }}>{trumpSuit}</span>}
             {isBag && <span style={{ marginLeft: '4px', fontSize: '9px' }}>BAGGED</span>}
           </span>
         )}
-        {/* Cards */}
-        <div className="ir-show-hands-cards" style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        {/* Cards — fixed single row, no wrap */}
+        <div className="ir-show-hands-cards" style={{ display: 'flex', gap: '2px', flexWrap: 'nowrap', justifyContent: 'center' }}>
           {sortedHand.map((c, i) => {
             const playIdx = playHistory ? playHistory.findIndex(p => p.player === playerIdx && p.card.id === c.id) : -1;
             const trickNum = playIdx >= 0 && playHistory[playIdx] ? playHistory[playIdx].trick : null;
@@ -5027,12 +5026,10 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
               playHistory.findIndex(p => p.trick === trickNum) === playIdx;
             return (
               <div key={i} style={{ position: 'relative' }}>
-                <div style={{ border: ledTrick ? `2px solid ${brassHi}` : '2px solid transparent', borderRadius: '5px' }}>
+                <div style={{ border: ledTrick ? `2px solid ${brassHi}` : 'none', borderRadius: '4px' }}>
                   <Card card={c} small disabled wasDrawn={drawnCards && drawnCards.has(c.id)} wasKitty={kittyCardIds && kittyCardIds.has(c.id)} isFaceUp={faceUpCard && faceUpCard.cardId === c.id} />
                 </div>
-                {trickNum !== null && (
-                  <div style={{ position: 'absolute', top: '-5px', right: '-5px', width: '13px', height: '13px', borderRadius: '50%', background: ledTrick ? brassHi : 'rgba(30,30,30,0.9)', border: ledTrick ? 'none' : '1px solid rgba(201,162,74,0.35)', color: ledTrick ? '#1a0e03' : brass, fontSize: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cinzel', serif" }}>{trickNum + 1}</div>
-                )}
+                {trickNum !== null && <div style={{ position: 'absolute', top: '-6px', right: '-6px', width: '14px', height: '14px', borderRadius: '50%', background: ledTrick ? brassHi : 'rgba(20,20,20,0.9)', border: ledTrick ? 'none' : `1px solid ${brass}`, color: ledTrick ? '#1a0e03' : brass, fontSize: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cinzel', serif" }}>{trickNum + 1}</div>}
               </div>
             );
           })}
@@ -5044,67 +5041,64 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
   const isRed = trumpSuit === '♥' || trumpSuit === '♦';
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1200, display: 'flex', justifyContent: 'center', alignItems: 'flex-end', padding: '0', animation: 'fadeIn 0.2s ease-out' }}>
-      {/* Irish bottom-sheet panel */}
-      <div style={{ background: 'rgba(12,6,2,0.97)', borderTop: `2px solid ${brass}`, borderRadius: '20px 20px 0 0', width: '100%', maxWidth: '480px', maxHeight: '90dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideUp 0.25s ease-out', boxShadow: '0 -8px 40px rgba(0,0,0,0.8)' }}>
-
-        {/* Header bar */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 10px' }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1200, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px', animation: 'fadeIn 0.2s ease-out' }}>
+      <div style={{
+        background: 'linear-gradient(160deg, #1a0e05 0%, #0c0602 50%, #130a03 100%)',
+        border: `2px solid ${brass}`,
+        borderRadius: '12px',
+        width: '100%', maxWidth: '400px',
+        maxHeight: '92dvh', overflowY: 'auto',
+        padding: '12px',
+        display: 'flex', flexDirection: 'column', gap: '10px',
+        boxShadow: `0 0 24px rgba(201,162,74,0.35), 0 8px 32px rgba(0,0,0,0.8)`,
+        animation: 'slideUp 0.25s ease-out',
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontFamily: "'Cinzel', serif", fontSize: '16px', fontWeight: 700, background: `linear-gradient(135deg, ${brassHi}, ${brass})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Round Summary</div>
-            {trumpSuit && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
-                <span style={{ fontFamily: "'Merriweather', serif", fontStyle: 'italic', fontSize: '11px', color: 'rgba(251,246,228,0.45)' }}>Trump</span>
-                <span style={{ fontSize: '20px', color: isRed ? '#e87070' : brassHi, lineHeight: 1 }}>{trumpSuit}</span>
-                {highBid > 0 && <span style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', color: brass }}>· {wasBagged ? 'BAGGED ' : ''}{highBid}</span>}
-              </div>
-            )}
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '14px', fontWeight: 700, background: `linear-gradient(135deg, ${brassHi}, ${brass})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Round Summary</span>
+            <span style={{ marginLeft: '8px', fontSize: '9px', color: 'rgba(201,162,74,0.4)', fontFamily: "'Cinzel', serif" }}>v{VERSION}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {scores && (
-              <div style={{ display: 'flex', gap: '10px', fontSize: '12px' }}>
-                <span style={{ fontFamily: "'Cinzel', serif", color: '#6ec97a' }}>N/S <strong>{scores[0]}</strong></span>
-                <span style={{ fontFamily: "'Cinzel', serif", color: '#6bb6ff' }}>E/W <strong>{scores[1]}</strong></span>
+          <div onClick={onClose} style={{ width: '26px', height: '26px', border: `1px solid rgba(201,162,74,0.4)`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: brass, fontSize: '16px', cursor: 'pointer', lineHeight: 1 }}>×</div>
+        </div>
+
+        {/* Trump + scores row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {trumpSuit
+            ? <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ fontFamily: "'Merriweather', serif", fontStyle: 'italic', fontSize: '10px', color: 'rgba(251,246,228,0.4)' }}>Trump</span>
+                <span style={{ fontSize: '18px', color: isRed ? '#e87070' : brassHi }}>{trumpSuit}</span>
+                {highBid > 0 && <span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', color: brass }}>· {wasBagged ? 'BAGGED ' : ''}{highBid}</span>}
               </div>
-            )}
-            <button onClick={onClose} style={{ width: '28px', height: '28px', border: `1px solid rgba(201,162,74,0.4)`, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', color: brass, fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>×</button>
-          </div>
+            : <div />}
+          {scores && <div style={{ display: 'flex', gap: '12px', fontSize: '11px' }}>
+            <span style={{ fontFamily: "'Cinzel', serif", color: '#6ec97a' }}>N/S <strong>{scores[0]}</strong></span>
+            <span style={{ fontFamily: "'Cinzel', serif", color: '#6bb6ff' }}>E/W <strong>{scores[1]}</strong></span>
+          </div>}
+        </div>
+
+        {/* Legend */}
+        <div style={{ fontSize: '9px', color: 'rgba(251,246,228,0.35)', fontFamily: "'Inter', sans-serif", display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ color: brassHi }}>gold border</span><span>= led trick</span>
+          <span>·</span><span style={{ color: '#6bb6ff' }}>●</span><span>drawn</span>
+          <span>·</span><span style={{ color: '#d4af37' }}>●</span><span>kitty</span>
+          <span>·</span><span>number = play order</span>
         </div>
 
         {/* Divider */}
-        <div style={{ height: '1px', background: `linear-gradient(90deg, transparent, rgba(201,162,74,0.35), transparent)`, flexShrink: 0 }} />
+        <div style={{ height: '1px', background: `linear-gradient(90deg, transparent, rgba(201,162,74,0.3), transparent)` }} />
 
-        {/* Scrollable hands */}
-        <div style={{ overflowY: 'auto', padding: '12px 14px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {/* North */}
+        {renderHand(0, getPlayerName(0))}
 
-          {/* Compass layout: North on top, E/W sides, South bottom */}
-          {renderHand(0)}
-
-          <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-start' }}>
-            {renderHand(3)}
-            {renderHand(1)}
-          </div>
-
-          {renderHand(2)}
-
-          {/* Legend */}
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', paddingTop: '4px' }}>
-            {[
-              { dot: brassHi, label: 'led trick', border: true },
-              { dot: '#1565c0', label: 'drawn from deck' },
-              { dot: '#d4af37', label: 'from kitty' },
-            ].map(({ dot, label, border }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: border ? '2px' : '50%', background: dot, border: border ? `1px solid ${dot}` : 'none', flexShrink: 0 }} />
-                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: '9px', color: 'rgba(251,246,228,0.4)' }}>{label}</span>
-              </div>
-            ))}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <div style={{ width: '13px', height: '13px', borderRadius: '50%', background: brass, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '7px', color: '#1a0e03', fontWeight: 700, fontFamily: "'Cinzel', serif" }}>1</div>
-              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: '9px', color: 'rgba(251,246,228,0.4)' }}>play order</span>
-            </div>
-          </div>
+        {/* East / West side by side */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          {renderHand(3, getPlayerName(3))}
+          {renderHand(1, getPlayerName(1))}
         </div>
+
+        {/* South */}
+        {renderHand(2, getPlayerName(2))}
       </div>
     </div>
   );
