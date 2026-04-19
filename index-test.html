@@ -765,8 +765,13 @@
     box-shadow: 0 3px 5px rgba(0,0,0,0.4), 0 1px 1px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.95), 0 0 8px rgba(100,170,230,0.4);
   }
 
-  /* ── Show Hands modal: always show suit symbols on cards ── */
-  .ir-show-hands-cards .cp-card .corner .su { display: block !important; font-size: 8px; }
+  /* ── Show Hands modal: mid cards scaled to 34px so 5 fit side-by-side ── */
+  .ir-show-hands-cards .cp-card.mid { width: 34px; height: 48px; border-radius: 4px; }
+  .ir-show-hands-cards .cp-card.mid .corner { top: 2px; left: 2px; }
+  .ir-show-hands-cards .cp-card.mid .corner.br { top: auto; left: auto; bottom: 2px; right: 2px; }
+  .ir-show-hands-cards .cp-card.mid .corner .rk { font-size: 9px; }
+  .ir-show-hands-cards .cp-card.mid .corner .su { display: none !important; }
+  .ir-show-hands-cards .cp-card.mid .center { font-size: 18px; }
 
   /* ── Irish dealer chip ── */
   .theme-irish .v3-dealer-chip {
@@ -1724,7 +1729,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.20';
+const VERSION = '2.27.21';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4389,6 +4394,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.21', date: 'Apr 2026', changes: ['Show Hands: mid-size cards with large center suit symbol; corner suits hidden. CSS scales mid cards to 34px so 5 still fit side-by-side for E/W.'] },
     { version: '2.27.20', date: 'Apr 2026', changes: ['Show Hands: restored original centered-panel layout (cards no longer wrap). Irish theming: dark walnut panel, brass border/glow, Cinzel names, avatar emojis, Irish bid badges. Cards 5-across per player, nowrap enforced.'] },
     { version: '2.27.19', date: 'Apr 2026', changes: ['Side seat width 72px: names no longer cut off. Diamond announce: CSS border-triangle callout arrow (brass + glow) instead of Unicode character, points toward winning bidder.'] },
     { version: '2.27.18', date: 'Apr 2026', changes: ['Side seat nameplates: max-width 60px so they never bleed off-screen. Dealer chip: red pulsing glow animation. Bid flash: fixed race condition (dedicated ref, no longer stomped by sound effect). Diamond announce: directional arrow points toward winning bidder\'s compass seat.'] },
@@ -5027,7 +5033,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             return (
               <div key={i} style={{ position: 'relative' }}>
                 <div style={{ border: ledTrick ? `2px solid ${brassHi}` : 'none', borderRadius: '4px' }}>
-                  <Card card={c} small disabled wasDrawn={drawnCards && drawnCards.has(c.id)} wasKitty={kittyCardIds && kittyCardIds.has(c.id)} isFaceUp={faceUpCard && faceUpCard.cardId === c.id} />
+                  <Card card={c} mid disabled wasDrawn={drawnCards && drawnCards.has(c.id)} wasKitty={kittyCardIds && kittyCardIds.has(c.id)} isFaceUp={faceUpCard && faceUpCard.cardId === c.id} />
                 </div>
                 {trickNum !== null && <div style={{ position: 'absolute', top: '-6px', right: '-6px', width: '14px', height: '14px', borderRadius: '50%', background: ledTrick ? brassHi : 'rgba(20,20,20,0.9)', border: ledTrick ? 'none' : `1px solid ${brass}`, color: ledTrick ? '#1a0e03' : brass, fontSize: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cinzel', serif" }}>{trickNum + 1}</div>}
               </div>
