@@ -6779,7 +6779,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                         transform: isFan ? `rotate(${fanRot}deg) translateY(${isPlayable ? -8 : fanY}px)` : 'none',
                         transformOrigin: 'bottom center',
                         marginRight: isFan && i < 4 ? '-8px' : '0',
-                        zIndex: isPlayable ? 5 : (i === 2 ? 3 : i < 2 ? 1 : 2),
+                        zIndex: isPlayable ? 5 : ([1,2,3,2,1][i] || 1),
                         position: 'relative',
                         boxShadow: isPlayable
                           ? (isCyberpunk ? '0 0 0 1.5px #ff8c00, 0 0 10px rgba(255,140,0,0.4)' : '0 0 0 2px rgba(246,215,120,0.9), 0 4px 12px rgba(0,0,0,0.4)')
@@ -11112,7 +11112,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                       : `rotate(${ft.rotate}deg) translateY(${ft.translateY}px)`,
                     transformOrigin: 'bottom center',
                     marginRight: isFan && i < myHand.length - 1 ? '-14px' : '0',
-                    zIndex: isPlayable ? 5 : (i === 2 ? 3 : i < 2 ? 1 : 2),
+                    zIndex: isPlayable ? 5 : ([1,2,3,2,1][i] || 1),
                     position: 'relative',
                   } : undefined;
                   return (
