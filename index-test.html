@@ -1751,7 +1751,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.32';
+const VERSION = '2.27.33';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5016,7 +5016,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
     return player ? getAvatarById(player.avatar).emoji : '🂠';
   };
 
-  const renderHand = (playerIdx, label) => {
+  const renderHand = (playerIdx, label, compact = false) => {
     const hand = hands[playerIdx] || [];
     const isDealer = dealer === playerIdx;
     const isBidder = bidWinner === playerIdx;
@@ -5056,7 +5056,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
           </span>
         )}
         {/* Cards — fixed single row, no wrap */}
-        <div className="ir-show-hands-cards" style={{ display: 'flex', gap: '2px', flexWrap: 'nowrap', justifyContent: 'center' }}>
+        <div className="ir-show-hands-cards" style={{ display: 'flex', gap: compact ? '1px' : '2px', flexWrap: 'nowrap', justifyContent: 'center' }}>
           {sortedHand.map((c, i) => {
             const playIdx = playHistory ? playHistory.findIndex(p => p.player === playerIdx && p.card.id === c.id) : -1;
             const trickNum = playIdx >= 0 && playHistory[playIdx] ? playHistory[playIdx].trick : null;
@@ -5065,7 +5065,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             return (
               <div key={i} style={{ position: 'relative' }}>
                 <div style={{ border: ledTrick ? `2px solid ${brassHi}` : 'none', borderRadius: '4px' }}>
-                  <Card card={c} mid disabled wasDrawn={drawnCards && drawnCards.has(c.id)} wasKitty={kittyCardIds && kittyCardIds.has(c.id)} isFaceUp={faceUpCard && faceUpCard.cardId === c.id} />
+                  <Card card={c} small={compact} mid={!compact} disabled wasDrawn={drawnCards && drawnCards.has(c.id)} wasKitty={kittyCardIds && kittyCardIds.has(c.id)} isFaceUp={faceUpCard && faceUpCard.cardId === c.id} />
                 </div>
                 {trickNum !== null && <div style={{ position: 'absolute', top: '-6px', right: '-6px', width: '14px', height: '14px', borderRadius: '50%', background: ledTrick ? brassHi : 'rgba(20,20,20,0.9)', border: ledTrick ? 'none' : `1px solid ${brass}`, color: ledTrick ? '#1a0e03' : brass, fontSize: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cinzel', serif" }}>{trickNum + 1}</div>}
               </div>
@@ -5129,10 +5129,10 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
         {/* North */}
         {renderHand(0, getPlayerName(0))}
 
-        {/* East / West side by side */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          {renderHand(3, getPlayerName(3))}
-          {renderHand(1, getPlayerName(1))}
+        {/* East / West side by side — compact (small cards) to fit on screen */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+          {renderHand(3, getPlayerName(3), true)}
+          {renderHand(1, getPlayerName(1), true)}
         </div>
 
         {/* South */}
@@ -10706,7 +10706,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     prevDrawnCardsRef.current = new Set(drawnCards);
     if (newCards.length === 0) return;
     setDrawAnimCards(new Set(newCards));
-    const t = setTimeout(() => setDrawAnimCards(new Set()), 900);
+    const clearDelay = newCards.length * 200 + 700;
+    const t = setTimeout(() => setDrawAnimCards(new Set()), clearDelay);
     return () => clearTimeout(t);
   }, [drawnCards]);
 
@@ -10726,7 +10727,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     prevDrawnCountsRef.current = [0,1,2,3].map(p => drawn[p] || 0);
     if (Object.keys(updates).length === 0) return;
     setDrawAnimOpponents(prev => ({ ...prev, ...updates }));
-    const t = setTimeout(() => setDrawAnimOpponents({}), 900);
+    const maxDrawn = Math.max(...Object.values(updates).map(u => u.count));
+    const clearDelay = maxDrawn * 200 + 700;
+    const t = setTimeout(() => setDrawAnimOpponents({}), clearDelay);
     return () => clearTimeout(t);
   }, [drawn]);
 
@@ -10931,6 +10934,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   // Bid flash: show large floating bid announcement at bidder's compass position
   useEffect(() => {
     if (currentThemeId !== 'irish') { bidFlashPrevRef.current = [...bids]; return; }
+    if (dealAnimActive) { bidFlashPrevRef.current = [...bids]; return; } // suppress during deal
     const prev = bidFlashPrevRef.current;
     bids.forEach((bid, pi) => {
       const wasUnset = prev[pi] === undefined || prev[pi] === null || prev[pi] < 0;
@@ -10946,7 +10950,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       }
     });
     bidFlashPrevRef.current = [...bids];
-  }, [bids]);
+  }, [bids, dealAnimActive]);
 
   // Diamond announce: fired once when trumpSuit is first set (bid resolved)
   useEffect(() => {
@@ -12798,7 +12802,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     if (cardIndex < originalCount) return {};
     const dir = Object.entries(visualPositions).find(([, s]) => s === pos)?.[0] || 'top';
     const [dx, dy] = DRAW_DIR_OFFSETS[dir] || [0, -120];
-    const stagger = (cardIndex - originalCount) * 80;
+    const stagger = (cardIndex - originalCount) * 200;
     return {
       animation: `dealIn 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both`,
       animationDelay: `${stagger}ms`,
@@ -13164,8 +13168,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     zIndex: isPlayable ? 10 : (fanCfg.z[i] || 1),
                     position: 'relative',
                   } : undefined;
-                  const drawAnim = drawAnimCards.has(card.id) && currentThemeId === 'irish' ? {
+                  const drawIdx = drawAnimCards.has(card.id) ? [...drawAnimCards].indexOf(card.id) : -1;
+                  const drawAnim = drawIdx >= 0 && currentThemeId === 'irish' ? {
                     animation: `dealIn 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both`,
+                    animationDelay: `${drawIdx * 200}ms`,
                     '--deal-dx': '0px',
                     '--deal-dy': '-140px',
                   } : {};
