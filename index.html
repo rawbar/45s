@@ -6784,7 +6784,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                         transform: isFan ? `rotate(${fanRot}deg) translateY(${isPlayable ? -8 : fanY}px)` : 'none',
                         transformOrigin: 'bottom center',
                         marginRight: isFan && i < 4 ? '-8px' : '0',
-                        zIndex: isPlayable ? 5 : ([1,2,3,2,1][i] || 1),
+                        zIndex: isPlayable ? 5 : i + 1,
                         position: 'relative',
                         boxShadow: isPlayable
                           ? (isCyberpunk ? '0 0 0 1.5px #ff8c00, 0 0 10px rgba(255,140,0,0.4)' : '0 0 0 2px rgba(246,215,120,0.9), 0 4px 12px rgba(0,0,0,0.4)')
@@ -11103,10 +11103,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     isPlayable = playableCards.some(c => c.id === card.id);
                   }
                   const FAN_CONFIG = {
-                    5: { t:[{r:-9,y:9},{r:-4,y:3},{r:0,y:0},{r:4,y:3},{r:9,y:9}],         z:[1,2,3,2,1],       m:-14 },
-                    6: { t:[{r:-10,y:10},{r:-6,y:4},{r:-2,y:1},{r:2,y:1},{r:6,y:4},{r:10,y:10}], z:[1,2,3,3,2,1],   m:-10 },
-                    7: { t:[{r:-12,y:12},{r:-8,y:6},{r:-4,y:2},{r:0,y:0},{r:4,y:2},{r:8,y:6},{r:12,y:12}], z:[1,2,3,4,3,2,1], m:-8 },
-                    8: { t:[{r:-14,y:14},{r:-10,y:8},{r:-6,y:4},{r:-2,y:1},{r:2,y:1},{r:6,y:4},{r:10,y:8},{r:14,y:14}], z:[1,2,3,4,4,3,2,1], m:-6 },
+                    5: { t:[{r:-9,y:9},{r:-4,y:3},{r:0,y:0},{r:4,y:3},{r:9,y:9}],         z:[1,2,3,4,5],         m:-14 },
+                    6: { t:[{r:-10,y:10},{r:-6,y:4},{r:-2,y:1},{r:2,y:1},{r:6,y:4},{r:10,y:10}], z:[1,2,3,4,5,6],   m:-10 },
+                    7: { t:[{r:-12,y:12},{r:-8,y:6},{r:-4,y:2},{r:0,y:0},{r:4,y:2},{r:8,y:6},{r:12,y:12}], z:[1,2,3,4,5,6,7], m:-8 },
+                    8: { t:[{r:-14,y:14},{r:-10,y:8},{r:-6,y:4},{r:-2,y:1},{r:2,y:1},{r:6,y:4},{r:10,y:8},{r:14,y:14}], z:[1,2,3,4,5,6,7,8], m:-6 },
                   };
                   const isFan = currentThemeId === 'cyberpunk';
                   const fanCfg = FAN_CONFIG[myHand.length] || FAN_CONFIG[5];
