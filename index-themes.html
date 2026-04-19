@@ -11102,22 +11102,22 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     const playableCards = getPlayableCards(myHand, trumpSuit, ledCard);
                     isPlayable = playableCards.some(c => c.id === card.id);
                   }
-                  const FAN_TRANSFORMS = [
-                    { rotate: -9, translateY: 9 },
-                    { rotate: -4, translateY: 3 },
-                    { rotate: 0,  translateY: 0 },
-                    { rotate: 4,  translateY: 3 },
-                    { rotate: 9,  translateY: 9 },
-                  ];
+                  const FAN_CONFIG = {
+                    5: { t:[{r:-9,y:9},{r:-4,y:3},{r:0,y:0},{r:4,y:3},{r:9,y:9}],         z:[1,2,3,2,1],       m:-14 },
+                    6: { t:[{r:-10,y:10},{r:-6,y:4},{r:-2,y:1},{r:2,y:1},{r:6,y:4},{r:10,y:10}], z:[1,2,3,3,2,1],   m:-10 },
+                    7: { t:[{r:-12,y:12},{r:-8,y:6},{r:-4,y:2},{r:0,y:0},{r:4,y:2},{r:8,y:6},{r:12,y:12}], z:[1,2,3,4,3,2,1], m:-8 },
+                    8: { t:[{r:-14,y:14},{r:-10,y:8},{r:-6,y:4},{r:-2,y:1},{r:2,y:1},{r:6,y:4},{r:10,y:8},{r:14,y:14}], z:[1,2,3,4,4,3,2,1], m:-6 },
+                  };
                   const isFan = currentThemeId === 'cyberpunk';
-                  const ft = FAN_TRANSFORMS[i] || { rotate: 0, translateY: 0 };
+                  const fanCfg = FAN_CONFIG[myHand.length] || FAN_CONFIG[5];
+                  const ft = fanCfg.t[i] || { r: 0, y: 0 };
                   const fanStyle = isFan ? {
                     transform: isPlayable
                       ? 'rotate(0deg) translateY(-14px)'
-                      : `rotate(${ft.rotate}deg) translateY(${ft.translateY}px)`,
+                      : `rotate(${ft.r}deg) translateY(${ft.y}px)`,
                     transformOrigin: 'bottom center',
-                    marginRight: isFan && i < myHand.length - 1 ? '-14px' : '0',
-                    zIndex: isPlayable ? 5 : ([1,2,3,2,1][i] || 1),
+                    marginRight: i < myHand.length - 1 ? `${fanCfg.m}px` : '0',
+                    zIndex: isPlayable ? 10 : (fanCfg.z[i] || 1),
                     position: 'relative',
                   } : undefined;
                   return (
