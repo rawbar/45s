@@ -1179,13 +1179,507 @@
       radial-gradient(ellipse at 50% 0%, rgba(0,180,255,0.1) 0%, transparent 55%),
       linear-gradient(175deg, #060d18 0%, #020509 100%);
   }
+
+  /* ── Irish Login Screen ── */
+  .theme-irish .irish-login-bg {
+    background-color: #180b03;
+    background-image:
+      radial-gradient(ellipse 95% 55% at 50% -5%, rgba(255,210,136,0.28) 0%, rgba(255,180,110,0.1) 30%, transparent 60%),
+      linear-gradient(180deg, rgba(255,220,175,0.08) 0%, rgba(255,220,175,0.03) 22%, transparent 52%),
+      linear-gradient(92deg, transparent 4%, rgba(255,220,168,0.055) 7%, transparent 11%, transparent 20%, rgba(255,205,148,0.04) 24%, transparent 29%, transparent 44%, rgba(255,215,160,0.06) 49%, transparent 54%, transparent 66%, rgba(255,208,148,0.045) 71%, transparent 76%, transparent 86%, rgba(255,218,168,0.05) 91%, transparent 96%),
+      linear-gradient(91deg, transparent 13%, rgba(0,0,0,0.12) 15%, transparent 17%, transparent 28%, rgba(0,0,0,0.09) 30%, transparent 32%, transparent 51%, rgba(0,0,0,0.14) 53%, transparent 55%, transparent 64%, rgba(0,0,0,0.1) 66%, transparent 68%, transparent 81%, rgba(0,0,0,0.11) 83%, transparent 85%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='390' height='844'><filter id='g'><feTurbulence type='turbulence' baseFrequency='0.35 0.008' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.06  0 0 0 0 0.025  0 0 0 0 0.01  0.45 0 0 0 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"),
+      linear-gradient(172deg, #3a2312 0%, #281609 35%, #180b03 68%, #1f0f05 100%);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-attachment: fixed;
+  }
+  .theme-irish .irish-login-bg::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 110% 80% at 50% 50%, transparent 40%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .theme-irish .irish-login-frame {
+    background: conic-gradient(from 135deg, #5a3f16 0deg, #c9a24a 60deg, #f6d778 120deg, #c9a24a 180deg, #5a3f16 240deg, #c9a24a 300deg, #f6d778 330deg, #5a3f16 360deg);
+    border-radius: 8px;
+    padding: 3px;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.9), 0 16px 50px rgba(0,0,0,0.75), inset 0 1px 0 rgba(246,215,120,0.5);
+  }
+  .theme-irish .irish-login-felt {
+    background-color: #13572a;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.055) 1px, transparent 1px), radial-gradient(ellipse 90% 40% at 50% -10%, rgba(31,122,63,0.6) 0%, transparent 70%);
+    background-size: 6px 6px, 100% 100%;
+    border-radius: 6px;
+    box-shadow: inset 0 2px 12px rgba(0,0,0,0.5), inset 0 -2px 8px rgba(0,0,0,0.3);
+  }
+  .theme-irish .irish-login-title-rule {
+    text-align: center;
+    margin-bottom: 22px;
+    padding-bottom: 18px;
+    position: relative;
+  }
+  .theme-irish .irish-login-title-rule::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, #5a3f16 10%, #c9a24a 30%, #f6d778 50%, #c9a24a 70%, #5a3f16 90%, transparent 100%);
+  }
+
+  /* ── Irish Lobby Screen ── */
+  .irish-lobby-bg {
+    background-color: #180b03;
+    background-image:
+      radial-gradient(ellipse 95% 55% at 50% -5%, rgba(255,210,136,0.28) 0%, rgba(255,180,110,0.1) 30%, transparent 60%),
+      linear-gradient(180deg, rgba(255,220,175,0.08) 0%, rgba(255,220,175,0.03) 22%, transparent 52%),
+      linear-gradient(92deg, transparent 4%, rgba(255,220,168,0.055) 7%, transparent 11%, transparent 20%, rgba(255,205,148,0.04) 24%, transparent 29%, transparent 44%, rgba(255,215,160,0.06) 49%, transparent 54%, transparent 66%, rgba(255,208,148,0.045) 71%, transparent 76%, transparent 86%, rgba(255,218,168,0.05) 91%, transparent 96%),
+      linear-gradient(91deg, transparent 13%, rgba(0,0,0,0.12) 15%, transparent 17%, transparent 28%, rgba(0,0,0,0.09) 30%, transparent 32%, transparent 51%, rgba(0,0,0,0.14) 53%, transparent 55%, transparent 64%, rgba(0,0,0,0.1) 66%, transparent 68%, transparent 81%, rgba(0,0,0,0.11) 83%, transparent 85%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='390' height='844'><filter id='g'><feTurbulence type='turbulence' baseFrequency='0.35 0.008' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.06  0 0 0 0 0.025  0 0 0 0 0.01  0.45 0 0 0 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"),
+      linear-gradient(172deg, #3a2312 0%, #281609 35%, #180b03 68%, #1f0f05 100%);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-attachment: fixed;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    color: #e8e4d9;
+    font-family: 'Inter', sans-serif;
+  }
+  .irlb-topbar {
+    position: relative;
+    z-index: 5;
+    flex-shrink: 0;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.30) 100%);
+    border-bottom: 1px solid rgba(201,162,74,0.18);
+  }
+  .irlb-topbar::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: -1px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, #5a3f16 15%, #c9a24a 35%, #f6d778 50%, #c9a24a 65%, #5a3f16 85%, transparent 100%);
+    opacity: 0.65;
+  }
+  .irlb-logo {
+    font-family: 'Cinzel', serif;
+    font-size: 20px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #f6d778 0%, #c9a24a 50%, #a87930 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 0.5px;
+  }
+  .irlb-topbar-center {
+    flex: 1;
+    text-align: center;
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: rgba(246,215,120,0.85);
+  }
+  .irlb-topbar-right-cluster {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    margin-right: 10px;
+  }
+  .irlb-version {
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+    color: rgba(201,162,74,0.5);
+    line-height: 1;
+  }
+  .irlb-admin-link {
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+    color: #f44336;
+    opacity: 0.7;
+    line-height: 1;
+    cursor: pointer;
+    text-decoration: none;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+  .irlb-avatar-wrap {
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .irlb-avatar-circle {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #13572a;
+    border: 2px solid #c9a24a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+  .irlb-avatar-ring {
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(201,162,74,0.45);
+    pointer-events: none;
+  }
+  .irlb-avatar-edit {
+    position: absolute;
+    bottom: -1px;
+    left: -1px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(24,11,3,0.85);
+    border: 1px solid rgba(201,162,74,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    line-height: 1;
+  }
+  .irlb-presence-dot {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #5dd084;
+    border: 2px solid #180b03;
+  }
+  .irlb-action-row {
+    position: relative;
+    z-index: 4;
+    flex-shrink: 0;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 14px;
+    gap: 10px;
+    background: rgba(0,0,0,0.28);
+    border-bottom: 1px solid rgba(201,162,74,0.08);
+  }
+  .irlb-rules-btn {
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid rgba(201,162,74,0.5);
+    border-radius: 7px;
+    background: transparent;
+    color: #c9a24a;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .irlb-rules-btn:hover { background: rgba(201,162,74,0.08); border-color: rgba(201,162,74,0.75); }
+  .irlb-gear-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(201,162,74,0.3);
+    background: transparent;
+    color: rgba(201,162,74,0.6);
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    flex-shrink: 0;
+    padding: 0;
+    line-height: 1;
+  }
+  .irlb-gear-btn:hover { background: rgba(201,162,74,0.1); border-color: rgba(201,162,74,0.55); color: rgba(201,162,74,0.9); }
+  .irlb-online-strip {
+    position: relative;
+    z-index: 4;
+    flex-shrink: 0;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    gap: 6px;
+    background: rgba(0,0,0,0.35);
+    border-bottom: 1px solid rgba(201,162,74,0.10);
+    overflow: hidden;
+    flex-wrap: nowrap;
+  }
+  .irlb-online-badge {
+    flex-shrink: 0;
+    font-size: 10px;
+    color: rgba(201,162,74,0.55);
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    margin-right: 2px;
+  }
+  .irlb-chip {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 32px;
+    padding: 0 7px 0 4px;
+    border-radius: 16px;
+    border: 1px solid rgba(201,162,74,0.3);
+    background: rgba(19,87,42,0.18);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .irlb-chip.is-me { background: rgba(107,182,255,0.15); border-color: #6bb6ff; }
+  .irlb-chip-avatar {
+    position: relative;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: #13572a;
+    border: 1px solid rgba(201,162,74,0.35);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+  }
+  .irlb-chip.is-me .irlb-chip-avatar { border-color: #6bb6ff; }
+  .irlb-chip-dot {
+    position: absolute;
+    bottom: -1px; right: -1px;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #5dd084;
+    border: 1.5px solid #180b03;
+  }
+  .irlb-chip-name {
+    font-size: 10px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    color: rgba(232,228,217,0.75);
+    max-width: 50px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .irlb-chip.is-me .irlb-chip-name { color: #8ecfff; font-weight: 600; }
+  .irlb-more-pill {
+    flex-shrink: 0;
+    height: 32px; padding: 0 10px;
+    border-radius: 16px;
+    border: 1px solid rgba(201,162,74,0.4);
+    background: transparent;
+    color: rgba(201,162,74,0.7);
+    font-size: 11px; font-family: 'Inter', sans-serif; font-weight: 500;
+    white-space: nowrap; display: flex; align-items: center; cursor: pointer;
+  }
+  .irlb-more-pill:hover { background: rgba(201,162,74,0.08); border-color: rgba(201,162,74,0.65); }
+  .irlb-tab-bar {
+    position: relative; z-index: 4; flex-shrink: 0;
+    height: 44px; display: flex; align-items: stretch;
+    background: rgba(0,0,0,0.45);
+    border-bottom: 1px solid rgba(201,162,74,0.22);
+  }
+  .irlb-tab-bar::after {
+    content: '';
+    position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(201,162,74,0.2) 20%, rgba(201,162,74,0.35) 50%, rgba(201,162,74,0.2) 80%, transparent 100%);
+  }
+  .irlb-tab {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    font-family: 'Cinzel', serif; font-size: 12px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: rgba(201,162,74,0.45); position: relative; cursor: pointer;
+    background: none; border: none;
+  }
+  .irlb-tab.active { color: #f6d778; }
+  .irlb-tab.active::after {
+    content: ''; position: absolute; bottom: 0; left: 16px; right: 16px;
+    height: 2px; background: linear-gradient(90deg, transparent, #f6d778, transparent);
+    border-radius: 1px;
+  }
+  .irlb-screen { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+  .irlb-scroll {
+    flex: 1; overflow-y: auto; overflow-x: hidden;
+    padding: 12px 12px 100px; position: relative; z-index: 3;
+    display: flex; flex-direction: column; gap: 8px;
+    scrollbar-width: thin; scrollbar-color: rgba(201,162,74,0.25) transparent;
+  }
+  .irlb-rejoin {
+    flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+    padding: 0 12px 0 14px; height: 60px;
+    background: rgba(30,14,4,0.85); border: 1px solid #c9a24a;
+    border-radius: 8px; position: relative; overflow: hidden;
+  }
+  .irlb-rejoin::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(201,162,74,0.07) 0%, transparent 55%);
+    pointer-events: none;
+  }
+  .irlb-rejoin-info { flex: 1; min-width: 0; }
+  .irlb-rejoin-title {
+    font-family: 'Cinzel', serif; font-size: 12px; font-weight: 700; color: #fbf6e4;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .irlb-rejoin-sub { font-size: 10px; color: rgba(201,162,74,0.6); margin-top: 2px; }
+  .irlb-rejoin-btn {
+    flex-shrink: 0; height: 34px; padding: 0 14px;
+    border: 1px solid #c9a24a; border-radius: 7px;
+    background: rgba(201,162,74,0.12); color: #f6d778;
+    font-family: 'Cinzel', serif; font-size: 11px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .irlb-rejoin-btn:hover { background: rgba(201,162,74,0.22); }
+  .irlb-section-header {
+    font-size: 9px; font-family: 'Cinzel', serif; letter-spacing: 2px;
+    text-transform: uppercase; color: rgba(201,162,74,0.4);
+    padding: 6px 2px 4px; display: flex; align-items: center; gap: 8px;
+  }
+  .irlb-section-header::after { content: ''; flex: 1; height: 1px; background: rgba(201,162,74,0.12); }
+  .irlb-game-row {
+    flex-shrink: 0; min-height: 72px;
+    background: rgba(19,87,42,0.22); border: 1px solid rgba(201,162,74,0.22);
+    border-radius: 10px; display: flex; align-items: center;
+    padding: 0 14px; gap: 12px; cursor: pointer; position: relative; overflow: hidden;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .irlb-game-row::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(201,162,74,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .irlb-game-row:hover { background: rgba(19,87,42,0.38); border-color: rgba(201,162,74,0.42); }
+  .irlb-game-name {
+    font-family: 'Cinzel', serif; font-size: 14px; font-weight: 700; color: #fbf6e4;
+    letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .irlb-game-sub { font-size: 11px; color: rgba(201,162,74,0.55); margin-top: 2px; }
+  .irlb-seat-pips { display: flex; gap: 5px; align-items: center; }
+  .irlb-pip {
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 1.5px solid rgba(201,162,74,0.3); background: transparent;
+  }
+  .irlb-pip.taken { background: #c9a24a; border-color: #c9a24a; }
+  .irlb-pip.me { background: #6bb6ff; border-color: #6bb6ff; }
+  .irlb-status-badge {
+    flex-shrink: 0; font-size: 9px; font-family: 'Cinzel', serif;
+    font-weight: 700; letter-spacing: 1.5px; padding: 3px 8px;
+    border-radius: 4px; text-transform: uppercase;
+  }
+  .irlb-badge-open { color: #5dd084; background: rgba(93,208,132,0.12); border: 1px solid rgba(93,208,132,0.3); }
+  .irlb-badge-playing { color: #f6d778; background: rgba(246,215,120,0.10); border: 1px solid rgba(246,215,120,0.28); }
+  .irlb-badge-finished { color: rgba(201,162,74,0.4); background: rgba(201,162,74,0.06); border: 1px solid rgba(201,162,74,0.14); }
+  .irlb-empty {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 40px 24px; text-align: center; gap: 12px;
+  }
+  .irlb-empty-icon { font-size: 48px; opacity: 0.35; margin-bottom: 4px; }
+  .irlb-empty-title {
+    font-family: 'Cinzel', serif; font-size: 16px; font-weight: 700;
+    color: rgba(201,162,74,0.6); letter-spacing: 1px;
+  }
+  .irlb-empty-sub { font-size: 13px; color: rgba(232,228,217,0.4); line-height: 1.55; max-width: 240px; }
+  .irlb-create-wrap {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 8;
+    padding: 12px 16px 24px;
+    background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 60%, transparent 100%);
+  }
+  .irlb-create-btn {
+    width: 100%; height: 52px; border: none; border-radius: 12px;
+    font-family: 'Cinzel', serif; font-size: 14px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase; color: #1a0e00; cursor: pointer;
+    background: linear-gradient(135deg, #f6d778 0%, #c9a24a 50%, #8a6520 100%);
+    box-shadow: 0 4px 16px rgba(201,162,74,0.35), 0 1px 0 rgba(255,255,255,0.25) inset, 0 -1px 0 rgba(0,0,0,0.35) inset;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: opacity 0.15s;
+  }
+  .irlb-create-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .irlb-lb-list { display: flex; flex-direction: column; gap: 6px; padding: 4px 0; }
+  .irlb-lb-row {
+    min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 14px;
+    border-radius: 10px; background: rgba(19,87,42,0.18); border: 1px solid rgba(201,162,74,0.15);
+    position: relative; overflow: hidden; cursor: pointer; transition: background 0.15s;
+  }
+  .irlb-lb-row:hover { background: rgba(19,87,42,0.28); }
+  .irlb-lb-row.top3 { background: rgba(19,87,42,0.28); border-color: rgba(201,162,74,0.3); }
+  .irlb-lb-row.top3::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(201,162,74,0.06) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .irlb-lb-row.rank1 { box-shadow: 0 0 12px rgba(246,215,120,0.18) inset; }
+  .irlb-lb-row.rank2 { box-shadow: 0 0 8px rgba(192,192,192,0.10) inset; }
+  .irlb-lb-row.rank3 { box-shadow: 0 0 8px rgba(205,127,50,0.10) inset; }
+  .irlb-lb-rank {
+    width: 24px; flex-shrink: 0; font-family: 'Cinzel', serif;
+    font-size: 13px; font-weight: 700; color: rgba(201,162,74,0.55); text-align: center;
+  }
+  .irlb-lb-rank.gold { color: #f6d778; }
+  .irlb-lb-rank.silver { color: #c0c0c0; }
+  .irlb-lb-rank.bronze { color: #cd7f32; }
+  .irlb-lb-avatar {
+    width: 36px; height: 36px; border-radius: 50%; background: #13572a;
+    border: 1.5px solid rgba(201,162,74,0.35); display: flex; align-items: center;
+    justify-content: center; font-size: 19px; flex-shrink: 0;
+  }
+  .irlb-lb-username {
+    font-family: 'Cinzel', serif; font-size: 13px; font-weight: 700; color: #fbf6e4;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .irlb-lb-stats {
+    font-family: 'Merriweather', serif; font-style: italic; font-size: 11px;
+    color: rgba(251,246,228,0.55); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .irlb-lb-score {
+    font-family: 'Cinzel', serif; font-size: 20px; font-weight: 700;
+    color: #c9a24a; line-height: 1; flex-shrink: 0;
+  }
+  .irlb-lb-row.rank1 .irlb-lb-score { color: #f6d778; }
+  .irlb-lb-row.rank2 .irlb-lb-score { color: #e8e8e8; }
+  .irlb-lb-row.rank3 .irlb-lb-score { color: #cd7f32; }
+  .irlb-lb-pts-label {
+    font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 500;
+    color: rgba(201,162,74,0.7); line-height: 1; flex-shrink: 0; margin-left: 3px;
+  }
+  .irlb-lb-row.rank1 .irlb-lb-pts-label { color: rgba(246,215,120,0.7); }
+  .irlb-lb-row.rank2 .irlb-lb-pts-label { color: rgba(232,232,232,0.7); }
+  .irlb-lb-row.rank3 .irlb-lb-pts-label { color: rgba(205,127,50,0.7); }
+  .irlb-lb-badge-chip {
+    display: flex; align-items: center; gap: 3px; font-size: 11px;
+    color: rgba(201,162,74,0.8); font-family: 'Inter', sans-serif;
+    font-weight: 500; flex-shrink: 0; margin-top: 4px;
+  }
+  .irlb-crown { font-size: 13px; position: absolute; top: 4px; left: 6px; opacity: 0.7; }
+  .irlb-inactive-divider {
+    display: flex; align-items: center; gap: 8px; margin-top: 8px; margin-bottom: 2px;
+    font-size: 10px; font-family: 'Cinzel', serif; letter-spacing: 1px;
+    color: rgba(201,162,74,0.3); text-transform: uppercase;
+  }
+  .irlb-inactive-divider::before, .irlb-inactive-divider::after {
+    content: ''; flex: 1; height: 1px; background: rgba(201,162,74,0.12);
+  }
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.25.9';
+const VERSION = '2.27.3';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -3681,7 +4175,20 @@ function TricksWonDisplay({ count, hasHighTrump, vertical }) {
 
 function CardsDrawnIndicator({ count }) {
   const displayCount = Math.max(0, count || 0);
-  return (<span style={{ fontSize: '9px', color: 'var(--brass-hi)', fontFamily: "'Merriweather', Georgia, serif", fontWeight: 900 }}>+{displayCount}</span>);
+  return (
+    <span style={{
+      fontSize: '9px',
+      color: 'var(--brass-hi)',
+      fontFamily: "'Merriweather', Georgia, serif",
+      fontWeight: 900,
+      background: 'rgba(0,0,0,0.45)',
+      border: '1px solid rgba(201,162,74,0.35)',
+      borderRadius: '3px',
+      padding: '1px 4px',
+      lineHeight: 1.2,
+      letterSpacing: '0.5px',
+    }}>+{displayCount}</span>
+  );
 }
 
 function DealerBadge() {
@@ -3783,6 +4290,12 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.3', date: 'Apr 2026', changes: ['Seat picker: compass layout (N/S/E/W as compass points)'] },
+    { version: '2.27.2', date: 'Apr 2026', changes: ['Fix seat selection: choose seat before entering waiting room — seat picker modal on Irish lobby game row click'] },
+    { version: '2.27.1', date: 'Apr 2026', changes: ['Irish Card Room theme: Player stats modal — bottom sheet with walnut surface, brass accents, single-scroll layout, hero stats card, 3-col grid, badge 5-col grid with detail panel'] },
+    { version: '2.27.0', date: 'Apr 2026', changes: ['Irish Card Room theme: Lobby screen — walnut background, brass topbar, action row, online strip, tab bar, game rows, leaderboard rows, Create Game button, empty state'] },
+    { version: '2.26.1', date: '2026-04-19', changes: ['Game table: bid buttons Irish-themed (brass/ghost), pass button ghost style, trump select buttons polished, cards drawn indicator pill, follow suit alert replaced with themed toast'] },
+    { version: '2.26.0', date: '2026-04-19', changes: 'Irish Card Room theme: login screen restyled — walnut background, brass frame, felt surface' },
     { version: '2.25.8', changes: 'Cyberpunk fan stacking fixed — cards now stack left-to-right (rightmost on top) for a natural hand feel.' },
     { version: '2.25.7', changes: 'Cyberpunk fan now works for 6/7/8 card hands (kitty draw) — all cards fan properly with correct overlap and rotation.' },
     { version: '2.25.6', changes: 'Cyberpunk: face-up card (5-Card Draw) now clearly visible with cyan tint, thick border and neon glow.' },
@@ -4724,19 +5237,43 @@ function LoginScreen({ onLogin }) {
     }
   };
 
+  const isIrish = currentThemeId === 'irish';
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      minHeight: '100vh',
-      padding: '20px',
-      background: 'linear-gradient(135deg, #1a5f3f 0%, #2d8f5f 100%)',
-      position: 'relative'
-    }}>
+    <div
+      className={isIrish ? 'theme-irish irish-login-bg' : ''}
+      style={isIrish ? {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '20px',
+        position: 'relative'
+      } : {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '20px',
+        background: 'linear-gradient(135deg, #1a5f3f 0%, #2d8f5f 100%)',
+        position: 'relative'
+      }}>
       {/* Version number */}
-      <div style={{
+      <div style={isIrish ? {
+        position: 'fixed',
+        top: '10px',
+        left: '10px',
+        fontSize: '10px',
+        fontWeight: 600,
+        color: 'rgba(201,162,74,0.55)',
+        background: 'rgba(24,11,3,0.85)',
+        border: '1px solid rgba(201,162,74,0.18)',
+        padding: '3px 7px',
+        borderRadius: '3px',
+        letterSpacing: '0.5px',
+        zIndex: 100
+      } : {
         position: 'absolute',
         top: '10px',
         left: '10px',
@@ -4751,20 +5288,81 @@ function LoginScreen({ onLogin }) {
         v{VERSION}
       </div>
 
-      <div style={{
-        background: 'white',
-        padding: '40px',
-        borderRadius: '12px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-        maxWidth: '450px',
-        width: '100%'
-      }}>
-        <h1 style={{ marginBottom: '16px', textAlign: 'center', color: '#1a5f3f', fontSize: '22px' }}>
-          45s Card Game
-        </h1>
+      <div
+        className={isIrish ? 'irish-login-frame' : ''}
+        style={isIrish ? {
+          maxWidth: '400px',
+          width: '100%',
+          position: 'relative',
+          zIndex: 1
+        } : {
+          background: 'white',
+          padding: '40px',
+          borderRadius: '12px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+          maxWidth: '450px',
+          width: '100%'
+        }}>
+      <div
+        className={isIrish ? 'irish-login-felt' : ''}
+        style={isIrish ? {
+          padding: '28px 24px 24px'
+        } : {}}>
+        {isIrish ? (
+          <div className="irish-login-title-rule">
+            <div style={{
+              fontFamily: 'Cinzel, serif',
+              fontWeight: 900,
+              fontSize: '44px',
+              letterSpacing: '8px',
+              lineHeight: 1,
+              background: 'linear-gradient(180deg, #f6d778 0%, #c9a24a 45%, #8a6421 100%)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+              filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.8))',
+              textAlign: 'center'
+            }}>45s</div>
+            <div style={{
+              fontFamily: 'Cinzel, serif',
+              fontSize: '10px',
+              fontWeight: 400,
+              letterSpacing: '4px',
+              color: 'rgba(201,162,74,0.65)',
+              marginTop: '4px',
+              textTransform: 'uppercase',
+              textAlign: 'center'
+            }}>Irish Card Room</div>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '14px',
+              marginTop: '8px',
+              fontSize: '13px',
+              color: 'rgba(201,162,74,0.5)'
+            }}>
+              <span>♣</span>
+              <span style={{ color: 'rgba(168,24,36,0.75)' }}>♥</span>
+              <span style={{ color: 'rgba(168,24,36,0.75)' }}>♦</span>
+              <span>♠</span>
+            </div>
+          </div>
+        ) : (
+          <h1 style={{ marginBottom: '16px', textAlign: 'center', color: '#1a5f3f', fontSize: '22px' }}>
+            45s Card Game
+          </h1>
+        )}
 
         {/* Tab selector for Returning/New Player */}
-        <div style={{
+        <div style={isIrish ? {
+          display: 'flex',
+          marginBottom: '20px',
+          background: 'linear-gradient(180deg, #2a1608 0%, #140802 100%)',
+          border: '1px solid #5a3f16',
+          borderRadius: '4px',
+          overflow: 'hidden',
+          boxShadow: 'inset 0 1px 0 rgba(201,162,74,0.12), 0 2px 4px rgba(0,0,0,0.4)'
+        } : {
           display: 'flex',
           marginBottom: '24px',
           borderRadius: '8px',
@@ -4778,7 +5376,19 @@ function LoginScreen({ onLogin }) {
               setShowAvatarPicker(false);
               setError(null);
             }}
-            style={{
+            style={isIrish ? {
+              flex: 1,
+              padding: '10px 8px',
+              fontFamily: 'Cinzel, serif',
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '1px',
+              border: 'none',
+              cursor: 'pointer',
+              background: mode === 'login' ? 'linear-gradient(180deg, rgba(201,162,74,0.22) 0%, rgba(201,162,74,0.1) 100%)' : 'transparent',
+              color: mode === 'login' ? '#f6d778' : 'rgba(201,162,74,0.5)',
+              boxShadow: mode === 'login' ? 'inset 0 1px 0 rgba(201,162,74,0.3)' : 'none'
+            } : {
               flex: 1,
               padding: '12px 16px',
               fontSize: '14px',
@@ -4798,7 +5408,20 @@ function LoginScreen({ onLogin }) {
               setPin('');
               setError(null);
             }}
-            style={{
+            style={isIrish ? {
+              flex: 1,
+              padding: '10px 8px',
+              fontFamily: 'Cinzel, serif',
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '1px',
+              border: 'none',
+              borderLeft: '1px solid #5a3f16',
+              cursor: 'pointer',
+              background: mode === 'register' ? 'linear-gradient(180deg, rgba(201,162,74,0.22) 0%, rgba(201,162,74,0.1) 100%)' : 'transparent',
+              color: mode === 'register' ? '#f6d778' : 'rgba(201,162,74,0.5)',
+              boxShadow: mode === 'register' ? 'inset 0 1px 0 rgba(201,162,74,0.3)' : 'none'
+            } : {
               flex: 1,
               padding: '12px 16px',
               fontSize: '14px',
@@ -4816,7 +5439,16 @@ function LoginScreen({ onLogin }) {
         </div>
 
         {error && (
-          <div style={{
+          <div style={isIrish ? {
+            background: 'rgba(168,24,36,0.12)',
+            border: '1px solid rgba(168,24,36,0.55)',
+            borderRadius: '3px',
+            padding: '9px 12px',
+            marginBottom: '14px',
+            color: '#e8a0a8',
+            fontSize: '13px',
+            fontStyle: 'italic'
+          } : {
             background: '#ffebee',
             border: '2px solid #f44336',
             padding: '12px',
@@ -4830,8 +5462,19 @@ function LoginScreen({ onLogin }) {
         )}
 
         {/* Username input */}
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
+        <div style={{ marginBottom: isIrish ? '14px' : '16px' }}>
+          <label style={isIrish ? {
+            display: 'block',
+            marginBottom: '4px',
+            fontFamily: 'Cinzel, serif',
+            fontSize: '10px',
+            fontWeight: 700,
+            letterSpacing: '2px',
+            textTransform: 'uppercase',
+            color: 'rgba(201,162,74,0.75)'
+          } : {
+            display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333'
+          }}>
             {mode === 'register' ? 'Choose a Username' : 'Your Username'}
           </label>
           <input
@@ -4839,7 +5482,18 @@ function LoginScreen({ onLogin }) {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder={mode === 'register' ? "Choose a username" : "Enter your username"}
-            style={{
+            style={isIrish ? {
+              width: '100%',
+              padding: '10px 12px',
+              fontSize: '16px',
+              fontFamily: 'Merriweather, serif',
+              color: '#fbf6e4',
+              background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%), linear-gradient(180deg, #2a1c0c 0%, #1e1308 100%)',
+              border: '1px solid rgba(201,162,74,0.3)',
+              borderRadius: '3px',
+              outline: 'none',
+              boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.5)'
+            } : {
               width: '100%',
               padding: '12px',
               fontSize: '16px',
@@ -4853,8 +5507,19 @@ function LoginScreen({ onLogin }) {
         </div>
 
         {/* PIN input */}
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
+        <div style={{ marginBottom: isIrish ? '14px' : '16px' }}>
+          <label style={isIrish ? {
+            display: 'block',
+            marginBottom: '4px',
+            fontFamily: 'Cinzel, serif',
+            fontSize: '10px',
+            fontWeight: 700,
+            letterSpacing: '2px',
+            textTransform: 'uppercase',
+            color: 'rgba(201,162,74,0.75)'
+          } : {
+            display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333'
+          }}>
             {mode === 'register' ? 'Choose a 4-Digit PIN' : 'Your 4-Digit PIN'}
           </label>
           <input
@@ -4862,7 +5527,22 @@ function LoginScreen({ onLogin }) {
             value={pin}
             onChange={(e) => handlePinInput(e.target.value, setPin)}
             placeholder="••••"
-            style={{
+            style={isIrish ? {
+              width: '100%',
+              padding: '10px 12px',
+              fontSize: '16px',
+              fontFamily: 'Merriweather, serif',
+              color: '#f6d778',
+              fontWeight: 900,
+              background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%), linear-gradient(180deg, #2a1c0c 0%, #1e1308 100%)',
+              border: '1px solid rgba(201,162,74,0.3)',
+              borderRadius: '3px',
+              outline: 'none',
+              boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.5)',
+              textAlign: 'center',
+              letterSpacing: '14px',
+              paddingLeft: '26px'
+            } : {
               width: '100%',
               padding: '12px',
               fontSize: '24px',
@@ -4883,8 +5563,19 @@ function LoginScreen({ onLogin }) {
 
         {/* Confirm PIN (registration only) */}
         {mode === 'register' && (
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
+          <div style={{ marginBottom: isIrish ? '14px' : '16px' }}>
+            <label style={isIrish ? {
+              display: 'block',
+              marginBottom: '4px',
+              fontFamily: 'Cinzel, serif',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              color: 'rgba(201,162,74,0.75)'
+            } : {
+              display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333'
+            }}>
               Confirm PIN
             </label>
             <input
@@ -4892,7 +5583,22 @@ function LoginScreen({ onLogin }) {
               value={confirmPin}
               onChange={(e) => handlePinInput(e.target.value, setConfirmPin)}
               placeholder="••••"
-              style={{
+              style={isIrish ? {
+                width: '100%',
+                padding: '10px 12px',
+                fontSize: '16px',
+                fontFamily: 'Merriweather, serif',
+                color: '#f6d778',
+                fontWeight: 900,
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%), linear-gradient(180deg, #2a1c0c 0%, #1e1308 100%)',
+                border: '1px solid rgba(201,162,74,0.3)',
+                borderRadius: '3px',
+                outline: 'none',
+                boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.5)',
+                textAlign: 'center',
+                letterSpacing: '14px',
+                paddingLeft: '26px'
+              } : {
                 width: '100%',
                 padding: '12px',
                 fontSize: '24px',
@@ -4909,25 +5615,64 @@ function LoginScreen({ onLogin }) {
 
         {/* Email (registration only, optional) */}
         {mode === 'register' && (
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
-              Email <span style={{ fontWeight: 'normal', color: '#888', fontSize: '12px' }}>(optional)</span>
+          <div style={{ marginBottom: isIrish ? '14px' : '16px' }}>
+            <label style={isIrish ? {
+              display: 'block',
+              marginBottom: '4px',
+              fontFamily: 'Cinzel, serif',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              color: 'rgba(201,162,74,0.75)'
+            } : {
+              display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333'
+            }}>
+              Email <span style={isIrish ? {
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '9px',
+                fontWeight: 400,
+                color: 'rgba(201,162,74,0.4)',
+                letterSpacing: 0,
+                textTransform: 'none',
+                marginLeft: '6px'
+              } : {
+                fontWeight: 'normal', color: '#888', fontSize: '12px'
+              }}>(optional)</span>
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              style={{
+              style={isIrish ? {
+                width: '100%',
+                padding: '10px 12px',
+                fontSize: '16px',
+                fontFamily: 'Merriweather, serif',
+                color: '#fbf6e4',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%), linear-gradient(180deg, #2a1c0c 0%, #1e1308 100%)',
+                border: '1px solid rgba(201,162,74,0.3)',
+                borderRadius: '3px',
+                outline: 'none',
+                boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.5)'
+              } : {
                 width: '100%',
                 padding: '12px',
-                fontSize: '14px',
+                fontSize: '16px',
                 border: '2px solid #ddd',
                 borderRadius: '6px'
               }}
               disabled={loading}
             />
-            <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>
+            <div style={isIrish ? {
+              fontSize: '10px',
+              color: 'rgba(201,162,74,0.4)',
+              marginTop: '3px',
+              fontStyle: 'italic'
+            } : {
+              fontSize: '11px', color: '#888', marginTop: '4px'
+            }}>
               For game updates, notices, and the occasional survey. Never shared.
             </div>
           </div>
@@ -4935,11 +5680,32 @@ function LoginScreen({ onLogin }) {
 
         {/* Avatar selection (registration only) */}
         {mode === 'register' && (
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
+          <div style={{ marginBottom: isIrish ? '14px' : '16px' }}>
+            <label style={isIrish ? {
+              display: 'block',
+              marginBottom: '4px',
+              fontFamily: 'Cinzel, serif',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              color: 'rgba(201,162,74,0.75)'
+            } : {
+              display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333'
+            }}>
               Choose Avatar
             </label>
-            <div style={{
+            <div style={isIrish ? {
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '9px 11px',
+              border: '1px solid rgba(201,162,74,0.3)',
+              borderRadius: '3px',
+              cursor: 'pointer',
+              background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%), linear-gradient(180deg, #2a1c0c 0%, #1e1308 100%)',
+              boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.5)'
+            } : {
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
@@ -4951,21 +5717,42 @@ function LoginScreen({ onLogin }) {
             }}
             onClick={() => setShowAvatarPicker(!showAvatarPicker)}
             >
-              <div style={{ fontSize: '32px' }}>
+              <div style={{ fontSize: '28px', lineHeight: 1 }}>
                 {getAvatarById(selectedAvatar).emoji}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
+                <div style={isIrish ? {
+                  fontFamily: 'Merriweather, serif',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: '#fbf6e4'
+                } : {
+                  fontSize: '14px', fontWeight: 'bold'
+                }}>
                   {getAvatarById(selectedAvatar).name}
                 </div>
-                <div style={{ fontSize: '12px', color: '#666' }}>
-                  Click to change
+                <div style={isIrish ? {
+                  fontSize: '10px',
+                  color: 'rgba(201,162,74,0.5)',
+                  marginTop: '2px'
+                } : {
+                  fontSize: '12px', color: '#666'
+                }}>
+                  {isIrish ? 'Tap to change' : 'Click to change'}
                 </div>
               </div>
             </div>
 
             {showAvatarPicker && (
-              <div style={{
+              <div style={isIrish ? {
+                marginTop: '8px',
+                padding: '10px',
+                border: '1px solid rgba(201,162,74,0.22)',
+                borderRadius: '3px',
+                maxHeight: '160px',
+                overflowY: 'auto',
+                background: '#1a1207'
+              } : {
                 marginTop: '12px',
                 padding: '12px',
                 border: '2px solid #ddd',
@@ -4977,7 +5764,7 @@ function LoginScreen({ onLogin }) {
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(4, 1fr)',
-                  gap: '8px'
+                  gap: isIrish ? '5px' : '8px'
                 }}>
                   {AVATARS.map(avatar => (
                     <div
@@ -4986,7 +5773,15 @@ function LoginScreen({ onLogin }) {
                         setSelectedAvatar(avatar.id);
                         setShowAvatarPicker(false);
                       }}
-                      style={{
+                      style={isIrish ? {
+                        fontSize: '26px',
+                        padding: '5px',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        borderRadius: '3px',
+                        border: selectedAvatar === avatar.id ? '1px solid rgba(201,162,74,0.55)' : '1px solid transparent',
+                        background: selectedAvatar === avatar.id ? 'rgba(201,162,74,0.15)' : 'transparent'
+                      } : {
                         fontSize: '32px',
                         padding: '8px',
                         cursor: 'pointer',
@@ -5011,7 +5806,23 @@ function LoginScreen({ onLogin }) {
           <button
             onClick={handleLogin}
             disabled={loading || !username.trim() || pin.length !== 4}
-            style={{
+            style={isIrish ? {
+              width: '100%',
+              padding: '13px 16px',
+              fontFamily: 'Cinzel, serif',
+              fontSize: '13px',
+              fontWeight: 700,
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              color: '#1a0e03',
+              background: 'linear-gradient(180deg, #f6d778 0%, #c9a24a 45%, #9a7630 100%)',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: (loading || !username.trim() || pin.length !== 4) ? 'not-allowed' : 'pointer',
+              boxShadow: '0 0 0 1px rgba(0,0,0,0.6), 0 3px 0 rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.6)',
+              marginTop: '6px',
+              opacity: (loading || !username.trim() || pin.length !== 4) ? 0.35 : 1
+            } : {
               width: '100%',
               padding: '14px',
               fontSize: '16px',
@@ -5023,13 +5834,29 @@ function LoginScreen({ onLogin }) {
               fontWeight: 'bold'
             }}
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? 'Logging in...' : (isIrish ? 'Enter the Room' : 'Login')}
           </button>
         ) : (
           <button
             onClick={handleRegister}
             disabled={loading || !username.trim() || pin.length !== 4 || pin !== confirmPin}
-            style={{
+            style={isIrish ? {
+              width: '100%',
+              padding: '13px 16px',
+              fontFamily: 'Cinzel, serif',
+              fontSize: '13px',
+              fontWeight: 700,
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              color: '#1a0e03',
+              background: 'linear-gradient(180deg, #f6d778 0%, #c9a24a 45%, #9a7630 100%)',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: (loading || !username.trim() || pin.length !== 4 || pin !== confirmPin) ? 'not-allowed' : 'pointer',
+              boxShadow: '0 0 0 1px rgba(0,0,0,0.6), 0 3px 0 rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.6)',
+              marginTop: '6px',
+              opacity: (loading || !username.trim() || pin.length !== 4 || pin !== confirmPin) ? 0.35 : 1
+            } : {
               width: '100%',
               padding: '14px',
               fontSize: '16px',
@@ -5041,18 +5868,25 @@ function LoginScreen({ onLogin }) {
               fontWeight: 'bold'
             }}
           >
-            {loading ? 'Creating Account...' : 'Create Account'}
+            {loading ? 'Creating Account...' : (isIrish ? 'Join the Room' : 'Create Account')}
           </button>
         )}
 
-        <p style={{ 
-          marginTop: '16px', 
-          fontSize: '12px', 
-          color: '#999', 
-          textAlign: 'center' 
+        <p style={isIrish ? {
+          marginTop: '14px',
+          fontSize: '11px',
+          color: 'rgba(201,162,74,0.4)',
+          textAlign: 'center',
+          fontStyle: 'italic'
+        } : {
+          marginTop: '16px',
+          fontSize: '12px',
+          color: '#999',
+          textAlign: 'center'
         }}>
           {mode === 'register' ? 'Your PIN is hashed and stored securely' : 'Forgot your PIN? Create a new account'}
         </p>
+      </div>
       </div>
     </div>
   );
@@ -5107,6 +5941,12 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
   const [editTrickSpeed, setEditTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'fast');
   const [editPrefHouseRules, setEditPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false });
 
+  // Irish lobby tab state ('games' | 'leaderboard')
+  const [lobbyTab, setLobbyTab] = useState('games');
+
+  // Seat picker modal state (Irish lobby)
+  const [selectedGameId, setSelectedGameId] = useState(null);
+
   // Compute composite score from stats object
   const computePlayerScore = (stats, gamesPlayed, gamesWon) => {
     if (!stats || !gamesPlayed) return 0;
@@ -5122,7 +5962,34 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       + (stats.badgeScore || 0);
   };
 
-  // Fetch leaderboard data
+  // Fetch leaderboard data (silent: just loads data, no modal)
+  const fetchLeaderboardData = async () => {
+    setLeaderboardLoading(true);
+    try {
+      const snapshot = await database.ref('users').once('value');
+      const users = snapshot.val() || {};
+      const leaderboard = [];
+      for (const [uid, user] of Object.entries(users)) {
+        if (user.stats && user.stats.gamesPlayed >= 1) {
+          const gp = user.stats.gamesPlayed || 0;
+          const gw = user.stats.gamesWon || 0;
+          const winRate = gp > 0 ? Math.round((gw / gp) * 100) : 0;
+          const score = computePlayerScore(user.stats, gp, gw);
+          const lastSeen = user.stats.lastSeen || user.stats.lastPlayed || null;
+          leaderboard.push({ uid, username: user.username, avatar: user.avatar, gamesPlayed: gp, gamesWon: gw, gamesLost: user.stats.gamesLost || 0, winRate, score, bestStreak: user.stats.bestStreak || 0, timesSet: user.stats.timesSet || 0, perfect30s: user.stats.perfect30s || 0, bid30Made: user.stats.bid30Made || 0, exceedBidPoints: user.stats.exceedBidPoints || 0, comebackWins: user.stats.comebackWins || 0, cleanGameWins: user.stats.cleanGameWins || 0, gamesQuit: user.stats.gamesQuit || 0, lastSeen });
+        }
+      }
+      leaderboard.sort((a, b) => { if (b.score !== a.score) return b.score - a.score; return b.gamesPlayed - a.gamesPlayed; });
+      setLeaderboardData(leaderboard);
+    } catch (err) {
+      console.error('Error fetching leaderboard:', err);
+      setLeaderboardData([]);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  };
+
+  // Fetch leaderboard data (also opens modal — for default layout)
   const fetchLeaderboard = async () => {
     setLeaderboardLoading(true);
     setShowLeaderboard(true);
@@ -5501,6 +6368,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       setShowCreateGame(false);
       setNewGameName('');
       setShowGameOptions(false);
+      // Show seat picker for the newly created game
+      setSelectedGameId(gameId);
     } catch (err) {
       console.error('Error creating game:', err);
       setError('Failed to create game: ' + err.message);
@@ -5620,6 +6489,756 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
   };
 
   const gameList = Object.entries(games).sort((a, b) => b[1].createdAt - a[1].createdAt);
+  const isIrish = currentThemeId === 'irish';
+
+  // ── Irish Card Room lobby layout ────────────────────────────────────────────
+  if (isIrish) {
+    const onlineList = Object.entries(onlinePlayers);
+    const onlineCount = onlineList.length;
+    const CHIP_MAX = 3;
+    const visibleChips = onlineList.slice(0, CHIP_MAX);
+    const overflowCount = onlineCount - CHIP_MAX;
+
+    // Irish game list helpers
+    const openGames   = gameList.filter(([, g]) => g.status === 'waiting');
+    const playingGames = gameList.filter(([, g]) => g.status === 'playing');
+    const finishedGames = gameList.filter(([, g]) => g.status !== 'waiting' && g.status !== 'playing');
+
+    const renderIrishGameRow = ([gameId, game]) => {
+      const players = game.players || {};
+      const seatKeys = ['North', 'South', 'East', 'West'];
+      const isOpen = game.status === 'waiting';
+      const isPlaying = game.status === 'playing';
+      const takenSeats = seatKeys.filter(s => players[s]);
+      return (
+        <div
+          key={gameId}
+          className="irlb-game-row"
+          onClick={() => {
+            if (isOpen) {
+              setSelectedGameId(gameId);
+            } else if (isPlaying) {
+              const mySeat = seatKeys.find(s => players[s]?.userId === userId) || 'North';
+              onJoinGame(gameId, mySeat);
+            }
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="irlb-game-name">{game.name || gameId}</div>
+            <div className="irlb-game-sub">
+              {isOpen ? `${takenSeats.length} of 4 seated` : isPlaying ? 'In progress' : 'Finished'}
+            </div>
+          </div>
+          <div className="irlb-seat-pips">
+            {seatKeys.map(s => {
+              const p = players[s];
+              const isMe = p?.userId === userId;
+              return <div key={s} className={`irlb-pip${p ? (isMe ? ' me' : ' taken') : ''}`} />;
+            })}
+          </div>
+          <span className={`irlb-status-badge ${isOpen ? 'irlb-badge-open' : isPlaying ? 'irlb-badge-playing' : 'irlb-badge-finished'}`}>
+            {isOpen ? 'Open' : isPlaying ? 'Playing' : 'Done'}
+          </span>
+        </div>
+      );
+    };
+
+    const renderIrishLbRow = (player, rank, dimmed) => {
+      const rankClass = rank === 0 ? 'rank1' : rank === 1 ? 'rank2' : rank === 2 ? 'rank3' : '';
+      const rankLabel = rank === 0 ? 'gold' : rank === 1 ? 'silver' : rank === 2 ? 'bronze' : '';
+      const earnedBadges = Object.keys(player.badgesObj || {});
+      const topBadgeId = earnedBadges.length > 0 ? earnedBadges[0] : null;
+      const topBadge = topBadgeId ? BADGES.find(b => b.id === topBadgeId) : null;
+      return (
+        <div
+          key={player.uid}
+          className={`irlb-lb-row ${rank < 3 ? 'top3 ' + rankClass : ''}`}
+          style={{ opacity: dimmed ? 0.5 : 1 }}
+          onClick={() => fetchPlayerStats(player.uid, { username: player.username, avatar: player.avatar })}
+        >
+          {rank === 0 && <span className="irlb-crown">👑</span>}
+          <div className={`irlb-lb-rank${rankLabel ? ' ' + rankLabel : ''}`}>{rank + 1}</div>
+          <div className="irlb-lb-avatar">{getAvatarById(player.avatar).emoji}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="irlb-lb-username">{player.username}</div>
+            <div className="irlb-lb-stats">{player.gamesPlayed} games · {player.winRate}% win</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', marginLeft: 'auto', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <span className="irlb-lb-score">{player.score.toLocaleString()}</span>
+              <span className="irlb-lb-pts-label">pts</span>
+            </div>
+            {topBadge && (
+              <div className="irlb-lb-badge-chip">
+                <span>{topBadge.sym}</span>
+                <span>×{earnedBadges.length}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    return (
+      <div className="irish-lobby-bg theme-irish">
+        {/* Topbar */}
+        <div className="irlb-topbar">
+          <span className="irlb-logo">45s</span>
+          <div className="irlb-topbar-center">The Card Room</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="irlb-topbar-right-cluster">
+              <span className="irlb-version">v{VERSION}</span>
+              {playerName?.toLowerCase() === 'robr' && (
+                <a
+                  href="admin-reset-stats.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="irlb-admin-link"
+                >admin</a>
+              )}
+            </div>
+            <div
+              className="irlb-avatar-wrap"
+              onClick={() => {
+                SoundManager.play('modalOpen');
+                setShowSettings(true);
+                database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); });
+              }}
+              title="Edit profile"
+            >
+              <div className="irlb-avatar-circle">{getAvatarById(playerAvatar).emoji}</div>
+              <div className="irlb-avatar-ring" />
+              <div className="irlb-avatar-edit">✎</div>
+              <div className="irlb-presence-dot" />
+            </div>
+          </div>
+        </div>
+
+        {/* Action row */}
+        <div className="irlb-action-row">
+          <button
+            className="irlb-rules-btn"
+            onClick={() => { SoundManager.play('modalOpen'); setShowRules(true); }}
+          >📜 Rules</button>
+          <button
+            className="irlb-gear-btn"
+            title="Preferences"
+            onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
+          >⚙</button>
+        </div>
+
+        {/* Online strip */}
+        <div className="irlb-online-strip">
+          <span className="irlb-online-badge">{onlineCount} Online</span>
+          {visibleChips.map(([id, player]) => (
+            <div
+              key={id}
+              className={`irlb-chip${id === userId ? ' is-me' : ''}`}
+              onClick={() => fetchPlayerStats(id, player)}
+            >
+              <div className="irlb-chip-avatar">
+                {getAvatarById(player.avatar).emoji}
+                <span className="irlb-chip-dot" />
+              </div>
+              <span className="irlb-chip-name">{player.username}</span>
+            </div>
+          ))}
+          {overflowCount > 0 && (
+            <button className="irlb-more-pill">+{overflowCount} more</button>
+          )}
+        </div>
+
+        {/* Tab bar */}
+        <div className="irlb-tab-bar">
+          <button
+            className={`irlb-tab${lobbyTab === 'games' ? ' active' : ''}`}
+            onClick={() => setLobbyTab('games')}
+          >Games</button>
+          <button
+            className={`irlb-tab${lobbyTab === 'leaderboard' ? ' active' : ''}`}
+            onClick={() => { setLobbyTab('leaderboard'); if (!leaderboardData.length) fetchLeaderboardData(); }}
+          >Leaderboard</button>
+        </div>
+
+        {/* Screen body */}
+        <div className="irlb-screen">
+          <div className="irlb-scroll">
+
+            {/* Games tab */}
+            {lobbyTab === 'games' && (
+              <>
+                {/* Rejoin banner */}
+                {rejoinGame && (
+                  <div className="irlb-rejoin">
+                    <span style={{ fontSize: '22px', flexShrink: 0 }}>↩</span>
+                    <div className="irlb-rejoin-info">
+                      <div className="irlb-rejoin-title">{rejoinGame.name}</div>
+                      <div className="irlb-rejoin-sub">Game in progress</div>
+                    </div>
+                    <button
+                      className="irlb-rejoin-btn"
+                      onClick={() => onJoinGame(rejoinGame.gameId, rejoinGame.seat)}
+                    >Rejoin</button>
+                  </div>
+                )}
+
+                {/* Error */}
+                {error && (
+                  <div style={{ background: 'rgba(244,67,54,0.12)', border: '1px solid rgba(244,67,54,0.4)', borderRadius: '8px', padding: '10px 14px', color: '#f88', fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{error}</span>
+                    <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', color: '#f88', cursor: 'pointer', fontSize: '18px', padding: '0 0 0 10px' }}>×</button>
+                  </div>
+                )}
+
+                {/* Open games */}
+                {openGames.length > 0 && (
+                  <>
+                    <div className="irlb-section-header">Open</div>
+                    {openGames.map(renderIrishGameRow)}
+                  </>
+                )}
+
+                {/* Playing games */}
+                {playingGames.length > 0 && (
+                  <>
+                    <div className="irlb-section-header">In Progress</div>
+                    {playingGames.map(renderIrishGameRow)}
+                  </>
+                )}
+
+                {/* Finished games */}
+                {finishedGames.length > 0 && (
+                  <>
+                    <div className="irlb-section-header">Finished</div>
+                    {finishedGames.map(renderIrishGameRow)}
+                  </>
+                )}
+
+                {/* Empty state */}
+                {gameList.length === 0 && (
+                  <div className="irlb-empty">
+                    <div className="irlb-empty-icon">🃏</div>
+                    <div className="irlb-empty-title">No Open Games</div>
+                    <div className="irlb-empty-sub">The room is quiet tonight. Be the first to deal a hand — create a game below.</div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Leaderboard tab */}
+            {lobbyTab === 'leaderboard' && (
+              <>
+                {leaderboardLoading ? (
+                  <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(201,162,74,0.5)', fontFamily: 'Cinzel, serif', fontSize: '13px' }}>Loading…</div>
+                ) : leaderboardData.length === 0 ? (
+                  <div className="irlb-empty">
+                    <div className="irlb-empty-icon">🏆</div>
+                    <div className="irlb-empty-title">No Players Yet</div>
+                    <div className="irlb-empty-sub">Play some games to appear on the leaderboard.</div>
+                  </div>
+                ) : (() => {
+                  const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+                  const active = leaderboardData.filter(p => p.lastSeen && p.lastSeen > oneMonthAgo);
+                  const inactive = leaderboardData.filter(p => !p.lastSeen || p.lastSeen <= oneMonthAgo);
+                  const lbWithBadges = leaderboardData.map(p => ({ ...p, badgesObj: {} }));
+                  const activeWithBadges = active.map(p => ({ ...p, badgesObj: {} }));
+                  const inactiveWithBadges = inactive.map(p => ({ ...p, badgesObj: {} }));
+                  return (
+                    <div className="irlb-lb-list">
+                      <div className="irlb-section-header">Top Players</div>
+                      {activeWithBadges.map((p, i) => renderIrishLbRow(p, i, false))}
+                      {inactiveWithBadges.length > 0 && (
+                        <>
+                          <div className="irlb-inactive-divider">Inactive · 30+ days</div>
+                          {inactiveWithBadges.map((p, i) => renderIrishLbRow(p, i, true))}
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+
+          </div>{/* /irlb-scroll */}
+
+          {/* Create Game button — pinned at bottom, only on games tab */}
+          {lobbyTab === 'games' && (
+            <div className="irlb-create-wrap">
+              <button
+                className="irlb-create-btn"
+                disabled={loading}
+                onClick={() => { SoundManager.play('buttonClick'); setShowCreateGame(true); }}
+              >
+                <span style={{ fontSize: '18px' }}>＋</span>
+                Create Game
+              </button>
+            </div>
+          )}
+        </div>{/* /irlb-screen */}
+
+        {/* Create Game Modal (shared) */}
+        {showCreateGame && (
+          <div
+            onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', zIndex: 3000, animation: 'fadeIn 0.2s ease-out' }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ background: 'linear-gradient(180deg, #2a1608 0%, #180b03 100%)', border: '1px solid rgba(201,162,74,0.35)', borderRadius: '16px 16px 0 0', padding: '24px 20px 32px', width: '100%', maxWidth: '500px', animation: 'slideUp 0.25s ease-out' }}
+            >
+              <div style={{ fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '16px', color: '#f6d778', marginBottom: '16px', letterSpacing: '1px' }}>Create Game</div>
+              <input
+                type="text"
+                value={newGameName}
+                onChange={(e) => setNewGameName(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleCreateGame()}
+                placeholder="Game name (optional)"
+                style={{ width: '100%', padding: '12px', fontSize: '16px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(201,162,74,0.3)', borderRadius: '8px', marginBottom: '12px', color: '#e8e4d9', outline: 'none' }}
+                maxLength={30}
+                disabled={loading}
+              />
+              {showGameOptions && (
+                <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '12px', marginBottom: '12px', border: '1px solid rgba(201,162,74,0.15)' }}>
+                  <div style={{ fontFamily: 'Cinzel, serif', fontSize: '11px', letterSpacing: '1px', color: 'rgba(201,162,74,0.6)', textTransform: 'uppercase', marginBottom: '10px' }}>Game Options</div>
+                  {[
+                    { key: 'optFiveCardDraw', val: optFiveCardDraw, setter: setOptFiveCardDraw, label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' },
+                    { key: 'optFollowAHearts', val: optFollowAHearts, setter: setOptFollowAHearts, label: 'Follow A♥', desc: 'When A♥ is led, void in trump must play a heart if holding one.' },
+                    { key: 'optThirtyFor60', val: optThirtyFor60, setter: setOptThirtyFor60, label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' },
+                  ].map(({ key, val, setter, label, desc }) => (
+                    <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '13px', marginBottom: '10px', color: '#e8e4d9' }}>
+                      <input type="checkbox" checked={val} onChange={e => setter(e.target.checked)} style={{ marginTop: '3px', width: '16px', height: '16px', cursor: 'pointer', accentColor: '#c9a24a' }} />
+                      <span><strong style={{ color: '#f6d778' }}>{label}</strong><span style={{ fontSize: '11px', color: 'rgba(232,228,217,0.5)', display: 'block', marginTop: '2px' }}>{desc}</span></span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={handleCreateGame}
+                  disabled={loading}
+                  className="irlb-create-btn"
+                  style={{ flex: 1, height: '44px', fontSize: '13px', letterSpacing: '1.5px' }}
+                >{loading ? 'Creating…' : 'Create'}</button>
+                <button
+                  onClick={() => setShowGameOptions(v => !v)}
+                  disabled={loading}
+                  style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,74,0.4)', borderRadius: '10px', background: showGameOptions ? 'rgba(201,162,74,0.15)' : 'transparent', color: '#c9a24a', fontFamily: 'Cinzel, serif', fontSize: '11px', letterSpacing: '1px', cursor: 'pointer' }}
+                >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}</button>
+                <button
+                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); }}
+                  disabled={loading}
+                  style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,74,0.2)', borderRadius: '10px', background: 'transparent', color: 'rgba(232,228,217,0.5)', fontFamily: 'Cinzel, serif', fontSize: '11px', cursor: 'pointer' }}
+                >Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Irish Card Room — Player Stats Modal (bottom sheet) */}
+        {showStatsModal && (() => {
+          const brass = '#c9a24a', brassHi = '#f6d778', felt = '#13572a';
+          const meBlue = '#6bb6ff';
+          const isMe = statsPlayerId === userId;
+          const accentColor = isMe ? meBlue : brass;
+          const accentHi = isMe ? '#a8d8ff' : brassHi;
+          const gp = statsData ? (statsData.gamesPlayed || 0) : 0;
+          const gw = statsData ? (statsData.gamesWon || 0) : 0;
+          const gl = statsData ? (statsData.gamesLost || 0) : (gp - gw);
+          const winRate = gp > 0 ? Math.round((gw / gp) * 100) : 0;
+          const totalPts = statsData ? computePlayerScore(statsData, gp, gw) : 0;
+          const bids30Won = statsData ? (statsData.bid30Made || 0) : 0;
+          const timesSet = statsData ? (statsData.timesSet || 0) : 0;
+          const bidAttempts = bids30Won + timesSet;
+          const bidSuccessPct = bidAttempts > 0 ? Math.round((bids30Won / bidAttempts) * 100) : 0;
+          const lastSeenTs = statsData ? statsData.lastSeen : null;
+          const isOnline = lastSeenTs && (Date.now() - lastSeenTs) < 5 * 60 * 1000;
+          const lastSeenStr = lastSeenTs
+            ? (isOnline ? 'Online now' : (() => {
+                const diff = Date.now() - lastSeenTs;
+                if (diff < 3600000) return `${Math.round(diff/60000)}m ago`;
+                if (diff < 86400000) return `${Math.round(diff/3600000)}h ago`;
+                return new Date(lastSeenTs).toLocaleDateString();
+              })())
+            : 'Never';
+          const earnedIds = Object.keys(statsPlayerBadges);
+          const activeBadgeObj = activeBadge ? BADGES.find(b => b.id === activeBadge) : null;
+
+          const statCard = (label, value, isHi) => (
+            <div style={{ background: 'rgba(10,40,20,0.6)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '8px', padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '3px' }}>
+              <div style={{ fontFamily: 'Merriweather, serif', fontStyle: 'italic', fontSize: '10px', color: 'rgba(251,246,228,0.5)', lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{label}</div>
+              <div style={{ fontFamily: 'Cinzel, serif', fontSize: '16px', fontWeight: '700', color: isHi ? accentHi : '#e8e4d9', lineHeight: 1 }}>{value}</div>
+            </div>
+          );
+
+          return (
+            <div
+              onClick={() => setShowStatsModal(false)}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 3000, animation: 'fadeIn 0.2s ease-out' }}
+            >
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0,
+                  height: '78%',
+                  background: 'rgba(12,6,2,0.96)',
+                  borderTop: `2px solid ${accentColor}`,
+                  borderRadius: '20px 20px 0 0',
+                  display: 'flex', flexDirection: 'column',
+                  overflow: 'hidden',
+                  animation: 'slideUp 0.25s ease-out',
+                }}
+              >
+                {/* Drag pill */}
+                <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
+                  <div style={{ width: '32px', height: '4px', borderRadius: '2px', background: isMe ? 'rgba(107,182,255,0.4)' : 'rgba(201,162,74,0.4)' }} />
+                </div>
+
+                {/* Scrollable content */}
+                <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 16px 32px', scrollbarWidth: 'thin', scrollbarColor: 'rgba(201,162,74,0.2) transparent' }}>
+
+                  {/* Profile header */}
+                  {statsPlayer && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '4px 0 16px' }}>
+                      <div style={{
+                        width: '64px', height: '64px', borderRadius: '50%',
+                        background: felt, border: `2px solid ${accentColor}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '34px', flexShrink: 0,
+                        boxShadow: isMe ? '0 0 18px rgba(107,182,255,0.28), 0 2px 10px rgba(0,0,0,0.6)' : '0 0 18px rgba(201,162,74,0.22), 0 2px 10px rgba(0,0,0,0.6)',
+                      }}>
+                        {getAvatarById(statsPlayer.avatar).emoji}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontFamily: 'Cinzel, serif', fontSize: '22px', fontWeight: '700',
+                          background: `linear-gradient(135deg, ${accentHi}, ${accentColor})`,
+                          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text', lineHeight: '1.1',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>{statsPlayer.username}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '5px' }}>
+                          <div style={{ width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, background: isOnline ? '#5dd084' : 'rgba(232,228,217,0.22)', boxShadow: isOnline ? '0 0 5px rgba(93,208,132,0.7)' : 'none' }} />
+                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: '500', color: isOnline ? '#5dd084' : 'rgba(232,228,217,0.35)' }}>
+                            {isOnline ? 'Online now' : lastSeenStr}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stats section */}
+                  {statsLoading ? (
+                    <div style={{ textAlign: 'center', padding: '40px 0', fontFamily: 'Cinzel, serif', color: 'rgba(201,162,74,0.5)', letterSpacing: '2px', fontSize: '12px' }}>Loading…</div>
+                  ) : statsData && (
+                    <div style={{ marginBottom: '16px' }}>
+                      {/* Hero card */}
+                      <div style={{
+                        background: 'rgba(10,40,20,0.7)', border: `1px solid ${isMe ? 'rgba(107,182,255,0.35)' : 'rgba(201,162,74,0.3)'}`,
+                        borderRadius: '10px', padding: '14px 16px 12px',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center',
+                        marginBottom: '8px', position: 'relative', overflow: 'hidden',
+                      }}>
+                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(201,162,74,0.07) 0%, transparent 55%)', pointerEvents: 'none' }} />
+                        <div style={{
+                          fontFamily: 'Cinzel, serif', fontSize: '36px', fontWeight: '900',
+                          background: `linear-gradient(135deg, ${accentHi}, ${accentColor})`,
+                          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text', lineHeight: 1,
+                        }}>{totalPts.toLocaleString()}</div>
+                        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '9px', fontWeight: '700', letterSpacing: '3px', textTransform: 'uppercase', color: isMe ? 'rgba(107,182,255,0.6)' : 'rgba(201,162,74,0.5)', marginTop: '4px' }}>Total Points</div>
+                      </div>
+
+                      {/* 3-col stat grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                        {statCard('Games Played', gp, false)}
+                        {statCard('Wins', gw, true)}
+                        {statCard('Losses', gl, false)}
+                        {statCard('Win %', winRate + '%', true)}
+                        {statCard('Cur. Streak 🔥', statsData.currentStreak || 0, false)}
+                        {statCard('Max Streak ⭐', statsData.bestStreak || 0, false)}
+                        {statCard('Bids Made', bids30Won, false)}
+                        {statCard('Bid Success %', bidAttempts > 0 ? bidSuccessPct + '%' : '—', true)}
+                        {statCard('Times Set', timesSet, false)}
+                        {statCard('Perfect 30s', statsData.perfect30s || 0, false)}
+                        {statCard('Quits', statsData.gamesQuit || 0, false)}
+                        {statCard('Avg Win Bid', bidAttempts > 0 ? (bids30Won * 30 / Math.max(bidAttempts, 1)).toFixed(1) : '—', false)}
+                        {/* Last Seen full width */}
+                        <div style={{ gridColumn: '1 / -1', background: 'rgba(10,40,20,0.6)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ fontFamily: 'Merriweather, serif', fontStyle: 'italic', fontSize: '11px', color: 'rgba(251,246,228,0.5)' }}>Last Seen</div>
+                          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '14px', fontWeight: '700', color: isOnline ? '#5dd084' : '#e8e4d9' }}>{isOnline ? 'Online now' : lastSeenStr}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Brass divider */}
+                  {statsData && (
+                    <div style={{ height: '1px', margin: '14px 0', background: 'linear-gradient(90deg, transparent 0%, #5a3f16 10%, #c9a24a 30%, #f6d778 50%, #c9a24a 70%, #5a3f16 90%, transparent 100%)', opacity: 0.45 }} />
+                  )}
+
+                  {/* Badges section */}
+                  {statsData && (() => {
+                    return (
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '14px', fontWeight: '700', background: 'linear-gradient(135deg, #f6d778, #c9a24a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Badges</div>
+                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', fontWeight: '500', color: 'rgba(201,162,74,0.55)' }}>{earnedIds.length} earned · {BADGES.length - earnedIds.length} locked</div>
+                        </div>
+
+                        {/* 5-col badge grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+                          {BADGES.map(badge => {
+                            const earned = earnedIds.includes(badge.id);
+                            const isActive = activeBadge === badge.id;
+                            return (
+                              <div
+                                key={badge.id}
+                                onClick={() => setActiveBadge(isActive ? null : badge.id)}
+                                title={badge.name}
+                                style={{
+                                  position: 'relative',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  aspectRatio: '1', borderRadius: '50%', cursor: 'pointer',
+                                  background: earned ? felt : 'rgba(18,14,10,0.7)',
+                                  border: isActive ? '2.5px solid #f6d778' : `1.5px solid ${earned ? '#c9a24a' : 'rgba(255,255,255,0.1)'}`,
+                                  boxShadow: isActive
+                                    ? '0 0 16px rgba(246,215,120,0.6), 0 0 0 4px rgba(246,215,120,0.1)'
+                                    : earned ? '0 0 8px rgba(201,162,74,0.3)' : 'none',
+                                  fontSize: badge.sym.length > 2 ? '10px' : '22px',
+                                  color: earned ? '#fff' : '#bbb',
+                                  fontWeight: 'bold',
+                                }}
+                              >
+                                <span style={{ opacity: earned ? 1 : 0.22, lineHeight: 1 }}>{badge.sym}</span>
+                                {!earned && <span style={{ position: 'absolute', bottom: '-1px', right: '-1px', fontSize: '11px', lineHeight: 1 }}>🔒</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Badge detail inline panel */}
+                        {activeBadgeObj && (() => {
+                          const earned = earnedIds.includes(activeBadgeObj.id);
+                          const earnedAt = statsPlayerBadges[activeBadgeObj.id]?.earnedAt;
+                          const progressStat = activeBadgeObj.progressStat;
+                          const progressVal = progressStat && statsData ? (statsData[progressStat] || 0) : 0;
+                          const goal = activeBadgeObj.threshold || activeBadgeObj.progressOf || 0;
+                          const pct = goal > 0 ? Math.min((progressVal / goal) * 100, 100) : 0;
+                          return (
+                            <div style={{ marginTop: '12px', background: 'rgba(10,30,15,0.9)', border: '1px solid #c9a24a', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                <div style={{ fontSize: '40px', lineHeight: 1, flexShrink: 0, filter: earned ? 'drop-shadow(0 0 8px rgba(201,162,74,0.5))' : 'none' }}>
+                                  {activeBadgeObj.sym.length > 2
+                                    ? <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: activeBadgeObj.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#fff', fontWeight: 'bold' }}>{activeBadgeObj.sym}</div>
+                                    : activeBadgeObj.sym}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontFamily: 'Cinzel, serif', fontSize: '18px', fontWeight: '700', background: 'linear-gradient(135deg, #f6d778, #c9a24a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', lineHeight: '1.1' }}>{activeBadgeObj.name}</div>
+                                  <div style={{ fontFamily: 'Merriweather, serif', fontStyle: 'italic', fontSize: '12px', color: 'rgba(251,246,228,0.6)', marginTop: '5px', lineHeight: '1.5' }}>{activeBadgeObj.desc}</div>
+                                  {earned && earnedAt && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '6px' }}>
+                                      <span style={{ fontSize: '13px', color: '#5dd084' }}>✓</span>
+                                      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: '500', color: '#5dd084' }}>Earned {new Date(earnedAt).toLocaleDateString()}</span>
+                                    </div>
+                                  )}
+                                  {!earned && (
+                                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: '500', color: 'rgba(232,228,217,0.33)', marginTop: '6px' }}>Not yet earned</div>
+                                  )}
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontFamily: 'Cinzel, serif', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(201,162,74,0.45)' }}>How to Earn</div>
+                                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'rgba(232,228,217,0.85)', marginTop: '3px', lineHeight: '1.4' }}>{activeBadgeObj.req || activeBadgeObj.desc}</div>
+                              </div>
+                              {!earned && goal > 0 && (
+                                <div>
+                                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '5px' }}>
+                                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', fontWeight: '500', color: 'rgba(201,162,74,0.7)' }}>{Math.min(progressVal, goal)} / {goal}</span>
+                                  </div>
+                                  <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', borderRadius: '3px', width: pct + '%', background: 'linear-gradient(90deg, #f6d778, #c9a24a)' }} />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  })()}
+
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {showLeaderboard && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, animation: 'fadeIn 0.2s ease-out' }}>
+            <div style={{ background: 'white', animation: 'slideUp 0.25s ease-out', borderRadius: '12px', padding: '24px', maxWidth: '400px', width: '90%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h2 style={{ margin: 0, color: '#1a5f3f', fontSize: '18px' }}>Leaderboard</h2>
+                <button onClick={() => setShowLeaderboard(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#666' }}>x</button>
+              </div>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '12px', textAlign: 'center' }}>All players · sorted by score</div>
+              {leaderboardLoading ? (<div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>Loading...</div>) : leaderboardData.length === 0 ? (<div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>No players yet</div>) : (() => {
+                const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+                const active = leaderboardData.filter(p => p.lastSeen && p.lastSeen > oneMonthAgo);
+                const inactive = leaderboardData.filter(p => !p.lastSeen || p.lastSeen <= oneMonthAgo);
+                const renderRow = (player, rank, dimmed) => (<div key={player.uid} onClick={() => fetchPlayerStats(player.uid, { username: player.username, avatar: player.avatar })} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', background: dimmed ? '#f8f8f8' : rank === 0 ? '#fff8e1' : rank === 1 ? '#f5f5f5' : rank === 2 ? '#fff3e0' : '#fafafa', borderRadius: '8px', border: !dimmed && rank < 3 ? `2px solid ${rank === 0 ? '#ffd700' : rank === 1 ? '#c0c0c0' : '#cd7f32'}` : '1px solid #eee', cursor: 'pointer', opacity: dimmed ? 0.5 : 1 }}><div style={{ width: '24px', height: '24px', borderRadius: '50%', background: dimmed ? '#ccc' : rank === 0 ? '#ffd700' : rank === 1 ? '#c0c0c0' : rank === 2 ? '#cd7f32' : '#e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', color: (!dimmed && rank < 3) ? '#fff' : '#666', flexShrink: 0 }}>{rank + 1}</div><div style={{ fontSize: '20px', flexShrink: 0 }}>{getAvatarById(player.avatar).emoji}</div><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.username}</div><div style={{ fontSize: '11px', color: '#666' }}>{player.gamesWon}W / {player.gamesPlayed}G · {player.winRate}%</div>{player.lastSeen ? (<div style={{ fontSize: '10px', color: '#999' }}>{new Date(player.lastSeen).toLocaleDateString()}</div>) : (<div style={{ fontSize: '10px', color: '#bbb' }}>never seen</div>)}</div><div style={{ textAlign: 'right', flexShrink: 0 }}><div style={{ fontSize: '18px', fontWeight: 'bold', color: '#1a5f3f' }}>{player.score}</div><div style={{ fontSize: '10px', color: '#666' }}>pts</div></div></div>);
+                return (<div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px' }}>{active.map((player, i) => renderRow(player, i, false))}{inactive.length > 0 && (<><div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', marginBottom: '2px' }}><div style={{ flex: 1, height: '1px', background: '#ddd' }} /><span style={{ fontSize: '11px', color: '#aaa', whiteSpace: 'nowrap' }}>Inactive (30+ days)</span><div style={{ flex: 1, height: '1px', background: '#ddd' }} /></div>{inactive.map((player, i) => renderRow(player, i, true))}</>)}</div>);
+              })()}
+            </div>
+          </div>
+        )}
+
+        {showSettings && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, animation: 'fadeIn 0.2s ease-out' }}>
+            <div style={{ background: 'white', animation: 'slideUp 0.25s ease-out', borderRadius: '12px', padding: '32px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+              <h2 style={{ marginBottom: '24px', color: '#1a5f3f' }}>Profile Settings</h2>
+              <div style={{ marginBottom: '20px' }}><label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>Username</label><input type="text" value={editUsername} onChange={(e) => setEditUsername(e.target.value)} maxLength={20} style={{ width: '100%', padding: '12px', fontSize: '16px', border: '2px solid #ddd', borderRadius: '6px' }} /></div>
+              <div style={{ marginBottom: '24px' }}><label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>Avatar</label><div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', border: '2px solid #ddd', borderRadius: '6px', cursor: 'pointer', background: '#f5f5f5' }} onClick={() => setShowAvatarPicker(!showAvatarPicker)}><div style={{ fontSize: '32px' }}>{getAvatarById(editAvatar).emoji}</div><div style={{ flex: 1 }}><div style={{ fontSize: '14px', fontWeight: 'bold' }}>{getAvatarById(editAvatar).name}</div><div style={{ fontSize: '12px', color: '#666' }}>Click to change</div></div></div>{showAvatarPicker && (<div style={{ marginTop: '12px', padding: '12px', border: '2px solid #ddd', borderRadius: '6px', maxHeight: '200px', overflowY: 'auto', background: 'white' }}><div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>{AVATARS.map(avatar => (<div key={avatar.id} onClick={() => { setEditAvatar(avatar.id); setShowAvatarPicker(false); }} style={{ fontSize: '32px', padding: '8px', cursor: 'pointer', textAlign: 'center', borderRadius: '6px', border: editAvatar === avatar.id ? '2px solid #2d8f5f' : '2px solid transparent', background: editAvatar === avatar.id ? '#e8f5e9' : 'white', transition: 'all 0.2s' }} title={avatar.name}>{avatar.emoji}</div>))}</div></div>)}</div>
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1.5px', color: '#888', textTransform: 'uppercase', marginBottom: '12px' }}>THEME</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  {THEME_ORDER.map(tid => {
+                    const theme = THEMES[tid]; const isUnlocked = theme.unlocked(myStats); const isActive = (activeTheme || currentThemeId) === tid;
+                    const progress = theme.progressStat ? Math.min(myStats?.[theme.progressStat] || 0, theme.progressOf) : 0;
+                    return (<div key={tid} onClick={() => setShowThemePreview(tid)} style={{ width: '140px', borderRadius: '10px', overflow: 'hidden', border: isActive ? '3px solid #c9a24a' : '2px solid #ddd', cursor: 'pointer', boxShadow: isActive ? '0 0 12px rgba(201,162,74,0.4)' : '0 2px 6px rgba(0,0,0,0.1)', transition: 'all 0.2s', position: 'relative', background: '#fff' }}>
+                      <div className={tid === 'irish' ? 'theme-tile-thumb-irish' : 'theme-tile-thumb-cyberpunk'} style={{ height: '88px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: tid === 'irish' ? 'radial-gradient(ellipse at center, #1f7a3f 0%, #13572a 55%, #093a1a 100%)' : 'radial-gradient(ellipse at center, #060e1e 0%, #030609 100%)', border: tid === 'irish' ? '2px solid #c9a24a' : '2px solid rgba(0,229,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>{tid === 'irish' ? '♠' : '◈'}</div>
+                        {[0,1,2].map(n => (<div key={n} style={{ position: 'absolute', top: `${10 + n * 6}px`, left: `${14 + n * 4}px`, width: '14px', height: '20px', borderRadius: '2px', background: tid === 'irish' ? 'linear-gradient(135deg, #1a6b3a 0%, #0b3d1c 100%)' : '#040a12', border: tid === 'irish' ? '1px solid rgba(201,162,74,0.6)' : '1px solid rgba(0,229,255,0.4)', transform: `rotate(${(n-1)*8}deg)` }} />))}
+                      </div>
+                      <div style={{ padding: '8px 10px 10px', borderTop: tid === 'irish' ? '1px solid rgba(201,162,74,0.2)' : '1px solid rgba(0,229,255,0.15)', background: tid === 'irish' ? '#180b03' : '#020509' }}>
+                        <div style={{ fontSize: '12px', fontWeight: '700', color: tid === 'irish' ? '#c9a24a' : '#00e5ff', fontFamily: tid === 'irish' ? 'Cinzel, serif' : 'monospace', letterSpacing: '0.5px', marginBottom: '4px' }}>{theme.name}</div>
+                        {isActive && <div style={{ fontSize: '10px', color: '#4caf50', fontWeight: '600' }}>✓ Active</div>}
+                        {!isActive && isUnlocked && <div style={{ fontSize: '10px', color: '#999' }}>Tap to preview</div>}
+                        {!isUnlocked && (<div style={{ marginTop: '4px' }}><div style={{ fontSize: '9px', color: '#f57c00', marginBottom: '3px' }}>{theme.unlockHint}</div><div style={{ height: '4px', borderRadius: '2px', background: '#e0e0e0', overflow: 'hidden' }}><div style={{ height: '100%', width: `${(progress / theme.progressOf) * 100}%`, background: '#f57c00', borderRadius: '2px' }} /></div></div>)}
+                        {isUnlocked && !isActive && (<div style={{ fontSize: '9px', color: '#888', marginTop: '4px' }}>{theme.unlockHint || 'Always available'}</div>)}
+                      </div>
+                      {isActive && (<div style={{ position: 'absolute', top: '6px', right: '6px', width: '18px', height: '18px', borderRadius: '50%', background: '#c9a24a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#000', fontWeight: 'bold' }}>✓</div>)}
+                    </div>);
+                  })}
+                </div>
+              </div>
+              {showThemePreview && (() => {
+                const theme = THEMES[showThemePreview]; const isUnlocked = theme.unlocked(myStats); const isAlreadyActive = (activeTheme || currentThemeId) === showThemePreview;
+                return (<div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 9999, animation: 'fadeIn 0.2s' }}>
+                  <div style={{ position: 'absolute', top: '16px', right: '16px' }}><button onClick={() => setShowThemePreview(null)} style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '50%', width: '40px', height: '40px', color: '#fff', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button></div>
+                  <div style={{ fontFamily: theme.id === 'irish' ? 'Cinzel, serif' : 'monospace', fontSize: '22px', fontWeight: '900', color: theme.id === 'irish' ? '#c9a24a' : '#00e5ff', marginBottom: '8px', letterSpacing: theme.id === 'irish' ? '2px' : '4px' }}>{theme.name}</div>
+                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '24px', textAlign: 'center', maxWidth: '260px' }}>{isUnlocked ? (isAlreadyActive ? 'This theme is currently active.' : 'Tap Apply to switch to this theme.') : theme.unlockHint}</div>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button onClick={() => setShowThemePreview(null)} style={{ padding: '12px 24px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', background: 'transparent', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Back</button>
+                    {isUnlocked && !isAlreadyActive && (<button onClick={() => { if (onThemeChange) onThemeChange(showThemePreview); setShowThemePreview(null); setShowSettings(false); }} style={{ padding: '12px 24px', borderRadius: '8px', border: 'none', background: theme.id === 'irish' ? 'linear-gradient(135deg, #f6d778, #c9a24a)' : 'linear-gradient(135deg, #00e5ff, #0077aa)', color: theme.id === 'irish' ? '#1a0e00' : '#fff', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}>Apply Theme</button>)}
+                  </div>
+                </div>);
+              })()}
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '8px' }}>
+                <button onClick={() => setShowSettings(false)} style={{ flex: 1, padding: '12px', background: '#ccc', color: '#333', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
+                <button onClick={handleSaveSettings} disabled={settingsSaving} style={{ flex: 1, padding: '12px', background: settingsSaving ? '#ccc' : '#2d8f5f', color: 'white', border: 'none', borderRadius: '6px', cursor: settingsSaving ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>{settingsSaving ? 'Saving…' : 'Save'}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showRules && <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />}
+
+        {showPreferences && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
+            <div style={{ background: 'white', borderRadius: '12px', padding: '28px', maxWidth: '420px', width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+              <h2 style={{ marginBottom: '20px', color: '#1a5f3f' }}>Preferences</h2>
+              <div style={{ marginBottom: '18px' }}><div style={{ fontSize: '13px', fontWeight: 'bold', color: '#333', marginBottom: '8px' }}>Trick Speed</div><div style={{ display: 'flex', gap: '8px' }}>{['fast', 'medium', 'slow'].map(speed => (<button key={speed} onClick={() => setEditTrickSpeed(speed)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: editTrickSpeed === speed ? '2px solid #2d8f5f' : '1px solid #ddd', background: editTrickSpeed === speed ? '#e8f5e9' : 'white', color: editTrickSpeed === speed ? '#1a5f3f' : '#333', fontWeight: editTrickSpeed === speed ? 'bold' : 'normal', cursor: 'pointer', fontSize: '13px', textTransform: 'capitalize' }}>{speed}</button>))}</div></div>
+              <div style={{ marginBottom: '18px' }}><div style={{ fontSize: '13px', fontWeight: 'bold', color: '#333', marginBottom: '8px' }}>House Rules (Default for New Games)</div>
+                {[{ key: 'fiveCardDraw', label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' }, { key: 'followAHearts', label: 'Follow A♥', desc: "When A♥ is led, void in trump must play a heart if holding one." }, { key: 'thirtyFor60', label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' }].map(({ key, label, desc }) => (
+                  <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '14px', marginBottom: '12px' }}>
+                    <input type="checkbox" checked={editPrefHouseRules[key]} onChange={e => setEditPrefHouseRules(prev => ({ ...prev, [key]: e.target.checked }))} style={{ marginTop: '3px', width: '18px', height: '18px', cursor: 'pointer' }} />
+                    <span><strong>{label}</strong><span style={{ fontSize: '12px', color: '#666', display: 'block' }}>{desc}</span></span>
+                  </label>
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button onClick={() => setShowPreferences(false)} style={{ padding: '10px 20px', background: '#757575', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' }}>Cancel</button>
+                <button onClick={handleSavePreferences} style={{ padding: '10px 20px', background: '#1a5f3f', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}>Save</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Seat Picker Modal */}
+        {selectedGameId && (() => {
+          const spGame = games[selectedGameId];
+          if (!spGame) return null;
+          const spPlayers = spGame.players || {};
+          const spSeatKeys = ['North', 'South', 'East', 'West'];
+          const spGameName = spGame.name || selectedGameId;
+          return (
+            <div
+              onClick={() => setSelectedGameId(null)}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 4000, animation: 'fadeIn 0.2s ease-out' }}
+            >
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{ background: 'rgba(12,6,2,0.96)', border: '1px solid #c9a24a', borderRadius: '16px', padding: '24px', maxWidth: '340px', width: '90%', boxShadow: '0 12px 48px rgba(0,0,0,0.7)', animation: 'slideUp 0.25s ease-out' }}
+              >
+                <div style={{ fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '17px', color: '#f6d778', letterSpacing: '1.5px', textAlign: 'center', marginBottom: '6px' }}>Choose Your Seat</div>
+                <div style={{ fontFamily: 'Merriweather, serif', fontStyle: 'italic', fontSize: '13px', color: 'rgba(201,162,74,0.7)', textAlign: 'center', marginBottom: '20px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spGameName}</div>
+                <div style={{ display: 'grid', gridTemplateAreas: '". north ." "west center east" ". south ."', gridTemplateColumns: '1fr auto 1fr', gridTemplateRows: 'auto auto auto', gap: '8px', marginBottom: '16px', minHeight: '280px', alignItems: 'center', justifyItems: 'center' }}>
+                  {['North', 'South', 'East', 'West'].map(seat => {
+                    const occupant = spPlayers[seat];
+                    const isTaken = !!occupant;
+                    const area = seat.toLowerCase();
+                    return (
+                      <button
+                        key={seat}
+                        disabled={isTaken}
+                        onClick={() => { if (!isTaken) { handleJoinSeat(selectedGameId, seat); setSelectedGameId(null); } }}
+                        style={{
+                          gridArea: area,
+                          width: '88px',
+                          minHeight: '64px',
+                          padding: '10px 8px',
+                          borderRadius: '8px',
+                          border: isTaken ? '1px solid rgba(201,162,74,0.2)' : '1px solid #c9a24a',
+                          background: isTaken ? 'rgba(255,255,255,0.04)' : 'linear-gradient(180deg, rgba(201,162,74,0.12) 0%, rgba(19,87,42,0.25) 100%)',
+                          cursor: isTaken ? 'default' : 'pointer',
+                          opacity: isTaken ? 0.55 : 1,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '12px', fontWeight: 700, letterSpacing: '1px', color: isTaken ? 'rgba(201,162,74,0.4)' : '#f6d778', textTransform: 'uppercase' }}>{seat}</div>
+                        {isTaken ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                            <span style={{ fontSize: '18px', lineHeight: 1 }}>{getAvatarById(occupant.avatar).emoji}</span>
+                            <span style={{ fontSize: '11px', color: 'rgba(201,162,74,0.5)', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{occupant.username || 'Seated'}</span>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: 'rgba(201,162,74,0.6)', fontFamily: 'Merriweather, serif', fontStyle: 'italic' }}>Available</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {/* Center felt circle */}
+                  <div style={{ gridArea: 'center', width: '52px', height: '52px', borderRadius: '50%', background: '#13572a', border: '2px solid #c9a24a', boxShadow: '0 0 10px rgba(201,162,74,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontFamily: 'Cinzel, serif', fontSize: '10px', fontWeight: 700, color: '#c9a24a', letterSpacing: '1px' }}>45s</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedGameId(null)}
+                  style={{ width: '100%', padding: '11px', background: 'transparent', border: '1px solid rgba(201,162,74,0.4)', borderRadius: '10px', color: '#c9a24a', fontFamily: 'Cinzel, serif', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer' }}
+                >Cancel</button>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    );
+  }
+  // ── End Irish layout ─────────────────────────────────────────────────────────
 
   return (
     <div style={{
@@ -7308,7 +8927,7 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
     </div>
   );
 }
-function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStartGame, onLeaveGame }) {  // Updated signature
+function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStartGame, onLeaveGame, onChangeSeat }) {  // Updated signature
   const [game, setGame] = useState(null);
   const [isCreator, setIsCreator] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -7499,6 +9118,26 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
     }
   };
 
+  const handleChangeSeat = async (newSeat) => {
+    if (newSeat === mySeat) return;
+    try {
+      // Move player from current seat to new seat
+      await database.ref(`lobby/games/${gameId}/players/${mySeat}`).remove();
+      await database.ref(`lobby/games/${gameId}/players/${newSeat}`).set({
+        username: playerName,
+        userId: userId,
+        avatar: playerAvatar,
+        connected: true,
+        lastSeen: Date.now(),
+        ready: true,
+        isAI: false
+      });
+      if (onChangeSeat) onChangeSeat(newSeat);
+    } catch (err) {
+      console.error('Error changing seat:', err);
+    }
+  };
+
   if (!game) {
     return (
       <div style={{
@@ -7517,7 +9156,330 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
   const players = game.players || {};
   const playerCount = Object.keys(players).length;
   const seats = ['North', 'South', 'East', 'West'];
+  const isIrish = currentThemeId === 'irish';
 
+  // Irish design tokens
+  const IR = {
+    brass: '#c9a24a', brassHi: '#f6d778', brassLo: '#5a3f16',
+    felt: '#13572a', paper: '#fbf6e4',
+    teamUs: '#5dd084', teamThem: '#ef7c74', meBlue: '#6bb6ff',
+    walnut: '#180b03'
+  };
+
+  // Team logic: N+S = team 0, E+W = team 1
+  const SEAT_TEAM = { North: 0, South: 0, East: 1, West: 1 };
+  const myTeam = mySeat ? SEAT_TEAM[mySeat] : -1;
+
+  // Helper: render a single seat card (Irish style)
+  const renderIrishSeat = (seat, gridArea) => {
+    const player = players[seat];
+    const isMe = seat === mySeat;
+    const isPartner = !isMe && player && SEAT_TEAM[seat] === myTeam;
+    const isOccupied = !!player;
+    const voiceEntry = player ? Object.entries(voiceUsers).find(([uid]) => uid === player.userId) : null;
+    const voiceData = voiceEntry ? voiceEntry[1] : null;
+    const hasVoice = voiceData && voiceData.enabled;
+
+    let borderColor = 'rgba(201,162,74,0.25)';
+    let bg = 'rgba(10,40,20,0.75)';
+    if (isMe) { borderColor = IR.meBlue; bg = 'rgba(33,120,200,0.14)'; }
+    else if (isPartner) { borderColor = 'rgba(93,208,132,0.4)'; bg = 'rgba(31,122,63,0.14)'; }
+
+    if (!isOccupied) {
+      return (
+        <div key={seat} style={{
+          gridArea,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: '3px', padding: '8px 6px', borderRadius: '4px',
+          background: 'rgba(0,0,0,0.15)',
+          border: '1px dashed rgba(201,162,74,0.22)',
+          alignSelf: 'stretch', justifySelf: 'stretch'
+        }}>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '8px', fontWeight: 700, letterSpacing: '1.5px', color: 'rgba(201,162,74,0.55)', textTransform: 'uppercase' }}>{seat.toUpperCase()}</div>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', fontStyle: 'italic', color: 'rgba(201,162,74,0.28)' }}>Tap to join</div>
+        </div>
+      );
+    }
+
+    let badgeColor = 'rgba(239,180,80,0.75)';
+    let badgeBg = 'rgba(180,100,10,0.15)';
+    let badgeBorder = 'rgba(239,180,80,0.3)';
+    let badgeText = player.isAI ? 'AI' : (player.ready ? '✓ Ready' : 'Waiting');
+    if (player.isAI) { badgeColor = 'rgba(180,180,180,0.65)'; badgeBg = 'rgba(80,80,80,0.2)'; badgeBorder = 'rgba(140,140,140,0.25)'; }
+    else if (player.ready) { badgeColor = IR.teamUs; badgeBg = 'rgba(31,122,63,0.25)'; badgeBorder = 'rgba(93,208,132,0.4)'; }
+
+    const teamDotColor = SEAT_TEAM[seat] === myTeam ? IR.teamUs : IR.teamThem;
+
+    return (
+      <div key={seat} style={{
+        gridArea,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        gap: '4px', padding: '8px 6px', borderRadius: '4px',
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.035) 0%, transparent 100%), ' + bg,
+        border: '1px solid ' + borderColor,
+        alignSelf: 'stretch', justifySelf: 'stretch',
+        position: 'relative'
+      }}>
+        {hasVoice && <div style={{ position: 'absolute', top: '5px', right: '5px', fontSize: '9px', opacity: 0.7 }}>🎤</div>}
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '8px', fontWeight: 700, letterSpacing: '1.5px', color: 'rgba(201,162,74,0.55)', textTransform: 'uppercase' }}>{seat.toUpperCase()}</div>
+        <div style={{ fontSize: '22px', lineHeight: 1 }}>{getAvatarById(player.avatar).emoji}</div>
+        <div style={{
+          fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '10px', textAlign: 'center',
+          color: isMe ? IR.meBlue : isPartner ? 'rgba(93,208,132,0.9)' : IR.paper,
+          lineHeight: 1.2, wordBreak: 'break-word', maxWidth: '90%'
+        }}>{player.username}</div>
+        <div style={{
+          fontFamily: 'Cinzel, serif', fontSize: '7px', fontWeight: 700,
+          letterSpacing: '0.5px', padding: '1px 5px', borderRadius: '2px', textTransform: 'uppercase',
+          color: badgeColor, background: badgeBg, border: '1px solid ' + badgeBorder
+        }}>{badgeText}</div>
+        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: teamDotColor, opacity: 0.8, marginTop: '1px' }} />
+      </div>
+    );
+  };
+
+  // Irish theme render
+  if (isIrish) {
+    const humanPlayers = Object.values(game.players || {}).filter(p => p && !p.isAI);
+    const otherHumans = humanPlayers.filter(p => p.userId !== userId);
+    const hasOtherHumans = otherHumans.length > 0;
+    const voiceUsersList = Object.values(voiceUsers).filter(v => v && v.enabled);
+    const isFull = playerCount >= 4;
+
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        color: '#e8e4d9',
+        fontFamily: 'Inter, sans-serif',
+        backgroundColor: IR.walnut,
+        backgroundImage: 'radial-gradient(ellipse 95% 55% at 50% -5%, rgba(255,210,136,0.22) 0%, rgba(255,180,110,0.08) 30%, transparent 60%), linear-gradient(180deg, rgba(255,220,175,0.07) 0%, rgba(255,220,175,0.02) 22%, transparent 52%), linear-gradient(172deg, #3a2312 0%, #281609 35%, #180b03 68%, #1f0f05 100%)'
+      }}>
+        {/* Topbar */}
+        <div style={{
+          position: 'relative',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 14px',
+          background: 'linear-gradient(180deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.25) 100%)',
+          borderBottom: '1px solid rgba(201,162,74,0.3)',
+          flexShrink: 0,
+          backdropFilter: 'blur(6px)',
+          minHeight: '48px',
+          gap: '8px',
+          zIndex: 10
+        }}>
+          <button onClick={handleLeaveGame} style={{
+            display: 'flex', alignItems: 'center', gap: '4px',
+            padding: '6px 10px', minHeight: '34px', minWidth: '44px',
+            fontFamily: 'Cinzel, serif', fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px',
+            color: 'rgba(201,162,74,0.75)',
+            background: 'transparent', border: '1px solid rgba(201,162,74,0.35)', borderRadius: '4px', cursor: 'pointer',
+            whiteSpace: 'nowrap', flexShrink: 0
+          }}>← Lobby</button>
+          <div style={{
+            fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '14px', letterSpacing: '2px',
+            background: 'linear-gradient(180deg, ' + IR.brassHi + ' 0%, ' + IR.brass + ' 100%)',
+            WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
+            textAlign: 'center', flex: 1, minWidth: 0
+          }}>{game.name || 'Waiting Room'}</div>
+          {voiceEnabled ? (
+            <button onClick={handleToggleVoiceMute} style={{
+              display: 'flex', alignItems: 'center', gap: '4px',
+              padding: '6px 9px', minHeight: '34px',
+              fontFamily: 'Cinzel, serif', fontSize: '9px', fontWeight: 700, letterSpacing: '0.5px',
+              borderRadius: '4px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+              color: voiceMuted ? 'rgba(239,124,116,0.85)' : 'rgba(93,208,132,0.85)',
+              background: voiceMuted ? 'rgba(168,24,36,0.12)' : 'rgba(31,122,63,0.15)',
+              border: voiceMuted ? '1px solid rgba(239,124,116,0.35)' : '1px solid rgba(93,208,132,0.35)'
+            }}>{voiceMuted ? '🔇 Muted' : '🎤 Voice'}</button>
+          ) : (
+            <button onClick={hasOtherHumans ? handleJoinVoice : undefined} disabled={!hasOtherHumans} style={{
+              display: 'flex', alignItems: 'center', gap: '4px',
+              padding: '6px 9px', minHeight: '34px',
+              fontFamily: 'Cinzel, serif', fontSize: '9px', fontWeight: 700, letterSpacing: '0.5px',
+              borderRadius: '4px', cursor: hasOtherHumans ? 'pointer' : 'default', whiteSpace: 'nowrap', flexShrink: 0,
+              color: 'rgba(201,162,74,0.7)',
+              background: 'transparent',
+              border: '1px solid rgba(201,162,74,0.3)'
+            }}>🎤 Voice</button>
+          )}
+        </div>
+
+        {/* Content */}
+        <div style={{
+          flex: 1, display: 'flex', flexDirection: 'column',
+          padding: '10px 10px 6px', gap: '8px',
+          overflow: 'hidden', position: 'relative', zIndex: 2,
+          minHeight: 0
+        }}>
+          {error && (
+            <div style={{ background: 'rgba(239,124,116,0.15)', border: '1px solid rgba(239,124,116,0.4)', borderRadius: '4px', padding: '8px 12px', color: 'rgba(239,124,116,0.9)', fontSize: '13px' }}>
+              {error}
+            </div>
+          )}
+
+          {/* Status strip */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '14px',
+            padding: '7px 12px', flexShrink: 0,
+            background: 'rgba(10,6,2,0.4)', border: '1px solid rgba(201,162,74,0.15)', borderRadius: '4px'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: 'Merriweather, serif', fontWeight: 900, fontSize: '16px', color: IR.brassHi, lineHeight: 1 }}>{playerCount}</div>
+              <div style={{ fontSize: '8px', letterSpacing: '1px', color: 'rgba(201,162,74,0.5)', textTransform: 'uppercase', marginTop: '1px' }}>Players</div>
+            </div>
+            <div style={{ width: '1px', height: '24px', background: 'rgba(201,162,74,0.18)' }} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: 'Merriweather, serif', fontWeight: 900, fontSize: '16px', color: IR.brassHi, lineHeight: 1 }}>4</div>
+              <div style={{ fontSize: '8px', letterSpacing: '1px', color: 'rgba(201,162,74,0.5)', textTransform: 'uppercase', marginTop: '1px' }}>Seats</div>
+            </div>
+            <div style={{ width: '1px', height: '24px', background: 'rgba(201,162,74,0.18)' }} />
+            {isCreator ? (
+              <span style={{ fontFamily: 'Cinzel, serif', fontSize: '8px', fontWeight: 700, letterSpacing: '1px', color: IR.brassHi, background: 'rgba(201,162,74,0.1)', border: '1px solid rgba(201,162,74,0.3)', borderRadius: '3px', padding: '2px 7px' }}>★ Host</span>
+            ) : (
+              <span style={{ fontFamily: 'Cinzel, serif', fontSize: '8px', fontWeight: 700, letterSpacing: '1px', color: 'rgba(201,162,74,0.55)', background: 'rgba(201,162,74,0.06)', border: '1px solid rgba(201,162,74,0.18)', borderRadius: '3px', padding: '2px 7px' }}>Guest</span>
+            )}
+          </div>
+
+          {/* Compass grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            gridTemplateRows: '1fr 1fr 1fr',
+            gridTemplateAreas: '". north ." "west center east" ". south ."',
+            gap: '6px',
+            width: '100%',
+            flex: 1,
+            minHeight: 0
+          }}>
+            {renderIrishSeat('North', 'north')}
+            {renderIrishSeat('West', 'west')}
+
+            {/* Table center */}
+            <div style={{
+              gridArea: 'center',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              backgroundColor: IR.felt,
+              backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px), radial-gradient(ellipse 80% 50% at 50% 30%, rgba(31,122,63,0.5) 0%, transparent 70%)',
+              backgroundSize: '6px 6px, 100% 100%',
+              borderRadius: '50%',
+              border: '2px solid rgba(201,162,74,0.35)',
+              boxShadow: '0 0 0 1px rgba(0,0,0,0.5), inset 0 2px 10px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.4)',
+              width: '110px',
+              height: '110px',
+              alignSelf: 'center',
+              justifySelf: 'center',
+              gap: '4px',
+              padding: '10px'
+            }}>
+              <div style={{ fontSize: '22px', background: 'linear-gradient(180deg, ' + IR.brassHi + ' 0%, ' + IR.brass + ' 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))', lineHeight: 1 }}>♣</div>
+              <div style={{ fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '10px', letterSpacing: '1px', textAlign: 'center', background: 'linear-gradient(180deg, ' + IR.brassHi + ' 0%, ' + IR.brass + ' 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>45s</div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(201,162,74,0.5)', textAlign: 'center' }}>{playerCount} / 4</div>
+            </div>
+
+            {renderIrishSeat('East', 'east')}
+            {renderIrishSeat('South', 'south')}
+          </div>
+
+          {/* Voice row */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0,
+            padding: '8px 10px',
+            background: 'rgba(10,6,2,0.4)', border: '1px solid rgba(201,162,74,0.15)', borderRadius: '4px'
+          }}>
+            <div style={{ fontFamily: 'Cinzel, serif', fontSize: '8px', fontWeight: 700, letterSpacing: '1.5px', color: 'rgba(201,162,74,0.55)', textTransform: 'uppercase', flexShrink: 0 }}>🎤 Voice</div>
+            <div style={{ display: 'flex', gap: '4px', flex: 1 }}>
+              {voiceUsersList.length === 0 ? (
+                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', fontStyle: 'italic', color: 'rgba(201,162,74,0.3)' }}>No one joined yet</span>
+              ) : (
+                Object.entries(voiceUsers).filter(([,v]) => v && v.enabled).map(([uid, v]) => {
+                  const p = Object.values(game.players || {}).find(pl => pl && pl.userId === uid);
+                  if (!p) return null;
+                  return (
+                    <div key={uid} title={p.username} style={{
+                      width: '24px', height: '24px', borderRadius: '50%',
+                      background: v.muted ? 'rgba(168,24,36,0.12)' : 'rgba(31,122,63,0.2)',
+                      border: v.muted ? '1px solid rgba(239,124,116,0.35)' : '1px solid rgba(93,208,132,0.4)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px'
+                    }}>{getAvatarById(p.avatar).emoji}</div>
+                  );
+                })
+              )}
+            </div>
+            {voiceEnabled ? (
+              <button onClick={handleLeaveVoice} style={{
+                padding: '5px 10px', minHeight: '30px',
+                fontFamily: 'Cinzel, serif', fontSize: '8px', fontWeight: 700, letterSpacing: '1px',
+                color: 'rgba(239,124,116,0.85)', background: 'rgba(168,24,36,0.12)',
+                border: '1px solid rgba(239,124,116,0.35)', borderRadius: '3px', cursor: 'pointer', textTransform: 'uppercase'
+              }}>Leave</button>
+            ) : (
+              <button onClick={hasOtherHumans ? handleJoinVoice : undefined} disabled={!hasOtherHumans} style={{
+                padding: '5px 10px', minHeight: '30px',
+                fontFamily: 'Cinzel, serif', fontSize: '8px', fontWeight: 700, letterSpacing: '1px',
+                color: hasOtherHumans ? 'rgba(93,208,132,0.85)' : 'rgba(201,162,74,0.3)',
+                background: hasOtherHumans ? 'rgba(31,122,63,0.15)' : 'transparent',
+                border: hasOtherHumans ? '1px solid rgba(93,208,132,0.35)' : '1px solid rgba(201,162,74,0.15)',
+                borderRadius: '3px', cursor: hasOtherHumans ? 'pointer' : 'default', textTransform: 'uppercase'
+              }}>Join</button>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom action area */}
+        <div style={{
+          padding: '10px 12px 16px',
+          display: 'flex', flexDirection: 'column', gap: '7px',
+          borderTop: '1px solid rgba(201,162,74,0.12)', flexShrink: 0, position: 'relative', zIndex: 2,
+          background: 'linear-gradient(0deg, rgba(0,0,0,0.45) 0%, transparent 100%)'
+        }}>
+          {isCreator ? (
+            <>
+              <button
+                onClick={handleStartGame}
+                disabled={loading}
+                style={{
+                  width: '100%', padding: '13px', minHeight: '48px',
+                  fontFamily: 'Cinzel, serif', fontSize: '13px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase',
+                  color: '#1a0e03',
+                  background: loading ? 'rgba(201,162,74,0.4)' : 'linear-gradient(180deg, ' + IR.brassHi + ' 0%, ' + IR.brass + ' 45%, #9a7630 100%)',
+                  border: 'none', borderRadius: '4px', cursor: loading ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 0 0 1px rgba(0,0,0,0.6), 0 3px 0 rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.6)',
+                  opacity: loading ? 0.7 : 1
+                }}
+              >{loading ? 'Starting...' : 'Start Game'}</button>
+              <div style={{ textAlign: 'center', fontSize: '11px', color: isFull ? 'rgba(93,208,132,0.6)' : 'rgba(201,162,74,0.45)', fontStyle: 'italic', marginTop: '-2px', fontFamily: 'Inter, sans-serif' }}>
+                {isFull ? 'All seats filled' : 'Empty seats will be filled with AI'}
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={handleToggleReady}
+                disabled={loading}
+                style={{
+                  width: '100%', padding: '13px', minHeight: '48px',
+                  fontFamily: 'Cinzel, serif', fontSize: '13px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase',
+                  color: myReady ? '#1a0e03' : 'rgba(201,162,74,0.85)',
+                  background: myReady ? 'linear-gradient(180deg, ' + IR.brassHi + ' 0%, ' + IR.brass + ' 45%, #9a7630 100%)' : 'transparent',
+                  border: myReady ? 'none' : '1px solid rgba(201,162,74,0.45)',
+                  borderRadius: '4px', cursor: loading ? 'not-allowed' : 'pointer',
+                  boxShadow: myReady ? '0 0 0 1px rgba(0,0,0,0.6), 0 3px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,245,200,0.6)' : 'none',
+                  opacity: loading ? 0.7 : 1
+                }}
+              >{myReady ? '✓ Ready' : 'Ready to Play'}</button>
+              <div style={{ textAlign: 'center', fontSize: '11px', color: 'rgba(201,162,74,0.45)', fontStyle: 'italic', fontFamily: 'Cinzel, serif', letterSpacing: '0.5px' }}>
+                Waiting for host to start...
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Default (non-Irish) render
   return (
     <div style={{
       minHeight: '100vh',
@@ -7535,104 +9497,41 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
         margin: '0 auto',
         position: 'relative'
       }}>
-        {/* Version number - inside white box */}
-        <div style={{
-          position: 'absolute',
-          top: '8px',
-          left: '10px',
-          fontSize: '10px',
-          color: '#999',
-          fontFamily: 'monospace',
-          fontWeight: 'bold'
-        }}>
-          v{VERSION}
-        </div>
-        <h1 style={{ marginBottom: '5px', textAlign: 'center', color: '#1a5f3f', fontSize: '22px' }}>
-          {game.name}
-        </h1>
-
+        <div style={{ position: 'absolute', top: '8px', left: '10px', fontSize: '10px', color: '#999', fontFamily: 'monospace', fontWeight: 'bold' }}>v{VERSION}</div>
+        <h1 style={{ marginBottom: '5px', textAlign: 'center', color: '#1a5f3f', fontSize: '22px' }}>{game.name}</h1>
 
         {error && (
-          <div style={{
-            background: '#ffebee',
-            border: '2px solid #f44336',
-            borderRadius: '8px',
-            padding: '12px',
-            marginBottom: '20px',
-            color: '#c62828',
-            fontSize: '14px'
-          }}>
-            {error}
-          </div>
+          <div style={{ background: '#ffebee', border: '2px solid #f44336', borderRadius: '8px', padding: '12px', marginBottom: '20px', color: '#c62828', fontSize: '14px' }}>{error}</div>
         )}
 
-        {/* PHASE 2.1: Status bar */}
-        <div style={{
-          background: '#f5f5f5',
-          padding: '10px',
-          borderRadius: '8px',
-          marginBottom: '10px',
-          textAlign: 'center'
-        }}>
+        <div style={{ background: '#f5f5f5', padding: '10px', borderRadius: '8px', marginBottom: '10px', textAlign: 'center' }}>
           <div style={{ fontSize: '16px', color: '#333', marginBottom: '8px' }}>
-            <strong>{Object.values(players).filter(p => !p.isAI).length}</strong> human players • 
+            <strong>{Object.values(players).filter(p => !p.isAI).length}</strong> human players
             <strong style={{ marginLeft: '8px' }}>{Object.values(players).filter(p => !p.isAI && p.ready).length}</strong> ready
           </div>
-          {isCreator && (
-            <div style={{ fontSize: '13px', color: '#2d8f5f' }}>
-              ⭐ You are the game creator
-            </div>
-          )}
+          {isCreator && <div style={{ fontSize: '13px', color: '#2d8f5f' }}>You are the game creator</div>}
         </div>
 
-        <div style={{
-          background: '#f5f5f5',
-          padding: '15px 10px',
-          borderRadius: '8px',
-          marginBottom: '15px'
-        }}>
-          <h2 style={{ marginBottom: '10px', color: '#333', fontSize: '16px', textAlign: 'center' }}>
-            Players ({playerCount}/4)
-          </h2>
-          
-          {/* Compass Layout */}
-          <div style={{
-            position: 'relative',
-            width: '100%',
-            maxWidth: '100%',
-            height: '320px',
-            margin: '0 auto'
-          }}>
-            {/* North */}
-            {(() => {
-              const seat = 'North';
+        <div style={{ background: '#f5f5f5', padding: '15px 10px', borderRadius: '8px', marginBottom: '15px' }}>
+          <h2 style={{ marginBottom: '10px', color: '#333', fontSize: '16px', textAlign: 'center' }}>Players ({playerCount}/4)</h2>
+          <div style={{ position: 'relative', width: '100%', maxWidth: '100%', height: '320px', margin: '0 auto' }}>
+            {[
+              { seat: 'North', style: { top: '0', left: '50%', transform: 'translateX(-50%)' } },
+              { seat: 'East',  style: { right: '5px', top: '50%', transform: 'translateY(-50%)' } },
+              { seat: 'South', style: { bottom: '0', left: '50%', transform: 'translateX(-50%)' } },
+              { seat: 'West',  style: { left: '5px', top: '50%', transform: 'translateY(-50%)' } }
+            ].map(({ seat, style }) => {
               const player = players[seat];
               const isMe = seat === mySeat;
-              
               return (
-                <div
-                  key={seat}
-                  style={{
-                    position: 'absolute',
-                    top: '0',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '120px',
-                    minHeight: '95px',
-                    padding: '8px',
-                    background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
-                    border: `3px solid ${
-                      !player ? '#ddd' : 
-                      isMe ? '#2196f3' : 
-                      player.ready ? '#4caf50' : '#ff9800'
-                    }`,
-                    borderRadius: '8px',
-                    textAlign: 'center'
-                  }}
-                >
-                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '10px', marginBottom: '4px' }}>
-                    {seat.toUpperCase()}
-                  </div>
+                <div key={seat} style={{
+                  position: 'absolute', ...style,
+                  width: '120px', minHeight: '95px', padding: '8px',
+                  background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
+                  border: '3px solid ' + (!player ? '#ddd' : isMe ? '#2196f3' : player.ready ? '#4caf50' : '#ff9800'),
+                  borderRadius: '8px', textAlign: 'center'
+                }}>
+                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '10px', marginBottom: '4px' }}>{seat.toUpperCase()}</div>
                   {player && <div style={{ fontSize: '18px', marginBottom: '2px' }}>{getAvatarById(player.avatar).emoji}</div>}
                   <div style={{ fontWeight: 'bold', color: '#333', fontSize: '12px', marginBottom: '2px' }}>
                     {player ? player.username : 'Empty Seat'}
@@ -7641,351 +9540,49 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
                   {player && (
                     <>
                       {player.isAI ? (
-                        <div style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          background: '#9e9e9e',
-                          color: 'white',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold'
-                        }}>
-                          AI
-                        </div>
+                        <div style={{ display: 'inline-block', padding: '2px 8px', background: '#9e9e9e', color: 'white', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>AI</div>
                       ) : player.ready ? (
-                        <div style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          background: '#4caf50',
-                          color: 'white',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold'
-                        }}>
-                          ✓ READY
-                        </div>
+                        <div style={{ display: 'inline-block', padding: '2px 8px', background: '#4caf50', color: 'white', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>READY</div>
                       ) : (
-                        <div style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          background: '#ff9800',
-                          color: 'white',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold'
-                        }}>
-                          NOT READY
-                        </div>
+                        <div style={{ display: 'inline-block', padding: '2px 8px', background: '#ff9800', color: 'white', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>NOT READY</div>
                       )}
-                      {player.connected === false && (
-                        <div style={{ marginTop: '4px', fontSize: '11px', color: '#f44336' }}>
-                          Disconnected
-                        </div>
-                      )}
+                      {player.connected === false && <div style={{ marginTop: '4px', fontSize: '11px', color: '#f44336' }}>Disconnected</div>}
                     </>
                   )}
                 </div>
               );
-            })()}
-            
-            {/* East */}
-            {(() => {
-              const seat = 'East';
-              const player = players[seat];
-              const isMe = seat === mySeat;
-              
-              return (
-                <div
-                  key={seat}
-                  style={{
-                    position: 'absolute',
-                    right: '5px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: '120px',
-                    minHeight: '95px',
-                    padding: '8px',
-                    background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
-                    border: `3px solid ${
-                      !player ? '#ddd' : 
-                      isMe ? '#2196f3' : 
-                      player.ready ? '#4caf50' : '#ff9800'
-                    }`,
-                    borderRadius: '8px',
-                    textAlign: 'center'
-                  }}
-                >
-                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '10px', marginBottom: '4px' }}>
-                    {seat.toUpperCase()}
-                  </div>
-                  {player && <div style={{ fontSize: '18px', marginBottom: '2px' }}>{getAvatarById(player.avatar).emoji}</div>}
-                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '12px', marginBottom: '2px' }}>
-                    {player ? player.username : 'Empty Seat'}
-                    {isMe && <span style={{ color: '#2196f3', fontSize: '10px' }}> (You)</span>}
-                  </div>
-                  {player && (
-                    <>
-                      {player.isAI ? (
-                        <div style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          background: '#9e9e9e',
-                          color: 'white',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold'
-                        }}>
-                          AI
-                        </div>
-                      ) : player.ready ? (
-                        <div style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          background: '#4caf50',
-                          color: 'white',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold'
-                        }}>
-                          ✓ READY
-                        </div>
-                      ) : (
-                        <div style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          background: '#ff9800',
-                          color: 'white',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold'
-                        }}>
-                          NOT READY
-                        </div>
-                      )}
-                      {player.connected === false && (
-                        <div style={{ marginTop: '4px', fontSize: '11px', color: '#f44336' }}>
-                          Disconnected
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              );
-            })()}
-            
-            {/* South */}
-            {(() => {
-              const seat = 'South';
-              const player = players[seat];
-              const isMe = seat === mySeat;
-              
-              return (
-                <div
-                  key={seat}
-                  style={{
-                    position: 'absolute',
-                    bottom: '0',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '120px',
-                    minHeight: '95px',
-                    padding: '8px',
-                    background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
-                    border: `3px solid ${
-                      !player ? '#ddd' : 
-                      isMe ? '#2196f3' : 
-                      player.ready ? '#4caf50' : '#ff9800'
-                    }`,
-                    borderRadius: '8px',
-                    textAlign: 'center'
-                  }}
-                >
-                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '10px', marginBottom: '4px' }}>
-                    {seat.toUpperCase()}
-                  </div>
-                  {player && <div style={{ fontSize: '18px', marginBottom: '2px' }}>{getAvatarById(player.avatar).emoji}</div>}
-                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '12px', marginBottom: '2px' }}>
-                    {player ? player.username : 'Empty Seat'}
-                    {isMe && <span style={{ color: '#2196f3', fontSize: '10px' }}> (You)</span>}
-                  </div>
-                  {player && (
-                    <>
-                      {player.isAI ? (
-                        <div style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          background: '#9e9e9e',
-                          color: 'white',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold'
-                        }}>
-                          AI
-                        </div>
-                      ) : player.ready ? (
-                        <div style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          background: '#4caf50',
-                          color: 'white',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold'
-                        }}>
-                          ✓ READY
-                        </div>
-                      ) : (
-                        <div style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          background: '#ff9800',
-                          color: 'white',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold'
-                        }}>
-                          NOT READY
-                        </div>
-                      )}
-                      {player.connected === false && (
-                        <div style={{ marginTop: '4px', fontSize: '11px', color: '#f44336' }}>
-                          Disconnected
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              );
-            })()}
-            
-            {/* West */}
-            {(() => {
-              const seat = 'West';
-              const player = players[seat];
-              const isMe = seat === mySeat;
-              
-              return (
-                <div
-                  key={seat}
-                  style={{
-                    position: 'absolute',
-                    left: '5px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: '120px',
-                    minHeight: '95px',
-                    padding: '8px',
-                    background: player ? (isMe ? '#e3f2fd' : 'white') : '#fafafa',
-                    border: `3px solid ${
-                      !player ? '#ddd' : 
-                      isMe ? '#2196f3' : 
-                      player.ready ? '#4caf50' : '#ff9800'
-                    }`,
-                    borderRadius: '8px',
-                    textAlign: 'center'
-                  }}
-                >
-                  <div style={{ fontWeight: 'bold', color: '#666', fontSize: '10px', marginBottom: '4px' }}>
-                    {seat.toUpperCase()}
-                  </div>
-                  {player && <div style={{ fontSize: '18px', marginBottom: '2px' }}>{getAvatarById(player.avatar).emoji}</div>}
-                  <div style={{ fontWeight: 'bold', color: '#333', fontSize: '12px', marginBottom: '2px' }}>
-                    {player ? player.username : 'Empty Seat'}
-                    {isMe && <span style={{ color: '#2196f3', fontSize: '10px' }}> (You)</span>}
-                  </div>
-                  {player && (
-                    <>
-                      {player.isAI ? (
-                        <div style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          background: '#9e9e9e',
-                          color: 'white',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold'
-                        }}>
-                          AI
-                        </div>
-                      ) : player.ready ? (
-                        <div style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          background: '#4caf50',
-                          color: 'white',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold'
-                        }}>
-                          ✓ READY
-                        </div>
-                      ) : (
-                        <div style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          background: '#ff9800',
-                          color: 'white',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: 'bold'
-                        }}>
-                          NOT READY
-                        </div>
-                      )}
-                      {player.connected === false && (
-                        <div style={{ marginTop: '4px', fontSize: '11px', color: '#f44336' }}>
-                          Disconnected
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              );
-            })()}
-            
-
+            })}
           </div>
         </div>
 
-        {/* Voice Chat */}
         {(() => {
-          const humanPlayers = Object.values(game.players || {}).filter(p => p && !p.isAI);
-          const otherHumans = humanPlayers.filter(p => p.userId !== userId);
-          const hasOtherHumans = otherHumans.length > 0;
-          const voiceUsersList = Object.values(voiceUsers).filter(v => v && v.enabled);
+          const hp = Object.values(game.players || {}).filter(p => p && !p.isAI);
+          const hasOthers = hp.filter(p => p.userId !== userId).length > 0;
+          const vList = Object.values(voiceUsers).filter(v => v && v.enabled);
           return (
             <div style={{ background: '#f0f7f0', border: '1px solid #c8e6c9', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ fontSize: '13px', color: '#2d8f5f', fontWeight: 'bold' }}>
-                  🎙 Voice Chat
-                  {voiceUsersList.length > 0 && <span style={{ marginLeft: '8px', fontSize: '11px', color: '#666', fontWeight: 'normal' }}>{voiceUsersList.length} in voice</span>}
+                  Voice Chat {vList.length > 0 && <span style={{ marginLeft: '8px', fontSize: '11px', color: '#666', fontWeight: 'normal' }}>{vList.length} in voice</span>}
                 </div>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   {voiceEnabled && (
-                    <button
-                      onClick={handleToggleVoiceMute}
-                      style={{ padding: '4px 10px', fontSize: '12px', background: voiceMuted ? '#ff9800' : '#4caf50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                    >{voiceMuted ? '🔇 Unmute' : '🎙 Mute'}</button>
+                    <button onClick={handleToggleVoiceMute} style={{ padding: '4px 10px', fontSize: '12px', background: voiceMuted ? '#ff9800' : '#4caf50', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                      {voiceMuted ? 'Unmute' : 'Mute'}
+                    </button>
                   )}
-                  <button
-                    onClick={voiceEnabled ? handleLeaveVoice : handleJoinVoice}
-                    disabled={!hasOtherHumans && !voiceEnabled}
-                    title={!hasOtherHumans && !voiceEnabled ? 'Need another human player to use voice' : ''}
-                    style={{ padding: '4px 12px', fontSize: '12px', background: voiceEnabled ? '#f44336' : (hasOtherHumans ? '#2d8f5f' : '#ccc'), color: 'white', border: 'none', borderRadius: '4px', cursor: (!hasOtherHumans && !voiceEnabled) ? 'not-allowed' : 'pointer' }}
-                  >{voiceEnabled ? 'Leave Voice' : 'Join Voice'}</button>
+                  <button onClick={voiceEnabled ? handleLeaveVoice : handleJoinVoice} disabled={!hasOthers && !voiceEnabled}
+                    style={{ padding: '4px 12px', fontSize: '12px', background: voiceEnabled ? '#f44336' : (hasOthers ? '#2d8f5f' : '#ccc'), color: 'white', border: 'none', borderRadius: '4px', cursor: (!hasOthers && !voiceEnabled) ? 'not-allowed' : 'pointer' }}>
+                    {voiceEnabled ? 'Leave Voice' : 'Join Voice'}
+                  </button>
                 </div>
               </div>
-              {/* Who's in voice */}
-              {voiceUsersList.length > 0 && (
+              {vList.length > 0 && (
                 <div style={{ marginTop: '6px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {Object.entries(voiceUsers).filter(([,v]) => v && v.enabled).map(([uid, v]) => {
-                    const player = Object.values(game.players || {}).find(p => p && p.userId === uid);
-                    if (!player) return null;
-                    return (
-                      <span key={uid} style={{ fontSize: '11px', color: v.muted ? '#aaa' : '#2d8f5f', background: 'white', border: '1px solid #c8e6c9', borderRadius: '10px', padding: '2px 8px' }}>
-                        {v.muted ? '🔇' : '🎙'} {player.username}
-                      </span>
-                    );
+                    const pl = Object.values(game.players || {}).find(p => p && p.userId === uid);
+                    if (!pl) return null;
+                    return <span key={uid} style={{ fontSize: '11px', color: v.muted ? '#aaa' : '#2d8f5f', background: 'white', border: '1px solid #c8e6c9', borderRadius: '10px', padding: '2px 8px' }}>{v.muted ? 'Muted' : 'Live'} {pl.username}</span>;
                   })}
                 </div>
               )}
@@ -7994,66 +9591,20 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
         })()}
 
         <div style={{ display: 'flex', gap: '12px' }}>
-          {/* PHASE 2.1: Ready/Unready button for non-creators */}
           {!isCreator && (
-            <button
-              onClick={handleToggleReady}
-              disabled={loading}
-              style={{
-                flex: 1,
-                padding: '14px',
-                fontSize: '16px',
-                background: loading ? '#ccc' : (myReady ? '#ff9800' : '#4caf50'),
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
-              {myReady ? '❌ Not Ready' : '✓ Ready to Play'}
+            <button onClick={handleToggleReady} disabled={loading} style={{ flex: 1, padding: '14px', fontSize: '16px', background: loading ? '#ccc' : (myReady ? '#ff9800' : '#4caf50'), color: 'white', border: 'none', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
+              {myReady ? 'Not Ready' : 'Ready to Play'}
             </button>
           )}
-          
           {isCreator && (
-            <button
-              onClick={handleStartGame}
-              disabled={loading}
-              style={{
-                flex: 1,
-                padding: '14px',
-                background: loading ? '#ccc' : '#2d8f5f',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '16px',
-                fontWeight: 'bold'
-              }}
-            >
-              {loading ? 'Starting...' : '▶ Start Game'}
+            <button onClick={handleStartGame} disabled={loading} style={{ flex: 1, padding: '14px', background: loading ? '#ccc' : '#2d8f5f', color: 'white', border: 'none', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '16px', fontWeight: 'bold' }}>
+              {loading ? 'Starting...' : 'Start Game'}
             </button>
           )}
-          <button
-            onClick={handleLeaveGame}
-            disabled={loading}
-            style={{
-              flex: isCreator ? 0.5 : 1,
-              padding: '14px',
-              background: loading ? '#ccc' : '#f44336',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              minWidth: isCreator ? '120px' : 'auto'
-            }}
-          >
+          <button onClick={handleLeaveGame} disabled={loading} style={{ flex: isCreator ? 0.5 : 1, padding: '14px', background: loading ? '#ccc' : '#f44336', color: 'white', border: 'none', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '16px', fontWeight: 'bold', minWidth: isCreator ? '120px' : 'auto' }}>
             Leave Game
           </button>
         </div>
-
 
       </div>
     </div>
@@ -8273,6 +9824,7 @@ function MultiplayerApp() {
         mySeat={mySeat}
         onStartGame={handleStartGame}
         onLeaveGame={handleLeaveGame}
+        onChangeSeat={(newSeat) => setMySeat(newSeat)}
       />
     );
   }
@@ -8623,6 +10175,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   // 30 for 60 option
   const [thirtyWasBid, setThirtyWasBid] = useState(false); // someone bid 30 this round
   const [bidType, setBidType] = useState(null); // '30for60' or null
+
+  // Follow suit toast
+  const [followSuitToast, setFollowSuitToast] = useState(false);
 
   // House Rules overlay — shown once at game start if any options are active
   const [showHouseRules, setShowHouseRules] = useState(false);
@@ -9696,7 +11251,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     const playable = getPlayableCards(hand, trumpSuit, ledCard, ledSuit, gameOptions);
     
     if (!playable.some(c => c.id === card.id)) {
-      alert('Must follow suit!');
+      setFollowSuitToast(true);
+      setTimeout(() => setFollowSuitToast(false), 2000);
       return;
     }
 
@@ -11157,6 +12713,32 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         })()}
 
 
+        {/* Follow suit toast */}
+        {followSuitToast && (
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'linear-gradient(180deg, #2a1608 0%, #1a1008 100%)',
+            border: '1px solid rgba(168,24,36,0.7)',
+            borderRadius: '4px',
+            padding: '12px 24px',
+            color: '#e8a0a8',
+            fontFamily: "'Cinzel', serif",
+            fontSize: '12px',
+            fontWeight: 700,
+            letterSpacing: '1.5px',
+            textAlign: 'center',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,0,0,0.9)',
+            zIndex: 200,
+            pointerEvents: 'none',
+            whiteSpace: 'nowrap',
+          }}>
+            Must Follow Suit
+          </div>
+        )}
+
         {/* House Rules overlay — shown once at game start */}
         {showHouseRules && (
           <div
@@ -11196,19 +12778,28 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           {phase === 'bidding' && currentPlayer === mySeatIndex && (
             <>
               {[15,20,25,30].map(b => (
-                <button 
-                  key={b} 
-                  onClick={() => handleBid(b)} 
+                <button
+                  key={b}
+                  onClick={() => handleBid(b)}
                   disabled={b <= highBid}
-                  style={{ 
-                    padding: '6px 12px', 
-                    fontSize: '12px', 
-                    background: b <= highBid ? '#555' : '#2196f3', 
-                    color: '#fff', 
-                    border: 'none', 
-                    borderRadius: '4px', 
-                    opacity: b <= highBid ? 0.5 : 1,
-                    cursor: b <= highBid ? 'default' : 'pointer'
+                  style={{
+                    padding: '7px 13px',
+                    fontSize: '12px',
+                    fontFamily: "'Cinzel', serif",
+                    fontWeight: 700,
+                    letterSpacing: '0.5px',
+                    background: b <= highBid
+                      ? 'linear-gradient(180deg, #1a1008 0%, #100a04 100%)'
+                      : 'linear-gradient(180deg, #f6d778 0%, #c9a24a 45%, #9a7630 100%)',
+                    color: b <= highBid ? 'rgba(201,162,74,0.2)' : '#1a0e03',
+                    border: b <= highBid ? '1px solid rgba(201,162,74,0.1)' : '1px solid rgba(0,0,0,0.6)',
+                    borderRadius: '4px',
+                    opacity: 1,
+                    cursor: b <= highBid ? 'default' : 'pointer',
+                    boxShadow: b <= highBid
+                      ? 'none'
+                      : '0 2px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,245,200,0.5)',
+                    textShadow: b <= highBid ? 'none' : '0 1px 0 rgba(255,220,100,0.4)',
                   }}
                 >
                   {b}
@@ -11218,14 +12809,17 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 <button
                   onClick={() => handleBid(30, false, true)}
                   style={{
-                    padding: '6px 12px',
+                    padding: '7px 13px',
                     fontSize: '12px',
-                    background: '#7b1fa2',
-                    color: '#fff',
-                    border: '2px solid #ce93d8',
+                    fontFamily: "'Cinzel', serif",
+                    fontWeight: 700,
+                    letterSpacing: '0.5px',
+                    background: 'linear-gradient(180deg, #d4444a 0%, #8b1a1f 100%)',
+                    color: '#fbf6e4',
+                    border: '1px solid rgba(0,0,0,0.6)',
                     borderRadius: '4px',
                     cursor: 'pointer',
-                    fontWeight: 'bold'
+                    boxShadow: '0 2px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,180,180,0.3)',
                   }}
                 >
                   30/60
@@ -11234,13 +12828,16 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               <button
                 onClick={() => handleBid(0)}
                 style={{
-                  padding: '6px 12px',
+                  padding: '7px 13px',
                   fontSize: '12px',
-                  background: '#c9a227',
-                  color: '#000',
-                  border: 'none',
+                  fontFamily: "'Cinzel', serif",
+                  fontWeight: 700,
+                  letterSpacing: '0.5px',
+                  background: 'rgba(0,0,0,0.3)',
+                  color: 'rgba(201,162,74,0.75)',
+                  border: '1px solid rgba(201,162,74,0.4)',
                   borderRadius: '4px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
                 }}
               >
                 Pass
@@ -11248,17 +12845,19 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             </>
           )}
           {phase === 'trump-select' && bidWinner === mySeatIndex && SUITS.map(s => (
-            <button 
-              key={s} 
-              onClick={() => handleSelectTrump(s)} 
-              style={{ 
-                padding: '6px 14px', 
-                fontSize: '18px', 
-                background: 'rgba(0,0,0,0.5)', 
-                color: (s === '♥' || s === '♦') ? '#f44336' : '#fff', 
-                border: '1px solid #d4af37', 
+            <button
+              key={s}
+              onClick={() => handleSelectTrump(s)}
+              style={{
+                padding: '8px 16px',
+                fontSize: '20px',
+                background: 'linear-gradient(180deg, rgba(42,28,12,0.95) 0%, rgba(20,8,2,0.95) 100%)',
+                color: (s === '♥' || s === '♦') ? '#a81824' : '#fbf6e4',
+                border: '1px solid rgba(201,162,74,0.5)',
                 borderRadius: '4px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(201,162,74,0.15)',
+                textShadow: (s === '♥' || s === '♦') ? '0 0 8px rgba(168,24,36,0.4)' : 'none',
               }}
             >
               {s}

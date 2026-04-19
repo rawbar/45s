@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>45s — Waiting Room · Irish Card Room v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Merriweather:ital,wght@0,400;0,700;0,900;1,400&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --brass-hi: #f6d778;
+    --brass:    #c9a24a;
+    --brass-lo: #5a3f16;
+    --felt-2:   #13572a;
+    --paper-1:  #fbf6e4;
+    --team-us:  #5dd084;
+    --team-them:#ef7c74;
+    --me-blue:  #6bb6ff;
+  }
+
+  html, body {
+    min-height: 100%;
+    font-family: 'Inter', sans-serif;
+    background-color: #180b03;
+    background-image:
+      radial-gradient(ellipse 95% 55% at 50% -5%,
+        rgba(255,210,136,0.28) 0%, rgba(255,180,110,0.1) 30%, transparent 60%),
+      linear-gradient(180deg, rgba(255,220,175,0.08) 0%, rgba(255,220,175,0.03) 22%, transparent 52%),
+      linear-gradient(92deg,
+        transparent 4%,  rgba(255,220,168,0.055) 7%,  transparent 11%,
+        transparent 20%, rgba(255,205,148,0.04)  24%, transparent 29%,
+        transparent 44%, rgba(255,215,160,0.06)  49%, transparent 54%,
+        transparent 66%, rgba(255,208,148,0.045) 71%, transparent 76%,
+        transparent 86%, rgba(255,218,168,0.05)  91%, transparent 96%),
+      linear-gradient(91deg,
+        transparent 13%, rgba(0,0,0,0.12) 15%, transparent 17%,
+        transparent 28%, rgba(0,0,0,0.09) 30%, transparent 32%,
+        transparent 51%, rgba(0,0,0,0.14) 53%, transparent 55%,
+        transparent 64%, rgba(0,0,0,0.1)  66%, transparent 68%,
+        transparent 81%, rgba(0,0,0,0.11) 83%, transparent 85%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='390' height='844'><filter id='g'><feTurbulence type='turbulence' baseFrequency='0.35 0.008' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.06  0 0 0 0 0.025  0 0 0 0 0.01  0.45 0 0 0 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"),
+      linear-gradient(172deg, #3a2312 0%, #281609 35%, #180b03 68%, #1f0f05 100%);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-attachment: fixed;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 12px 80px;
+    color: #e8e4d9;
+    gap: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse 110% 80% at 50% 50%, transparent 40%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── Desktop preview scaler ──
+     Scales the 390×844 phone canvas to fill the viewport height for
+     comfortable desktop review. The internal dimensions stay canonical
+     (390×844px = real iPhone 14 size). On an actual phone, remove
+     .phone-scaler and use the .phone div directly.
+  ── */
+  .phone-scaler {
+    transform-origin: top center;
+    /* Scale phone to 88% of viewport height */
+    transform: scale(calc(88vh / 844px));
+    /* transform doesn't affect layout box — phone still occupies 844px height in flow.
+       Scaled visual height = 88vh. Add (88vh - 844px) to push the next element
+       down to just below the visual bottom, plus 40px gap between states. */
+    margin-bottom: calc(88vh - 844px + 40px);
+  }
+
+  /* ── Phone frame ── */
+  .phone {
+    position: relative; z-index: 1;
+    width: 390px; height: 844px;
+    border-radius: 30px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background-color: #180b03;
+    background-image:
+      radial-gradient(ellipse 95% 50% at 50% -5%, rgba(255,210,136,0.25) 0%, rgba(255,180,110,0.09) 30%, transparent 60%),
+      linear-gradient(180deg, rgba(255,220,175,0.08) 0%, rgba(255,220,175,0.03) 22%, transparent 52%),
+      linear-gradient(92deg,
+        transparent 4%,  rgba(255,220,168,0.055) 7%,  transparent 11%,
+        transparent 20%, rgba(255,205,148,0.04)  24%, transparent 29%,
+        transparent 44%, rgba(255,215,160,0.06)  49%, transparent 54%,
+        transparent 66%, rgba(255,208,148,0.045) 71%, transparent 76%,
+        transparent 86%, rgba(255,218,168,0.05)  91%, transparent 96%),
+      linear-gradient(91deg,
+        transparent 13%, rgba(0,0,0,0.12) 15%, transparent 17%,
+        transparent 28%, rgba(0,0,0,0.09) 30%, transparent 32%,
+        transparent 51%, rgba(0,0,0,0.14) 53%, transparent 55%,
+        transparent 64%, rgba(0,0,0,0.1)  66%, transparent 68%,
+        transparent 81%, rgba(0,0,0,0.11) 83%, transparent 85%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='390' height='844'><filter id='g'><feTurbulence type='turbulence' baseFrequency='0.35 0.008' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.06  0 0 0 0 0.025  0 0 0 0 0.01  0.45 0 0 0 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"),
+      linear-gradient(172deg, #3a2312 0%, #281609 35%, #180b03 68%, #1f0f05 100%);
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05) inset;
+  }
+
+  .phone::after {
+    content: ''; position: absolute; inset: 0;
+    pointer-events: none; border-radius: 30px;
+    background: radial-gradient(ellipse 110% 80% at 50% 50%, transparent 45%, rgba(0,0,0,0.7) 100%);
+  }
+
+  /* ── Topbar ── */
+  .topbar {
+    position: relative; z-index: 3;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.25) 100%);
+    border-bottom: 1px solid rgba(201,162,74,0.3);
+    flex-shrink: 0;
+    backdrop-filter: blur(6px);
+    min-height: 48px;
+    gap: 8px;
+  }
+
+  .topbar::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+    background: linear-gradient(90deg, transparent 0%, var(--brass-lo) 15%, var(--brass) 35%, var(--brass-hi) 50%, var(--brass) 65%, var(--brass-lo) 85%, transparent 100%);
+    opacity: 0.8;
+  }
+
+  .back-btn {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px 10px; min-height: 34px; min-width: 44px;
+    font-family: 'Cinzel', serif; font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+    color: rgba(201,162,74,0.7);
+    background: transparent; border: 1px solid rgba(201,162,74,0.3); border-radius: 4px; cursor: pointer;
+    white-space: nowrap; flex-shrink: 0;
+  }
+
+  .room-title {
+    font-family: 'Cinzel', serif; font-weight: 700; font-size: 14px; letter-spacing: 2px;
+    background: linear-gradient(180deg, var(--brass-hi) 0%, var(--brass) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-align: center; flex: 1; min-width: 0;
+  }
+
+  .voice-btn {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px 9px; min-height: 34px;
+    font-family: 'Cinzel', serif; font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
+    border-radius: 4px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  }
+  .voice-btn.join  { color: rgba(93,208,132,0.85); background: rgba(31,122,63,0.15); border: 1px solid rgba(93,208,132,0.35); }
+  .voice-btn.muted { color: rgba(239,124,116,0.85); background: rgba(168,24,36,0.12); border: 1px solid rgba(239,124,116,0.35); }
+
+  /* ── Content ── */
+  .content {
+    flex: 1; display: flex; flex-direction: column;
+    padding: 10px 10px 6px; gap: 8px;
+    overflow: hidden; position: relative; z-index: 2;
+    min-height: 0;
+  }
+
+  /* ── Status strip ── */
+  .status-bar {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    padding: 7px 12px; flex-shrink: 0;
+    background: rgba(10,6,2,0.4); border: 1px solid rgba(201,162,74,0.15); border-radius: 4px;
+  }
+  .stat-num { font-family: 'Merriweather', serif; font-weight: 900; font-size: 16px; color: var(--brass-hi); line-height: 1; }
+  .stat-lbl { font-size: 8px; letter-spacing: 1px; color: rgba(201,162,74,0.5); text-transform: uppercase; margin-top: 1px; font-family: 'Inter', sans-serif; }
+  .stat-divider { width: 1px; height: 24px; background: rgba(201,162,74,0.18); }
+  .creator-chip {
+    font-family: 'Cinzel', serif; font-size: 8px; font-weight: 700; letter-spacing: 1px;
+    color: var(--brass-hi); background: rgba(201,162,74,0.1); border: 1px solid rgba(201,162,74,0.3);
+    border-radius: 3px; padding: 2px 7px;
+  }
+
+  /* ── Compass table ── */
+  /*
+     Layout:
+       [   .   ] [ NORTH ] [   .   ]
+       [ WEST  ] [  TBL  ] [ EAST  ]
+       [   .   ] [ SOUTH ] [   .   ]
+  */
+  .compass-grid {
+    display: grid;
+    /* Three equal columns — content width = 390 - 20px padding = 370px;
+       gaps = 6px × 2 = 12px → each column ≈ 119px. All four seat placards
+       land in the side or top/bottom cell of the same column width,
+       giving visually balanced placards across all four compass positions. */
+    grid-template-columns: 1fr 1fr 1fr;
+    /* Three equal rows — all get the same share of vertical space */
+    grid-template-rows: 1fr 1fr 1fr;
+    grid-template-areas:
+      ".    north  ."
+      "west center east"
+      ".    south  .";
+    gap: 6px;
+    width: 100%;
+    /* Stretch to fill remaining content height */
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Center table felt circle */
+  .table-center {
+    grid-area: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background-color: var(--felt-2);
+    background-image:
+      radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px),
+      radial-gradient(ellipse 80% 50% at 50% 30%, rgba(31,122,63,0.5) 0%, transparent 70%);
+    background-size: 6px 6px, 100% 100%;
+    border-radius: 50%;
+    border: 2px solid rgba(201,162,74,0.35);
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.5),
+      inset 0 2px 10px rgba(0,0,0,0.4),
+      0 4px 12px rgba(0,0,0,0.4);
+    /* Fixed square so border-radius:50% renders a true circle.
+       Sized to fit comfortably inside the equal-column grid cell. */
+    width: 110px;
+    height: 110px;
+    align-self: center;
+    justify-self: center;
+    gap: 4px;
+    padding: 10px;
+  }
+
+  .table-suit {
+    font-size: 28px;
+    background: linear-gradient(180deg, var(--brass-hi) 0%, var(--brass) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6));
+    line-height: 1;
+  }
+
+  .table-name {
+    font-family: 'Cinzel', serif; font-weight: 700; font-size: 11px;
+    letter-spacing: 1px; text-align: center;
+    background: linear-gradient(180deg, var(--brass-hi) 0%, var(--brass) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  .table-count {
+    font-family: 'Inter', sans-serif; font-size: 11px;
+    color: rgba(201,162,74,0.5); text-align: center;
+  }
+
+  /* ── Seat card ── */
+  .seat {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 5px;
+    padding: 10px 6px; border-radius: 4px;
+    position: relative;
+    /* Fill the full grid cell in both dimensions */
+    align-self: stretch;
+    justify-self: stretch;
+  }
+  .seat.north { grid-area: north; }
+  .seat.south { grid-area: south; }
+  .seat.west  { grid-area: west; }
+  .seat.east  { grid-area: east; }
+
+  .seat.occupied {
+    background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%), rgba(20,12,4,0.65);
+    border: 1px solid rgba(201,162,74,0.22);
+  }
+  .seat.me {
+    background: linear-gradient(180deg, rgba(33,120,200,0.18) 0%, rgba(12,50,100,0.12) 100%);
+    border: 1px solid rgba(107,182,255,0.4);
+  }
+  .seat.partner {
+    background: linear-gradient(180deg, rgba(31,122,63,0.16) 0%, rgba(9,58,26,0.12) 100%);
+    border: 1px solid rgba(93,208,132,0.35);
+  }
+  .seat.empty {
+    background: rgba(0,0,0,0.15);
+    border: 1px dashed rgba(201,162,74,0.2);
+    justify-content: center;
+  }
+
+  .seat-dir {
+    font-family: 'Cinzel', serif; font-size: 8px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; color: rgba(201,162,74,0.5); line-height: 1;
+  }
+  .seat-avatar { font-size: 26px; line-height: 1; }
+  .seat-name {
+    font-family: 'Merriweather', serif; font-weight: 700; font-size: 11px;
+    color: var(--paper-1); text-align: center; line-height: 1.2; word-break: break-word;
+  }
+  .seat-name.is-me  { color: var(--me-blue); }
+  .seat-name.partner-name { color: rgba(93,208,132,0.9); }
+
+  .seat-badge {
+    font-family: 'Cinzel', serif; font-size: 7px; font-weight: 700;
+    letter-spacing: 0.5px; padding: 1px 5px; border-radius: 2px; text-transform: uppercase;
+  }
+  .badge-ready     { background: rgba(31,122,63,0.25); border: 1px solid rgba(93,208,132,0.4); color: var(--team-us); }
+  .badge-waiting   { background: rgba(180,100,10,0.15); border: 1px solid rgba(239,180,80,0.3); color: rgba(239,180,80,0.75); }
+  .badge-ai        { background: rgba(80,80,80,0.2); border: 1px solid rgba(140,140,140,0.25); color: rgba(180,180,180,0.65); }
+
+  .seat-empty-lbl  { font-family: 'Inter', sans-serif; font-size: 10px; font-style: italic; color: rgba(201,162,74,0.28); }
+  .voice-dot       { position: absolute; top: 5px; right: 5px; font-size: 9px; opacity: 0.7; }
+
+  /* ── Voice row ── */
+  .voice-row {
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    padding: 8px 10px;
+    background: rgba(10,6,2,0.4); border: 1px solid rgba(201,162,74,0.15); border-radius: 4px;
+  }
+  .voice-row-label { font-family: 'Cinzel', serif; font-size: 8px; font-weight: 700; letter-spacing: 1.5px; color: rgba(201,162,74,0.55); text-transform: uppercase; flex-shrink: 0; }
+  .voice-chips { display: flex; gap: 4px; flex: 1; }
+  .voice-chip {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: rgba(31,122,63,0.2); border: 1px solid rgba(93,208,132,0.4);
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+  }
+  .voice-chip.muted { background: rgba(168,24,36,0.12); border-color: rgba(239,124,116,0.35); }
+  .voice-nobody { font-family: 'Inter', sans-serif; font-size: 10px; font-style: italic; color: rgba(201,162,74,0.3); }
+  .voice-join-btn {
+    padding: 5px 10px; min-height: 30px;
+    font-family: 'Cinzel', serif; font-size: 8px; font-weight: 700; letter-spacing: 1px;
+    color: rgba(93,208,132,0.85); background: rgba(31,122,63,0.15);
+    border: 1px solid rgba(93,208,132,0.35); border-radius: 3px; cursor: pointer; text-transform: uppercase;
+  }
+
+  /* ── Bottom ── */
+  .bottom {
+    padding: 10px 12px; padding-bottom: max(10px, env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; gap: 7px;
+    border-top: 1px solid rgba(201,162,74,0.12); flex-shrink: 0; position: relative; z-index: 2;
+    background: linear-gradient(0deg, rgba(0,0,0,0.45) 0%, transparent 100%);
+  }
+
+  .btn-start {
+    width: 100%; padding: 13px; min-height: 48px;
+    font-family: 'Cinzel', serif; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    color: #1a0e03;
+    background: linear-gradient(180deg, #f6d778 0%, #c9a24a 45%, #9a7630 100%);
+    border: none; border-radius: 4px; cursor: pointer;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 3px 0 rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.6);
+    text-shadow: 0 1px 0 rgba(255,220,100,0.4);
+  }
+  @keyframes startGlow {
+    0%,100% { box-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 3px 0 rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.6); }
+    50%     { box-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 3px 0 rgba(0,0,0,0.5), 0 8px 25px rgba(201,162,74,0.35), inset 0 1px 0 rgba(255,245,200,0.6), 0 0 20px rgba(246,215,120,0.18); }
+  }
+  .btn-start.active   { animation: startGlow 2s ease-in-out infinite; }
+  .btn-start.disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .start-hint { text-align: center; font-size: 10px; color: rgba(201,162,74,0.38); font-style: italic; margin-top: -3px; font-family: 'Inter', sans-serif; }
+
+  .start-ai-note {
+    text-align: center; font-size: 11px; color: rgba(201,162,74,0.45);
+    font-style: italic; margin-top: -2px; font-family: 'Inter', sans-serif;
+  }
+  .start-all-filled {
+    text-align: center; font-size: 11px; color: rgba(93,208,132,0.6);
+    font-style: italic; margin-top: -2px; font-family: 'Inter', sans-serif;
+  }
+
+  /* ── Mockup label ── */
+  .mockup-label {
+    position: relative; z-index: 10; font-family: 'Cinzel', serif;
+    font-size: 10px; letter-spacing: 2px; color: rgba(201,162,74,0.4);
+    text-transform: uppercase; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ STATE 1: 2/4 SEATED ═══════════ -->
+<div style="display:flex;flex-direction:column;align-items:center;gap:10px;position:relative;z-index:1;">
+<div class="mockup-label">Waiting — 2 of 4</div>
+<div class="phone-scaler"><div class="phone">
+  <div class="topbar">
+    <button class="back-btn">← Lobby</button>
+    <div class="room-title">The Snug</div>
+    <button class="voice-btn join">🎙 Voice</button>
+  </div>
+
+  <div class="content">
+    <!-- Status -->
+    <div class="status-bar">
+      <div style="text-align:center"><div class="stat-num">2</div><div class="stat-lbl">Players</div></div>
+      <div class="stat-divider"></div>
+      <div style="text-align:center"><div class="stat-num">1</div><div class="stat-lbl">Ready</div></div>
+      <div class="stat-divider"></div>
+      <span class="creator-chip">★ Host</span>
+    </div>
+
+    <!-- Compass -->
+    <div class="compass-grid">
+
+      <!-- NORTH — occupied, partner, ready -->
+      <div class="seat north partner">
+        <div class="seat-dir">N</div>
+        <div class="seat-avatar">🦅</div>
+        <div class="seat-name partner-name">rawbar</div>
+        <div class="seat-badge badge-ready">✓ Ready</div>
+      </div>
+
+      <!-- WEST — empty -->
+      <div class="seat west empty">
+        <div class="seat-dir">W</div>
+        <div class="seat-empty-lbl">Empty</div>
+      </div>
+
+      <!-- CENTER TABLE -->
+      <div class="table-center">
+        <div class="table-suit">♠</div>
+        <div class="table-name">The Snug</div>
+        <div class="table-count">2 / 4</div>
+      </div>
+
+      <!-- EAST — empty -->
+      <div class="seat east empty">
+        <div class="seat-dir">E</div>
+        <div class="seat-empty-lbl">Empty</div>
+      </div>
+
+      <!-- SOUTH — me -->
+      <div class="seat south me">
+        <div class="seat-dir">S</div>
+        <div class="seat-avatar">🐉</div>
+        <div class="seat-name is-me">Dragon (you)</div>
+        <div class="seat-badge badge-waiting">Waiting</div>
+      </div>
+
+    </div><!-- /compass -->
+
+    <!-- Voice -->
+    <div class="voice-row">
+      <div class="voice-row-label">🎙 Voice</div>
+      <div class="voice-chips"><div class="voice-nobody">No one joined yet</div></div>
+      <button class="voice-join-btn">Join</button>
+    </div>
+
+  </div><!-- /content -->
+
+  <div class="bottom">
+    <button class="btn-start active">Start Game</button>
+    <div class="start-ai-note">Empty seats will be filled with AI</div>
+  </div>
+</div></div><!-- /phone + scaler -->
+</div>
+
+<!-- ═══════════ STATE 2: 4/4 FULL ═══════════ -->
+<div style="display:flex;flex-direction:column;align-items:center;gap:10px;position:relative;z-index:1;">
+<div class="mockup-label">Full — 4 of 4 + Voice</div>
+<div class="phone-scaler"><div class="phone">
+  <div class="topbar">
+    <button class="back-btn">← Lobby</button>
+    <div class="room-title">The Snug</div>
+    <button class="voice-btn muted">🔇 Muted</button>
+  </div>
+
+  <div class="content">
+    <div class="status-bar">
+      <div style="text-align:center"><div class="stat-num">4</div><div class="stat-lbl">Players</div></div>
+      <div class="stat-divider"></div>
+      <div style="text-align:center"><div class="stat-num">3</div><div class="stat-lbl">Ready</div></div>
+      <div class="stat-divider"></div>
+      <span class="creator-chip">★ Host</span>
+    </div>
+
+    <div class="compass-grid">
+
+      <!-- NORTH — partner, ready -->
+      <div class="seat north partner">
+        <div class="seat-dir">N</div>
+        <span class="voice-dot">🎙</span>
+        <div class="seat-avatar">🦅</div>
+        <div class="seat-name partner-name">rawbar</div>
+        <div class="seat-badge badge-ready">✓ Ready</div>
+      </div>
+
+      <!-- WEST — opponent, not ready -->
+      <div class="seat west occupied">
+        <div class="seat-dir">W</div>
+        <div class="seat-avatar">🐺</div>
+        <div class="seat-name">wolfpack</div>
+        <div class="seat-badge badge-waiting">Not Ready</div>
+      </div>
+
+      <div class="table-center">
+        <div class="table-suit">♠</div>
+        <div class="table-name">The Snug</div>
+        <div class="table-count">4 / 4</div>
+      </div>
+
+      <!-- EAST — opponent, ready -->
+      <div class="seat east occupied">
+        <div class="seat-dir">E</div>
+        <span class="voice-dot">🎙</span>
+        <div class="seat-avatar">🏰</div>
+        <div class="seat-name">fortknox</div>
+        <div class="seat-badge badge-ready">✓ Ready</div>
+      </div>
+
+      <!-- SOUTH — me, ready -->
+      <div class="seat south me">
+        <div class="seat-dir">S</div>
+        <div class="seat-avatar">🐉</div>
+        <div class="seat-name is-me">Dragon (you)</div>
+        <div class="seat-badge badge-ready">✓ Ready</div>
+      </div>
+
+    </div>
+
+    <!-- Voice — active -->
+    <div class="voice-row">
+      <div class="voice-row-label">🎙 Voice</div>
+      <div class="voice-chips">
+        <div class="voice-chip" title="rawbar">🦅</div>
+        <div class="voice-chip muted" title="Dragon (you) — muted">🐉</div>
+        <div class="voice-chip" title="fortknox">🏰</div>
+      </div>
+      <button class="voice-join-btn" style="color:rgba(239,124,116,0.85);background:rgba(168,24,36,0.12);border-color:rgba(239,124,116,0.35);">Unmute</button>
+    </div>
+
+  </div>
+
+  <div class="bottom">
+    <button class="btn-start active">Start Game</button>
+    <div class="start-all-filled">All seats filled</div>
+  </div>
+</div></div><!-- /phone + scaler -->
+</div>
+
+</body>
+</html>

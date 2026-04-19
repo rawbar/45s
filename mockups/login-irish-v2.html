@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>45s — Login · Irish Card Room v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Merriweather:ital,wght@0,400;0,700;0,900;1,400&family=Inter:wght@400;500;600&display=swap">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── Design tokens ── */
+  :root {
+    --brass-hi: #f6d778;
+    --brass:    #c9a24a;
+    --brass-lo: #5a3f16;
+    --felt-2:   #13572a;
+    --paper-1:  #fbf6e4;
+    --paper-2:  #f1e8cf;
+    --paper-edge: #9b8d6a;
+    --ink:      #1a1409;
+    --red:      #a81824;
+    --lamp:     #ffd288;
+  }
+
+  /* ── Walnut macro background (matches lobby/waitingroom exactly) ── */
+  html, body {
+    min-height: 100%;
+    font-family: 'Inter', sans-serif;
+    color: #e8e4d9;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 24px 12px 80px;
+    background-color: #180b03;
+    background-image:
+      radial-gradient(ellipse 95% 55% at 50% -5%, rgba(255,210,136,0.28) 0%, rgba(255,180,110,0.1) 30%, transparent 60%),
+      linear-gradient(180deg, rgba(255,220,175,0.08) 0%, rgba(255,220,175,0.03) 22%, transparent 52%),
+      linear-gradient(92deg,
+        transparent 4%,  rgba(255,220,168,0.055) 7%,  transparent 11%,
+        transparent 20%, rgba(255,205,148,0.04)  24%, transparent 29%,
+        transparent 44%, rgba(255,215,160,0.06)  49%, transparent 54%,
+        transparent 66%, rgba(255,208,148,0.045) 71%, transparent 76%,
+        transparent 86%, rgba(255,218,168,0.05)  91%, transparent 96%),
+      linear-gradient(91deg,
+        transparent 13%, rgba(0,0,0,0.12) 15%, transparent 17%,
+        transparent 28%, rgba(0,0,0,0.09) 30%, transparent 32%,
+        transparent 51%, rgba(0,0,0,0.14) 53%, transparent 55%,
+        transparent 64%, rgba(0,0,0,0.1)  66%, transparent 68%,
+        transparent 81%, rgba(0,0,0,0.11) 83%, transparent 85%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='390' height='844'><filter id='g'><feTurbulence type='turbulence' baseFrequency='0.35 0.008' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.06  0 0 0 0 0.025  0 0 0 0 0.01  0.45 0 0 0 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"),
+      linear-gradient(172deg, #3a2312 0%, #281609 35%, #180b03 68%, #1f0f05 100%);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-attachment: fixed;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse 110% 80% at 50% 50%, transparent 40%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── Version badge ── */
+  .version-badge {
+    position: fixed;
+    top: 10px; left: 10px;
+    font-size: 10px; font-weight: 600;
+    color: rgba(201,162,74,0.55);
+    background: rgba(24,11,3,0.85);
+    border: 1px solid rgba(201,162,74,0.18);
+    padding: 3px 7px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+    z-index: 100;
+  }
+
+  /* ── Mockup state label (same style as lobby) ── */
+  .state-label {
+    position: relative; z-index: 10;
+    font-family: 'Cinzel', serif;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 3px; text-transform: uppercase;
+    color: rgba(201,162,74,0.5);
+    text-align: center;
+    margin: 36px 0 16px;
+    display: flex; align-items: center; gap: 14px;
+    width: 390px;
+  }
+  .state-label::before, .state-label::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,162,74,0.3), transparent);
+  }
+
+  /* ── Desktop preview scaler ── */
+  .phone-scaler {
+    transform-origin: top center;
+    transform: scale(calc(88vh / 844px));
+    margin-bottom: calc(88vh - 844px + 40px);
+  }
+
+  /* ── Phone frame — walnut background with rounded corners ── */
+  .phone {
+    position: relative; z-index: 1;
+    width: 390px; height: 844px;
+    border-radius: 30px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #180b03;
+    background-image:
+      radial-gradient(ellipse 95% 55% at 50% -5%, rgba(255,210,136,0.28) 0%, rgba(255,180,110,0.1) 30%, transparent 60%),
+      linear-gradient(180deg, rgba(255,220,175,0.08) 0%, rgba(255,220,175,0.03) 22%, transparent 52%),
+      linear-gradient(92deg,
+        transparent 4%,  rgba(255,220,168,0.055) 7%,  transparent 11%,
+        transparent 20%, rgba(255,205,148,0.04)  24%, transparent 29%,
+        transparent 44%, rgba(255,215,160,0.06)  49%, transparent 54%,
+        transparent 66%, rgba(255,208,148,0.045) 71%, transparent 76%,
+        transparent 86%, rgba(255,218,168,0.05)  91%, transparent 96%),
+      linear-gradient(91deg,
+        transparent 13%, rgba(0,0,0,0.12) 15%, transparent 17%,
+        transparent 28%, rgba(0,0,0,0.09) 30%, transparent 32%,
+        transparent 51%, rgba(0,0,0,0.14) 53%, transparent 55%,
+        transparent 64%, rgba(0,0,0,0.1)  66%, transparent 68%,
+        transparent 81%, rgba(0,0,0,0.11) 83%, transparent 85%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='390' height='844'><filter id='g'><feTurbulence type='turbulence' baseFrequency='0.35 0.008' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.06  0 0 0 0 0.025  0 0 0 0 0.01  0.45 0 0 0 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"),
+      linear-gradient(172deg, #3a2312 0%, #281609 35%, #180b03 68%, #1f0f05 100%);
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    box-shadow:
+      0 40px 100px rgba(0,0,0,0.85),
+      0 0 0 1px rgba(255,255,255,0.05) inset,
+      0 0 0 1px rgba(201,162,74,0.12) inset;
+    padding: 32px 24px;
+  }
+
+  /* Vignette overlay on phone */
+  .phone::after {
+    content: ''; position: absolute; inset: 0;
+    pointer-events: none; border-radius: 30px;
+    background: radial-gradient(ellipse 110% 80% at 50% 50%, transparent 45%, rgba(0,0,0,0.7) 100%);
+  }
+
+  /* ── Login card — sits on top of phone background ── */
+  .login-card {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 342px;
+  }
+
+  /* Outer brass frame — conic shimmer */
+  .brass-frame {
+    background:
+      conic-gradient(
+        from 135deg,
+        var(--brass-lo) 0deg,
+        var(--brass)    60deg,
+        var(--brass-hi) 120deg,
+        var(--brass)    180deg,
+        var(--brass-lo) 240deg,
+        var(--brass)    300deg,
+        var(--brass-hi) 330deg,
+        var(--brass-lo) 360deg
+      );
+    border-radius: 8px;
+    padding: 3px;
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.9),
+      0 16px 50px rgba(0,0,0,0.75),
+      0 0 80px rgba(0,0,0,0.4),
+      inset 0 1px 0 rgba(246,215,120,0.5);
+  }
+
+  /* ── Translucent dark felt surface — floats over walnut wood grain ── */
+  .felt-surface {
+    background-color: rgba(10, 40, 20, 0.75);
+    background-image:
+      radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px),
+      radial-gradient(ellipse 90% 40% at 50% -10%, rgba(30,90,50,0.35) 0%, transparent 70%);
+    background-size: 18px 18px, 100% 100%;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 6px;
+    padding: 28px 24px 24px;
+    position: relative;
+  }
+
+  /* Subtle inner shadow on felt rim */
+  .felt-surface::before {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 6px;
+    box-shadow: inset 0 2px 12px rgba(0,0,0,0.5), inset 0 -2px 8px rgba(0,0,0,0.3);
+    pointer-events: none;
+  }
+
+  /* ── Brass title plaque ── */
+  .title-plaque {
+    text-align: center;
+    margin-bottom: 22px;
+    padding-bottom: 18px;
+    position: relative;
+  }
+
+  .title-plaque::after {
+    content: '';
+    position: absolute; bottom: 0; left: 10%; right: 10%; height: 1px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      var(--brass-lo) 10%,
+      var(--brass) 30%,
+      var(--brass-hi) 50%,
+      var(--brass) 70%,
+      var(--brass-lo) 90%,
+      transparent 100%
+    );
+  }
+
+  .brand-text {
+    font-family: 'Cinzel', serif;
+    font-weight: 900; font-size: 44px; letter-spacing: 8px; line-height: 1;
+    background: linear-gradient(180deg, var(--brass-hi) 0%, var(--brass) 45%, #8a6421 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.8));
+  }
+
+  .brand-sub {
+    font-family: 'Cinzel', serif;
+    font-size: 10px; font-weight: 400; letter-spacing: 4px;
+    color: rgba(201,162,74,0.65);
+    margin-top: 4px; text-transform: uppercase;
+  }
+
+  .suit-row {
+    display: flex; justify-content: center; gap: 14px;
+    margin-top: 8px; font-size: 13px;
+    color: rgba(201,162,74,0.5);
+  }
+  .suit-row .red-suit { color: rgba(168,24,36,0.55); }
+
+  /* ── Tab switcher ── */
+  .tab-row {
+    display: flex; gap: 0;
+    margin-bottom: 20px;
+    background: linear-gradient(180deg, #2a1608 0%, #140802 100%);
+    border: 1px solid var(--brass-lo);
+    border-radius: 4px; overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(201,162,74,0.12), 0 2px 4px rgba(0,0,0,0.4);
+  }
+
+  .tab-btn {
+    flex: 1; padding: 10px 8px;
+    font-family: 'Cinzel', serif; font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    border: none; cursor: pointer; transition: all 0.18s;
+    background: transparent; color: rgba(201,162,74,0.55);
+  }
+  .tab-btn.active {
+    background: linear-gradient(180deg, rgba(201,162,74,0.25) 0%, rgba(201,162,74,0.12) 100%);
+    color: var(--brass-hi);
+    text-shadow: 0 0 8px rgba(246,215,120,0.3);
+    box-shadow: inset 0 1px 0 rgba(201,162,74,0.3);
+  }
+  .tab-btn + .tab-btn { border-left: 1px solid var(--brass-lo); }
+
+  /* ── Error box ── */
+  .error-box {
+    background: rgba(168,24,36,0.12);
+    border: 1px solid rgba(168,24,36,0.55);
+    border-radius: 3px; padding: 9px 12px; margin-bottom: 14px;
+    color: #e8a0a8; font-size: 12px; font-style: italic;
+  }
+
+  /* ── Form fields ── */
+  .field { margin-bottom: 14px; }
+
+  .field-label {
+    display: block; margin-bottom: 4px;
+    font-family: 'Cinzel', serif; font-size: 9px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: rgba(201,162,74,0.75);
+  }
+  .field-label .optional {
+    font-family: 'Inter', sans-serif; font-size: 9px; font-weight: 400;
+    color: rgba(201,162,74,0.4); letter-spacing: 0; text-transform: none; margin-left: 6px;
+  }
+
+  input[type="text"],
+  input[type="password"],
+  input[type="email"] {
+    width: 100%; padding: 9px 11px;
+    font-family: 'Merriweather', serif; font-size: 13px; color: var(--paper-1);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%),
+      linear-gradient(180deg, #2a1c0c 0%, #1e1308 100%);
+    border: 1px solid rgba(201,162,74,0.3);
+    border-radius: 3px; outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-shadow: inset 0 1px 4px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(255,255,255,0.03);
+  }
+  input[type="text"]:focus,
+  input[type="email"]:focus,
+  input[type="password"]:focus {
+    border-color: rgba(201,162,74,0.65);
+    box-shadow: inset 0 1px 4px rgba(0,0,0,0.5), 0 0 0 2px rgba(201,162,74,0.12);
+  }
+  input::placeholder { color: rgba(201,162,74,0.25); font-style: italic; }
+
+  input.pin-input {
+    font-family: 'Merriweather', serif; font-size: 26px; font-weight: 900;
+    text-align: center; letter-spacing: 16px; padding: 8px 12px 8px 28px;
+    color: var(--brass-hi);
+  }
+
+  /* ── Avatar row ── */
+  .avatar-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 9px 11px;
+    border: 1px solid rgba(201,162,74,0.3); border-radius: 3px; cursor: pointer;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%),
+      linear-gradient(180deg, #2a1c0c 0%, #1e1308 100%);
+    box-shadow: inset 0 1px 4px rgba(0,0,0,0.5);
+    transition: border-color 0.15s;
+  }
+  .avatar-row:hover { border-color: rgba(201,162,74,0.6); }
+  .avatar-emoji { font-size: 28px; line-height: 1; }
+  .avatar-name { font-family: 'Merriweather', serif; font-size: 12px; font-weight: 700; color: var(--paper-1); }
+  .avatar-hint { font-family: 'Inter', sans-serif; font-size: 10px; color: rgba(201,162,74,0.5); margin-top: 2px; }
+  .avatar-chevron { margin-left: auto; color: rgba(201,162,74,0.5); font-size: 18px; }
+
+  /* Avatar picker grid */
+  .avatar-grid {
+    margin-top: 8px; padding: 10px;
+    border: 1px solid rgba(201,162,74,0.22); border-radius: 3px;
+    background: #1a1207;
+    max-height: 160px; overflow-y: auto;
+  }
+  .avatar-grid-inner {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px;
+  }
+  .avatar-tile {
+    font-size: 26px; padding: 5px; text-align: center;
+    border-radius: 3px; border: 1px solid transparent; cursor: pointer; transition: all 0.12s;
+  }
+  .avatar-tile:hover { background: rgba(201,162,74,0.08); border-color: rgba(201,162,74,0.25); }
+  .avatar-tile.selected {
+    background: rgba(201,162,74,0.15); border-color: rgba(201,162,74,0.55);
+    box-shadow: 0 0 8px rgba(201,162,74,0.15);
+  }
+
+  /* ── Field hint ── */
+  .field-hint { margin-top: 3px; font-size: 10px; color: rgba(201,162,74,0.35); font-style: italic; }
+
+  /* ── Primary action button ── */
+  .btn-primary {
+    width: 100%; padding: 12px 16px;
+    font-family: 'Cinzel', serif; font-size: 12px; font-weight: 700;
+    letter-spacing: 2.5px; text-transform: uppercase;
+    color: #1a0e03;
+    background: linear-gradient(180deg, var(--brass-hi) 0%, var(--brass) 45%, #9a7630 100%);
+    border: none; border-radius: 4px; cursor: pointer;
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.6),
+      0 3px 0 rgba(0,0,0,0.5),
+      0 5px 15px rgba(0,0,0,0.4),
+      inset 0 1px 0 rgba(255,245,200,0.6);
+    transition: all 0.15s; margin-top: 6px;
+    text-shadow: 0 1px 0 rgba(255,220,100,0.4);
+  }
+  .btn-primary:hover {
+    background: linear-gradient(180deg, #fff0a0 0%, var(--brass-hi) 45%, var(--brass) 100%);
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.6),
+      0 3px 0 rgba(0,0,0,0.5),
+      0 8px 20px rgba(0,0,0,0.45),
+      inset 0 1px 0 rgba(255,250,210,0.7),
+      0 0 20px rgba(201,162,74,0.2);
+    transform: translateY(-1px);
+  }
+  .btn-primary:active {
+    transform: translateY(2px);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 1px 0 rgba(0,0,0,0.5), inset 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+</style>
+</head>
+<body>
+
+<div class="version-badge">v2.25.9</div>
+
+<!-- ═══════════════════ RETURNING PLAYER ══════════════════════ -->
+<div class="state-label">Returning Player</div>
+<div class="phone-scaler">
+  <div class="phone">
+    <div class="login-card">
+      <div class="brass-frame">
+        <div class="felt-surface">
+
+          <div class="title-plaque">
+            <div class="brand-text">45s</div>
+            <div class="brand-sub">Irish Card Room</div>
+            <div class="suit-row">
+              <span>♣</span>
+              <span class="red-suit">♥</span>
+              <span class="red-suit">♦</span>
+              <span>♠</span>
+            </div>
+          </div>
+
+          <div class="tab-row">
+            <button class="tab-btn active">Returning Player</button>
+            <button class="tab-btn">New Player</button>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Username</label>
+            <input type="text" placeholder="Enter your username">
+          </div>
+
+          <div class="field">
+            <label class="field-label">4-Digit PIN</label>
+            <input type="password" class="pin-input" placeholder="••••" maxlength="4">
+          </div>
+
+          <button class="btn-primary">Enter the Room</button>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ ERROR STATE ══════════════════════ -->
+<div class="state-label">Error State</div>
+<div class="phone-scaler">
+  <div class="phone">
+    <div class="login-card">
+      <div class="brass-frame">
+        <div class="felt-surface">
+
+          <div class="title-plaque">
+            <div class="brand-text">45s</div>
+            <div class="brand-sub">Irish Card Room</div>
+            <div class="suit-row">
+              <span>♣</span><span class="red-suit">♥</span>
+              <span class="red-suit">♦</span><span>♠</span>
+            </div>
+          </div>
+
+          <div class="tab-row">
+            <button class="tab-btn active">Returning Player</button>
+            <button class="tab-btn">New Player</button>
+          </div>
+
+          <div class="error-box">Incorrect PIN. Please try again.</div>
+
+          <div class="field">
+            <label class="field-label">Username</label>
+            <input type="text" value="rawbar" placeholder="Enter your username">
+          </div>
+
+          <div class="field">
+            <label class="field-label">4-Digit PIN</label>
+            <input type="password" class="pin-input" placeholder="••••" maxlength="4">
+          </div>
+
+          <button class="btn-primary">Enter the Room</button>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ NEW PLAYER ══════════════════════ -->
+<div class="state-label">New Player</div>
+<div class="phone-scaler">
+  <div class="phone">
+    <div class="login-card">
+      <div class="brass-frame">
+        <div class="felt-surface">
+
+          <div class="title-plaque">
+            <div class="brand-text">45s</div>
+            <div class="brand-sub">Irish Card Room</div>
+            <div class="suit-row">
+              <span>♣</span><span class="red-suit">♥</span>
+              <span class="red-suit">♦</span><span>♠</span>
+            </div>
+          </div>
+
+          <div class="tab-row">
+            <button class="tab-btn">Returning Player</button>
+            <button class="tab-btn active">New Player</button>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Choose a Username</label>
+            <input type="text" placeholder="Choose a username">
+          </div>
+
+          <div class="field">
+            <label class="field-label">Choose a 4-Digit PIN</label>
+            <input type="password" class="pin-input" placeholder="••••" maxlength="4">
+          </div>
+
+          <div class="field">
+            <label class="field-label">Confirm PIN</label>
+            <input type="password" class="pin-input" placeholder="••••" maxlength="4">
+          </div>
+
+          <div class="field">
+            <label class="field-label">Email <span class="optional">(optional)</span></label>
+            <input type="email" placeholder="you@example.com">
+            <div class="field-hint">For updates and notices. Never shared.</div>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Choose Avatar</label>
+            <div class="avatar-row">
+              <span class="avatar-emoji">🐉</span>
+              <div>
+                <div class="avatar-name">Dragon</div>
+                <div class="avatar-hint">Tap to change</div>
+              </div>
+              <span class="avatar-chevron">›</span>
+            </div>
+            <!-- Avatar picker (expanded state shown) -->
+            <div class="avatar-grid">
+              <div class="avatar-grid-inner">
+                <div class="avatar-tile selected">🐉</div>
+                <div class="avatar-tile">🦊</div>
+                <div class="avatar-tile">🏰</div>
+                <div class="avatar-tile">🐺</div>
+                <div class="avatar-tile">🦁</div>
+                <div class="avatar-tile">🦅</div>
+                <div class="avatar-tile">🐻</div>
+                <div class="avatar-tile">🦋</div>
+                <div class="avatar-tile">🐯</div>
+                <div class="avatar-tile">🦄</div>
+                <div class="avatar-tile">🐸</div>
+                <div class="avatar-tile">🦀</div>
+                <div class="avatar-tile">🌙</div>
+                <div class="avatar-tile">⚡</div>
+                <div class="avatar-tile">🎩</div>
+                <div class="avatar-tile">🍀</div>
+                <div class="avatar-tile">🐦</div>
+                <div class="avatar-tile">🌊</div>
+                <div class="avatar-tile">🔱</div>
+                <div class="avatar-tile">⚔️</div>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-primary">Join the Room</button>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>45s — Player Profile Modal · Irish Card Room Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Merriweather:ital,wght@1,400&family=Inter:wght@400;500;600&display=swap">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --brass-hi: #f6d778;
+  --brass:    #c9a24a;
+  --brass-lo: #5a3f16;
+  --felt-2:   #13572a;
+  --paper-1:  #fbf6e4;
+  --green:    #5dd084;
+  --me-blue:  #6bb6ff;
+}
+
+/* ── Walnut macro background ── */
+html, body {
+  font-family: 'Inter', sans-serif;
+  color: #e8e4d9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 24px 12px 80px;
+  min-height: 100vh;
+  background-color: #180b03;
+  background-image:
+    radial-gradient(ellipse 95% 55% at 50% -5%, rgba(255,210,136,0.28) 0%, rgba(255,180,110,0.1) 30%, transparent 60%),
+    linear-gradient(180deg, rgba(255,220,175,0.08) 0%, rgba(255,220,175,0.03) 22%, transparent 52%),
+    linear-gradient(92deg,
+      transparent 4%,  rgba(255,220,168,0.055) 7%,  transparent 11%,
+      transparent 20%, rgba(255,205,148,0.04)  24%, transparent 29%,
+      transparent 44%, rgba(255,215,160,0.06)  49%, transparent 54%,
+      transparent 66%, rgba(255,208,148,0.045) 71%, transparent 76%,
+      transparent 86%, rgba(255,218,168,0.05)  91%, transparent 96%),
+    linear-gradient(91deg,
+      transparent 13%, rgba(0,0,0,0.12) 15%, transparent 17%,
+      transparent 28%, rgba(0,0,0,0.09) 30%, transparent 32%,
+      transparent 51%, rgba(0,0,0,0.14) 53%, transparent 55%,
+      transparent 64%, rgba(0,0,0,0.1)  66%, transparent 68%,
+      transparent 81%, rgba(0,0,0,0.11) 83%, transparent 85%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='390' height='844'><filter id='g'><feTurbulence type='turbulence' baseFrequency='0.35 0.008' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.06  0 0 0 0 0.025  0 0 0 0 0.01  0.45 0 0 0 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"),
+    linear-gradient(172deg, #3a2312 0%, #281609 35%, #180b03 68%, #1f0f05 100%);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+/* ── State divider label ── */
+.state-label {
+  position: relative;
+  z-index: 10;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(201,162,74,0.5);
+  text-align: center;
+  margin: 36px 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 390px;
+}
+.state-label::before,
+.state-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,162,74,0.3), transparent);
+}
+
+/* ── Phone scaler ── */
+.phone-scaler {
+  transform-origin: top center;
+  transform: scale(calc(88vh / 844px));
+  margin-bottom: calc(88vh - 844px + 40px);
+}
+
+/* ── Phone frame ── */
+.phone {
+  position: relative;
+  z-index: 1;
+  width: 390px;
+  height: 844px;
+  border-radius: 30px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: #180b03;
+  background-image:
+    radial-gradient(ellipse 95% 55% at 50% -5%, rgba(255,210,136,0.28) 0%, rgba(255,180,110,0.1) 30%, transparent 60%),
+    linear-gradient(180deg, rgba(255,220,175,0.08) 0%, rgba(255,220,175,0.03) 22%, transparent 52%),
+    linear-gradient(92deg,
+      transparent 4%,  rgba(255,220,168,0.055) 7%,  transparent 11%,
+      transparent 20%, rgba(255,205,148,0.04)  24%, transparent 29%,
+      transparent 44%, rgba(255,215,160,0.06)  49%, transparent 54%,
+      transparent 66%, rgba(255,208,148,0.045) 71%, transparent 76%,
+      transparent 86%, rgba(255,218,168,0.05)  91%, transparent 96%),
+    linear-gradient(91deg,
+      transparent 13%, rgba(0,0,0,0.12) 15%, transparent 17%,
+      transparent 28%, rgba(0,0,0,0.09) 30%, transparent 32%,
+      transparent 51%, rgba(0,0,0,0.14) 53%, transparent 55%,
+      transparent 64%, rgba(0,0,0,0.1)  66%, transparent 68%,
+      transparent 81%, rgba(0,0,0,0.11) 83%, transparent 85%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='390' height='844'><filter id='g'><feTurbulence type='turbulence' baseFrequency='0.35 0.008' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.06  0 0 0 0 0.025  0 0 0 0 0.01  0.45 0 0 0 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"),
+    linear-gradient(172deg, #3a2312 0%, #281609 35%, #180b03 68%, #1f0f05 100%);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  box-shadow:
+    0 40px 100px rgba(0,0,0,0.85),
+    0 0 0 1px rgba(255,255,255,0.05) inset,
+    0 0 0 1px rgba(201,162,74,0.12) inset;
+}
+.phone::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 30px;
+  background: radial-gradient(ellipse 110% 80% at 50% 50%, transparent 45%, rgba(0,0,0,0.65) 100%);
+  z-index: 20;
+}
+
+/* ── Top bar ── */
+.topbar {
+  position: relative;
+  z-index: 5;
+  flex-shrink: 0;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.30) 100%);
+  border-bottom: 1px solid rgba(201,162,74,0.18);
+}
+.topbar::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%, var(--brass-lo) 15%, var(--brass) 35%,
+    var(--brass-hi) 50%, var(--brass) 65%, var(--brass-lo) 85%, transparent 100%);
+  opacity: 0.65;
+}
+.topbar-logo {
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--brass-hi) 0%, var(--brass) 50%, #a87930 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 0.5px;
+}
+.topbar-center {
+  flex: 1;
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(246,215,120,0.85);
+}
+.topbar-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--felt-2);
+  border: 2px solid var(--brass);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+/* ── Leaderboard background scene ── */
+.scene-bg {
+  flex: 1;
+  padding: 10px 12px 4px;
+  overflow: hidden;
+  position: relative;
+  z-index: 3;
+}
+.scene-section-hdr {
+  font-size: 9px;
+  font-family: 'Cinzel', serif;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(201,162,74,0.4);
+  padding: 4px 2px 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.scene-section-hdr::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(201,162,74,0.12);
+}
+.lb-row {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: rgba(19,87,42,0.18);
+  border: 1px solid rgba(201,162,74,0.15);
+  margin-bottom: 6px;
+  position: relative;
+  overflow: hidden;
+}
+.lb-row.top3 {
+  background: rgba(19,87,42,0.28);
+  border-color: rgba(201,162,74,0.3);
+}
+.lb-row.top3::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(201,162,74,0.06) 0%, transparent 50%);
+  pointer-events: none;
+}
+.lb-rank {
+  width: 22px;
+  flex-shrink: 0;
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(201,162,74,0.55);
+  text-align: center;
+}
+.lb-rank.gold   { color: var(--brass-hi); }
+.lb-rank.silver { color: #c0c0c0; }
+.lb-rank.bronze { color: #cd7f32; }
+.lb-av {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--felt-2);
+  border: 1.5px solid rgba(201,162,74,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.lb-info { flex: 1; min-width: 0; }
+.lb-username {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--paper-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lb-sub {
+  font-family: 'Merriweather', serif;
+  font-style: italic;
+  font-size: 10px;
+  color: rgba(251,246,228,0.5);
+  margin-top: 1px;
+  white-space: nowrap;
+}
+.lb-winpct {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brass-hi);
+  flex-shrink: 0;
+}
+
+/* ── Overlay dim ── */
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 6;
+}
+
+/* ── Bottom sheet modal ── */
+.modal-sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 660px;
+  background: rgba(12,6,2,0.96);
+  border-top: 2px solid var(--brass);
+  border-radius: 20px 20px 0 0;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* drag pill */
+.drag-pill {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 8px;
+}
+.drag-pill-bar {
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(201,162,74,0.4);
+}
+
+/* ── Modal scroll area ── */
+.modal-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 16px 32px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201,162,74,0.2) transparent;
+}
+.modal-scroll::-webkit-scrollbar { width: 3px; }
+.modal-scroll::-webkit-scrollbar-track { background: transparent; }
+.modal-scroll::-webkit-scrollbar-thumb { background: rgba(201,162,74,0.2); border-radius: 2px; }
+
+/* ── Profile header ── */
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 0 16px;
+}
+.profile-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--felt-2);
+  border: 2px solid var(--brass);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  flex-shrink: 0;
+  box-shadow: 0 0 18px rgba(201,162,74,0.22), 0 2px 10px rgba(0,0,0,0.6);
+}
+.profile-avatar.is-me {
+  border-color: var(--me-blue);
+  box-shadow: 0 0 18px rgba(107,182,255,0.28), 0 2px 10px rgba(0,0,0,0.6);
+}
+.profile-header-text { flex: 1; min-width: 0; }
+.profile-name {
+  font-family: 'Cinzel', serif;
+  font-size: 22px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #f6d778, #c9a24a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.profile-name.is-me {
+  background: linear-gradient(135deg, #a8d8ff, var(--me-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.profile-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+}
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot.online  { background: var(--green); box-shadow: 0 0 5px rgba(93,208,132,0.7); }
+.status-dot.offline { background: rgba(232,228,217,0.22); }
+.status-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+}
+.status-text.online  { color: var(--green); }
+.status-text.offline { color: rgba(232,228,217,0.35); }
+
+/* ── Stats ── */
+.stats-section { margin-bottom: 16px; }
+
+.stat-hero {
+  background: rgba(10,40,20,0.7);
+  border: 1px solid rgba(201,162,74,0.3);
+  border-radius: 10px;
+  padding: 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(201,162,74,0.07) 0%, transparent 55%);
+  pointer-events: none;
+}
+.stat-hero-value {
+  font-family: 'Cinzel', serif;
+  font-size: 36px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #f6d778, #c9a24a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+}
+.stat-hero-label {
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(201,162,74,0.5);
+  margin-top: 4px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.stat-card {
+  background: rgba(10,40,20,0.6);
+  border: 1px solid rgba(201,162,74,0.25);
+  border-radius: 8px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 3px;
+}
+.stat-card.full-width {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+}
+.stat-label {
+  font-family: 'Merriweather', serif;
+  font-style: italic;
+  font-size: 10px;
+  color: rgba(251,246,228,0.5);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.stat-value {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #e8e4d9;
+  line-height: 1;
+}
+.stat-value.hi { color: var(--brass-hi); }
+.stat-card.full-width .stat-label { font-size: 11px; }
+.stat-card.full-width .stat-value { font-size: 14px; }
+
+/* ── Brass divider ── */
+.brass-divider {
+  height: 1px;
+  margin: 14px 0;
+  background: linear-gradient(90deg,
+    transparent 0%, var(--brass-lo) 10%, var(--brass) 30%,
+    var(--brass-hi) 50%, var(--brass) 70%, var(--brass-lo) 90%, transparent 100%);
+  opacity: 0.45;
+}
+
+/* ── Badges ── */
+.badges-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.badges-title {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #f6d778, #c9a24a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.badges-count {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(201,162,74,0.55);
+}
+.badges-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.badge-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  border-radius: 50%;
+  border: 1.5px solid var(--brass);
+  background: var(--felt-2);
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(201,162,74,0.3);
+  outline: none;
+  padding: 0;
+  aspect-ratio: 1;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.badge-btn:hover {
+  box-shadow: 0 0 16px rgba(201,162,74,0.5);
+  border-color: var(--brass-hi);
+}
+.badge-btn.locked {
+  background: rgba(18,14,10,0.7);
+  border-color: rgba(255,255,255,0.1);
+  box-shadow: none;
+}
+.badge-btn.locked .badge-emoji { opacity: 0.22; }
+.badge-btn.selected {
+  border-color: var(--brass-hi);
+  border-width: 2.5px;
+  box-shadow: 0 0 16px rgba(246,215,120,0.6), 0 0 0 4px rgba(246,215,120,0.1);
+}
+.badge-lock-icon {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  font-size: 11px;
+  line-height: 1;
+}
+.badge-emoji { line-height: 1; display: block; }
+
+/* ── Badge detail panel ── */
+.badge-detail {
+  margin-top: 12px;
+  background: rgba(10,30,15,0.9);
+  border: 1px solid var(--brass);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.badge-detail-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.badge-detail-icon {
+  font-size: 40px;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px rgba(201,162,74,0.5));
+}
+.badge-detail-info { flex: 1; }
+.badge-detail-name {
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #f6d778, #c9a24a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.1;
+}
+.badge-detail-desc {
+  font-family: 'Merriweather', serif;
+  font-style: italic;
+  font-size: 12px;
+  color: rgba(251,246,228,0.6);
+  margin-top: 5px;
+  line-height: 1.5;
+}
+.badge-earned-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+}
+.badge-earned-check { font-size: 13px; color: var(--green); }
+.badge-earned-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--green);
+}
+.badge-locked-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(232,228,217,0.33);
+}
+.badge-how-label {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(201,162,74,0.45);
+}
+.badge-requirement {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: rgba(232,228,217,0.85);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+.badge-progress-wrap { }
+.badge-progress-top {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 5px;
+}
+.badge-progress-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(201,162,74,0.7);
+}
+.badge-progress-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
+}
+.badge-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #f6d778, #c9a24a);
+}
+</style>
+</head>
+<body>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     STATE 1 — Another player (Saoirse) · brass accents
+═══════════════════════════════════════════════════════════════ -->
+<div class="state-label">State 1 — Another Player · Saoirse</div>
+<div class="phone-scaler">
+<div class="phone">
+
+  <div class="topbar">
+    <div class="topbar-logo">45s</div>
+    <div class="topbar-center">Leaderboard</div>
+    <div class="topbar-avatar">🦉</div>
+  </div>
+
+  <!-- Dimmed leaderboard behind the sheet -->
+  <div class="scene-bg">
+    <div class="scene-section-hdr">Top Players</div>
+    <div class="lb-row top3">
+      <div class="lb-rank gold">🥇</div>
+      <div class="lb-av">🌿</div>
+      <div class="lb-info">
+        <div class="lb-username">Saoirse</div>
+        <div class="lb-sub">89 games · 🔥8 streak</div>
+      </div>
+      <div class="lb-winpct">68%</div>
+    </div>
+    <div class="lb-row top3">
+      <div class="lb-rank silver">🥈</div>
+      <div class="lb-av">🦉</div>
+      <div class="lb-info">
+        <div class="lb-username">robr</div>
+        <div class="lb-sub">143 games · 🔥12 streak</div>
+      </div>
+      <div class="lb-winpct">71%</div>
+    </div>
+    <div class="lb-row">
+      <div class="lb-rank bronze">🥉</div>
+      <div class="lb-av">🐺</div>
+      <div class="lb-info">
+        <div class="lb-username">Ciarán</div>
+        <div class="lb-sub">61 games · 🔥3 streak</div>
+      </div>
+      <div class="lb-winpct">65%</div>
+    </div>
+    <div class="lb-row">
+      <div class="lb-rank">4</div>
+      <div class="lb-av">🍀</div>
+      <div class="lb-info">
+        <div class="lb-username">Brigid</div>
+        <div class="lb-sub">44 games · streak ended</div>
+      </div>
+      <div class="lb-winpct">62%</div>
+    </div>
+  </div>
+
+  <div class="modal-overlay"></div>
+
+  <div class="modal-sheet">
+    <div class="drag-pill"><div class="drag-pill-bar"></div></div>
+    <div class="modal-scroll">
+
+      <!-- Header -->
+      <div class="profile-header">
+        <div class="profile-avatar">🌿</div>
+        <div class="profile-header-text">
+          <div class="profile-name">Saoirse</div>
+          <div class="profile-status">
+            <div class="status-dot offline"></div>
+            <div class="status-text offline">2h ago</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-section">
+        <div class="stat-hero">
+          <div class="stat-hero-value">3,847</div>
+          <div class="stat-hero-label">Total Points</div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Games Played</div>
+            <div class="stat-value">89</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Wins</div>
+            <div class="stat-value hi">61</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Losses</div>
+            <div class="stat-value">28</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Win %</div>
+            <div class="stat-value hi">68%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Cur. Streak 🔥</div>
+            <div class="stat-value">8</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Max Streak ⭐</div>
+            <div class="stat-value">14</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Bids Made</div>
+            <div class="stat-value">67/89</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Bid Success</div>
+            <div class="stat-value hi">75%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Times Set</div>
+            <div class="stat-value">12</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Perfect 30s</div>
+            <div class="stat-value">2</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Quits</div>
+            <div class="stat-value">1</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Avg Win Bid</div>
+            <div class="stat-value">19.2</div>
+          </div>
+          <div class="stat-card full-width">
+            <div class="stat-label">Last Seen</div>
+            <div class="stat-value">2 hours ago</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="brass-divider"></div>
+
+      <!-- Badges -->
+      <div>
+        <div class="badges-header">
+          <div class="badges-title">Badges</div>
+          <div class="badges-count">10 earned · 8 locked</div>
+        </div>
+        <div class="badges-grid">
+          <button class="badge-btn"><span class="badge-emoji">🏆</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🃏</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🔥</span></button>
+          <button class="badge-btn"><span class="badge-emoji">♠️</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🍀</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🦉</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🧊</span></button>
+          <button class="badge-btn"><span class="badge-emoji">💰</span></button>
+          <button class="badge-btn"><span class="badge-emoji">⚔️</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🎯</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">💎</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">👑</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🎭</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🦈</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🌟</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🐉</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">👻</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🛡️</span><span class="badge-lock-icon">🔒</span></button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /.phone -->
+</div><!-- /.phone-scaler -->
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     STATE 2 — Own profile (robr) · blue accents
+═══════════════════════════════════════════════════════════════ -->
+<div class="state-label">State 2 — Own Profile · robr (blue accents)</div>
+<div class="phone-scaler">
+<div class="phone">
+
+  <div class="topbar">
+    <div class="topbar-logo">45s</div>
+    <div class="topbar-center">Leaderboard</div>
+    <div class="topbar-avatar" style="border-color:var(--me-blue);">🦉</div>
+  </div>
+
+  <div class="scene-bg">
+    <div class="scene-section-hdr">Top Players</div>
+    <div class="lb-row top3">
+      <div class="lb-rank gold">🥇</div>
+      <div class="lb-av">🌿</div>
+      <div class="lb-info">
+        <div class="lb-username">Saoirse</div>
+        <div class="lb-sub">89 games · 🔥8 streak</div>
+      </div>
+      <div class="lb-winpct">68%</div>
+    </div>
+    <div class="lb-row top3" style="border-color:rgba(107,182,255,0.35);">
+      <div class="lb-rank silver">🥈</div>
+      <div class="lb-av" style="border-color:var(--me-blue);">🦉</div>
+      <div class="lb-info">
+        <div class="lb-username" style="color:#8ecfff;">robr</div>
+        <div class="lb-sub">143 games · 🔥12 streak</div>
+      </div>
+      <div class="lb-winpct" style="color:#8ecfff;">71%</div>
+    </div>
+    <div class="lb-row">
+      <div class="lb-rank bronze">🥉</div>
+      <div class="lb-av">🐺</div>
+      <div class="lb-info">
+        <div class="lb-username">Ciarán</div>
+        <div class="lb-sub">61 games · 🔥3 streak</div>
+      </div>
+      <div class="lb-winpct">65%</div>
+    </div>
+    <div class="lb-row">
+      <div class="lb-rank">4</div>
+      <div class="lb-av">🍀</div>
+      <div class="lb-info">
+        <div class="lb-username">Brigid</div>
+        <div class="lb-sub">44 games · streak ended</div>
+      </div>
+      <div class="lb-winpct">62%</div>
+    </div>
+  </div>
+
+  <div class="modal-overlay"></div>
+
+  <div class="modal-sheet" style="border-top-color:var(--me-blue);">
+    <div class="drag-pill"><div class="drag-pill-bar" style="background:rgba(107,182,255,0.4);"></div></div>
+    <div class="modal-scroll">
+
+      <div class="profile-header">
+        <div class="profile-avatar is-me">🦉</div>
+        <div class="profile-header-text">
+          <div class="profile-name is-me">robr</div>
+          <div class="profile-status">
+            <div class="status-dot online"></div>
+            <div class="status-text online">Online now</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-section">
+        <div class="stat-hero" style="border-color:rgba(107,182,255,0.35);">
+          <div class="stat-hero-value" style="background:linear-gradient(135deg,#a8d8ff,#6bb6ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">4,210</div>
+          <div class="stat-hero-label" style="color:rgba(107,182,255,0.6);">Total Points</div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Games Played</div>
+            <div class="stat-value">143</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Wins</div>
+            <div class="stat-value" style="color:#8ecfff;">102</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Losses</div>
+            <div class="stat-value">41</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Win %</div>
+            <div class="stat-value" style="color:#8ecfff;">71%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Cur. Streak 🔥</div>
+            <div class="stat-value">12</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Max Streak ⭐</div>
+            <div class="stat-value">18</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Bids Made</div>
+            <div class="stat-value">112/143</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Bid Success</div>
+            <div class="stat-value" style="color:#8ecfff;">78%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Times Set</div>
+            <div class="stat-value">18</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Perfect 30s</div>
+            <div class="stat-value">4</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Quits</div>
+            <div class="stat-value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Avg Win Bid</div>
+            <div class="stat-value">21.4</div>
+          </div>
+          <div class="stat-card full-width">
+            <div class="stat-label">Last Seen</div>
+            <div class="stat-value" style="color:var(--green);">Online now</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="brass-divider"></div>
+
+      <div>
+        <div class="badges-header">
+          <div class="badges-title">Badges</div>
+          <div class="badges-count">28 earned · 12 locked</div>
+        </div>
+        <div class="badges-grid">
+          <button class="badge-btn"><span class="badge-emoji">🏆</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🃏</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🔥</span></button>
+          <button class="badge-btn"><span class="badge-emoji">♠️</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🍀</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🦉</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🧊</span></button>
+          <button class="badge-btn"><span class="badge-emoji">💰</span></button>
+          <button class="badge-btn"><span class="badge-emoji">⚔️</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🎯</span></button>
+          <button class="badge-btn"><span class="badge-emoji">💎</span></button>
+          <button class="badge-btn"><span class="badge-emoji">👑</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🎭</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🦈</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🌟</span></button>
+          <button class="badge-btn"><span class="badge-emoji">⚡</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🎪</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🏅</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🧙</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🎲</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🌊</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🦅</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🍺</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🎸</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🌙</span></button>
+          <button class="badge-btn"><span class="badge-emoji">☘️</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🏰</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🐉</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">👻</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🛡️</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🌺</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🦄</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🎩</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🔱</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">💫</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🦁</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">⚜️</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🗡️</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🌈</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🏹</span><span class="badge-lock-icon">🔒</span></button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     STATE 3 — Badge detail panel · earned (Card Shark tapped)
+═══════════════════════════════════════════════════════════════ -->
+<div class="state-label">State 3 — Badge Detail · Card Shark (earned)</div>
+<div class="phone-scaler">
+<div class="phone">
+
+  <div class="topbar">
+    <div class="topbar-logo">45s</div>
+    <div class="topbar-center">Leaderboard</div>
+    <div class="topbar-avatar">🦉</div>
+  </div>
+
+  <div class="scene-bg">
+    <div class="scene-section-hdr">Top Players</div>
+    <div class="lb-row top3">
+      <div class="lb-rank gold">🥇</div>
+      <div class="lb-av">🌿</div>
+      <div class="lb-info">
+        <div class="lb-username">Saoirse</div>
+        <div class="lb-sub">89 games · 🔥8 streak</div>
+      </div>
+      <div class="lb-winpct">68%</div>
+    </div>
+    <div class="lb-row top3">
+      <div class="lb-rank silver">🥈</div>
+      <div class="lb-av">🦉</div>
+      <div class="lb-info">
+        <div class="lb-username">robr</div>
+        <div class="lb-sub">143 games · 🔥12 streak</div>
+      </div>
+      <div class="lb-winpct">71%</div>
+    </div>
+    <div class="lb-row">
+      <div class="lb-rank bronze">🥉</div>
+      <div class="lb-av">🐺</div>
+      <div class="lb-info">
+        <div class="lb-username">Ciarán</div>
+        <div class="lb-sub">61 games · 🔥3 streak</div>
+      </div>
+      <div class="lb-winpct">65%</div>
+    </div>
+  </div>
+
+  <div class="modal-overlay"></div>
+
+  <div class="modal-sheet">
+    <div class="drag-pill"><div class="drag-pill-bar"></div></div>
+    <div class="modal-scroll">
+
+      <!-- Compact header -->
+      <div class="profile-header">
+        <div class="profile-avatar">🌿</div>
+        <div class="profile-header-text">
+          <div class="profile-name">Saoirse</div>
+          <div class="profile-status">
+            <div class="status-dot offline"></div>
+            <div class="status-text offline">2h ago</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compact stats — top 6 only to give room for badge detail -->
+      <div class="stats-section">
+        <div class="stat-hero" style="padding:10px 16px;">
+          <div class="stat-hero-value" style="font-size:28px;">3,847</div>
+          <div class="stat-hero-label">Total Points</div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Games Played</div>
+            <div class="stat-value">89</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Win %</div>
+            <div class="stat-value hi">68%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Cur. Streak 🔥</div>
+            <div class="stat-value">8</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Bids Made</div>
+            <div class="stat-value">67</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Bid Success</div>
+            <div class="stat-value hi">75%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Perfect 30s</div>
+            <div class="stat-value">2</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="brass-divider"></div>
+
+      <!-- Badges — Card Shark selected -->
+      <div>
+        <div class="badges-header">
+          <div class="badges-title">Badges</div>
+          <div class="badges-count">10 earned · 8 locked</div>
+        </div>
+        <div class="badges-grid">
+          <button class="badge-btn"><span class="badge-emoji">🏆</span></button>
+          <button class="badge-btn selected"><span class="badge-emoji">🃏</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🔥</span></button>
+          <button class="badge-btn"><span class="badge-emoji">♠️</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🍀</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🦉</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🧊</span></button>
+          <button class="badge-btn"><span class="badge-emoji">💰</span></button>
+          <button class="badge-btn"><span class="badge-emoji">⚔️</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🎯</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">💎</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">👑</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🎭</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🦈</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🌟</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🐉</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">👻</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🛡️</span><span class="badge-lock-icon">🔒</span></button>
+        </div>
+
+        <!-- Earned badge detail -->
+        <div class="badge-detail">
+          <div class="badge-detail-top">
+            <div class="badge-detail-icon">🃏</div>
+            <div class="badge-detail-info">
+              <div class="badge-detail-name">Card Shark</div>
+              <div class="badge-detail-desc">A master of the cards, feared at every table</div>
+              <div class="badge-earned-row">
+                <span class="badge-earned-check">✓</span>
+                <span class="badge-earned-text">Earned Apr 2026</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="badge-how-label">How to Earn</div>
+            <div class="badge-requirement">Win 50 games with a 20+ bid</div>
+          </div>
+          <div class="badge-progress-wrap">
+            <div class="badge-progress-top">
+              <span class="badge-progress-label">28 / 50 games</span>
+            </div>
+            <div class="badge-progress-track">
+              <div class="badge-progress-fill" style="width:56%;"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     STATE 4 — Badge detail panel · locked (Comeback King)
+═══════════════════════════════════════════════════════════════ -->
+<div class="state-label">State 4 — Badge Detail · Comeback King (locked)</div>
+<div class="phone-scaler">
+<div class="phone">
+
+  <div class="topbar">
+    <div class="topbar-logo">45s</div>
+    <div class="topbar-center">Leaderboard</div>
+    <div class="topbar-avatar" style="border-color:var(--me-blue);">🦉</div>
+  </div>
+
+  <div class="scene-bg">
+    <div class="scene-section-hdr">Top Players</div>
+    <div class="lb-row top3">
+      <div class="lb-rank gold">🥇</div>
+      <div class="lb-av">🌿</div>
+      <div class="lb-info">
+        <div class="lb-username">Saoirse</div>
+        <div class="lb-sub">89 games · 🔥8 streak</div>
+      </div>
+      <div class="lb-winpct">68%</div>
+    </div>
+    <div class="lb-row top3" style="border-color:rgba(107,182,255,0.35);">
+      <div class="lb-rank silver">🥈</div>
+      <div class="lb-av" style="border-color:var(--me-blue);">🦉</div>
+      <div class="lb-info">
+        <div class="lb-username" style="color:#8ecfff;">robr</div>
+        <div class="lb-sub">143 games · 🔥12 streak</div>
+      </div>
+      <div class="lb-winpct" style="color:#8ecfff;">71%</div>
+    </div>
+    <div class="lb-row">
+      <div class="lb-rank bronze">🥉</div>
+      <div class="lb-av">🐺</div>
+      <div class="lb-info">
+        <div class="lb-username">Ciarán</div>
+        <div class="lb-sub">61 games · 🔥3 streak</div>
+      </div>
+      <div class="lb-winpct">65%</div>
+    </div>
+  </div>
+
+  <div class="modal-overlay"></div>
+
+  <div class="modal-sheet" style="border-top-color:var(--me-blue);">
+    <div class="drag-pill"><div class="drag-pill-bar" style="background:rgba(107,182,255,0.4);"></div></div>
+    <div class="modal-scroll">
+
+      <div class="profile-header">
+        <div class="profile-avatar is-me">🦉</div>
+        <div class="profile-header-text">
+          <div class="profile-name is-me">robr</div>
+          <div class="profile-status">
+            <div class="status-dot online"></div>
+            <div class="status-text online">Online now</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compact stats -->
+      <div class="stats-section">
+        <div class="stat-hero" style="padding:10px 16px; border-color:rgba(107,182,255,0.35);">
+          <div class="stat-hero-value" style="font-size:28px; background:linear-gradient(135deg,#a8d8ff,#6bb6ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">4,210</div>
+          <div class="stat-hero-label" style="color:rgba(107,182,255,0.6);">Total Points</div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Games Played</div>
+            <div class="stat-value">143</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Win %</div>
+            <div class="stat-value" style="color:#8ecfff;">71%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Cur. Streak 🔥</div>
+            <div class="stat-value">12</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Bids Made</div>
+            <div class="stat-value">112</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Bid Success</div>
+            <div class="stat-value" style="color:#8ecfff;">78%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Perfect 30s</div>
+            <div class="stat-value">4</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="brass-divider"></div>
+
+      <!-- Badges — Comeback King (locked) selected -->
+      <div>
+        <div class="badges-header">
+          <div class="badges-title">Badges</div>
+          <div class="badges-count">28 earned · 12 locked</div>
+        </div>
+        <div class="badges-grid">
+          <button class="badge-btn"><span class="badge-emoji">🏆</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🃏</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🔥</span></button>
+          <button class="badge-btn"><span class="badge-emoji">♠️</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🍀</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🦉</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🧊</span></button>
+          <button class="badge-btn"><span class="badge-emoji">💰</span></button>
+          <button class="badge-btn"><span class="badge-emoji">⚔️</span></button>
+          <button class="badge-btn"><span class="badge-emoji">🎯</span></button>
+          <button class="badge-btn"><span class="badge-emoji">💎</span></button>
+          <!-- Comeback King — locked + selected -->
+          <button class="badge-btn locked selected" style="border-color:rgba(255,255,255,0.35); box-shadow:0 0 14px rgba(255,255,255,0.14), 0 0 0 3px rgba(255,255,255,0.06);"><span class="badge-emoji">👑</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🎭</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🦈</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🌟</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🐉</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">👻</span><span class="badge-lock-icon">🔒</span></button>
+          <button class="badge-btn locked"><span class="badge-emoji">🛡️</span><span class="badge-lock-icon">🔒</span></button>
+        </div>
+
+        <!-- Locked badge detail -->
+        <div class="badge-detail" style="border-color:rgba(255,255,255,0.2); background:rgba(10,8,10,0.92);">
+          <div class="badge-detail-top">
+            <div class="badge-detail-icon" style="opacity:0.32; filter:grayscale(1) drop-shadow(0 0 4px rgba(255,255,255,0.1));">👑</div>
+            <div class="badge-detail-info">
+              <div class="badge-detail-name" style="background:rgba(232,228,217,0.38);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Comeback King</div>
+              <div class="badge-detail-desc" style="opacity:0.42;">Rise from the ashes and snatch victory from defeat</div>
+              <div class="badge-earned-row">
+                <span style="font-size:12px;">🔒</span>
+                <span class="badge-locked-text">Not yet earned</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="badge-how-label">How to Earn</div>
+            <div class="badge-requirement">Win a game after trailing by 60+ points</div>
+          </div>
+          <div class="badge-progress-wrap">
+            <div class="badge-progress-top">
+              <span class="badge-progress-label" style="color:rgba(232,228,217,0.35);">3 / 5 comebacks</span>
+            </div>
+            <div class="badge-progress-track">
+              <div class="badge-progress-fill" style="width:60%; background:linear-gradient(90deg,rgba(170,170,170,0.5),rgba(120,120,120,0.4));"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</div>
+
+</body>
+</html>

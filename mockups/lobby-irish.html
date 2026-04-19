@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>45s — Lobby · Irish Card Room Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@400;500;600;700&family=Merriweather:ital@1&display=swap">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --brass-hi: #f6d778;
+  --brass:    #c9a24a;
+  --brass-lo: #5a3f16;
+  --felt-2:   #13572a;
+  --paper-1:  #fbf6e4;
+  --team-us:  #5dd084;
+  --team-them:#ef7c74;
+  --me-blue:  #6bb6ff;
+}
+
+/* ── Walnut macro background ── */
+html, body {
+  font-family: 'Inter', sans-serif;
+  color: #e8e4d9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 24px 12px 80px;
+  min-height: 100vh;
+  background-color: #180b03;
+  background-image:
+    radial-gradient(ellipse 95% 55% at 50% -5%, rgba(255,210,136,0.28) 0%, rgba(255,180,110,0.1) 30%, transparent 60%),
+    linear-gradient(180deg, rgba(255,220,175,0.08) 0%, rgba(255,220,175,0.03) 22%, transparent 52%),
+    linear-gradient(92deg,
+      transparent 4%,  rgba(255,220,168,0.055) 7%,  transparent 11%,
+      transparent 20%, rgba(255,205,148,0.04)  24%, transparent 29%,
+      transparent 44%, rgba(255,215,160,0.06)  49%, transparent 54%,
+      transparent 66%, rgba(255,208,148,0.045) 71%, transparent 76%,
+      transparent 86%, rgba(255,218,168,0.05)  91%, transparent 96%),
+    linear-gradient(91deg,
+      transparent 13%, rgba(0,0,0,0.12) 15%, transparent 17%,
+      transparent 28%, rgba(0,0,0,0.09) 30%, transparent 32%,
+      transparent 51%, rgba(0,0,0,0.14) 53%, transparent 55%,
+      transparent 64%, rgba(0,0,0,0.1)  66%, transparent 68%,
+      transparent 81%, rgba(0,0,0,0.11) 83%, transparent 85%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='390' height='844'><filter id='g'><feTurbulence type='turbulence' baseFrequency='0.35 0.008' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.06  0 0 0 0 0.025  0 0 0 0 0.01  0.45 0 0 0 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"),
+    linear-gradient(172deg, #3a2312 0%, #281609 35%, #180b03 68%, #1f0f05 100%);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+/* ── Desktop scaler ── */
+.state-label {
+  position: relative;
+  z-index: 10;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(201,162,74,0.5);
+  text-align: center;
+  margin: 36px 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 390px;
+}
+.state-label::before,
+.state-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,162,74,0.3), transparent);
+}
+
+.phone-scaler {
+  transform-origin: top center;
+  transform: scale(calc(88vh / 844px));
+  margin-bottom: calc(88vh - 844px + 40px);
+}
+
+/* ── Phone frame ── */
+.phone {
+  position: relative;
+  z-index: 1;
+  width: 390px;
+  height: 844px;
+  border-radius: 30px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: #180b03;
+  background-image:
+    radial-gradient(ellipse 95% 55% at 50% -5%, rgba(255,210,136,0.28) 0%, rgba(255,180,110,0.1) 30%, transparent 60%),
+    linear-gradient(180deg, rgba(255,220,175,0.08) 0%, rgba(255,220,175,0.03) 22%, transparent 52%),
+    linear-gradient(92deg,
+      transparent 4%,  rgba(255,220,168,0.055) 7%,  transparent 11%,
+      transparent 20%, rgba(255,205,148,0.04)  24%, transparent 29%,
+      transparent 44%, rgba(255,215,160,0.06)  49%, transparent 54%,
+      transparent 66%, rgba(255,208,148,0.045) 71%, transparent 76%,
+      transparent 86%, rgba(255,218,168,0.05)  91%, transparent 96%),
+    linear-gradient(91deg,
+      transparent 13%, rgba(0,0,0,0.12) 15%, transparent 17%,
+      transparent 28%, rgba(0,0,0,0.09) 30%, transparent 32%,
+      transparent 51%, rgba(0,0,0,0.14) 53%, transparent 55%,
+      transparent 64%, rgba(0,0,0,0.1)  66%, transparent 68%,
+      transparent 81%, rgba(0,0,0,0.11) 83%, transparent 85%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='390' height='844'><filter id='g'><feTurbulence type='turbulence' baseFrequency='0.35 0.008' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.06  0 0 0 0 0.025  0 0 0 0 0.01  0.45 0 0 0 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"),
+    linear-gradient(172deg, #3a2312 0%, #281609 35%, #180b03 68%, #1f0f05 100%);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  box-shadow:
+    0 40px 100px rgba(0,0,0,0.85),
+    0 0 0 1px rgba(255,255,255,0.05) inset,
+    0 0 0 1px rgba(201,162,74,0.12) inset;
+}
+
+/* phone edge vignette */
+.phone::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 30px;
+  background: radial-gradient(ellipse 110% 80% at 50% 50%, transparent 45%, rgba(0,0,0,0.65) 100%);
+  z-index: 20;
+}
+
+/* ── Topbar ── */
+.topbar {
+  position: relative;
+  z-index: 5;
+  flex-shrink: 0;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.30) 100%);
+  border-bottom: 1px solid rgba(201,162,74,0.18);
+}
+.topbar::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%, var(--brass-lo) 15%, var(--brass) 35%,
+    var(--brass-hi) 50%, var(--brass) 65%, var(--brass-lo) 85%, transparent 100%);
+  opacity: 0.65;
+}
+
+.topbar-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+}
+.topbar-logo {
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--brass-hi) 0%, var(--brass) 50%, #a87930 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 0.5px;
+}
+.topbar-center {
+  flex: 1;
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(246,215,120,0.85);
+}
+.topbar-right {
+  position: relative;
+  flex-shrink: 0;
+}
+.avatar-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--felt-2);
+  border: 2px solid var(--brass);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+.presence-dot {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--team-us);
+  border: 2px solid #180b03;
+}
+
+/* ── Online strip ── */
+.online-strip {
+  position: relative;
+  z-index: 4;
+  flex-shrink: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 6px;
+  background: rgba(0,0,0,0.35);
+  border-bottom: 1px solid rgba(201,162,74,0.10);
+  overflow: hidden;
+  flex-wrap: nowrap;
+}
+
+.online-count-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: rgba(201,162,74,0.55);
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  margin-right: 2px;
+}
+
+/* horizontal pill chip: avatar circle + name text */
+.online-chip {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 7px 0 4px;
+  border-radius: 16px;
+  border: 1px solid rgba(201,162,74,0.3);
+  background: rgba(19,87,42,0.18);
+  cursor: default;
+  white-space: nowrap;
+}
+.online-chip.is-me {
+  background: rgba(107,182,255,0.15);
+  border-color: #6bb6ff;
+}
+
+.online-chip-avatar {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--felt-2);
+  border: 1px solid rgba(201,162,74,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.online-chip.is-me .online-chip-avatar {
+  border-color: #6bb6ff;
+}
+.online-chip-avatar .dot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--team-us);
+  border: 1.5px solid #180b03;
+}
+
+.online-chip-name {
+  font-size: 10px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  color: rgba(232,228,217,0.75);
+  max-width: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.online-chip.is-me .online-chip-name {
+  color: #8ecfff;
+  font-weight: 600;
+}
+
+/* ── +N more overflow pill ── */
+.online-more-pill {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(201,162,74,0.4);
+  background: transparent;
+  color: rgba(201,162,74,0.7);
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.online-more-pill:hover {
+  background: rgba(201,162,74,0.08);
+  border-color: rgba(201,162,74,0.65);
+}
+
+/* ── Tab bar ── */
+.tab-bar {
+  position: relative;
+  z-index: 4;
+  flex-shrink: 0;
+  height: 44px;
+  display: flex;
+  align-items: stretch;
+  background: rgba(0,0,0,0.45);
+  border-bottom: 1px solid rgba(201,162,74,0.22);
+}
+.tab-bar::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(201,162,74,0.2) 20%, rgba(201,162,74,0.35) 50%, rgba(201,162,74,0.2) 80%, transparent 100%);
+}
+.tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(201,162,74,0.45);
+  position: relative;
+  cursor: pointer;
+}
+.tab.active {
+  color: var(--brass-hi);
+}
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16px; right: 16px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--brass-hi), transparent);
+  border-radius: 1px;
+}
+
+/* ── Scrollable content area ── */
+.screen-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 12px 100px;
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Subtle scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201,162,74,0.25) transparent;
+}
+
+/* ── Game row card ── */
+.game-row {
+  flex-shrink: 0;
+  min-height: 72px;
+  background: rgba(19,87,42,0.22);
+  border: 1px solid rgba(201,162,74,0.22);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.game-row::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(201,162,74,0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+.game-row:hover {
+  background: rgba(19,87,42,0.38);
+  border-color: rgba(201,162,74,0.42);
+}
+
+.game-info {
+  flex: 1;
+  min-width: 0;
+}
+.game-name {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--paper-1);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.game-sub {
+  font-size: 11px;
+  color: rgba(201,162,74,0.55);
+  margin-top: 2px;
+}
+
+.seat-pips {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(201,162,74,0.3);
+  background: transparent;
+}
+.pip.taken-brass {
+  background: var(--brass);
+  border-color: var(--brass);
+}
+.pip.taken-green {
+  background: var(--team-us);
+  border-color: var(--team-us);
+}
+.pip.taken-me {
+  background: var(--me-blue);
+  border-color: var(--me-blue);
+}
+
+.status-badge {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.badge-open {
+  color: var(--team-us);
+  background: rgba(93,208,132,0.12);
+  border: 1px solid rgba(93,208,132,0.3);
+}
+.badge-playing {
+  color: var(--brass-hi);
+  background: rgba(246,215,120,0.10);
+  border: 1px solid rgba(246,215,120,0.28);
+}
+.badge-finished {
+  color: rgba(201,162,74,0.4);
+  background: rgba(201,162,74,0.06);
+  border: 1px solid rgba(201,162,74,0.14);
+}
+
+/* ── Section header ── */
+.section-header {
+  font-size: 9px;
+  font-family: 'Cinzel', serif;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(201,162,74,0.4);
+  padding: 6px 2px 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(201,162,74,0.12);
+}
+
+/* ── Empty state ── */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  text-align: center;
+  gap: 12px;
+}
+.empty-icon {
+  font-size: 48px;
+  opacity: 0.35;
+  margin-bottom: 4px;
+}
+.empty-title {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(201,162,74,0.6);
+  letter-spacing: 1px;
+}
+.empty-sub {
+  font-size: 13px;
+  color: rgba(232,228,217,0.4);
+  line-height: 1.55;
+  max-width: 240px;
+}
+
+/* ── Create Game button ── */
+.create-btn-wrap {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 8;
+  padding: 12px 16px 24px;
+  background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 60%, transparent 100%);
+}
+.create-btn {
+  width: 100%;
+  height: 52px;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #1a0e00;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--brass-hi) 0%, var(--brass) 50%, #8a6520 100%);
+  box-shadow:
+    0 4px 16px rgba(201,162,74,0.35),
+    0 1px 0 rgba(255,255,255,0.25) inset,
+    0 -1px 0 rgba(0,0,0,0.35) inset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.create-btn-icon {
+  font-size: 18px;
+  font-style: normal;
+}
+
+/* ── Leaderboard ── */
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+}
+.lb-row {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: rgba(19,87,42,0.18);
+  border: 1px solid rgba(201,162,74,0.15);
+  position: relative;
+  overflow: hidden;
+}
+.lb-row.top3 {
+  background: rgba(19,87,42,0.28);
+  border-color: rgba(201,162,74,0.3);
+}
+.lb-row.top3::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(201,162,74,0.06) 0%, transparent 50%);
+  pointer-events: none;
+}
+.lb-rank {
+  width: 24px;
+  flex-shrink: 0;
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(201,162,74,0.55);
+  text-align: center;
+}
+.lb-rank.gold   { color: var(--brass-hi); }
+.lb-rank.silver { color: #c0c0c0; }
+.lb-rank.bronze { color: #cd7f32; }
+.lb-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--felt-2);
+  border: 1.5px solid rgba(201,162,74,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  flex-shrink: 0;
+}
+.lb-name {
+  flex: 1;
+  min-width: 0;
+}
+.lb-username {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--paper-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lb-stats {
+  font-family: 'Merriweather', serif;
+  font-style: italic;
+  font-size: 11px;
+  color: rgba(251,246,228,0.55);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lb-lastseen {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  color: rgba(251,246,228,0.35);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lb-lastseen.online {
+  color: rgba(93,208,132,0.6);
+}
+.lb-winpct {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  margin-left: auto;
+}
+.lb-score {
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #c9a24a;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.lb-row.rank1 .lb-score { color: #f6d778; }
+.lb-row.rank2 .lb-score { color: #e8e8e8; }
+.lb-row.rank3 .lb-score { color: #cd7f32; }
+.lb-pts-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+.lb-pts-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(201,162,74,0.7);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.lb-row.rank1 .lb-pts-label { color: rgba(246,215,120,0.7); }
+.lb-row.rank2 .lb-pts-label { color: rgba(232,232,232,0.7); }
+.lb-row.rank3 .lb-pts-label { color: rgba(205,127,50,0.7); }
+.leaderboard-badge-chip {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: rgba(201,162,74,0.8);
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.leaderboard-badge-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+.lb-pct-num {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--brass-hi), var(--brass));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.lb-pct-label {
+  font-size: 9px;
+  color: rgba(201,162,74,0.4);
+  letter-spacing: 0.5px;
+}
+.crown {
+  font-size: 13px;
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  opacity: 0.7;
+}
+
+/* top-3 glow line */
+.lb-row.rank1 { box-shadow: 0 0 12px rgba(246,215,120,0.18) inset; }
+.lb-row.rank2 { box-shadow: 0 0 8px rgba(192,192,192,0.10) inset; }
+.lb-row.rank3 { box-shadow: 0 0 8px rgba(205,127,50,0.10) inset; }
+
+/* ── Screen as flex column ── */
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Topbar right cluster ── */
+.topbar-right-cluster {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.topbar-version-right {
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  color: rgba(201,162,74,0.5);
+  line-height: 1;
+}
+/* robr only */
+.topbar-admin-link {
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  color: #f44336;
+  opacity: 0.7;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+/* ── Avatar tappable ring ── */
+.avatar-circle {
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.avatar-circle:hover {
+  box-shadow: 0 0 0 2px rgba(201,162,74,0.55);
+}
+.avatar-tap-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(201,162,74,0.45);
+  pointer-events: none;
+}
+.avatar-edit-badge {
+  position: absolute;
+  bottom: -1px;
+  left: -1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(24,11,3,0.85);
+  border: 1px solid rgba(201,162,74,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  line-height: 1;
+}
+
+/* ── Rules button ── */
+.rules-btn {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(201,162,74,0.5);
+  border-radius: 7px;
+  background: transparent;
+  color: #c9a24a;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.rules-btn:hover {
+  background: rgba(201,162,74,0.08);
+  border-color: rgba(201,162,74,0.75);
+}
+
+/* ── Action row (rules + gear row below topbar) ── */
+.action-row {
+  position: relative;
+  z-index: 4;
+  flex-shrink: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 14px;
+  gap: 10px;
+  background: rgba(0,0,0,0.28);
+  border-bottom: 1px solid rgba(201,162,74,0.08);
+}
+
+/* ── Gear button ── */
+.gear-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(201,162,74,0.3);
+  background: transparent;
+  color: rgba(201,162,74,0.6);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+}
+.gear-btn:hover {
+  background: rgba(201,162,74,0.1);
+  border-color: rgba(201,162,74,0.55);
+  color: rgba(201,162,74,0.9);
+}
+
+/* ── Rejoin banner ── */
+.rejoin-banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 0 14px;
+  height: 60px;
+  margin: 8px 12px 0;
+  background: rgba(30,14,4,0.85);
+  border: 1px solid #c9a24a;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.rejoin-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(201,162,74,0.07) 0%, transparent 55%);
+  pointer-events: none;
+}
+.rejoin-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.rejoin-info {
+  flex: 1;
+  min-width: 0;
+}
+.rejoin-title {
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--paper-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rejoin-sub {
+  font-size: 10px;
+  color: rgba(201,162,74,0.6);
+  margin-top: 2px;
+}
+.rejoin-btn {
+  flex-shrink: 0;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--brass);
+  border-radius: 7px;
+  background: rgba(201,162,74,0.12);
+  color: var(--brass-hi);
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.rejoin-btn:hover {
+  background: rgba(201,162,74,0.22);
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     STATE 1 — Games List
+══════════════════════════════════════════ -->
+<div class="state-label">State 1 — Games List</div>
+<div class="phone-scaler">
+<div class="phone">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-logo">45s</span>
+    </div>
+    <div class="topbar-center">The Card Room</div>
+    <div class="topbar-right" style="display:flex;align-items:center;gap:10px;">
+      <!-- version + admin link cluster -->
+      <div class="topbar-right-cluster">
+        <span class="topbar-version-right">v2.26</span>
+        <!-- robr only --><span class="topbar-admin-link">admin</span>
+      </div>
+      <!-- tap to edit profile -->
+      <div style="position:relative;">
+        <div class="avatar-circle">🦊</div>
+        <div class="avatar-tap-ring"></div>
+        <div class="avatar-edit-badge">✎</div>
+        <div class="presence-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action row: Rules + Gear -->
+  <div class="action-row">
+    <button class="rules-btn">📜 Rules</button>
+    <button class="gear-btn" title="Preferences">⚙</button>
+  </div>
+
+  <!-- Online strip -->
+  <div class="online-strip">
+    <span class="online-count-badge">6 Online</span>
+    <!-- robr = you -->
+    <div class="online-chip is-me">
+      <div class="online-chip-avatar">🦊<span class="dot"></span></div>
+      <span class="online-chip-name">robr</span>
+    </div>
+    <div class="online-chip">
+      <div class="online-chip-avatar">🐺<span class="dot"></span></div>
+      <span class="online-chip-name">Saoirse</span>
+    </div>
+    <div class="online-chip">
+      <div class="online-chip-avatar">🦅<span class="dot"></span></div>
+      <span class="online-chip-name">Padraig</span>
+    </div>
+    <button class="online-more-pill">+3 more</button>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <div class="tab active">Games</div>
+    <div class="tab">Leaderboard</div>
+  </div>
+
+  <!-- Screen body -->
+  <div class="screen">
+    <div class="screen-scroll">
+
+      <!-- Rejoin banner — shown when player has an active game in progress -->
+      <div class="rejoin-banner">
+        <span class="rejoin-icon">↩</span>
+        <div class="rejoin-info">
+          <div class="rejoin-title">Flanagan's Table</div>
+          <div class="rejoin-sub">In Progress · Round 3 · Score 35–20</div>
+        </div>
+        <button class="rejoin-btn">Rejoin</button>
+      </div>
+
+      <div class="section-header">Open</div>
+
+      <!-- Row — open, 1 seat taken (me) -->
+      <div class="game-row">
+        <div class="game-info">
+          <div class="game-name">Flanagan's Table</div>
+          <div class="game-sub">Created just now</div>
+        </div>
+        <div class="seat-pips">
+          <div class="pip taken-me"></div>
+          <div class="pip"></div>
+          <div class="pip"></div>
+          <div class="pip"></div>
+        </div>
+        <span class="status-badge badge-open">Open</span>
+      </div>
+
+      <!-- Row — open, 3 seats taken -->
+      <div class="game-row">
+        <div class="game-info">
+          <div class="game-name">Murphy's Game</div>
+          <div class="game-sub">3 of 4 seated</div>
+        </div>
+        <div class="seat-pips">
+          <div class="pip taken-brass"></div>
+          <div class="pip taken-brass"></div>
+          <div class="pip taken-brass"></div>
+          <div class="pip"></div>
+        </div>
+        <span class="status-badge badge-open">Open</span>
+      </div>
+
+      <div class="section-header">In Progress</div>
+
+      <!-- Row — playing, full -->
+      <div class="game-row">
+        <div class="game-info">
+          <div class="game-name">Brennan's Snug</div>
+          <div class="game-sub">Round 3 · Score 35–20</div>
+        </div>
+        <div class="seat-pips">
+          <div class="pip taken-brass"></div>
+          <div class="pip taken-brass"></div>
+          <div class="pip taken-brass"></div>
+          <div class="pip taken-brass"></div>
+        </div>
+        <span class="status-badge badge-playing">Playing</span>
+      </div>
+
+      <!-- Row — playing, full -->
+      <div class="game-row">
+        <div class="game-info">
+          <div class="game-name">Connolly's Corner</div>
+          <div class="game-sub">Round 5 · Score 90–70</div>
+        </div>
+        <div class="seat-pips">
+          <div class="pip taken-brass"></div>
+          <div class="pip taken-brass"></div>
+          <div class="pip taken-brass"></div>
+          <div class="pip taken-brass"></div>
+        </div>
+        <span class="status-badge badge-playing">Playing</span>
+      </div>
+
+      <!-- Row — playing, full -->
+      <div class="game-row">
+        <div class="game-info">
+          <div class="game-name">O'Brien's Table</div>
+          <div class="game-sub">Round 7 · Score 100–95</div>
+        </div>
+        <div class="seat-pips">
+          <div class="pip taken-brass"></div>
+          <div class="pip taken-brass"></div>
+          <div class="pip taken-brass"></div>
+          <div class="pip taken-brass"></div>
+        </div>
+        <span class="status-badge badge-playing">Playing</span>
+      </div>
+
+      <div class="section-header">Finished</div>
+
+      <!-- Row — finished -->
+      <div class="game-row">
+        <div class="game-info">
+          <div class="game-name">Doyle's Den</div>
+          <div class="game-sub">Ended 12 min ago</div>
+        </div>
+        <div class="seat-pips">
+          <div class="pip taken-brass" style="opacity:0.45"></div>
+          <div class="pip taken-brass" style="opacity:0.45"></div>
+          <div class="pip taken-brass" style="opacity:0.45"></div>
+          <div class="pip taken-brass" style="opacity:0.45"></div>
+        </div>
+        <span class="status-badge badge-finished">Done</span>
+      </div>
+
+    </div><!-- /screen-scroll -->
+
+    <!-- Create Game button -->
+    <div class="create-btn-wrap">
+      <button class="create-btn">
+        <span class="create-btn-icon">＋</span>
+        Create Game
+      </button>
+    </div>
+  </div><!-- /screen -->
+
+</div><!-- /phone -->
+</div><!-- /phone-scaler -->
+
+
+<!-- ══════════════════════════════════════════
+     STATE 2 — Empty State
+══════════════════════════════════════════ -->
+<div class="state-label">State 2 — Empty State</div>
+<div class="phone-scaler">
+<div class="phone">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-logo">45s</span>
+    </div>
+    <div class="topbar-center">The Card Room</div>
+    <div class="topbar-right" style="display:flex;align-items:center;gap:10px;">
+      <div class="topbar-right-cluster">
+        <span class="topbar-version-right">v2.26</span>
+        <!-- robr only --><span class="topbar-admin-link">admin</span>
+      </div>
+      <!-- tap to edit profile -->
+      <div style="position:relative;">
+        <div class="avatar-circle">🦊</div>
+        <div class="avatar-tap-ring"></div>
+        <div class="avatar-edit-badge">✎</div>
+        <div class="presence-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action row: Rules + Gear -->
+  <div class="action-row">
+    <button class="rules-btn">📜 Rules</button>
+    <button class="gear-btn" title="Preferences">⚙</button>
+  </div>
+
+  <!-- Online strip -->
+  <div class="online-strip">
+    <span class="online-count-badge">1 Online</span>
+    <div class="online-chip is-me">
+      <div class="online-chip-avatar">🦊<span class="dot"></span></div>
+      <span class="online-chip-name">robr</span>
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <div class="tab active">Games</div>
+    <div class="tab">Leaderboard</div>
+  </div>
+
+  <!-- Screen body -->
+  <div class="screen">
+    <div class="screen-scroll" style="justify-content:center">
+
+      <div class="empty-state">
+        <div class="empty-icon">🃏</div>
+        <div class="empty-title">No Open Games</div>
+        <div class="empty-sub">The room is quiet tonight. Be the first to deal a hand — create a game below.</div>
+      </div>
+
+    </div><!-- /screen-scroll -->
+
+    <!-- Create Game button -->
+    <div class="create-btn-wrap">
+      <button class="create-btn">
+        <span class="create-btn-icon">＋</span>
+        Create Game
+      </button>
+    </div>
+  </div><!-- /screen -->
+
+</div><!-- /phone -->
+</div><!-- /phone-scaler -->
+
+
+<!-- ══════════════════════════════════════════
+     STATE 3 — Leaderboard Tab
+══════════════════════════════════════════ -->
+<div class="state-label">State 3 — Leaderboard</div>
+<div class="phone-scaler">
+<div class="phone">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-logo">45s</span>
+    </div>
+    <div class="topbar-center">The Card Room</div>
+    <div class="topbar-right" style="display:flex;align-items:center;gap:10px;">
+      <div class="topbar-right-cluster">
+        <span class="topbar-version-right">v2.26</span>
+        <!-- robr only --><span class="topbar-admin-link">admin</span>
+      </div>
+      <!-- tap to edit profile -->
+      <div style="position:relative;">
+        <div class="avatar-circle">🦊</div>
+        <div class="avatar-tap-ring"></div>
+        <div class="avatar-edit-badge">✎</div>
+        <div class="presence-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action row: Rules + Gear -->
+  <div class="action-row">
+    <button class="rules-btn">📜 Rules</button>
+    <button class="gear-btn" title="Preferences">⚙</button>
+  </div>
+
+  <!-- Online strip -->
+  <div class="online-strip">
+    <span class="online-count-badge">6 Online</span>
+    <div class="online-chip is-me">
+      <div class="online-chip-avatar">🦊<span class="dot"></span></div>
+      <span class="online-chip-name">robr</span>
+    </div>
+    <div class="online-chip">
+      <div class="online-chip-avatar">🐺<span class="dot"></span></div>
+      <span class="online-chip-name">Saoirse</span>
+    </div>
+    <div class="online-chip">
+      <div class="online-chip-avatar">🦅<span class="dot"></span></div>
+      <span class="online-chip-name">Padraig</span>
+    </div>
+    <button class="online-more-pill">+3 more</button>
+  </div>
+
+  <!-- Tab bar — Leaderboard active -->
+  <div class="tab-bar">
+    <div class="tab">Games</div>
+    <div class="tab active">Leaderboard</div>
+  </div>
+
+  <!-- Screen body -->
+  <div class="screen">
+    <div class="screen-scroll">
+
+      <div class="section-header">Top Players · Min 5 Games</div>
+
+      <div class="leaderboard-list">
+
+        <!-- Rank 1 -->
+        <div class="lb-row top3 rank1">
+          <span class="crown">👑</span>
+          <div class="lb-rank gold">1</div>
+          <div class="lb-avatar">🦊</div>
+          <div class="lb-name">
+            <div class="lb-username">robr</div>
+            <div class="lb-stats">143 games · 71% win</div>
+            <div class="lb-lastseen online">Online now</div>
+          </div>
+          <div class="lb-winpct">
+            <div class="lb-pts-wrap"><span class="lb-score">4,210</span><span class="lb-pts-label">pts</span></div>
+            <div class="leaderboard-badge-chip">
+              <span class="leaderboard-badge-icon">🏆</span>×28
+            </div>
+          </div>
+        </div>
+
+        <!-- Rank 2 -->
+        <div class="lb-row top3 rank2">
+          <div class="lb-rank silver">2</div>
+          <div class="lb-avatar">🐺</div>
+          <div class="lb-name">
+            <div class="lb-username">Saoirse</div>
+            <div class="lb-stats">89 games · 68% win</div>
+            <div class="lb-lastseen">2h ago</div>
+          </div>
+          <div class="lb-winpct">
+            <div class="lb-pts-wrap"><span class="lb-score">3,847</span><span class="lb-pts-label">pts</span></div>
+            <div class="leaderboard-badge-chip">
+              <span class="leaderboard-badge-icon">🃏</span>×19
+            </div>
+          </div>
+        </div>
+
+        <!-- Rank 3 -->
+        <div class="lb-row top3 rank3">
+          <div class="lb-rank bronze">3</div>
+          <div class="lb-avatar">🦅</div>
+          <div class="lb-name">
+            <div class="lb-username">Padraig</div>
+            <div class="lb-stats">201 games · 65% win</div>
+            <div class="lb-lastseen">Yesterday</div>
+          </div>
+          <div class="lb-winpct">
+            <div class="lb-pts-wrap"><span class="lb-score">3,601</span><span class="lb-pts-label">pts</span></div>
+            <div class="leaderboard-badge-chip">
+              <span class="leaderboard-badge-icon">⚔️</span>×24
+            </div>
+          </div>
+        </div>
+
+        <!-- Rank 4 -->
+        <div class="lb-row">
+          <div class="lb-rank">4</div>
+          <div class="lb-avatar">🍀</div>
+          <div class="lb-name">
+            <div class="lb-username">Brigid</div>
+            <div class="lb-stats">67 games · 61% win</div>
+            <div class="lb-lastseen">3 days ago</div>
+          </div>
+          <div class="lb-winpct">
+            <div class="lb-pts-wrap"><span class="lb-score">2,944</span><span class="lb-pts-label">pts</span></div>
+            <div class="leaderboard-badge-chip">
+              <span class="leaderboard-badge-icon">🍀</span>×11
+            </div>
+          </div>
+        </div>
+
+        <!-- Rank 5 -->
+        <div class="lb-row">
+          <div class="lb-rank">5</div>
+          <div class="lb-avatar">🦁</div>
+          <div class="lb-name">
+            <div class="lb-username">Cormac</div>
+            <div class="lb-stats">112 games · 58% win</div>
+            <div class="lb-lastseen online">Online now</div>
+          </div>
+          <div class="lb-winpct">
+            <div class="lb-pts-wrap"><span class="lb-score">2,780</span><span class="lb-pts-label">pts</span></div>
+            <div class="leaderboard-badge-chip">
+              <span class="leaderboard-badge-icon">🎯</span>×15
+            </div>
+          </div>
+        </div>
+
+        <!-- Rank 6 -->
+        <div class="lb-row">
+          <div class="lb-rank">6</div>
+          <div class="lb-avatar">🐻</div>
+          <div class="lb-name">
+            <div class="lb-username">Fionnuala</div>
+            <div class="lb-stats">44 games · 55% win</div>
+            <div class="lb-lastseen">1 week ago</div>
+          </div>
+          <div class="lb-winpct">
+            <div class="lb-pts-wrap"><span class="lb-score">2,315</span><span class="lb-pts-label">pts</span></div>
+            <div class="leaderboard-badge-chip">
+              <span class="leaderboard-badge-icon">🃏</span>×8
+            </div>
+          </div>
+        </div>
+
+        <!-- Rank 7 -->
+        <div class="lb-row">
+          <div class="lb-rank">7</div>
+          <div class="lb-avatar">🦌</div>
+          <div class="lb-name">
+            <div class="lb-username">Declan</div>
+            <div class="lb-stats">78 games · 53% win</div>
+            <div class="lb-lastseen">5 days ago</div>
+          </div>
+          <div class="lb-winpct">
+            <div class="lb-pts-wrap"><span class="lb-score">1,988</span><span class="lb-pts-label">pts</span></div>
+            <div class="leaderboard-badge-chip">
+              <span class="leaderboard-badge-icon">🍀</span>×9
+            </div>
+          </div>
+        </div>
+
+        <!-- Rank 8 -->
+        <div class="lb-row">
+          <div class="lb-rank">8</div>
+          <div class="lb-avatar">🐦</div>
+          <div class="lb-name">
+            <div class="lb-username">Aoife</div>
+            <div class="lb-stats">55 games · 51% win</div>
+            <div class="lb-lastseen">2 weeks ago</div>
+          </div>
+          <div class="lb-winpct">
+            <div class="lb-pts-wrap"><span class="lb-score">1,742</span><span class="lb-pts-label">pts</span></div>
+            <div class="leaderboard-badge-chip">
+              <span class="leaderboard-badge-icon">🎯</span>×6
+            </div>
+          </div>
+        </div>
+
+        <!-- Rank 9 -->
+        <div class="lb-row">
+          <div class="lb-rank">9</div>
+          <div class="lb-avatar">🐝</div>
+          <div class="lb-name">
+            <div class="lb-username">Seamus</div>
+            <div class="lb-stats">93 games · 49% win</div>
+            <div class="lb-lastseen">3 days ago</div>
+          </div>
+          <div class="lb-winpct">
+            <div class="lb-pts-wrap"><span class="lb-score">1,590</span><span class="lb-pts-label">pts</span></div>
+            <div class="leaderboard-badge-chip">
+              <span class="leaderboard-badge-icon">⚔️</span>×7
+            </div>
+          </div>
+        </div>
+
+        <!-- Rank 10 -->
+        <div class="lb-row">
+          <div class="lb-rank">10</div>
+          <div class="lb-avatar">🦋</div>
+          <div class="lb-name">
+            <div class="lb-username">Niamh</div>
+            <div class="lb-stats">31 games · 47% win</div>
+            <div class="lb-lastseen">1 month ago</div>
+          </div>
+          <div class="lb-winpct">
+            <div class="lb-pts-wrap"><span class="lb-score">1,203</span><span class="lb-pts-label">pts</span></div>
+            <div class="leaderboard-badge-chip">
+              <span class="leaderboard-badge-icon">🏆</span>×3
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /leaderboard-list -->
+
+    </div><!-- /screen-scroll -->
+
+    <!-- Create Game button (still present on leaderboard) -->
+    <div class="create-btn-wrap">
+      <button class="create-btn">
+        <span class="create-btn-icon">＋</span>
+        Create Game
+      </button>
+    </div>
+  </div><!-- /screen -->
+
+</div><!-- /phone -->
+</div><!-- /phone-scaler -->
+
+</body>
+</html>
