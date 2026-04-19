@@ -20,8 +20,8 @@
   <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.0.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Palatino Linotype', Palatino, Georgia, serif; overflow: hidden; width: 100%; height: 100%; }
-    html { height: 100%; }
+    html { height: 100%; height: -webkit-fill-available; }
+    body { font-family: 'Palatino Linotype', Palatino, Georgia, serif; overflow: hidden; width: 100%; height: 100%; height: -webkit-fill-available; }
     #root { height: 100%; overflow: hidden; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -1246,6 +1246,7 @@
     background-size: cover;
     background-attachment: fixed;
     height: 100vh;
+    height: -webkit-fill-available;
     height: 100dvh;
     overflow: hidden;
     display: flex;
@@ -1682,7 +1683,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.11';
+const VERSION = '2.27.12';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4339,6 +4340,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.12', date: 'Apr 2026', changes: ['iOS Safari support: add -webkit-fill-available fallback on html/body and lobby container'] },
     { version: '2.27.11', date: 'Apr 2026', changes: ['Fix lobby on mobile Chrome: use 100dvh so layout fits within browser chrome bounds; body overflow hidden to stop page scroll'] },
     { version: '2.27.10', date: 'Apr 2026', changes: ['Fix lobby: page no longer scrolls — tabs and Create Game button now stay pinned'] },
     { version: '2.27.9', date: 'Apr 2026', changes: ['Fix stats modal: remove duplicate old white modal that was rendering on top of Irish bottom sheet'] },
