@@ -6572,12 +6572,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                           background: isActive ? 'rgba(201,162,74,0.06)' : '#fff'
                         }}>
                           <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#222' }}>{theme.name}</div>
-                          {isActive
-                            ? <div style={{ fontSize: '10px', color: '#c9a24a', fontWeight: '600' }}>✓ Active</div>
-                            : isUnlocked
-                              ? <div style={{ fontSize: '10px', color: '#888' }}>Tap to preview</div>
-                              : <div style={{ fontSize: '10px', color: '#aaa' }}>{theme.unlockHint}</div>
-                          }
+                          {isActive && <div style={{ fontSize: '10px', color: '#c9a24a', fontWeight: '600' }}>✓ Active</div>}
+                          {theme.unlockHint && <div style={{ fontSize: '10px', color: isUnlocked ? '#888' : '#aaa', marginTop: isActive ? '1px' : '0' }}>{theme.unlockHint}</div>}
                         </div>
                       </div>
                     );
@@ -6963,8 +6959,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                         </div>
                         <div style={{ padding: '6px 8px', borderTop: '1px solid #eee' }}>
                           <div style={{ fontSize: '12px', fontWeight: '600', color: '#333' }}>{th.name}</div>
-                          {!isUnlocked && <div style={{ fontSize: '10px', color: '#999', marginTop: '1px' }}>{th.unlockHint}</div>}
                           {isActive && <div style={{ fontSize: '10px', color: '#c9a24a', marginTop: '1px' }}>Active</div>}
+                          {th.unlockHint && <div style={{ fontSize: '10px', color: isUnlocked ? '#888' : '#999', marginTop: '1px' }}>{th.unlockHint}</div>}
                         </div>
                       </div>
                     );
