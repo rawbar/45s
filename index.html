@@ -1185,7 +1185,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.25.0';
+const VERSION = '2.25.9';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -3783,6 +3783,14 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.25.8', changes: 'Cyberpunk fan stacking fixed — cards now stack left-to-right (rightmost on top) for a natural hand feel.' },
+    { version: '2.25.7', changes: 'Cyberpunk fan now works for 6/7/8 card hands (kitty draw) — all cards fan properly with correct overlap and rotation.' },
+    { version: '2.25.6', changes: 'Cyberpunk: face-up card (5-Card Draw) now clearly visible with cyan tint, thick border and neon glow.' },
+    { version: '2.25.5', changes: 'Cyberpunk fan z-index corrected — center card highest per design spec.' },
+    { version: '2.25.4', changes: 'Theme tiles always show unlock condition, even after unlocked.' },
+    { version: '2.25.3', changes: 'Theme picker now accessible from the gear (Preferences) modal.' },
+    { version: '2.25.2', changes: 'Face-up card (5-Card Draw) now visually distinct in both Irish and Cyberpunk themes.' },
+    { version: '2.25.1', changes: 'Fixed oversized dark score area that was shrinking the play table.' },
     { version: '2.25.0', changes: 'Theme system: Irish Card Room (default, always unlocked) + Cyberpunk (unlocked at 25 games). Theme picker in Settings with thumbnail tiles, full-screen preview, and Firebase persistence.' },
     { version: '2.24.0', changes: 'v3 Irish Card Room visual overhaul: walnut wood frame, emerald felt table, polished brass ring, cream linen cards, v3 nameplates, brass score plaques, trick pip indicators.' },
     { version: '2.23.3', changes: 'Voice: auto-disconnect when game ends (game-over phase). Auto-disconnect when last remote user leaves the channel. Prevents runaway Agora billing.' },
@@ -6484,7 +6492,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               {/* Theme Selection */}
               <div style={{ marginBottom: '24px' }}>
                 <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1.5px', color: '#888', textTransform: 'uppercase', marginBottom: '12px' }}>THEME</div>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   {THEME_ORDER.map(tid => {
                     const theme = THEMES[tid];
                     const isUnlocked = theme.unlocked(myStats);
@@ -6913,7 +6921,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               {/* Theme */}
               <div style={{ marginBottom: '24px' }}>
                 <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333', marginBottom: '10px' }}>Theme</div>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   {THEME_ORDER.map(tid => {
                     const th = THEMES[tid];
                     const isUnlocked = th.unlocked(myStats);
