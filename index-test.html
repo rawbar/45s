@@ -658,6 +658,27 @@
   @media (max-width: 450px) {
     .v3-phone::after { border-radius: 0; }
   }
+
+  @keyframes dealIn {
+    0% { opacity: 0; transform: translate(var(--deal-dx, 0px), var(--deal-dy, -160px)) scale(0.6); }
+    60% { opacity: 1; }
+    100% { opacity: 1; transform: translate(0, 0) scale(1); }
+  }
+  @keyframes kittyReveal {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    15% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+    25% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    75% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  }
+  .deal-kitty-overlay {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex; gap: 4px;
+    z-index: 500;
+    pointer-events: none;
+  }
   </style>
 
   <!-- ═══ Shared cp-card CSS (theme-scoped) + Cyberpunk theme block ═══ -->
@@ -1729,7 +1750,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.24';
+const VERSION = '2.27.25';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4394,6 +4415,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.25', date: 'Apr 2026', changes: ['Deal animation: cards slide in from dealer direction on new round, with kitty 3-card reveal in center (3–kitty–2 sequence). Bidding blocked until animation completes. Lobby game rows now show "In progress" + player names.'] },
     { version: '2.27.24', date: 'Apr 2026', changes: ['Lobby: playing game rows now show human player names. GameWrapper: re-registers onDisconnect for lobby presence so browser-close clears online status. Lobby presence cleanup now runs every 5 min (not just at mount) to evict long-idle ghosts.'] },
     { version: '2.27.23', date: 'Apr 2026', changes: ['Exit/lobby button (🚪) added to topbar controls. Diamond announce moved inside v3-rail so it centers over the card table circle. E/W card columns fixed-height (min-height 218px) so player area stays static during discard.'] },
     { version: '2.27.22', date: 'Apr 2026', changes: ['Irish theming: house rules overlay (brass border, Cinzel title, uniform parchment text), leaderboard rows (dark felt bg, brass accents), settings modal (dark bg, brass border, styled inputs/buttons). Removed non-Irish fallback branches from round-end and game-over overlays.'] },
@@ -6660,10 +6682,13 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               {isOpen
                 ? `${takenSeats.length} of 4 seated`
                 : isPlaying
-                ? humanPlayers.length > 0
-                  ? humanPlayers.map(p => p.username).join(' · ')
-                  : 'In progress'
+                ? 'In progress'
                 : 'Finished'}
+              {isPlaying && humanPlayers.length > 0 && (
+                <div style={{ fontSize: '10px', color: 'rgba(201,162,74,0.45)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }}>
+                  {humanPlayers.map(p => p.username).join(' · ')}
+                </div>
+              )}
             </div>
           </div>
           <div className="irlb-seat-pips">
@@ -10332,6 +10357,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [drawnCards, setDrawnCards] = useState(new Set());
   const [kittyCardIds, setKittyCardIds] = useState(new Set());
   const [animating, setAnimating] = useState(null);
+  const [dealAnimActive, setDealAnimActive] = useState(false);
+  const [kittyAnimActive, setKittyAnimActive] = useState(false);
+  const prevPhaseForDealRef = useRef(null);
   const [wasBagged, setWasBagged] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [soundMuted, setSoundMuted] = useState(SoundManager.isMuted());
@@ -10607,6 +10635,21 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       }
     }
   }, [phase, mySeatIndex, gameState?.winner]);
+
+  // Deal animation on new round
+  useEffect(() => {
+    const prev = prevPhaseForDealRef.current;
+    prevPhaseForDealRef.current = phase;
+    if (currentThemeId !== 'irish') return;
+    if (phase === 'bidding' && prev !== 'bidding') {
+      setDealAnimActive(true);
+      setKittyAnimActive(true);
+      // Kitty fades out after ~1.2s (stays visible for the middle of deal sequence)
+      setTimeout(() => setKittyAnimActive(false), 1400);
+      // Full deal animation complete ~2.8s
+      setTimeout(() => setDealAnimActive(false), 2800);
+    }
+  }, [phase]);
 
   // Trick win sound
   const prevTricksRef = useRef(null);
@@ -12636,7 +12679,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     left: (mySeatIndex + 1) % 4,
     right: (mySeatIndex + 3) % 4
   };
-  
+
+  const dealerDir = Object.entries(visualPositions).find(([, s]) => s === dealer)?.[0] || 'top';
+  const DEAL_OFFSETS = { top: [0, -180], bottom: [0, 200], left: [-220, 0], right: [220, 0] };
+  const [dealDX, dealDY] = DEAL_OFFSETS[dealerDir] || [0, -180];
+
   const getPlayerHand = (pos) => hands[pos] || [];
 
   return (
@@ -12849,6 +12896,15 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 </div>
               </div>
 
+              {/* Kitty deal animation — 3 face-down cards at center, briefly visible during deal */}
+              {kittyAnimActive && currentThemeId === 'irish' && (
+                <div className="deal-kitty-overlay" style={{ animation: 'kittyReveal 1.4s ease-in-out both' }}>
+                  {[0,1,2].map(k => (
+                    <div key={k} className="cp-card large back" style={{ animationDelay: `${k * 80}ms` }} />
+                  ))}
+                </div>
+              )}
+
               {/* Irish diamond announce — centered over rail, arrow points at winner */}
               {diamondAnim && currentThemeId === 'irish' && (() => {
                 const { bidWinner: bw, highBid: hb, trumpSuit: ts } = diamondAnim;
@@ -12974,6 +13030,16 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     zIndex: isPlayable ? 10 : (fanCfg.z[i] || 1),
                     position: 'relative',
                   } : undefined;
+                  const dealDelay = dealAnimActive && currentThemeId === 'irish'
+                    ? (i < 3 ? i * 200 : 900 + (i - 3) * 200)
+                    : 0;
+                  const dealAnimStyle = dealAnimActive && currentThemeId === 'irish' ? {
+                    animation: `dealIn 0.48s cubic-bezier(0.22, 0.61, 0.36, 1) both`,
+                    animationDelay: `${dealDelay}ms`,
+                    '--deal-dx': `${dealDX}px`,
+                    '--deal-dy': `${dealDY}px`,
+                  } : {};
+                  const mergedFanStyle = { ...(fanStyle || {}), ...dealAnimStyle };
                   return (
                     <Card
                       key={card.id}
@@ -12993,7 +13059,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                       disabled={phase === 'playing' && !isMyTurn}
                       wasDrawn={drawnCards.has(card.id)}
                       isFaceUp={faceUpCard && faceUpCard.cardId === card.id}
-                      fanStyle={fanStyle}
+                      fanStyle={mergedFanStyle}
                     />
                   );
                 })}
@@ -13099,7 +13165,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
         {/* Button Area */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', flexWrap: 'wrap', padding: '4px 0', minHeight: '36px' }}>
-          {phase === 'bidding' && currentPlayer === mySeatIndex && (
+          {phase === 'bidding' && currentPlayer === mySeatIndex && !dealAnimActive && (
             <>
               {[15,20,25,30].map(b => (
                 <button
