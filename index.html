@@ -11423,15 +11423,16 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
       {/* Score Table at Bottom */}
       <div style={{
-        padding: '8px 16px',
-        background: 'rgba(0,0,0,0.4)',
+        padding: (lastTrick && phase === 'playing') || history.length > 0 ? '6px 16px' : '0',
+        background: (lastTrick && phase === 'playing') || history.length > 0 ? 'rgba(0,0,0,0.4)' : 'transparent',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         gap: '4px'
       }}>
         {/* Last Trick */}
-        <div style={{ height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {lastTrick && phase === 'playing' && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {lastTrick && phase === 'playing' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '2px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
               <span style={{ fontSize: '9px', color: '#aaa' }}>Last:</span>
@@ -11463,7 +11464,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             </div>
           )}
         </div>
-        
+        )}
+
         {/* Score table */}
         <ScoreTable roundHistory={history} mySeatIndex={mySeatIndex} />
       </div>
