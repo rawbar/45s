@@ -735,6 +735,16 @@
     box-shadow: 0 3px 5px rgba(0,0,0,0.4), 0 1px 1px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.95), 0 0 0 2px rgba(246,215,120,0.7);
     transform: translateY(-4px);
   }
+  /* Face-up card (5-Card Draw): light blue tint — visible to all players */
+  .theme-irish .cp-card.face-up {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.55) 0%, transparent 14%),
+      repeating-linear-gradient(27deg, rgba(70,50,20,0.025) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(117deg, rgba(70,50,20,0.02) 0 1px, transparent 1px 3px),
+      linear-gradient(162deg, #ddeeff 0%, #c8dff5 100%);
+    border: 2px solid #6aabdf;
+    box-shadow: 0 3px 5px rgba(0,0,0,0.4), 0 1px 1px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.95), 0 0 8px rgba(100,170,230,0.4);
+  }
 
   /* ═══════════════════════════════════════════════════════════════
      CYBERPUNK THEME
@@ -1027,6 +1037,14 @@
   .theme-cyberpunk .cp-card.selected {
     box-shadow: 0 14px 28px rgba(0,0,0,0.65), 0 0 0 1.5px #ff8c00, 0 0 16px rgba(255,140,0,0.4);
     transform: translateY(-6px);
+  }
+  /* Face-up card (5-Card Draw): cyan tint — visible to all players */
+  .theme-cyberpunk .cp-card.face-up {
+    border-color: #00e5ff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.03), 0 0 12px rgba(0,229,255,0.5);
+  }
+  .theme-cyberpunk .cp-card.face-up .center {
+    filter: drop-shadow(0 0 8px #00e5ff);
   }
 
   /* ── Center table ── */
