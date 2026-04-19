@@ -664,13 +664,14 @@
     60% { opacity: 1; }
     100% { opacity: 1; transform: translate(0, 0) scale(1); }
   }
-  @keyframes kittyReveal {
-    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-    15% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
-    25% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-    75% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  @keyframes kittyAppear {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
   }
+  @keyframes kittyFlyTop    { to { opacity: 0; transform: translate(-50%, calc(-50% - 260px)) scale(0.4); } }
+  @keyframes kittyFlyBottom { to { opacity: 0; transform: translate(-50%, calc(-50% + 260px)) scale(0.4); } }
+  @keyframes kittyFlyLeft   { to { opacity: 0; transform: translate(calc(-50% - 260px), -50%) scale(0.4); } }
+  @keyframes kittyFlyRight  { to { opacity: 0; transform: translate(calc(-50% + 260px), -50%) scale(0.4); } }
   .deal-kitty-overlay {
     position: absolute;
     top: 50%; left: 50%;
@@ -1750,7 +1751,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.27';
+const VERSION = '2.27.28';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4415,6 +4416,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.28', date: 'Apr 2026', changes: ['Kitty cards stay on table through bidding/trump-select; fly toward bid winner when trump is chosen. Deal cards slowed (0.65s, 300ms stagger, 3.5s lock). Kitty flies with direction-specific keyframes.'] },
     { version: '2.27.27', date: 'Apr 2026', changes: ['Preferences modal: full Irish theming (dark walnut, brass border, Cinzel/Merriweather). Theme selector moved from Profile Settings into Preferences where it is discoverable. Custom brass checkboxes for house rules.'] },
     { version: '2.27.26', date: 'Apr 2026', changes: ['Fix: diamond announce keyframes had translate(-50%,-50%) baked in — double-shifted it up-left after move to v3-rail. Removed translate from keyframes; centering now handled by outer wrapper only.'] },
     { version: '2.27.25', date: 'Apr 2026', changes: ['Deal animation: cards slide in from dealer direction on new round, with kitty 3-card reveal in center (3–kitty–2 sequence). Bidding blocked until animation completes. Lobby game rows now show "In progress" + player names.'] },
@@ -10383,7 +10385,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [kittyCardIds, setKittyCardIds] = useState(new Set());
   const [animating, setAnimating] = useState(null);
   const [dealAnimActive, setDealAnimActive] = useState(false);
-  const [kittyAnimActive, setKittyAnimActive] = useState(false);
+  const [kittyOnTable, setKittyOnTable] = useState(false);
+  const [kittyFlying, setKittyFlying] = useState(null); // 'top'|'bottom'|'left'|'right'
   const prevPhaseForDealRef = useRef(null);
   const [wasBagged, setWasBagged] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -10661,18 +10664,28 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     }
   }, [phase, mySeatIndex, gameState?.winner]);
 
-  // Deal animation on new round
+  // Deal animation on new round + kitty lifecycle
   useEffect(() => {
     const prev = prevPhaseForDealRef.current;
     prevPhaseForDealRef.current = phase;
     if (currentThemeId !== 'irish') return;
     if (phase === 'bidding' && prev !== 'bidding') {
+      // New round: deal cards, kitty appears on table and stays
       setDealAnimActive(true);
-      setKittyAnimActive(true);
-      // Kitty fades out after ~1.2s (stays visible for the middle of deal sequence)
-      setTimeout(() => setKittyAnimActive(false), 1400);
-      // Full deal animation complete ~2.8s
-      setTimeout(() => setDealAnimActive(false), 2800);
+      setKittyFlying(null);
+      setKittyOnTable(true);
+      // Cards fully dealt at ~2.1s; keep bidding locked until 3.5s
+      setTimeout(() => setDealAnimActive(false), 3500);
+    }
+    if (phase === 'discarding' && (prev === 'trump-select' || prev === 'bidding')) {
+      // Trump selected — kitty flies toward bid winner then disappears
+      const winnerDir = Object.entries(visualPositions).find(([, s]) => s === bidWinner)?.[0] || 'top';
+      setKittyFlying(winnerDir);
+      setTimeout(() => { setKittyOnTable(false); setKittyFlying(null); }, 700);
+    }
+    if (phase === 'round-end' || phase === 'game-over') {
+      setKittyOnTable(false);
+      setKittyFlying(null);
     }
   }, [phase]);
 
@@ -12921,11 +12934,15 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 </div>
               </div>
 
-              {/* Kitty deal animation — 3 face-down cards at center, briefly visible during deal */}
-              {kittyAnimActive && currentThemeId === 'irish' && (
-                <div className="deal-kitty-overlay" style={{ animation: 'kittyReveal 1.4s ease-in-out both' }}>
+              {/* Kitty — appears during deal, stays on table through bidding/trump-select, flies to winner when trump is set */}
+              {kittyOnTable && currentThemeId === 'irish' && (
+                <div className="deal-kitty-overlay" style={{
+                  animation: kittyFlying
+                    ? `kittyFly${kittyFlying.charAt(0).toUpperCase() + kittyFlying.slice(1)} 0.6s cubic-bezier(0.4, 0, 1, 1) forwards`
+                    : 'kittyAppear 0.4s ease-out both'
+                }}>
                   {[0,1,2].map(k => (
-                    <div key={k} className="cp-card large back" style={{ animationDelay: `${k * 80}ms` }} />
+                    <div key={k} className="cp-card large back" />
                   ))}
                 </div>
               )}
@@ -13056,10 +13073,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     position: 'relative',
                   } : undefined;
                   const dealDelay = dealAnimActive && currentThemeId === 'irish'
-                    ? (i < 3 ? i * 200 : 900 + (i - 3) * 200)
+                    ? (i < 3 ? i * 300 : 1200 + (i - 3) * 300)
                     : 0;
                   const dealAnimStyle = dealAnimActive && currentThemeId === 'irish' ? {
-                    animation: `dealIn 0.48s cubic-bezier(0.22, 0.61, 0.36, 1) both`,
+                    animation: `dealIn 0.65s cubic-bezier(0.22, 0.61, 0.36, 1) both`,
                     animationDelay: `${dealDelay}ms`,
                     '--deal-dx': `${dealDX}px`,
                     '--deal-dy': `${dealDY}px`,
