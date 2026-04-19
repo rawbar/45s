@@ -693,6 +693,7 @@
   .theme-irish .cp-card.small .corner     { top: 2px; left: 3px; }
   .theme-irish .cp-card.small .corner.br  { top: auto; left: auto; bottom: 2px; right: 3px; transform: rotate(180deg); }
   .theme-irish .cp-card.small .corner .rk { font-size: 9px; }
+  .theme-irish .cp-card.small .corner .su { display: block; font-size: 8px; }
   .theme-irish .cp-card.mid .corner       { top: 2px; left: 4px; }
   .theme-irish .cp-card.mid .corner.br    { top: auto; left: auto; bottom: 2px; right: 4px; transform: rotate(180deg); }
   .theme-irish .cp-card.mid .corner .rk   { font-size: 14px; }
@@ -1684,7 +1685,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.13';
+const VERSION = '2.27.14';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4266,8 +4267,10 @@ function ScoreTable({ roundHistory, mySeatIndex }) {
   const swapColumns = myTeam === 1;
 
   if (isIrish) {
-    // Irish: condensed strip — last 2 rounds only, ~56px, no expand
-    const visible = roundHistory.slice(-2);
+    const [expanded, setExpanded] = React.useState(false);
+    const maxVis = 2;
+    const needsExpand = roundHistory.length > maxVis;
+    const visible = (!needsExpand || expanded) ? roundHistory : roundHistory.slice(-maxVis);
     const startIdx = roundHistory.length - visible.length;
     return (
       <div style={{
@@ -4279,14 +4282,20 @@ function ScoreTable({ roundHistory, mySeatIndex }) {
         boxSizing: 'border-box',
         flexShrink: 0,
       }}>
+        {needsExpand && (
+          <div
+            onClick={() => setExpanded(!expanded)}
+            style={{ textAlign: 'center', color: 'rgba(201,162,74,0.55)', cursor: 'pointer', fontSize: '9px', fontFamily: "'Cinzel', serif", letterSpacing: '0.5px', paddingBottom: '2px' }}
+          >{expanded ? '▾ less' : `▴ +${roundHistory.length - maxVis} rounds`}</div>
+        )}
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
           <thead>
             <tr>
               <th style={{ padding: '1px 3px', fontSize: '9px', color: 'rgba(201,162,74,0.55)', fontFamily: "'Inter', sans-serif", fontWeight: 400, letterSpacing: '0.5px', width: '18px' }}>R</th>
-              <th style={{ padding: '1px 3px', fontSize: '9px', color: '#5dd084', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '0.5px' }}>US</th>
               <th style={{ padding: '1px 3px', fontSize: '9px', color: 'rgba(93,208,132,0.5)', fontFamily: "'Inter', sans-serif", fontWeight: 400 }}>+pts</th>
-              <th style={{ padding: '1px 3px', fontSize: '9px', color: '#ef7c74', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '0.5px' }}>THEM</th>
+              <th style={{ padding: '1px 3px', fontSize: '9px', color: '#5dd084', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '0.5px' }}>US</th>
               <th style={{ padding: '1px 3px', fontSize: '9px', color: 'rgba(239,124,116,0.5)', fontFamily: "'Inter', sans-serif", fontWeight: 400 }}>+pts</th>
+              <th style={{ padding: '1px 3px', fontSize: '9px', color: '#ef7c74', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '0.5px' }}>THEM</th>
             </tr>
           </thead>
           <tbody>
@@ -4301,10 +4310,10 @@ function ScoreTable({ roundHistory, mySeatIndex }) {
               return (
                 <tr key={i}>
                   <td style={{ padding: '1px 3px', fontSize: '9px', color: 'rgba(201,162,74,0.5)', fontFamily: "'Cinzel', serif" }}>{rn}</td>
-                  <td style={{ padding: '1px 3px', fontSize: '11px', color: '#5dd084', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>{usTotal}</td>
                   <td style={{ padding: '1px 3px', fontSize: '9px', color: usRoundScore < 0 ? '#ef7c74' : 'rgba(93,208,132,0.7)', fontFamily: "'Inter', sans-serif" }}>{usDelta}</td>
-                  <td style={{ padding: '1px 3px', fontSize: '11px', color: '#ef7c74', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>{themTotal}</td>
+                  <td style={{ padding: '1px 3px', fontSize: '11px', color: '#5dd084', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>{usTotal}</td>
                   <td style={{ padding: '1px 3px', fontSize: '9px', color: themRoundScore < 0 ? 'rgba(239,124,116,0.5)' : 'rgba(239,124,116,0.7)', fontFamily: "'Inter', sans-serif" }}>{themDelta}</td>
+                  <td style={{ padding: '1px 3px', fontSize: '11px', color: '#ef7c74', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>{themTotal}</td>
                 </tr>
               );
             })}
@@ -4341,6 +4350,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.14', date: 'Apr 2026', changes: ['Score strip: hand score now left of running total; tap-to-expand all rounds. Trick overlay: moved in-flow above score strip (no longer covers hand), suit symbols visible on small cards, WebkitBackdropFilter added'] },
     { version: '2.27.13', date: 'Apr 2026', changes: ['Fix waiting room cut off: replace minHeight:100vh with fs-screen class (100dvh + -webkit-fill-available) so Start Game button stays on screen'] },
     { version: '2.27.12', date: 'Apr 2026', changes: ['iOS Safari support: add -webkit-fill-available fallback on html/body and lobby container'] },
     { version: '2.27.11', date: 'Apr 2026', changes: ['Fix lobby on mobile Chrome: use 100dvh so layout fits within browser chrome bounds; body overflow hidden to stop page scroll'] },
@@ -13272,52 +13282,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       </div>
 
       {/* Last Trick — absolute overlay, never pushes layout */}
-      {lastTrick && phase === 'playing' && currentThemeId === 'irish' && (
-        <div style={{
-          position: 'absolute',
-          bottom: '62px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'rgba(10,30,15,0.82)',
-          backdropFilter: 'blur(4px)',
-          border: '1px solid rgba(201,162,74,0.35)',
-          borderRadius: '6px',
-          padding: '4px 8px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-          pointerEvents: 'none',
-          zIndex: 10,
-          whiteSpace: 'nowrap',
-        }}>
-          <span style={{ fontSize: '9px', color: 'rgba(201,162,74,0.7)', fontFamily: "'Cinzel', serif", letterSpacing: '0.5px', marginRight: '2px' }}>Last</span>
-          {lastTrick.cards.map((tc, i) => {
-            const isWinner = tc.player === lastTrick.winner;
-            return (
-              <div key={i} style={{ position: 'relative' }}>
-                <Card card={tc.card} small disabled />
-                {isWinner && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '-5px',
-                    right: '-5px',
-                    background: '#5dd084',
-                    borderRadius: '50%',
-                    width: '11px',
-                    height: '11px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '7px',
-                    color: '#0a1a0a',
-                    fontWeight: 'bold',
-                  }}>✓</div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* Irish trick overlay moved in-flow — see score strip area below */}
       {lastTrick && phase === 'playing' && currentThemeId !== 'irish' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '2px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
@@ -13337,15 +13302,51 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         </div>
       )}
 
-      {/* Score Table at Bottom */}
+      {/* Score Table + Last Trick strip at Bottom */}
       <div style={{
-        padding: history.length > 0 ? '6px 16px' : '0',
+        padding: (history.length > 0 || (lastTrick && phase === 'playing' && currentThemeId === 'irish')) ? '6px 16px 0' : '0',
         background: history.length > 0 ? 'rgba(0,0,0,0.4)' : 'transparent',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         gap: '4px'
       }}>
+        {/* Irish last trick strip — sits above score table, below hand */}
+        {lastTrick && phase === 'playing' && currentThemeId === 'irish' && (
+          <div style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px',
+            padding: '3px 6px',
+            background: 'rgba(10,30,15,0.82)',
+            WebkitBackdropFilter: 'blur(4px)',
+            backdropFilter: 'blur(4px)',
+            border: '1px solid rgba(201,162,74,0.35)',
+            borderRadius: '6px',
+            whiteSpace: 'nowrap',
+          }}>
+            <span style={{ fontSize: '9px', color: 'rgba(201,162,74,0.7)', fontFamily: "'Cinzel', serif", letterSpacing: '0.5px', marginRight: '2px' }}>Last</span>
+            {lastTrick.cards.map((tc, i) => {
+              const isWinner = tc.player === lastTrick.winner;
+              return (
+                <div key={i} style={{ position: 'relative' }}>
+                  <Card card={tc.card} small disabled />
+                  {isWinner && (
+                    <div style={{
+                      position: 'absolute', top: '-5px', right: '-5px',
+                      background: '#5dd084', borderRadius: '50%',
+                      width: '11px', height: '11px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '7px', color: '#0a1a0a', fontWeight: 'bold',
+                    }}>✓</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
         {/* Score table */}
         <ScoreTable roundHistory={history} mySeatIndex={mySeatIndex} />
       </div>
