@@ -1751,7 +1751,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.29';
+const VERSION = '2.27.30';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4416,6 +4416,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.30', date: 'Apr 2026', changes: ['Exit button now shows themed Leave Game confirm modal (dark walnut, brass border, Cinzel) instead of browser system dialog. No more system dialogs going forward.'] },
     { version: '2.27.29', date: 'Apr 2026', changes: ['Deal animation: all 4 players animated in 3-3-3-3-kitty-2-2-2-2 sequence. 150ms stagger per card, kitty appears after first round, bidding locked until ~4.5s. All positions use getDealDelay helper keyed by deal order from dealer+1.'] },
     { version: '2.27.28', date: 'Apr 2026', changes: ['Kitty cards stay on table through bidding/trump-select; fly toward bid winner when trump is chosen. Deal cards slowed (0.65s, 300ms stagger, 3.5s lock). Kitty flies with direction-specific keyframes.'] },
     { version: '2.27.27', date: 'Apr 2026', changes: ['Preferences modal: full Irish theming (dark walnut, brass border, Cinzel/Merriweather). Theme selector moved from Profile Settings into Preferences where it is discoverable. Custom brass checkboxes for house rules.'] },
@@ -10387,6 +10388,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [animating, setAnimating] = useState(null);
   const [dealAnimActive, setDealAnimActive] = useState(false);
   const [kittyOnTable, setKittyOnTable] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const [kittyFlying, setKittyFlying] = useState(null); // 'top'|'bottom'|'left'|'right'
   const prevPhaseForDealRef = useRef(null);
   const [wasBagged, setWasBagged] = useState(false);
@@ -12781,7 +12783,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           >?</button>
           <button
             className="v3-icon-btn"
-            onClick={() => { if (window.confirm('Leave this game and return to lobby?')) onLeaveGame(); }}
+            onClick={() => setConfirmLeave(true)}
             title="Leave game"
             style={{ fontSize: '14px' }}
           >🚪</button>
@@ -13592,6 +13594,20 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         faceUpCard={faceUpCard}
       />
       <HelpModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
+
+      {/* Themed leave-game confirm */}
+      {confirmLeave && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9000, animation: 'fadeIn 0.15s ease-out' }}>
+          <div style={{ background: 'rgba(12,6,2,0.97)', border: '2px solid #c9a24a', borderRadius: '14px', padding: '28px 24px', maxWidth: '300px', width: '88%', boxShadow: '0 8px 40px rgba(0,0,0,0.8)', textAlign: 'center' }}>
+            <div style={{ fontFamily: "'Cinzel', serif", fontSize: '17px', fontWeight: 700, color: '#f6d778', marginBottom: '10px', letterSpacing: '0.5px' }}>Leave Game?</div>
+            <div style={{ fontFamily: "'Merriweather', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(232,228,217,0.7)', marginBottom: '24px', lineHeight: 1.5 }}>You'll return to the lobby. Your seat will be taken by AI.</div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setConfirmLeave(false)} style={{ flex: 1, padding: '11px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(201,162,74,0.3)', borderRadius: '8px', color: 'rgba(232,228,217,0.7)', fontFamily: "'Cinzel', serif", fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>Stay</button>
+              <button onClick={() => { setConfirmLeave(false); onLeaveGame(); }} style={{ flex: 1, padding: '11px', background: 'linear-gradient(180deg, #c9341a 0%, #8b1f0e 100%)', border: '1px solid rgba(0,0,0,0.4)', borderRadius: '8px', color: '#fff', fontFamily: "'Cinzel', serif", fontSize: '13px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 0 rgba(0,0,0,0.4)' }}>Leave</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
