@@ -214,6 +214,35 @@ time, the version may have changed — re-fetch to get updated URLs.
 
 ---
 
+## Suit Glyph Rule — Card Center Element
+
+**The `.cp-card .center` element (large suit symbol in card middle) must use a serif font that
+contains suit glyphs, NOT a display font like Cinzel.**
+
+Cinzel is a caps-only Roman typeface — it does **not** contain ♠ ♥ ♦ ♣.
+When Cinzel is loaded (via direct @font-face), these characters silently vanish.
+
+**Fix — add to BOTH the center rule AND the corner `.su` rule:**
+```css
+.theme-irish .cp-card .center {
+  /* ... other properties ... */
+  font-family: Georgia, 'Times New Roman', serif;
+}
+.theme-irish .cp-card .corner .su {
+  font-family: Georgia, 'Times New Roman', serif; /* even when display:none — inherited by size overrides */
+}
+```
+
+**Critical:** `small` cards never render `.center` (`showCenter = !small` in Card component).
+They rely entirely on `.corner .su` for the suit symbol. If `.corner .su` inherits Cinzel,
+the suit vanishes on small cards too — affects the last-trick strip and any other small-card context.
+
+**Side effect of fixing fonts:** Once a display font (Cinzel, Orbitron, etc.) actually loads,
+it is often more compact than the browser's serif fallback. Card center font sizes may need
+increasing after a font fix — mid card center was 18px → 22px, small was 14px → 18px in v2.27.54.
+
+---
+
 ## Font Quoting Rule — React Inline Styles
 
 **Always quote font names with inner single quotes inside the JS string:**
