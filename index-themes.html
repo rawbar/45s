@@ -1751,7 +1751,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.36';
+const VERSION = '2.27.37';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -10318,15 +10318,13 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
       <div style={{
         height: '100vh',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #1a5f3f 0%, #2d8f5f 100%)',
-        color: 'white'
+        background: 'linear-gradient(160deg, #1a0e05 0%, #0c0602 50%, #130a03 100%)',
       }}>
-        <div>
-          <h2>Initializing game...</h2>
-          <p style={{ marginTop: '12px' }}>Game ID: {gameId}</p>
-        </div>
+        <div style={{ fontFamily: "'Cinzel', serif", fontSize: '28px', fontWeight: 700, background: 'linear-gradient(135deg, #f6d778, #c9a24a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', letterSpacing: '0.1em' }}>45s</div>
+        <div style={{ marginTop: '16px', fontFamily: "'Merriweather', serif", fontStyle: 'italic', fontSize: '13px', color: 'rgba(201,162,74,0.6)' }}>Dealing cards…</div>
       </div>
     );
   }
