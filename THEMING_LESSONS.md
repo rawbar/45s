@@ -1,7 +1,7 @@
 # 45s Theming — Lessons & Architecture
 
 Everything an agent needs to implement a new theme correctly the first time.
-Derived from the Irish Card Room theming session (v2.26–v2.27.40).
+Derived from the Irish Card Room theming session (v2.26–v2.27.47).
 
 ---
 
@@ -171,18 +171,176 @@ Keep positioning in the element style; keep only scale/opacity/rotation in keyfr
 
 ---
 
-## Badge Symbol Rendering Rule
+## Font Quoting Rule — React Inline Styles
 
-Badge `sym` values are a mix of emoji (`'⚡'`, `'🏆'`) and text (`'30'`, `'W10'`, `'30★'`).
-Text symbols MUST use `fontFamily: 'Cinzel, serif'` — without it they fall back to the browser's ugly system font.
-Browsers automatically override Cinzel with emoji rendering for actual emoji, so applying Cinzel universally is safe.
+**Always quote font names with inner single quotes inside the JS string:**
 
-Font size by symbol length:
 ```javascript
-fontSize: sym.length <= 1 ? '22px' : sym.length === 2 ? '15px' : sym.length <= 4 ? '10px' : '8px'
+// WRONG — browser may treat "Cinzel, serif" as a single unknown font name
+fontFamily: 'Cinzel, serif'
+
+// CORRECT — generates font-family: 'Cinzel', serif in CSS
+fontFamily: "'Cinzel', serif"
+fontFamily: "'Merriweather', Georgia, serif"
+fontFamily: "'Inter', sans-serif"
 ```
 
-Color: `earned ? brassHi : 'rgba(255,255,255,0.4)'` — never hardcode `'#bbb'` or `'#fff'`.
+Why it breaks: `fontFamily: 'Cinzel, serif'` passes the JS string `Cinzel, serif` directly into
+the CSS `font-family` property. Some browsers parse this as a single unknown font name and fall
+back to the inherited body font (Palatino in this app). Wrapping the name in inner single-quotes
+generates proper CSS that matches the Google Fonts `@font-face` declaration.
+
+**Note:** The body font is `'Palatino Linotype', Palatino, Georgia, serif`. Any element that fails
+to load Cinzel/Inter/Merriweather will silently fall back to Palatino — which looks completely
+different but gives no error.
+
+---
+
+## Gradient Text Rule — Never Use WebkitTextFillColor on Critical Text
+
+The `-webkit-text-fill-color: transparent` + `background-clip: text` gradient technique is
+unreliable on mobile. When the clip fails, text becomes **completely invisible** with no warning.
+When the font also fails to load, the result looks like the wrong font in a wrong color.
+
+```javascript
+// WRONG — silently invisible if clip fails on mobile
+{
+  background: 'linear-gradient(135deg, #f6d778, #c9a24a)',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+}
+
+// CORRECT — solid gold, always visible, always Cinzel
+{
+  color: '#f6d778',
+  fontFamily: "'Cinzel', serif",
+}
+```
+
+Use solid `color: '#f6d778'` (brassHi) for all headings and labels. Reserve gradient-text only
+for large decorative numbers (hero stat card) where invisibility is immediately obvious.
+
+---
+
+## Badge Symbol Rendering Rule
+
+Badge `sym` values are emoji (`'⚡'`, `'🏆'`, `'⚜️'`) and text (`'30'`, `'W10'`).
+
+**Always use `fontSize: '22px'` — never use `.length` to choose the size.**
+
+```javascript
+// WRONG — JS .length returns 2 for almost all emoji (surrogate pairs in UTF-16)
+// so length===2 → 15px fires for every emoji, never 22px
+fontSize: sym.length <= 1 ? '22px' : sym.length === 2 ? '15px' : ...
+
+// CORRECT — fixed size, works for all symbols
+fontSize: '22px'
+```
+
+Most emoji occupy two UTF-16 code units (`.length === 2`), so any `length === 1` branch is
+unreachable in practice. Always use a fixed `22px` for badge circles.
+
+Font: `fontFamily: "'Cinzel', serif"` on the span. Browsers override Cinzel with emoji rendering
+automatically, so it's safe to apply Cinzel universally.
+Color: `earned ? brassHi : 'rgba(255,255,255,0.4)'`
+
+---
+
+## Badge Grid Rule — Equal Columns
+
+Use `minmax(0, 1fr)` not `1fr` for the badge grid. The standard `1fr` is shorthand for
+`minmax(auto, 1fr)`, which allows columns to grow to fit their content. `minmax(0, 1fr)` enforces
+truly equal widths regardless of content.
+
+```javascript
+// WRONG — columns can be uneven if any badge name overflows
+gridTemplateColumns: 'repeat(5, 1fr)'
+
+// CORRECT — strictly equal columns
+gridTemplateColumns: 'repeat(5, minmax(0, 1fr))'
+```
+
+---
+
+## iOS Safari Viewport Rule
+
+`100vh` on iOS Safari is calculated including the area behind the browser toolbar, so content
+at the bottom is hidden. The `.v3-phone` element (game table root) must NOT have an inline
+`height: '100%'` — that overrides the CSS declarations.
+
+**CSS on `.v3-phone` (already in place — do not remove):**
+```css
+.v3-phone {
+  height: 100vh;                   /* fallback */
+  height: -webkit-fill-available;  /* older Safari/Chrome */
+  height: 100dvh;                  /* modern — adjusts with toolbar */
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom); /* iPhone home indicator ~34px */
+}
+```
+
+**JSX — `.v3-phone` inline style must NOT include `height`:**
+```jsx
+// WRONG — inline style overrides the CSS above; table gets cut off on iPhone
+<div className="v3-phone theme-irish" style={{ height: '100%', display: 'flex', ... }}>
+
+// CORRECT — let CSS handle height
+<div className="v3-phone theme-irish" style={{ display: 'flex', flexDirection: 'column', color: '#e8e4d9' }}>
+```
+
+The same `.fs-screen` class on lobby/waiting room already uses this 3-value stack correctly.
+
+---
+
+## Close Button Rule — Rounded Bottom-Sheet Modals
+
+A `position: absolute` close button centered with `top: '50%', transform: 'translateY(-50%)'`
+inside a small pill/header div will overflow the div upward and get clipped by the parent
+modal's `overflow: hidden` and `border-radius`.
+
+```javascript
+// WRONG — 32px button at top:50% of a 24px container overflows 4px upward
+// → clipped by the modal's 20px border-radius
+{ position: 'absolute', top: '50%', right: '16px', transform: 'translateY(-50%)', height: '32px' }
+
+// CORRECT — explicit top clears the rounded corner (20px border-radius needs ~8px clearance)
+{ position: 'absolute', top: '10px', right: '16px', height: '32px' }
+```
+
+Any bottom sheet with `borderRadius: '20px 20px 0 0'` clips anything above ~8px from its top
+edge. Position close buttons at `top: '10px'` minimum.
+
+---
+
+## Stats Modal — All-Gold Accents, No isMe Split
+
+The stats/badges modal uses gold/brass for ALL players, including the viewing player's own profile.
+There is no blue-for-me color split.
+
+```javascript
+// WRONG — shows blue accents when viewing own profile
+const accentColor = isMe ? meBlue : brass;
+const accentHi    = isMe ? '#a8d8ff' : brassHi;
+
+// CORRECT — always gold
+const accentColor = brass;   // '#c9a24a'
+const accentHi    = brassHi; // '#f6d778'
+```
+
+---
+
+## Avg Win Bid Formula
+
+Gate on `bids30Won > 0`, not `bidAttempts > 0`. `bidAttempts = bids30Won + timesSet`, so a
+player with 0 wins and 10 sets would pass the `bidAttempts > 0` check and show `0.0` instead of `—`.
+
+```javascript
+// WRONG — shows 0.0 when player has been set but never won a 30-bid
+bids30Won * 30 / Math.max(bidAttempts, 1)  // with gate: bidAttempts > 0
+
+// CORRECT
+bids30Won > 0 ? (bids30Won * 30 / Math.max(bidAttempts, 1)).toFixed(1) : '—'
+```
 
 ---
 
