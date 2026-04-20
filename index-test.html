@@ -1757,7 +1757,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.44';
+const VERSION = '2.27.45';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4422,6 +4422,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.45', date: 'Apr 2026', changes: ['Stats modal: fixed Cinzel/Merriweather font rendering — explicit font quoting ensures the correct fonts load instead of falling back to Palatino. Avg Win Bid shows — when no 30-bids made. Badge detail close button fixed.'] },
     { version: '2.27.44', date: 'Apr 2026', changes: ['Stats modal: all accents now gold/brass (removed blue-for-me split). Stat values are bolder (weight 900).'] },
     { version: '2.27.43', date: 'Apr 2026', changes: ['Badge circles now show emoji at full size. Badge detail popup shows large glowing emoji icon instead of a small circle.'] },
     { version: '2.27.42', date: 'Apr 2026', changes: ['All badge symbols replaced with emoji — no more text in badge circles.'] },
@@ -7062,8 +7063,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
 
           const statCard = (label, value, isHi) => (
             <div style={{ background: 'rgba(10,40,20,0.6)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '8px', padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '3px' }}>
-              <div style={{ fontFamily: 'Merriweather, serif', fontStyle: 'italic', fontSize: '10px', color: 'rgba(251,246,228,0.5)', lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{label}</div>
-              <div style={{ fontFamily: 'Cinzel, serif', fontSize: '16px', fontWeight: '900', color: isHi ? accentHi : '#e8e4d9', lineHeight: 1 }}>{value}</div>
+              <div style={{ fontFamily: "'Merriweather', Georgia, serif", fontStyle: 'italic', fontSize: '10px', color: 'rgba(251,246,228,0.5)', lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{label}</div>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: '16px', fontWeight: '900', color: isHi ? accentHi : '#e8e4d9', lineHeight: 1 }}>{value}</div>
             </div>
           );
 
@@ -7120,7 +7121,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
-                          fontFamily: 'Cinzel, serif', fontSize: '22px', fontWeight: '700',
+                          fontFamily: "'Cinzel', serif", fontSize: '22px', fontWeight: '700',
                           background: `linear-gradient(135deg, ${accentHi}, ${accentColor})`,
                           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                           backgroundClip: 'text', lineHeight: '1.1',
@@ -7128,7 +7129,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                         }}>{statsPlayer.username}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '5px' }}>
                           <div style={{ width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, background: isOnline ? '#5dd084' : 'rgba(232,228,217,0.22)', boxShadow: isOnline ? '0 0 5px rgba(93,208,132,0.7)' : 'none' }} />
-                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: '500', color: isOnline ? '#5dd084' : 'rgba(232,228,217,0.35)' }}>
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: '12px', fontWeight: '500', color: isOnline ? '#5dd084' : 'rgba(232,228,217,0.35)' }}>
                             {isOnline ? 'Online now' : lastSeenStr}
                           </div>
                         </div>
@@ -7138,7 +7139,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
 
                   {/* Stats section */}
                   {statsLoading ? (
-                    <div style={{ textAlign: 'center', padding: '40px 0', fontFamily: 'Cinzel, serif', color: 'rgba(201,162,74,0.5)', letterSpacing: '2px', fontSize: '12px' }}>Loading…</div>
+                    <div style={{ textAlign: 'center', padding: '40px 0', fontFamily: "'Cinzel', serif", color: 'rgba(201,162,74,0.5)', letterSpacing: '2px', fontSize: '12px' }}>Loading…</div>
                   ) : statsData && (
                     <div style={{ marginBottom: '16px' }}>
                       {/* Hero card */}
@@ -7150,12 +7151,12 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                       }}>
                         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(201,162,74,0.07) 0%, transparent 55%)', pointerEvents: 'none' }} />
                         <div style={{
-                          fontFamily: 'Cinzel, serif', fontSize: '36px', fontWeight: '900',
+                          fontFamily: "'Cinzel', serif", fontSize: '36px', fontWeight: '900',
                           background: `linear-gradient(135deg, ${accentHi}, ${accentColor})`,
                           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                           backgroundClip: 'text', lineHeight: 1,
                         }}>{totalPts.toLocaleString()}</div>
-                        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '9px', fontWeight: '700', letterSpacing: '3px', textTransform: 'uppercase', color: 'rgba(201,162,74,0.5)', marginTop: '4px' }}>Total Points</div>
+                        <div style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', fontWeight: '700', letterSpacing: '3px', textTransform: 'uppercase', color: 'rgba(201,162,74,0.5)', marginTop: '4px' }}>Total Points</div>
                       </div>
 
                       {/* 3-col stat grid */}
@@ -7171,11 +7172,11 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                         {statCard('Times Set', timesSet, false)}
                         {statCard('Perfect 30s', statsData.perfect30s || 0, false)}
                         {statCard('Quits', statsData.gamesQuit || 0, false)}
-                        {statCard('Avg Win Bid', bidAttempts > 0 ? (bids30Won * 30 / Math.max(bidAttempts, 1)).toFixed(1) : '—', false)}
+                        {statCard('Avg Win Bid', bids30Won > 0 ? (bids30Won * 30 / Math.max(bidAttempts, 1)).toFixed(1) : '—', false)}
                         {/* Last Seen full width */}
                         <div style={{ gridColumn: '1 / -1', background: 'rgba(10,40,20,0.6)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ fontFamily: 'Merriweather, serif', fontStyle: 'italic', fontSize: '11px', color: 'rgba(251,246,228,0.5)' }}>Last Seen</div>
-                          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '14px', fontWeight: '700', color: isOnline ? '#5dd084' : '#e8e4d9' }}>{isOnline ? 'Online now' : lastSeenStr}</div>
+                          <div style={{ fontFamily: "'Merriweather', Georgia, serif", fontStyle: 'italic', fontSize: '11px', color: 'rgba(251,246,228,0.5)' }}>Last Seen</div>
+                          <div style={{ fontFamily: "'Cinzel', serif", fontSize: '14px', fontWeight: '700', color: isOnline ? '#5dd084' : '#e8e4d9' }}>{isOnline ? 'Online now' : lastSeenStr}</div>
                         </div>
                       </div>
                     </div>
@@ -7191,8 +7192,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     return (
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '14px', fontWeight: '700', background: 'linear-gradient(135deg, #f6d778, #c9a24a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Badges</div>
-                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', fontWeight: '500', color: 'rgba(201,162,74,0.55)' }}>{earnedIds.length} earned · {BADGES.length - earnedIds.length} locked</div>
+                          <div style={{ fontFamily: "'Cinzel', serif", fontSize: '14px', fontWeight: '700', background: 'linear-gradient(135deg, #f6d778, #c9a24a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Badges</div>
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: '11px', fontWeight: '500', color: 'rgba(201,162,74,0.55)' }}>{earnedIds.length} earned · {BADGES.length - earnedIds.length} locked</div>
                         </div>
 
                         {/* 5-col badge grid */}
@@ -7253,7 +7254,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     >
                       <div
                         onClick={e => e.stopPropagation()}
-                        style={{ background: 'rgba(10,30,15,0.95)', border: '1px solid #c9a24a', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', width: '82%', maxWidth: '320px', boxShadow: '0 8px 32px rgba(0,0,0,0.7), 0 0 0 1px rgba(201,162,74,0.1)', animation: 'slideUp 0.2s ease-out' }}
+                        style={{ position: 'relative', background: 'rgba(10,30,15,0.95)', border: '1px solid #c9a24a', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', width: '82%', maxWidth: '320px', boxShadow: '0 8px 32px rgba(0,0,0,0.7), 0 0 0 1px rgba(201,162,74,0.1)', animation: 'slideUp 0.2s ease-out' }}
                       >
                         {/* Close button */}
                         <button
@@ -7265,22 +7266,22 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                             {activeBadgeObj.sym}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontFamily: 'Cinzel, serif', fontSize: '17px', fontWeight: '700', background: 'linear-gradient(135deg, #f6d778, #c9a24a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', lineHeight: '1.15' }}>{activeBadgeObj.name}</div>
-                            <div style={{ fontFamily: 'Merriweather, serif', fontStyle: 'italic', fontSize: '12px', color: 'rgba(251,246,228,0.6)', marginTop: '5px', lineHeight: '1.5' }}>{activeBadgeObj.desc}</div>
+                            <div style={{ fontFamily: "'Cinzel', serif", fontSize: '18px', fontWeight: '700', color: '#f6d778', lineHeight: '1.15' }}>{activeBadgeObj.name}</div>
+                            <div style={{ fontFamily: "'Merriweather', Georgia, serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(251,246,228,0.6)', marginTop: '5px', lineHeight: '1.5' }}>{activeBadgeObj.desc}</div>
                             {earned && earnedAt
-                              ? <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '6px' }}><span style={{ fontSize: '13px', color: '#5dd084' }}>✓</span><span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', fontWeight: '500', color: '#5dd084' }}>Earned {new Date(earnedAt).toLocaleDateString()}</span></div>
-                              : !earned && <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'rgba(232,228,217,0.33)', marginTop: '6px' }}>Not yet earned</div>
+                              ? <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '6px' }}><span style={{ fontSize: '13px', color: '#5dd084' }}>✓</span><span style={{ fontFamily: "'Inter', sans-serif", fontSize: '12px', fontWeight: '500', color: '#5dd084' }}>Earned {new Date(earnedAt).toLocaleDateString()}</span></div>
+                              : !earned && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: '12px', color: 'rgba(232,228,217,0.33)', marginTop: '6px' }}>Not yet earned</div>
                             }
                           </div>
                         </div>
                         <div>
-                          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '10px', fontWeight: '700', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(201,162,74,0.45)' }}>How to Earn</div>
-                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'rgba(232,228,217,0.85)', marginTop: '3px', lineHeight: '1.4' }}>{activeBadgeObj.req || activeBadgeObj.desc}</div>
+                          <div style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', fontWeight: '700', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(201,162,74,0.45)' }}>How to Earn</div>
+                          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: '13px', color: 'rgba(232,228,217,0.85)', marginTop: '3px', lineHeight: '1.4' }}>{activeBadgeObj.desc}</div>
                         </div>
                         {!earned && goal > 0 && (
                           <div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '5px' }}>
-                              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', fontWeight: '500', color: 'rgba(201,162,74,0.7)' }}>{Math.min(progressVal, goal)} / {goal}</span>
+                              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: '11px', fontWeight: '500', color: 'rgba(201,162,74,0.7)' }}>{Math.min(progressVal, goal)} / {goal}</span>
                             </div>
                             <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
                               <div style={{ height: '100%', borderRadius: '3px', width: pct + '%', background: 'linear-gradient(90deg, #f6d778, #c9a24a)' }} />
