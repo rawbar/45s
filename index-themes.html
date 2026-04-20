@@ -1761,6 +1761,9 @@
       repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,229,255,0.012) 3px, rgba(0,229,255,0.012) 4px),
       linear-gradient(175deg, #060d18 0%, #020509 100%);
     background-attachment: fixed;
+    min-height: 100vh;
+    min-height: 100dvh;
+    color: #c0ddf0;
   }
   .cp-lobby-section-title {
     font-family: 'Orbitron', sans-serif;
@@ -3049,7 +3052,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.28.3';
+const VERSION = '2.28.4';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5734,6 +5737,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isCyberpunk = currentThemeId === 'cyberpunk';
 
   const versionHistory = [
+    { version: '2.28.4', date: 'Apr 2026', changes: ['Lobby white gap fixed: cp-lobby-bg fills full viewport height'] },
     { version: '2.28.3', date: 'Apr 2026', changes: ['Card rank corners use Orbitron bold — more readable', 'Stat boxes: visible cyan borders and consistent sizing', 'Leaderboard avatar chips cyberpunk dark/cyan (no more green)', 'Round Summary E/W cards scroll horizontally, no overflow'] },
     { version: '2.28.2', date: 'Apr 2026', changes: ['Dealer chip amber pulse glow animation', 'Pass bid badge dim cyan, bagged badge magenta', 'Choose Your Seat modal full cyberpunk styling', 'Lobby topbar, Create Game, Profile Settings modals cyberpunk', 'Round Summary E/W cards fit fix, close button styled', 'Waiting room center circle cyberpunk dark/cyan'] },
     { version: '2.28.1', date: 'Apr 2026', changes: ['Cyberpunk bid/pass/trump/discard buttons fully neon-styled', 'Follow-suit toast in magenta for cyberpunk', 'Score strip Orbitron numbers with green/magenta team colors', 'All remaining brass/gold hardcoded colors removed from cyberpunk paths'] },
