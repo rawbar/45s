@@ -636,6 +636,111 @@ bids30Won > 0 ? (bids30Won * 30 / Math.max(bidAttempts, 1)).toFixed(1) : '—'
 
 ---
 
+## Bid/Pass UI — Contrast & Visibility Requirements
+
+This is the most-failed requirement across both themes. All bid/pass UI must **pop against the
+dark game table background**. Near-transparent backgrounds are invisible. This has been fixed
+and re-broken multiple times — treat these rules as hard constraints.
+
+### The core principle
+
+**Every bid/pass element needs three things to be visible:**
+1. A **solid tinted fill** (not near-black) — this creates the colored block
+2. A **bright solid border** (not `rgba(...,0.3)`) — outlines the element
+3. A **glow / box-shadow** — makes it radiate against the dark bg
+
+The fill opacity is the most important. `rgba(color, 0.04)` or `rgba(color, 0.09)` is invisible
+on a dark background. Use at minimum `0.18`–`0.22` opacity fills.
+
+### Five bid/pass elements — requirements for each new theme
+
+| Element | When shown | Must have |
+|---------|-----------|-----------|
+| **Bid coin** (nameplate) | During bidding phase | Solid fill ≥0.20 opacity, solid border, glow |
+| **PASS coin** (nameplate) | When player passes | Solid fill ≥0.12, solid border, colored text |
+| **BAGGED coin** (nameplate) | When dealer is bagged | Solid fill + bright contrasting color |
+| **Bid flash** (floating anim) | 950ms at player position | Solid fill, 2px solid border, outer box-shadow glow |
+| **Bid winner pill** (below nameplate) | During discard/playing phase | Solid fill, 2px border, pulsing keyframe animation |
+| **Diamond announce** (center rail) | 2100ms after trump set | Solid fill, bright border, large bloom glow |
+
+### Cyberpunk reference values (confirmed working, April 2026)
+
+```javascript
+// Bid/PASS: green motif
+const cpGreen = '#00ff88';
+const bidFill   = 'rgba(0,255,136,0.22)';   // ≥0.20 for bids
+const passFill  = 'rgba(0,255,136,0.12)';   // lighter for PASS
+const bagFill   = 'rgba(255,0,204,0.22)';   // magenta for BAGGED
+
+// Bid coin (nameplate)
+background: bidFill; border: '1.5px solid #00ff88';
+boxShadow: '0 0 12px rgba(0,255,136,0.65), 0 0 24px rgba(0,255,136,0.25)';
+color: '#ffffff'; // white text, not dim
+
+// PASS coin
+background: passFill; borderColor: 'rgba(0,255,136,0.65)'; color: '#00ff88';
+boxShadow: '0 0 8px rgba(0,255,136,0.4), 0 0 16px rgba(0,255,136,0.15)';
+
+// Bid flash (floating box)
+background: bidFill; border: '2px solid #00ff88';
+boxShadow: '0 0 16px rgba(0,255,136,0.8), 0 0 32px rgba(0,255,136,0.35)';
+
+// Bid winner pill (playing phase)
+background: bidFill; border: '2px solid #00ff88';
+animation: 'cpBidPillPulse 2.4s ease-in-out infinite'; // green pulse keyframe
+
+// Diamond announce
+background: 'rgba(0,255,136,0.18)'; border: '2px solid #00ff88';
+boxShadow: '0 0 36px rgba(0,255,136,0.7), 0 0 70px rgba(0,255,136,0.3)';
+```
+
+### Pulsing keyframe — must use theme's accent color
+
+```css
+/* Cyberpunk green pulse */
+@keyframes cpBidPillPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(0,255,136,0.6), 0 0 24px rgba(0,255,136,0.25); }
+  50%       { box-shadow: 0 0 20px rgba(0,255,136,0.9), 0 0 40px rgba(0,255,136,0.4); }
+}
+
+/* Irish blue pulse (reference) */
+@keyframes bidPillPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(66,165,245,0.5), 0 0 22px rgba(66,165,245,0.22); }
+  50%       { box-shadow: 0 0 18px rgba(66,165,245,0.75), 0 0 36px rgba(66,165,245,0.35); }
+}
+```
+
+Each theme needs its own named keyframe — don't reuse Irish's keyframe name in cyberpunk.
+
+### High bidder vs non-high bidder distinction
+
+During bidding, the current high bidder's coin should glow more strongly than non-high bidders:
+
+```javascript
+// High bidder = stronger fill + stronger glow
+background: isHighBid ? 'rgba(0,255,136,0.28)' : 'rgba(0,255,136,0.18)'
+boxShadow:  isHighBid ? '0 0 16px rgba(0,255,136,0.85), 0 0 32px rgba(0,255,136,0.4)'
+                      : '0 0 10px rgba(0,255,136,0.55), 0 0 20px rgba(0,255,136,0.2)'
+```
+
+### BAGGED is always a contrasting accent, never the primary color
+
+BAGGED represents a penalty/warning state. Use a distinct color (magenta in cyberpunk, red in Irish)
+that stands out from normal bid colors. Never reuse the bid color for BAGGED.
+
+### ⛔ What NOT to do
+
+```javascript
+// WRONG — invisible on dark bg
+background: 'rgba(0,229,255,0.04)'   // 4% opacity = invisible
+background: 'rgba(255,140,0,0.09)'   // 9% opacity = invisible
+borderColor: 'rgba(0,229,255,0.25)'  // 25% border = barely visible
+color: 'rgba(0,229,255,0.5)'         // 50% opacity text = too dim
+boxShadow: 'none'                    // no glow = badge disappears into bg
+```
+
+---
+
 ## Shared Render Functions — Must Be Theme-Aware
 
 `ShowHandsModal` uses a shared `renderHand()` function that renders both the Irish and cyberpunk
