@@ -1762,7 +1762,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.46';
+const VERSION = '2.27.47';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4427,6 +4427,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.47', date: 'Apr 2026', changes: ['Stats modal: player name and Badges label now render in Cinzel gold (removed unreliable gradient-text technique). Close button no longer clipped by border-radius. Badge grid uses equal column widths.'] },
     { version: '2.27.46', date: 'Apr 2026', changes: ['iOS Safari fix: game table now uses dynamic viewport height (100dvh) so cards and bid buttons are never hidden behind the browser toolbar on iPhone.'] },
     { version: '2.27.45', date: 'Apr 2026', changes: ['Stats modal: fixed Cinzel/Merriweather font rendering — explicit font quoting ensures the correct fonts load instead of falling back to Palatino. Avg Win Bid shows — when no 30-bids made. Badge detail close button fixed.'] },
     { version: '2.27.44', date: 'Apr 2026', changes: ['Stats modal: all accents now gold/brass (removed blue-for-me split). Stat values are bolder (weight 900).'] },
@@ -7098,7 +7099,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   <button
                     onClick={() => setShowStatsModal(false)}
                     style={{
-                      position: 'absolute', top: '50%', right: '16px', transform: 'translateY(-50%)',
+                      position: 'absolute', top: '10px', right: '16px',
                       width: '32px', height: '32px', borderRadius: '50%',
                       background: 'rgba(201,162,74,0.15)',
                       border: '1px solid rgba(201,162,74,0.3)',
@@ -7128,9 +7129,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
                           fontFamily: "'Cinzel', serif", fontSize: '22px', fontWeight: '700',
-                          background: `linear-gradient(135deg, ${accentHi}, ${accentColor})`,
-                          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                          backgroundClip: 'text', lineHeight: '1.1',
+                          color: '#f6d778',
+                          lineHeight: '1.1',
                           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         }}>{statsPlayer.username}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '5px' }}>
@@ -7198,12 +7198,12 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     return (
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                          <div style={{ fontFamily: "'Cinzel', serif", fontSize: '14px', fontWeight: '700', background: 'linear-gradient(135deg, #f6d778, #c9a24a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Badges</div>
+                          <div style={{ fontFamily: "'Cinzel', serif", fontSize: '14px', fontWeight: '700', color: '#f6d778' }}>Badges</div>
                           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: '11px', fontWeight: '500', color: 'rgba(201,162,74,0.55)' }}>{earnedIds.length} earned · {BADGES.length - earnedIds.length} locked</div>
                         </div>
 
                         {/* 5-col badge grid */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '8px 4px' }}>
                           {BADGES.map(badge => {
                             const earned = earnedIds.includes(badge.id);
                             const isActive = activeBadge === badge.id;
