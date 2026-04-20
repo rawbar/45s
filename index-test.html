@@ -2803,7 +2803,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.28.0';
+const VERSION = '2.28.1';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5441,22 +5441,40 @@ function ScoreTable({ roundHistory, mySeatIndex }) {
     );
   }
 
-  // Non-Irish: original behaviour
+  // Non-Irish (cyberpunk): styled score table
   const [expanded, setExpanded] = React.useState(false);
   const maxVis = 2, needsCollapse = roundHistory.length > maxVis;
   const visible = (!needsCollapse || expanded) ? roundHistory : roundHistory.slice(-maxVis);
   return (
-    <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '4px', padding: '4px', fontSize: '10px' }}>
-      {needsCollapse && <div onClick={() => setExpanded(!expanded)} style={{ textAlign: 'center', color: '#aaa', cursor: 'pointer', fontSize: '9px' }}>{expanded ? '\u25BC less' : `\u25B2 +${roundHistory.length - maxVis}`}</div>}
+    <div style={{ width: '100%', background: 'rgba(2,5,10,0.85)', borderTop: '1px solid rgba(0,229,255,0.2)', borderRadius: '0 0 4px 4px', padding: '4px 10px', boxSizing: 'border-box', flexShrink: 0 }}>
+      {needsCollapse && <div onClick={() => setExpanded(!expanded)} style={{ textAlign: 'center', color: 'rgba(0,229,255,0.4)', cursor: 'pointer', fontSize: '9px', fontFamily: "'Share Tech Mono', monospace", paddingBottom: '2px' }}>{expanded ? '▾ less' : `▴ +${roundHistory.length - maxVis} rounds`}</div>}
       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
-        <thead><tr><th style={{ padding: '1px 2px', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>R</th><th colSpan="2" style={{ padding: '1px 2px', borderBottom: '1px solid rgba(255,255,255,0.2)', color: '#4caf50' }}>US</th><th colSpan="2" style={{ padding: '1px 2px', borderBottom: '1px solid rgba(255,255,255,0.2)', color: '#f44336' }}>THEM</th></tr></thead>
+        <thead>
+          <tr>
+            <th style={{ padding: '1px 3px', fontSize: '9px', color: 'rgba(0,229,255,0.4)', fontFamily: "'Share Tech Mono', monospace", fontWeight: 400, letterSpacing: '0.5px', width: '18px' }}>R</th>
+            <th style={{ padding: '1px 3px', fontSize: '9px', color: 'rgba(0,255,136,0.5)', fontFamily: "'Share Tech Mono', monospace", fontWeight: 400 }}>+pts</th>
+            <th style={{ padding: '1px 3px', fontSize: '9px', color: '#00ff88', fontFamily: "'Share Tech Mono', monospace", fontWeight: 600, letterSpacing: '0.5px' }}>US</th>
+            <th style={{ padding: '1px 3px', fontSize: '9px', color: 'rgba(255,0,204,0.5)', fontFamily: "'Share Tech Mono', monospace", fontWeight: 400 }}>+pts</th>
+            <th style={{ padding: '1px 3px', fontSize: '9px', color: '#ff00cc', fontFamily: "'Share Tech Mono', monospace", fontWeight: 600, letterSpacing: '0.5px' }}>THEM</th>
+          </tr>
+        </thead>
         <tbody>{visible.map((r, i) => {
           const rn = expanded || !needsCollapse ? i + 1 : roundHistory.length - maxVis + i + 1;
           const usRoundScore = swapColumns ? r.themRoundScore : r.usRoundScore;
           const usTotal = swapColumns ? r.themTotal : r.usTotal;
           const themRoundScore = swapColumns ? r.usRoundScore : r.themRoundScore;
           const themTotal = swapColumns ? r.usTotal : r.themTotal;
-          return (<tr key={i}><td style={{ padding: '1px 2px' }}>{rn}</td><td style={{ padding: '1px 2px', color: '#4caf50' }}>{usRoundScore < 0 ? `(${Math.abs(usRoundScore)})` : usRoundScore}</td><td style={{ padding: '1px 2px', color: '#4caf50', fontWeight: 'bold' }}>{usTotal}</td><td style={{ padding: '1px 2px', color: '#f44336' }}>{themRoundScore < 0 ? `(${Math.abs(themRoundScore)})` : themRoundScore}</td><td style={{ padding: '1px 2px', color: '#f44336', fontWeight: 'bold' }}>{themTotal}</td></tr>);
+          const usDelta = usRoundScore < 0 ? `(${Math.abs(usRoundScore)})` : `+${usRoundScore}`;
+          const themDelta = themRoundScore < 0 ? `(${Math.abs(themRoundScore)})` : `+${themRoundScore}`;
+          return (
+            <tr key={i}>
+              <td style={{ padding: '1px 3px', fontSize: '9px', color: 'rgba(0,229,255,0.4)', fontFamily: "'Share Tech Mono', monospace" }}>{rn}</td>
+              <td style={{ padding: '1px 3px', fontSize: '9px', color: usRoundScore < 0 ? '#ff00cc' : 'rgba(0,255,136,0.7)', fontFamily: "'Share Tech Mono', monospace" }}>{usDelta}</td>
+              <td style={{ padding: '1px 3px', fontSize: '11px', color: '#00ff88', fontFamily: "'Orbitron', sans-serif", fontWeight: 700 }}>{usTotal}</td>
+              <td style={{ padding: '1px 3px', fontSize: '9px', color: themRoundScore < 0 ? 'rgba(255,0,204,0.5)' : 'rgba(255,0,204,0.7)', fontFamily: "'Share Tech Mono', monospace" }}>{themDelta}</td>
+              <td style={{ padding: '1px 3px', fontSize: '11px', color: '#ff00cc', fontFamily: "'Orbitron', sans-serif", fontWeight: 700 }}>{themTotal}</td>
+            </tr>
+          );
         })}</tbody>
       </table>
     </div>
@@ -5470,6 +5488,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isCyberpunk = currentThemeId === 'cyberpunk';
 
   const versionHistory = [
+    { version: '2.28.1', date: 'Apr 2026', changes: ['Cyberpunk bid/pass/trump/discard buttons fully neon-styled', 'Follow-suit toast in magenta for cyberpunk', 'Score strip Orbitron numbers with green/magenta team colors', 'All remaining brass/gold hardcoded colors removed from cyberpunk paths'] },
     { version: '2.28.0', date: 'Apr 2026', changes: ['Complete cyberpunk theme: all screens, modals, and game table fully styled', 'Cyberpunk login, lobby, waiting room in full neon aesthetic', 'Cyberpunk variants for ShowHands, RoundEnd, GameOver, Stats, Preferences, and all modals', 'Font loading hardened: Orbitron and Share Tech Mono via embedded @font-face'] },
     { version: '2.27.63', date: 'Apr 2026', changes: ['Round Complete modal now shows correct score when bidder is set — displays −bid instead of raw trick points.'] },
     { version: '2.27.62', date: 'Apr 2026', changes: ['Last-trick strip: suits now show in center (not corner) on all 4 cards.', 'View Round: E/W card suit symbols larger (24px).'] },
@@ -14428,7 +14447,27 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
         {/* Follow suit toast */}
         {followSuitToast && (
-          <div style={{
+          <div style={ currentThemeId === 'cyberpunk' ? {
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: 'rgba(2,5,10,0.95)',
+            border: '1px solid rgba(255,0,204,0.5)',
+            color: '#ff00cc',
+            fontFamily: "'Share Tech Mono', monospace",
+            textShadow: '0 0 8px rgba(255,0,204,0.6)',
+            borderRadius: '2px',
+            padding: '12px 24px',
+            fontSize: '12px',
+            fontWeight: 700,
+            letterSpacing: '1.5px',
+            textAlign: 'center',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.7)',
+            zIndex: 200,
+            pointerEvents: 'none',
+            whiteSpace: 'nowrap',
+          } : {
             position: 'absolute',
             top: '50%',
             left: '50%',
@@ -14464,7 +14503,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           >
             <div style={{
               background: 'rgba(12,6,2,0.9)',
-              border: '1px solid #c9a24a',
+              border: currentThemeId === 'cyberpunk' ? '1px solid rgba(0,229,255,0.3)' : '1px solid #c9a24a',
               borderRadius: '10px',
               padding: '16px 24px',
               textAlign: 'center',
@@ -14495,7 +14534,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   key={b}
                   onClick={() => handleBid(b)}
                   disabled={b <= highBid}
-                  style={{
+                  style={ currentThemeId === 'cyberpunk' ? (
+                    b <= highBid
+                      ? { padding: '7px 13px', fontSize: '12px', background: 'rgba(0,229,255,0.03)', border: '1px solid rgba(0,229,255,0.08)', color: 'rgba(0,229,255,0.18)', cursor: 'default', borderRadius: '3px', fontFamily: "'Orbitron', sans-serif", fontWeight: 700 }
+                      : { padding: '7px 13px', fontSize: '12px', background: 'rgba(255,140,0,0.1)', border: '1px solid #ff8c00', color: '#ff8c00', fontFamily: "'Orbitron', sans-serif", fontWeight: 700, letterSpacing: '1.5px', boxShadow: '0 0 14px rgba(255,140,0,0.15)', textShadow: '0 0 8px rgba(255,140,0,0.6)', borderRadius: '3px', cursor: 'pointer' }
+                  ) : {
                     padding: '7px 13px',
                     fontSize: '12px',
                     fontFamily: "'Cinzel', serif",
@@ -14521,7 +14564,18 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               {gameOptions.thirtyFor60 && thirtyWasBid && highBid === 30 && (
                 <button
                   onClick={() => handleBid(30, false, true)}
-                  style={{
+                  style={ currentThemeId === 'cyberpunk' ? {
+                    padding: '7px 13px',
+                    fontSize: '12px',
+                    background: 'rgba(255,26,117,0.1)',
+                    border: '1px solid rgba(255,26,117,0.5)',
+                    color: '#ff1a75',
+                    fontFamily: "'Orbitron', sans-serif",
+                    fontWeight: 700,
+                    letterSpacing: '1.5px',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                  } : {
                     padding: '7px 13px',
                     fontSize: '12px',
                     fontFamily: "'Cinzel', serif",
@@ -14540,7 +14594,17 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               )}
               <button
                 onClick={() => handleBid(0)}
-                style={{
+                style={ currentThemeId === 'cyberpunk' ? {
+                  padding: '7px 13px',
+                  fontSize: '12px',
+                  background: 'rgba(0,229,255,0.05)',
+                  border: '1px solid rgba(0,229,255,0.3)',
+                  color: '#00e5ff',
+                  fontFamily: "'Share Tech Mono', monospace",
+                  letterSpacing: '1px',
+                  borderRadius: '3px',
+                  cursor: 'pointer',
+                } : {
                   padding: '7px 13px',
                   fontSize: '12px',
                   fontFamily: "'Cinzel', serif",
@@ -14561,7 +14625,29 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             <button
               key={s}
               onClick={() => handleSelectTrump(s)}
-              style={{
+              style={ currentThemeId === 'cyberpunk' ? (
+                (s === '♥' || s === '♦') ? {
+                  padding: '8px 16px',
+                  fontSize: '20px',
+                  fontFamily: "'Inter', sans-serif",
+                  background: 'rgba(255,26,117,0.06)',
+                  border: '1px solid rgba(255,26,117,0.4)',
+                  color: '#ff1a75',
+                  textShadow: '0 0 10px rgba(255,26,117,0.7)',
+                  borderRadius: '3px',
+                  cursor: 'pointer',
+                } : {
+                  padding: '8px 16px',
+                  fontSize: '20px',
+                  fontFamily: "'Inter', sans-serif",
+                  background: 'rgba(0,229,255,0.06)',
+                  border: '1px solid rgba(0,229,255,0.4)',
+                  color: '#00e5ff',
+                  textShadow: '0 0 10px rgba(0,229,255,0.7)',
+                  borderRadius: '3px',
+                  cursor: 'pointer',
+                }
+              ) : {
                 padding: '8px 16px',
                 fontSize: '20px',
                 background: 'linear-gradient(180deg, rgba(42,28,12,0.95) 0%, rgba(20,8,2,0.95) 100%)',
@@ -14579,7 +14665,18 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           {phase === 'discarding' && currentPlayer === mySeatIndex && (
             <button
               onClick={handleDiscard}
-              style={{
+              style={ currentThemeId === 'cyberpunk' ? {
+                padding: '6px 16px',
+                fontSize: '12px',
+                background: 'rgba(255,140,0,0.1)',
+                border: '1px solid #ff8c00',
+                color: '#ff8c00',
+                fontFamily: "'Orbitron', sans-serif",
+                fontWeight: 700,
+                letterSpacing: '1px',
+                borderRadius: '3px',
+                cursor: 'pointer',
+              } : {
                 padding: '6px 16px',
                 fontSize: '12px',
                 background: '#4caf50',
