@@ -2285,14 +2285,16 @@
     justify-content: center;
   }
   .cp-show-hands-cards .cp-card.mid {
-    width: 46px;
-    height: 64px;
+    width: 52px;
+    height: 74px;
     border-radius: 4px;
     flex-shrink: 0;
   }
   .cp-show-hands-cards .cp-card.mid .corner .rk {
-    font-size: 13px;
+    font-size: 14px;
   }
+  .cp-show-hands-cards .cp-card.mid .corner .su { display: none !important; }
+  .cp-show-hands-cards .cp-card.mid .center { font-size: 28px; }
   .cp-show-hands-ew {
     /* compact variant for East/West players */
     overflow-x: auto;
@@ -2304,18 +2306,18 @@
     justify-content: flex-start;
   }
   .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid {
-    width: 26px;
-    height: 42px;
+    width: 32px;
+    height: 50px;
     border-radius: 3px;
   }
   .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .corner .rk {
-    font-size: 8px;
+    font-size: 9px;
   }
   .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .corner .su {
     display: none !important;
   }
   .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .center {
-    font-size: 16px;
+    font-size: 19px;
   }
   .cp-trick-strip {
     display: flex;
@@ -3074,7 +3076,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.29.1';
+const VERSION = '2.29.2';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5759,6 +5761,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isCyberpunk = currentThemeId === 'cyberpunk';
 
   const versionHistory = [
+    { version: '2.29.2', date: 'Apr 2026', changes: ['Round Summary N/S cards bigger (52×74px), corner suits hidden', 'E/W cards bigger (32×50px), center suit bigger', 'Bid badge: bidder = navy+cyan glow (blue motif), pass = dark+dim cyan'] },
     { version: '2.29.1', date: 'Apr 2026', changes: ['Deal + draw animations now play in cyberpunk (were Irish-only)', 'Kitty cards appear/fly in all themes'] },
     { version: '2.29.0', date: 'Apr 2026', changes: ['Cyberpunk bidding: bid flash (Orbitron, amber/magenta/cyan)', 'Diamond announce: cyan arrow + dark panel + amber bid', 'Bid winner pill: cyan pulsing border (BAGGED = magenta)', 'High bidder nameplate: amber glow during bidding'] },
     { version: '2.28.9', date: 'Apr 2026', changes: ['Last trick cards show center suit (mid not small)', 'Show Hands: all colors/fonts are cyberpunk in cyberpunk mode', 'E/W show-hands cards hide corner suits'] },
@@ -6461,19 +6464,26 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
           <span style={{ fontFamily: subFontFamily, fontWeight: 900, fontSize: '9px', color: isCyberpunk ? cpDim : brass }}>+{drawn[playerIdx] || 0}</span>
         </div>
         {/* Bid badge */}
-        {playerBid !== null && (
-          <span style={{
-            padding: '2px 6px', borderRadius: isCyberpunk ? '2px' : '3px', fontSize: '10px',
-            fontFamily: isCyberpunk ? "'Share Tech Mono',monospace" : "'Cinzel',serif", fontWeight: 700,
-            background: isBag ? (isCyberpunk ? 'rgba(255,0,204,0.15)' : 'rgba(139,26,31,0.85)') : isBidder ? (isCyberpunk ? 'rgba(0,229,255,0.08)' : 'rgba(10,40,20,0.85)') : 'rgba(10,20,10,0.6)',
-            border: `1px solid ${isBag ? (isCyberpunk ? '#ff00cc' : '#ef4444') : isBidder ? (isCyberpunk ? cpAccent : brass) : (isCyberpunk ? 'rgba(0,229,255,0.2)' : 'rgba(201,162,74,0.25)')}`,
-            color: isBag ? (isCyberpunk ? '#ff00cc' : '#ff6b6b') : isBidder ? (isCyberpunk ? cpAccent : brassHi) : (isCyberpunk ? cpDim : 'rgba(201,162,74,0.5)'),
-          }}>
-            {playerBid === 0 ? 'Pass' : playerBid}
-            {isBidder && trumpSuit && <span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? (isCyberpunk ? '#ff4466' : '#e87070') : (isCyberpunk ? cpAccent : brassHi), marginLeft: '2px' }}>{trumpSuit}</span>}
-            {isBag && <span style={{ marginLeft: '4px', fontSize: '9px' }}>BAGGED</span>}
-          </span>
-        )}
+        {playerBid !== null && (() => {
+          const cpBidBg     = isBag ? 'rgba(255,0,204,0.12)' : isBidder ? 'rgba(4,12,38,0.96)' : 'rgba(4,10,22,0.88)';
+          const cpBidBorder = isBag ? '#ff00cc'              : isBidder ? 'rgba(0,229,255,0.82)' : 'rgba(0,229,255,0.22)';
+          const cpBidColor  = isBag ? '#ff00cc'              : isBidder ? cpAmber                : 'rgba(0,229,255,0.5)';
+          const cpBidShadow = isBidder && !isBag ? '0 0 8px rgba(0,229,255,0.45), 0 0 18px rgba(0,229,255,0.15)' : 'none';
+          return (
+            <span style={{
+              padding: '2px 8px', borderRadius: isCyberpunk ? '2px' : '3px', fontSize: '10px',
+              fontFamily: isCyberpunk ? "'Share Tech Mono',monospace" : "'Cinzel',serif", fontWeight: 700,
+              background: isCyberpunk ? cpBidBg : (isBag ? 'rgba(139,26,31,0.85)' : isBidder ? 'rgba(10,40,20,0.85)' : 'rgba(10,20,10,0.6)'),
+              border: `1px solid ${isCyberpunk ? cpBidBorder : (isBag ? '#ef4444' : isBidder ? brass : 'rgba(201,162,74,0.25)')}`,
+              color: isCyberpunk ? cpBidColor : (isBag ? '#ff6b6b' : isBidder ? brassHi : 'rgba(201,162,74,0.5)'),
+              boxShadow: isCyberpunk ? cpBidShadow : 'none',
+            }}>
+              {playerBid === 0 ? 'Pass' : playerBid}
+              {isBidder && trumpSuit && <span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? (isCyberpunk ? '#ff4466' : '#e87070') : (isCyberpunk ? cpAccent : brassHi), marginLeft: '2px' }}>{trumpSuit}</span>}
+              {isBag && <span style={{ marginLeft: '4px', fontSize: '9px' }}>BAGGED</span>}
+            </span>
+          );
+        })()}
         {/* Cards — fixed single row, no wrap */}
         <div className={isCyberpunk ? 'cp-show-hands-cards' : 'ir-show-hands-cards'} style={{ display: 'flex', gap: compact ? '1px' : '2px', flexWrap: 'nowrap', justifyContent: 'center' }}>
           {sortedHand.map((c, i) => {
