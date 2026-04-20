@@ -632,7 +632,7 @@
     min-height: 0;
     padding: 0;
   }
-  .v3-side-seat { width: 62px; display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0; overflow: visible; }
+  .v3-side-seat { width: 62px; display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0; overflow: visible; align-self: flex-start; }
   .v3-facedown-row { display: flex; gap: 2px; }
   .v3-facedown-col { display: flex; flex-direction: column; gap: 2px; min-height: 218px; justify-content: flex-start; }
 
@@ -1757,7 +1757,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.39';
+const VERSION = '2.27.40';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
