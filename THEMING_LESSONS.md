@@ -2,7 +2,7 @@
 
 Everything an agent needs to implement a new theme correctly the first time.
 Derived from the Irish Card Room theming session (v2.26–v2.27.47) and the
-Cyberpunk theme session (v2.28.0–v2.28.6).
+Cyberpunk theme session (v2.28.0–v2.28.9).
 
 ---
 
@@ -317,6 +317,48 @@ Every card context needs its own CSS wrapper class with sized-down `mid` rules:
 
 And in JSX: `<Card card={c} mid disabled />` — never `small`.
 
+### Last-Trick Strip — must use `mid` cards, not `small`
+
+The "Last:" strip shown during the playing phase has TWO code paths — one for Irish (in-flow,
+always reserves height) and one fallback for other themes. The fallback used `small` cards,
+which broke the center suit rule.
+
+**Every theme needs its own last-trick strip branch using `mid` cards + the theme's CSS wrapper.**
+
+```jsx
+// WRONG — fallback uses small, no center element
+{lastTrick && phase === 'playing' && currentThemeId !== 'irish' && (
+  <Card card={tc.card} small disabled />  // ← breaks center suit
+)}
+
+// CORRECT — explicit branch per theme
+{lastTrick && phase === 'playing' && currentThemeId === 'cyberpunk' && (
+  <div className="cp-trick-strip" style={{ position: 'relative', padding: 0, borderTop: 'none', marginTop: 0 }}>
+    <Card card={tc.card} mid disabled />
+  </div>
+)}
+```
+
+The `.cp-trick-strip .cp-card.mid` CSS must hide corner suits and size the center:
+```css
+.cp-trick-strip .cp-card.mid { width: 24px; height: 36px; }
+.cp-trick-strip .cp-card.mid .corner .su { display: none !important; }
+.cp-trick-strip .cp-card.mid .center { font-size: 16px; }
+```
+
+### E/W Show-Hands Cards — hide corner suits
+
+The compact E/W cards in the Round Summary (26×42px) must also hide corner suits.
+Setting `font-size: 7px` instead of `display: none` keeps the suit visible — wrong.
+
+```css
+/* WRONG */
+.cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .corner .su { font-size: 7px; }
+
+/* CORRECT */
+.cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .corner .su { display: none !important; }
+```
+
 ### Suit glyph font rule (also critical)
 
 `.center` and `.corner .su` must use `font-family: Georgia, 'Times New Roman', serif`.
@@ -502,6 +544,30 @@ bids30Won * 30 / Math.max(bidAttempts, 1)  // with gate: bidAttempts > 0
 // CORRECT
 bids30Won > 0 ? (bids30Won * 30 / Math.max(bidAttempts, 1)).toFixed(1) : '—'
 ```
+
+---
+
+## Shared Render Functions — Must Be Theme-Aware
+
+`ShowHandsModal` uses a shared `renderHand()` function that renders both the Irish and cyberpunk
+card hands in the Round Summary. When the cyberpunk early-return branch was added to the modal,
+`renderHand` still had hardcoded Irish values (Cinzel font, brass colors). Those showed through
+in cyberpunk mode.
+
+**Rule: any shared helper function that outputs visible UI must check `isCyberpunk` (or the
+theme ID) for every color, font, and border it renders.**
+
+Key values `renderHand` must branch on:
+| Element | Irish | Cyberpunk |
+|---------|-------|-----------|
+| Player name font | `'Cinzel', serif` | `'Orbitron', sans-serif` |
+| Draw count font | `'Merriweather', serif` | `'Share Tech Mono', monospace` |
+| Trick number circles | brass `#c9a24a` border + color | cyan `#00e5ff` border + color |
+| Led-trick border | `brassHi` `#f6d778` | `#00e5ff` |
+| Bid badge font | Cinzel | Share Tech Mono |
+| Bid badge bid color | brassHi | cyan |
+| Bid badge bag color | `#ff6b6b` | `#ff00cc` (magenta) |
+| Dealer D badge bg | brass radial gradient | amber `rgba(255,140,0,0.15)` + amber border |
 
 ---
 
@@ -730,7 +796,7 @@ For each new theme, every one of these needs a themed implementation:
 12. **Trump select buttons** — suit buttons (red suits vs black suits may glow differently)
 13. **Follow-suit toast** — alert strip
 14. **Score strip** — tap-to-expand, column order (+pts LEFT of total)
-15. **Last-trick strip** — always reserves height during playing phase
+15. **Last-trick strip** — always reserves height during playing phase; **each theme needs its own branch using `mid` cards** (never `small`) — see card size rule
 16. **Trick overlay** — cards in center rail (absolutely positioned)
 17. **Bid flash animation** — large floating text at bidder compass position
 18. **Diamond announce** — centered in rail, directional arrow to bid winner
@@ -741,7 +807,7 @@ For each new theme, every one of these needs a themed implementation:
 23. **Bid coin/pass badge** — bid amount indicators on nameplates during bidding
 24. **ShowHandsModal** — 4 players, E/W compact (use `mid` sized down via CSS, NEVER `small`), large center suit
 25. **Stats/badges modal** — **all 12 stat boxes + Last Seen** (compare against Irish; cyberpunk v2.28 shipped with only 6 initially)
-26. **Round-end modal** — scores, trick breakdown, E/W cards must fit without overflow
+26. **Round-end modal** — scores, trick breakdown; `renderHand()` helper must be theme-aware (fonts, colors); E/W cards hide corner suits (`display:none`), no overflow
 27. **Game-over modal** — winner announcement (⛔ must handle ALL themes — returning null for non-Irish breaks it)
 28. **Preferences modal** — house rules, theme tiles (themes live HERE not in profile)
 29. **Leave confirm modal** — themed, never system dialog
