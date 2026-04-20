@@ -846,8 +846,8 @@
   /* ── Side seat nameplates: constrain so they never bleed off screen ── */
   .v3-side-seat { width: 82px; }
   .v3-side-seat .v3-nameplate {
-    max-width: 82px; overflow: hidden; white-space: nowrap; font-size: 10px;
-    padding: 2px 7px 2px 3px;
+    max-width: 82px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    font-size: 10px; padding: 2px 7px 2px 3px;
   }
   .v3-side-seat .v3-nameplate .v3-avatar-chip {
     width: 17px; height: 17px; font-size: 11px; margin-right: 4px; flex-shrink: 0;
@@ -1007,6 +1007,15 @@
   @keyframes cpActivePulse {
     0%,100% { box-shadow: 0 0 0 0 rgba(255,140,0,0.3); }
     50%      { box-shadow: 0 0 12px 2px rgba(255,140,0,0.12); }
+  }
+
+  /* ── Side seat nameplates in cyberpunk: tighten padding + reduce font so full name fits ── */
+  .theme-cyberpunk .v3-side-seat .v3-nameplate {
+    font-size: 9px;
+    padding: 2px 3px 2px 2px;
+  }
+  .theme-cyberpunk .v3-side-seat .v3-nameplate .v3-avatar-chip {
+    width: 14px; height: 14px; font-size: 9px; margin-right: 2px;
   }
 
   /* ── Bid coin → bid badge ── */
@@ -3056,7 +3065,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.28.7';
+const VERSION = '2.28.8';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5741,6 +5750,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isCyberpunk = currentThemeId === 'cyberpunk';
 
   const versionHistory = [
+    { version: '2.28.8', date: 'Apr 2026', changes: ['Side seat names no longer cut off: tighter padding + 9px font in cyberpunk'] },
     { version: '2.28.7', date: 'Apr 2026', changes: ['Cyberpunk stats: badges header shows earned/locked count'] },
     { version: '2.28.6', date: 'Apr 2026', changes: ['Cyberpunk stats modal: all 12 stat boxes + Last Seen (matches Irish)'] },
     { version: '2.28.5', date: 'Apr 2026', changes: ['Leaderboard tab now scrolls in cyberpunk lobby (flex layout fix)'] },
