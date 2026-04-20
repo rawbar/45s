@@ -2,7 +2,7 @@
 
 Everything an agent needs to implement a new theme correctly the first time.
 Derived from the Irish Card Room theming session (v2.26–v2.27.47) and the
-Cyberpunk theme session (v2.28.0–v2.28.9).
+Cyberpunk theme session (v2.28.0–v2.29.8).
 
 ---
 
@@ -348,7 +348,7 @@ The `.cp-trick-strip .cp-card.mid` CSS must hide corner suits and size the cente
 
 ### E/W Show-Hands Cards — hide corner suits
 
-The compact E/W cards in the Round Summary (26×42px) must also hide corner suits.
+The compact E/W cards in the Round Summary must also hide corner suits.
 Setting `font-size: 7px` instead of `display: none` keeps the suit visible — wrong.
 
 ```css
@@ -358,6 +358,95 @@ Setting `font-size: 7px` instead of `display: none` keeps the suit visible — w
 /* CORRECT */
 .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .corner .su { display: none !important; }
 ```
+
+---
+
+## ShowHandsModal (Round Summary) — Definitive Layout Spec
+
+This is the most pixel-sensitive modal. Follow these rules exactly for every new theme.
+
+### Card sizes
+| Context | Width | Height | Center font | Corner rank |
+|---------|-------|--------|-------------|-------------|
+| N/S (full) | 30px | 50px | 24px | 9px |
+| E/W (compact) | 30px | 50px | 24px | 9px |
+
+Both N/S and E/W use the **same 30×50px card size**. The E/W column is narrower — it fits
+because `flex: 1 1 0; minWidth: 0` on the column allows slight overflow without a scrollbar.
+
+### Modal padding — MUST override cp-modal-body
+`cp-modal-body` has `padding: 16px` in the global CSS. At 16px the two 30px E/W card rows
+**overflow their columns**. Override it inline on this specific modal only:
+
+```jsx
+<div className="cp-modal-body" style={{ padding: '12px' }}>
+```
+
+This matches Irish's 12px and gives each E/W column enough room.
+
+### E/W container gap
+```jsx
+<div className="cp-show-hands-ew" style={{ display: 'flex', gap: '8px', ... }}>
+```
+8px gap (same as Irish).
+
+### ⛔ NEVER add `overflow-x: auto` to the card strip container
+
+This is the most common mistake. With `overflow-x: auto`, any card that overflows by even
+1–2px shows a scrollbar on Android Chrome. Irish works fine because it never had it — the
+cards silently overflow by a pixel inside their flex column without any scrollbar.
+
+```css
+/* WRONG — creates scrollbar on Android Chrome even at 1px overflow */
+.cp-show-hands-ew .cp-show-hands-cards {
+  overflow-x: auto;
+}
+
+/* CORRECT — let flex handle it silently */
+.cp-show-hands-ew .cp-show-hands-cards {
+  flex-wrap: nowrap;
+  overflow: visible;
+  justify-content: flex-start;
+}
+```
+
+**Root cause of multiple regression cycles:** early cyberpunk session added `overflow-x: auto`
+"for safety." This then required card shrinking and padding hacks across several versions.
+The fix was to simply remove it and match Irish exactly.
+
+---
+
+## Bid/Pass Badge — Visibility Rule
+
+Bid and pass badges in ShowHandsModal must **pop against the dark background** the same way
+Irish uses a colored fill to make them stand out.
+
+**Wrong — near-black background blends into the modal:**
+```javascript
+// rgba(2,18,10,0.96) is essentially black — badge is invisible against dark modal bg
+background: 'rgba(2,18,10,0.96)'
+```
+
+**Correct — use a solid-tinted fill that creates a visible colored block:**
+```javascript
+// Cyberpunk green bid badge
+const cpBidBg = isBag
+  ? 'rgba(255,0,204,0.22)'   // magenta-tinted for BAGGED
+  : isBidder
+  ? 'rgba(0,255,136,0.22)'   // green-tinted for bid winner
+  : 'rgba(0,255,136,0.12)';  // lighter green for PASS
+
+// Matching border + glow
+const cpBidBorder = isBag ? '#ff00cc' : '#00ff88';
+const cpBidShadow = isBidder
+  ? '0 0 14px rgba(0,255,136,0.9), 0 0 30px rgba(0,255,136,0.4)'
+  : '0 0 8px rgba(0,255,136,0.55), 0 0 16px rgba(0,255,136,0.2)';
+const cpBorderWidth = isBidder && !isBag ? '2px' : '1.5px';
+```
+
+The key insight: **the fill opacity (0.22) is what makes it visible**, not just the border glow.
+A dark near-transparent fill + glow looks like text floating in space. A tinted fill looks like
+a badge.
 
 ### Suit glyph font rule (also critical)
 
@@ -807,7 +896,7 @@ For each new theme, every one of these needs a themed implementation:
 23. **Bid coin/pass badge** — bid amount indicators on nameplates during bidding
 24. **ShowHandsModal** — 4 players, E/W compact (use `mid` sized down via CSS, NEVER `small`), large center suit
 25. **Stats/badges modal** — **all 12 stat boxes + Last Seen** (compare against Irish; cyberpunk v2.28 shipped with only 6 initially)
-26. **Round-end modal** — scores, trick breakdown; `renderHand()` helper must be theme-aware (fonts, colors); E/W cards hide corner suits (`display:none`), no overflow
+26. **Round-end modal (ShowHandsModal)** — see *ShowHandsModal Definitive Layout Spec* section above; 30×50px cards, 12px body padding override, 8px EW gap, NO `overflow-x:auto`; `renderHand()` helper must be theme-aware (fonts, colors); corner suits hidden on all cards
 27. **Game-over modal** — winner announcement (⛔ must handle ALL themes — returning null for non-Irish breaks it)
 28. **Preferences modal** — house rules, theme tiles (themes live HERE not in profile)
 29. **Leave confirm modal** — themed, never system dialog
