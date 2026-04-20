@@ -437,6 +437,26 @@ const [confirmLeave, setConfirmLeave] = useState(false);
 
 ---
 
+## WaitingRoom — No Loading Screens
+
+The WaitingRoom has an early return for when Firebase hasn't loaded the game node yet.
+This must return `null`, not a loading div. A loading div flashes visibly during the
+Start Game transition because Firebase briefly hasn't synced.
+
+```jsx
+// WRONG — flashes a plain unstyled screen on Start Game
+if (!game) {
+  return <div style={{ color: 'white', ... }}>Loading game...</div>;
+}
+
+// CORRECT — invisible during the brief sync window
+if (!game) {
+  return null;
+}
+```
+
+---
+
 ## GameWrapper Init Screen
 
 ```jsx
