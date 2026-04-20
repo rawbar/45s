@@ -214,32 +214,47 @@ time, the version may have changed — re-fetch to get updated URLs.
 
 ---
 
-## Suit Glyph Rule — Card Center Element
+## ⛔ Irish Theme Card Rule — CENTER SUIT ONLY, NO CORNER SUITS (repeated correction ×5)
 
-**The `.cp-card .center` element (large suit symbol in card middle) must use a serif font that
-contains suit glyphs, NOT a display font like Cinzel.**
+**Irish theme design: large suit symbol in the CENTER of the card. Corner suits ALWAYS hidden.**
 
-Cinzel is a caps-only Roman typeface — it does **not** contain ♠ ♥ ♦ ♣.
-When Cinzel is loaded (via direct @font-face), these characters silently vanish.
-
-**Fix — add to BOTH the center rule AND the corner `.su` rule:**
-```css
-.theme-irish .cp-card .center {
-  /* ... other properties ... */
-  font-family: Georgia, 'Times New Roman', serif;
-}
-.theme-irish .cp-card .corner .su {
-  font-family: Georgia, 'Times New Roman', serif; /* even when display:none — inherited by size overrides */
-}
+This has been re-broken 5 times. The trap is the Card component:
+```javascript
+const showCenter = !small;  // small cards NEVER render .center
 ```
 
-**Critical:** `small` cards never render `.center` (`showCenter = !small` in Card component).
-They rely entirely on `.corner .su` for the suit symbol. If `.corner .su` inherits Cinzel,
-the suit vanishes on small cards too — affects the last-trick strip and any other small-card context.
+**`small` cards have no center element. Using `small` in Irish theme = no suit visible anywhere.**
 
-**Side effect of fixing fonts:** Once a display font (Cinzel, Orbitron, etc.) actually loads,
-it is often more compact than the browser's serif fallback. Card center font sizes may need
-increasing after a font fix — mid card center was 18px → 22px, small was 14px → 18px in v2.27.54.
+### Rule: NEVER use `small` cards in Irish theme. Always use `mid` + CSS wrapper to resize.
+
+Every card context needs its own CSS wrapper class with sized-down `mid` rules:
+
+```css
+/* Example: trick strip */
+.ir-trick-strip .cp-card.mid { width: 24px; height: 36px; }
+.ir-trick-strip .cp-card.mid .corner .su { display: none !important; }
+.ir-trick-strip .cp-card.mid .center { font-size: 16px; font-family: Georgia, serif; }
+
+/* Example: E/W show-hands row */
+.ir-show-hands-ew .ir-show-hands-cards .cp-card.mid { width: 30px; height: 50px; }
+.ir-show-hands-ew .ir-show-hands-cards .cp-card.mid .corner .su { display: none !important; }
+.ir-show-hands-ew .ir-show-hands-cards .cp-card.mid .center { font-size: 24px; }
+```
+
+And in JSX: `<Card card={c} mid disabled />` — never `small`.
+
+### Suit glyph font rule (also critical)
+
+`.center` and `.corner .su` must use `font-family: Georgia, 'Times New Roman', serif`.
+Cinzel does not contain ♠ ♥ ♦ ♣ — suits silently vanish without this override.
+
+```css
+.theme-irish .cp-card .center        { font-family: Georgia, 'Times New Roman', serif; }
+.theme-irish .cp-card .corner .su    { font-family: Georgia, 'Times New Roman', serif; }
+```
+
+**Side effect of fixing fonts:** Cinzel is more compact than the system serif fallback —
+card center font sizes may need increasing after a font fix.
 
 ---
 
