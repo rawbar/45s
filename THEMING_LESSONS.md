@@ -171,6 +171,39 @@ Keep positioning in the element style; keep only scale/opacity/rotation in keyfr
 
 ---
 
+## Font Loading Rule — Embed @font-face Directly
+
+**Never rely on a Google Fonts `<link>` tag or `@import` for the three critical fonts.**
+The `fonts.googleapis.com` CSS intermediary is a failure point — it makes two hops
+(CSS request → font file request) and can fail silently on some browsers/networks.
+
+**Wrong — two-hop load, can silently fail:**
+```html
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&display=swap" rel="stylesheet">
+```
+
+**Correct — embed @font-face directly, points straight at the font files:**
+```html
+<style>
+  @font-face { font-family: 'Cinzel'; font-style: normal; font-weight: 500; font-display: swap; src: url(https://fonts.gstatic.com/s/cinzel/v26/8vIU7ww63mVu7gtR-kwKxNvkNOjw-uTnTYo.ttf) format('truetype'); }
+  @font-face { font-family: 'Cinzel'; font-style: normal; font-weight: 700; font-display: swap; src: url(https://fonts.gstatic.com/s/cinzel/v26/8vIU7ww63mVu7gtR-kwKxNvkNOjw-jHgTYo.ttf) format('truetype'); }
+  @font-face { font-family: 'Cinzel'; font-style: normal; font-weight: 900; font-display: swap; src: url(https://fonts.gstatic.com/s/cinzel/v26/8vIU7ww63mVu7gtR-kwKxNvkNOjw-n_gTYo.ttf) format('truetype'); }
+  @font-face { font-family: 'Merriweather'; font-style: italic; font-weight: 400; font-display: swap; src: url(https://fonts.gstatic.com/s/merriweather/v33/u-4B0qyriQwlOrhSvowK_l5-eTxCVx0ZbwLvKH2Gk9hLmp0v5yA-xXPqCzLvPee1XYk_XSf-FmTCUF3w.ttf) format('truetype'); }
+  @font-face { font-family: 'Inter'; font-style: normal; font-weight: 400; font-display: swap; src: url(https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf) format('truetype'); }
+  @font-face { font-family: 'Inter'; font-style: normal; font-weight: 500; font-display: swap; src: url(https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fMZg.ttf) format('truetype'); }
+  @font-face { font-family: 'Inter'; font-style: normal; font-weight: 600; font-display: swap; src: url(https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuGKYMZg.ttf) format('truetype'); }
+  @font-face { font-family: 'Inter'; font-style: normal; font-weight: 700; font-display: swap; src: url(https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYMZg.ttf) format('truetype'); }
+</style>
+```
+
+These URLs are the current live gstatic URLs (confirmed working April 2026). If fonts ever
+stop loading after a long time, the version number in the path (e.g. `v26`, `v33`, `v20`)
+may have changed — re-fetch from Google Fonts to get updated URLs.
+
+The `<link>` tag can remain for non-critical fonts (Playfair Display, Orbitron, Share Tech Mono).
+
+---
+
 ## Font Quoting Rule — React Inline Styles
 
 **Always quote font names with inner single quotes inside the JS string:**
