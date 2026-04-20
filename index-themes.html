@@ -1101,27 +1101,27 @@
     align-items: center; line-height: 0.88;
     font-family: 'Share Tech Mono', monospace;
   }
-  .theme-cyberpunk .cp-card .corner .rk { display: block; }
+  .theme-cyberpunk .cp-card .corner .rk { display: block; font-family: 'Orbitron', sans-serif; font-weight: 700; }
   .theme-cyberpunk .cp-card .corner .su { display: block; opacity: 0.85; }
   .theme-cyberpunk .cp-card.small .corner     { top: 2px; left: 3px; }
   .theme-cyberpunk .cp-card.small .corner.br  { top: auto; left: auto; bottom: 2px; right: 3px; transform: rotate(180deg); }
-  .theme-cyberpunk .cp-card.small .corner .rk { font-size: 9px; }
+  .theme-cyberpunk .cp-card.small .corner .rk { font-size: 10px; }
   .theme-cyberpunk .cp-card.small .corner .su { font-size: 7px; }
   .theme-cyberpunk .cp-card.mid .corner       { top: 3px; left: 4px; }
   .theme-cyberpunk .cp-card.mid .corner.br    { top: auto; left: auto; bottom: 3px; right: 4px; transform: rotate(180deg); }
-  .theme-cyberpunk .cp-card.mid .corner .rk   { font-size: 13px; }
+  .theme-cyberpunk .cp-card.mid .corner .rk   { font-size: 14px; }
   .theme-cyberpunk .cp-card.mid .corner .su   { font-size: 10px; }
   .theme-cyberpunk .cp-card.large .corner     { top: 4px; left: 5px; }
   .theme-cyberpunk .cp-card.large .corner.br  { top: auto; left: auto; bottom: 4px; right: 5px; transform: rotate(180deg); }
-  .theme-cyberpunk .cp-card.large .corner .rk { font-size: 17px; }
+  .theme-cyberpunk .cp-card.large .corner .rk { font-size: 19px; }
   .theme-cyberpunk .cp-card.large .corner .su { font-size: 12px; }
   .theme-cyberpunk .cp-card .center {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     filter: drop-shadow(0 0 5px currentColor);
   }
-  .theme-cyberpunk .cp-card.mid .center   { font-size: 26px; }
-  .theme-cyberpunk .cp-card.large .center { font-size: 38px; }
+  .theme-cyberpunk .cp-card.mid .center   { font-size: 28px; }
+  .theme-cyberpunk .cp-card.large .center { font-size: 42px; }
   .theme-cyberpunk .cp-card.back {
     background:
       repeating-linear-gradient(0deg, transparent 0px, transparent 8px, rgba(0,229,255,0.1) 8px, rgba(0,229,255,0.1) 9px),
@@ -1719,6 +1719,13 @@
     line-height: 1.55;
     max-width: 260px;
   }
+  .cp-lb-avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(0,229,255,0.06);
+    border: 2px solid rgba(0,229,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; overflow: hidden; flex-shrink: 0;
+  }
   .cp-lb-score {
     font-family: 'Orbitron', sans-serif;
     font-size: 20px;
@@ -2264,15 +2271,17 @@
   }
   .cp-show-hands-ew {
     /* compact variant for East/West players */
-    overflow: hidden;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .cp-show-hands-ew .cp-show-hands-cards {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
     justify-content: flex-start;
   }
   .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid {
-    width: 28px;
-    height: 44px;
+    width: 26px;
+    height: 42px;
     border-radius: 3px;
   }
   .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .corner .rk {
@@ -2282,7 +2291,7 @@
     font-size: 7px;
   }
   .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .center {
-    font-size: 18px;
+    font-size: 16px;
   }
   .cp-trick-strip {
     display: flex;
@@ -2437,11 +2446,15 @@
   /* ── CP: Stats / Badges Modal ── */
   .cp-stat-card {
     position: relative;
-    background: rgba(4,10,20,0.8);
-    border: 1px solid rgba(0,229,255,0.25);
-    border-radius: 2px;
-    padding: 14px 12px;
-    text-align: center;
+    background: rgba(0,229,255,0.04);
+    border: 1px solid rgba(0,229,255,0.22);
+    border-radius: 4px;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 72px;
   }
   .cp-stat-card::before {
     content: '';
@@ -2465,19 +2478,18 @@
   .cp-stat-num {
     font-family: 'Orbitron', sans-serif;
     font-weight: 700;
-    font-size: 28px;
+    font-size: 26px;
     color: #00e5ff;
-    text-shadow: 0 0 12px rgba(0,229,255,0.5);
-    letter-spacing: 1px;
-    line-height: 1;
-    margin-bottom: 4px;
+    text-shadow: 0 0 10px rgba(0,229,255,0.5);
+    line-height: 1.1;
   }
   .cp-stat-label {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    color: rgba(0,229,255,0.4);
-    text-transform: uppercase;
+    font-size: 9px;
+    color: rgba(0,229,255,0.45);
     letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
   }
   .cp-badge-grid {
     display: grid;
@@ -3037,7 +3049,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.28.2';
+const VERSION = '2.28.3';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5722,6 +5734,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isCyberpunk = currentThemeId === 'cyberpunk';
 
   const versionHistory = [
+    { version: '2.28.3', date: 'Apr 2026', changes: ['Card rank corners use Orbitron bold — more readable', 'Stat boxes: visible cyan borders and consistent sizing', 'Leaderboard avatar chips cyberpunk dark/cyan (no more green)', 'Round Summary E/W cards scroll horizontally, no overflow'] },
     { version: '2.28.2', date: 'Apr 2026', changes: ['Dealer chip amber pulse glow animation', 'Pass bid badge dim cyan, bagged badge magenta', 'Choose Your Seat modal full cyberpunk styling', 'Lobby topbar, Create Game, Profile Settings modals cyberpunk', 'Round Summary E/W cards fit fix, close button styled', 'Waiting room center circle cyberpunk dark/cyan'] },
     { version: '2.28.1', date: 'Apr 2026', changes: ['Cyberpunk bid/pass/trump/discard buttons fully neon-styled', 'Follow-suit toast in magenta for cyberpunk', 'Score strip Orbitron numbers with green/magenta team colors', 'All remaining brass/gold hardcoded colors removed from cyberpunk paths'] },
     { version: '2.28.0', date: 'Apr 2026', changes: ['Complete cyberpunk theme: all screens, modals, and game table fully styled', 'Cyberpunk login, lobby, waiting room in full neon aesthetic', 'Cyberpunk variants for ShowHands, RoundEnd, GameOver, Stats, Preferences, and all modals', 'Font loading hardened: Orbitron and Share Tech Mono via embedded @font-face'] },
@@ -6446,7 +6459,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
   if (isCyberpunk) {
     return (
       <div className="cp-modal-overlay" onClick={onClose}>
-        <div className="cp-modal" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '400px', maxHeight: '92dvh', overflowY: 'auto' }}>
+        <div className="cp-modal" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '400px', maxHeight: '82vh', overflowY: 'auto' }}>
           <div className="cp-modal-header">
             <span className="cp-modal-title">Round Summary</span>
             <button className="cp-modal-close" onClick={onClose}>×</button>
@@ -6482,7 +6495,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             {renderHand(0, getPlayerName(0))}
 
             {/* East / West side by side */}
-            <div className="cp-show-hands-ew" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+            <div className="cp-show-hands-ew" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
               {renderHand(3, getPlayerName(3), true)}
               {renderHand(1, getPlayerName(1), true)}
             </div>
@@ -8170,7 +8183,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
         >
           {rank === 0 && <span className="irlb-crown">👑</span>}
           <div className={isCyberpunk ? `cp-rank-num${rankLabel ? ' ' + rankLabel : ''}` : `irlb-lb-rank${rankLabel ? ' ' + rankLabel : ''}`}>{rank + 1}</div>
-          <div className="irlb-lb-avatar">{getAvatarById(player.avatar).emoji}</div>
+          <div className={isCyberpunk ? 'cp-lb-avatar' : 'irlb-lb-avatar'}>{getAvatarById(player.avatar).emoji}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className={isCyberpunk ? 'cp-lb-username' : 'irlb-lb-username'}>{player.username}</div>
             <div className="irlb-lb-stats">{player.gamesPlayed} games · {player.winRate}% win</div>
