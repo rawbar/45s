@@ -1,8 +1,8 @@
 # 45s Theming — Lessons & Architecture
 
 Everything an agent needs to implement a new theme correctly the first time.
-Derived from the Irish Card Room theming session (v2.26–v2.27.47) and the
-Cyberpunk theme session (v2.28.0–v2.29.8).
+Derived from: Irish Card Room (v2.26–v2.27.47), Cyberpunk (v2.28.0–v2.29.8),
+Arabian Nights (v2.30.0–v2.30.5).
 
 ---
 
@@ -20,6 +20,34 @@ const [activeTheme, setActiveTheme] = useState('irish');
 - Theme change: update `currentThemeId`, call `setActiveTheme`, write to Firebase
 - CSS is gated with `.theme-irish` class on the root `.v3-phone` div
 - Theme tiles live in **Preferences modal** (not Profile Settings)
+
+---
+
+## Design Tokens — Arabian Nights (third theme implemented)
+
+```
+bg:         linear-gradient(175deg, #060a16 0%, #030609 100%)
+navy:       #0d1829
+gold:       #c9a227   (primary accent — borders, glows)
+goldHi:     #f6d778   (text highlight, strong accent)
+goldLo:     #8a6421   (shadow end of gradients)
+ruby:       #cc0022   (danger / bagged)
+sapphire:   #1a4acc   (info / me-blue equivalent)
+emerald:    #1a8b4a   (partner / positive)
+felt:       radial-gradient(ellipse at center, #1a1000 0%, #0a0800 100%)  (dark warm table center)
+paper:      linear-gradient(162deg, #fbf6e4 0%, #f1e8cf 100%)  (card face — same as Irish)
+walnut:     #0a0800   (deepest bg)
+
+Fonts: Cinzel 700/900 (headings, numbers), Georgia serif (card suits), Inter (UI numbers)
+Marble background image: url('copilot_image_1776712112401.jpeg') with overlay rgba(6,10,22,0.74)
+Theme root class: `theme-arabian` on `.v3-phone` and lobby/WR root divs
+WR/lobby bg class: `an-waiting-bg`, `an-lobby-bg`
+```
+
+Card back: dark cross-hatch pattern + `☽` crescent centered via `position:absolute; top:50%; left:50%; transform:translate(-50%,-50%)`.
+
+Gem system: rotated square `.an-gem` with radial gradient fill + gold bezel + `::after` light reflection.
+Used in bid buttons and bid coins.
 
 ---
 
@@ -246,26 +274,174 @@ time, the version may have changed — re-fetch to get updated URLs.
 
 ---
 
+## Adding a New Theme — Mandatory Checklist
+
+Every item below was missed at least once across the three existing themes. Run through
+this list completely before reporting a theme as done.
+
+### Step 1 — Register the theme
+
+```javascript
+// 1. Add to THEMES object (search "const THEMES")
+'mytheme': {
+  id: 'mytheme', name: 'My Theme',
+  unlocked: (stats) => true,   // or a stats-based condition
+  unlockHint: 'unlock message',
+  cssClass: 'theme-mytheme'
+}
+
+// 2. Add to THEME_ORDER array
+const THEME_ORDER = ['irish', 'cyberpunk', 'arabian', 'mytheme'];
+
+// 3. Add CSS class to the root .v3-phone ternary (~line 15166)
+className={`v3-phone ${
+  currentThemeId === 'cyberpunk' ? 'theme-cyberpunk' :
+  currentThemeId === 'arabian' ? 'theme-arabian' :
+  currentThemeId === 'mytheme' ? 'theme-mytheme' :
+  'theme-irish'
+}`}
+```
+
+### Step 2 — CSS block requirements
+
+Add a `.theme-mytheme` CSS block. The following rules are **mandatory** — missing any one
+has broken cards or layout in all three existing themes:
+
+```css
+/* MANDATORY — card center suit centering. MUST include position:absolute; inset:0.
+   Without it the .center div collapses to zero height and suits are invisible. */
+.theme-mytheme .cp-card .center {
+  position: absolute;          /* ← NON-NEGOTIABLE */
+  inset: 0;                    /* ← NON-NEGOTIABLE */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Georgia, 'Times New Roman', serif;  /* ← Cinzel has no suit glyphs */
+  font-size: 22px;
+  line-height: 1;
+}
+.theme-mytheme .cp-card.mid .center   { font-size: 28px; }
+.theme-mytheme .cp-card.large .center { font-size: 42px; }
+
+/* MANDATORY — corner suit font (Cinzel has no ♠♥♦♣) */
+.theme-mytheme .cp-card .corner .su { font-family: Georgia, 'Times New Roman', serif; }
+
+/* MANDATORY — hide corner suits on mid cards (center suit is the display) */
+.theme-mytheme .cp-card.mid .corner .su   { display: none; }
+.theme-mytheme .cp-card.large .corner .su { display: none; }
+
+/* Rail overrides — if your theme has a custom background, the Irish green felt
+   will show through without these. */
+.theme-mytheme .v3-rail          { /* override rail bg */ }
+.theme-mytheme .v3-brass-ring    { /* override ring bg + border */ }
+.theme-mytheme .v3-felt          { /* override felt surface */ }
+.theme-mytheme .v3-clover-inlay  { display: none; }  /* hide Irish shamrocks */
+```
+
+Also add standalone CSS rules for card contexts that render **outside** the `.v3-phone.theme-mytheme`
+scope (modals are `position:fixed` and may portal out of the theme root):
+
+```css
+/* Show-hands modal cards — these MUST work even outside .theme-mytheme scope */
+.mt-show-hands-cards .cp-card.mid {
+  width: 30px; height: 50px;
+}
+.mt-show-hands-cards .cp-card.mid .corner .su { display: none !important; }
+.mt-show-hands-cards .cp-card.mid .center {
+  position: absolute; inset: 0;  /* ← required here too if outside theme root */
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  font-family: Georgia, serif;
+  line-height: 1;
+}
+/* Trick strip cards */
+.mt-trick-strip .cp-card.mid { width: 24px; height: 36px; }
+.mt-trick-strip .cp-card.mid .corner .su { display: none !important; }
+.mt-trick-strip .cp-card.mid .center { font-size: 16px; font-family: Georgia, serif; }
+```
+
+### Step 3 — Known two-way ternaries that need a third branch
+
+**Every item below will silently fall to the wrong theme for new themes.**
+Search each location after adding a new theme and add the new branch.
+
+| Location | What breaks | Fix |
+|----------|-------------|-----|
+| **Waiting room center circle** (~line 11844) | Shows wrong felt/bg for new theme | Add `isNewTheme ? { ... } :` branch between cyberpunk and irish |
+| **renderIrishSeat** (~line 11672) | `isCyberpunk ? 'cp-seat-card' : ''` — new theme gets no class | Add `isNewTheme ? 'mt-seat-card' : ''` |
+| **renderIrishSeat seat label/text** (~line 11680) | Falls to Irish gold Cinzel | Add explicit new-theme style if different |
+| **Theme preview modal** (~line 10740) | Shows wrong bg/felt/colors in the preferences preview | 40+ ternaries; add new-theme branches throughout |
+| **renderHand helper** (~line 6765) | Name font, color, border falls to Irish | Add all three-way branches for color/font |
+| **`nameFontFamily`** (~line 6765) | Falls to `'Cinzel', serif` | OK if theme uses Cinzel; add branch if different |
+| **Create Account button text** (~line 7965) | Falls to generic "Create Account" | Add `isNewTheme ? 'Your Text' :` |
+| **Achievement item colors** (~line 16142) | `isIrish ? brass : cyberpunkPurple` — new theme gets purple | Add `isNewTheme ? newColor :` |
+| **Score strip font family** (various) | Falls to Irish Merriweather/Cinzel | Add branch if theme uses different fonts |
+| **Lobby background root class** | New theme gets no class → no scroll chain | Add `currentThemeId === 'mytheme' ? 'mt-lobby-bg' :` |
+| **WaitingRoom gate** (~line 11724) | `if (isIrish \|\| isCyberpunk \|\| isArabian)` | Add `\|\| isNewTheme` |
+
+**Grep command to find all two-way ternaries missing your new theme:**
+```
+grep -n "isCyberpunk ?" index-test.html | grep -v "isArabian\|isNewTheme"
+grep -n "isIrish ?" index-test.html | grep -v "isArabian\|isNewTheme"
+```
+
+### Step 4 — Test checklist
+
+Run through `THEME_TEST_CHECKLIST.md` on a real device (Android Chrome).
+Pay special attention to:
+- Round Summary modal: center suits on N/S AND E/W cards
+- Game table: no Irish green felt/rail showing through
+- Waiting room: center circle styled correctly (not Irish green)
+- Theme preview modal in Preferences: shows new theme bg/colors
+- All modals (stats, badges, create game, choose seat) themed
+
+---
+
 ## Multi-Theme JSX Pattern
 
 When there are two or more themes, components branch by theme ID. The module-level variable
 `currentThemeId` is readable everywhere without props.
 
 ```javascript
-// Detection — declare at top of component
+// Detection — declare at top of every component that renders theme-dependent UI
 const isCyberpunk = currentThemeId === 'cyberpunk';
-const isIrish = currentThemeId === 'irish';
+const isIrish     = currentThemeId === 'irish';
+const isArabian   = currentThemeId === 'arabian';
 
-// Class switching
-<div className={isCyberpunk ? 'cp-lobby-bg' : 'irish-lobby-bg theme-irish'}>
+// Class switching — always three-way, never two-way
+<div className={
+  isCyberpunk ? 'cp-lobby-bg' :
+  isArabian   ? 'an-lobby-bg' :
+                'irish-lobby-bg theme-irish'
+}>
 
-// Inline style switching
-style={isCyberpunk ? { color: '#00e5ff', fontFamily: "'Orbitron',sans-serif" }
-                   : { color: '#f6d778', fontFamily: "'Cinzel',serif" }}
+// Inline style switching — always three-way
+style={
+  isCyberpunk ? { color: '#00e5ff', fontFamily: "'Orbitron',sans-serif" } :
+  isArabian   ? { color: '#f6d778', fontFamily: "'Cinzel',serif" } :
+                { color: '#f6d778', fontFamily: "'Cinzel',serif" }
+}
 
 // Shared structure for themes with same layout
-{(isIrish || isCyberpunk) && <div className="compass-grid">...</div>}
+{(isIrish || isCyberpunk || isArabian) && <div className="compass-grid">...</div>}
 ```
+
+### ⛔ NEVER write a two-way ternary for themed UI
+
+Every `isCyberpunk ? A : B` will silently apply B to ALL future themes. When Arabian was
+added, 20+ two-way ternaries showed Irish green felt in the Arabian theme. **Always write
+three-way (or more) ternaries:**
+
+```javascript
+// WRONG — new themes get Irish styling silently
+background: isCyberpunk ? '#060d18' : '#180b03'
+
+// CORRECT — explicit for every theme
+background: isCyberpunk ? '#060d18' : isArabian ? '#060a16' : '#180b03'
+```
+
+If two themes share the same value, it's fine to have them both in the fallthrough — the
+point is that the code is explicit and future maintainers see what each theme gets.
 
 ### Modal Early-Return Pattern
 
@@ -276,14 +452,18 @@ function SomeModal({ ... }) {
   if (currentThemeId === 'cyberpunk') {
     return <div className="cp-modal-overlay">...</div>;
   }
+  if (currentThemeId === 'arabian') {
+    return <div className="an-modal-overlay">...</div>;
+  }
   // Irish (default) falls through
   return <div style={{ ...irishStyles }}>...</div>;
 }
 ```
 
-⛔ **Trap:** If a modal only checks `isIrish` and returns null for the else-case, cyberpunk
-gets a blank screen. Always add an explicit cyberpunk branch OR a default catch-all. This
-broke the GameOver modal — it returned null for cyberpunk until fixed.
+⛔ **Trap:** If a modal only checks `isIrish` and returns null for the else-case, all other
+themes get a blank screen. Always add an explicit branch for every theme OR a themed
+catch-all. The GameOver modal returned null for cyberpunk until fixed — same pattern
+breaks for every new theme added.
 
 ---
 
@@ -974,38 +1154,44 @@ Bid flash, diamond arrow, deal origin, draw animation direction — all derive f
 
 ## Screens That Need Theming (complete list)
 
-For each new theme, every one of these needs a themed implementation:
+For each new theme, every one of these needs a themed implementation.
+⚠️ Items marked **[TERNARY]** are locations with known two-way ternaries — grep for them
+and add a new branch when adding a theme.
 
 1. **Login** — form, background, button
-2. **Lobby root bg** — `height:100dvh + overflow:hidden + display:flex` (NOT `min-height`) — required for leaderboard scroll
+2. **Lobby root bg** — `height:100dvh + overflow:hidden + display:flex` (NOT `min-height`) — required for leaderboard scroll **[TERNARY]**
 3. **Lobby topbar** — logo, title, version number (tappable → release notes)
 4. **Lobby game list** — rows, status badges, seat pips
-5. **Lobby leaderboard tab** — rank rows, top-3 treatment, badges, **avatar chips** (theme-specific class, not hardcoded color)
+5. **Lobby leaderboard tab** — rank rows, top-3 treatment, badges, **avatar chips** (theme-specific class, not hardcoded color) **[TERNARY]**
 6. **Lobby online strip** — presence dots, usernames
 7. **Lobby action buttons** — Create Game, Refresh, tabs
 8. **Waiting room** — compass grid, seat cards, player chips, Start button
-9. **Seat picker** — compass layout, seat selection
-10. **Game table nameplates** — me/partner/opponent variants, active glow
-11. **Bid buttons** — primary/ghost/disabled states
-12. **Trump select buttons** — suit buttons (red suits vs black suits may glow differently)
-13. **Follow-suit toast** — alert strip
-14. **Score strip** — tap-to-expand, column order (+pts LEFT of total)
-15. **Last-trick strip** — always reserves height during playing phase; **each theme needs its own branch using `mid` cards** (never `small`) — see card size rule
-16. **Trick overlay** — cards in center rail (absolutely positioned)
-17. **Bid flash animation** — large floating text at bidder compass position
-18. **Diamond announce** — centered in rail, directional arrow to bid winner
-19. **Deal animation** — cards fly from dealer direction, 3-3-3-kitty-2-2-2-2 sequence
-20. **Kitty overlay** — 3 cards on table, flies to bid winner on trump select
-21. **Draw animation** — newly drawn cards slide in (all 4 players, 200ms stagger)
-22. **Dealer chip** — `D` badge on dealer's nameplate (cyberpunk: amber pulse glow animation)
-23. **Bid coin/pass badge** — bid amount indicators on nameplates during bidding
-24. **ShowHandsModal** — 4 players, E/W compact (use `mid` sized down via CSS, NEVER `small`), large center suit
-25. **Stats/badges modal** — **all 12 stat boxes + Last Seen** (compare against Irish; cyberpunk v2.28 shipped with only 6 initially)
-26. **Round-end modal (ShowHandsModal)** — see *ShowHandsModal Definitive Layout Spec* section above; 30×50px cards, 12px body padding override, 8px EW gap, NO `overflow-x:auto`; `renderHand()` helper must be theme-aware (fonts, colors); corner suits hidden on all cards
-27. **Game-over modal** — winner announcement (⛔ must handle ALL themes — returning null for non-Irish breaks it)
-28. **Preferences modal** — house rules, theme tiles (themes live HERE not in profile)
-29. **Leave confirm modal** — themed, never system dialog
-30. **GameWrapper init** — return null
+9. **Waiting room center circle** — **[TERNARY]** at ~line 11844; shows wrong bg/color for new themes if not added
+10. **Seat picker** — compass layout, seat selection
+11. **`renderIrishSeat` seat cards** — **[TERNARY]** at ~line 11672; cyberpunk gets CSS class, new themes need explicit class or accepted fallthrough
+12. **Theme preview modal** — **[TERNARY × 40+]** at ~line 10740; entire fake table preview uses two-way ternaries; add new-theme branches for bg, cards, rail, colors
+13. **Game table nameplates** — me/partner/opponent variants, active glow
+14. **Bid buttons** — primary/ghost/disabled states
+15. **Trump select buttons** — suit buttons (red suits vs black suits may glow differently)
+16. **Follow-suit toast** — alert strip
+17. **Score strip** — tap-to-expand, column order (+pts LEFT of total)
+18. **Last-trick strip** — always reserves height during playing phase; **each theme needs its own branch using `mid` cards** (never `small`) — see card size rule
+19. **Trick overlay** — cards in center rail (absolutely positioned)
+20. **Bid flash animation** — large floating text at bidder compass position
+21. **Diamond announce** — centered in rail, directional arrow to bid winner
+22. **Deal animation** — cards fly from dealer direction, 3-3-3-kitty-2-2-2-2 sequence
+23. **Kitty overlay** — 3 cards on table, flies to bid winner on trump select
+24. **Draw animation** — newly drawn cards slide in (all 4 players, 200ms stagger)
+25. **Dealer chip** — `D` badge on dealer's nameplate
+26. **Bid coin/pass badge** — bid amount indicators on nameplates during bidding
+27. **ShowHandsModal** — 4 players, E/W compact (use `mid` sized down via CSS, NEVER `small`), large center suit; standalone CSS must include `position:absolute; inset:0` on `.center` **[TERNARY]**
+28. **Stats/badges modal** — **all 12 stat boxes + Last Seen** (compare against Irish; cyberpunk v2.28 shipped with only 6 initially) **[TERNARY]**
+29. **Round-end modal (ShowHandsModal)** — 30×50px cards, 12px body padding override, 8px EW gap, NO `overflow-x:auto`; `renderHand()` helper must be theme-aware **[TERNARY]**
+30. **Game-over modal** — winner announcement (⛔ must handle ALL themes — returning null for non-Irish breaks it)
+31. **Preferences modal** — house rules, theme tiles (themes live HERE not in profile)
+32. **Leave confirm modal** — themed, never system dialog
+33. **Achievement item colors** — **[TERNARY]** at ~line 16142; `isIrish ? brass : cyberpunkPurple` breaks for new themes
+34. **GameWrapper init** — return null
 
 ---
 
