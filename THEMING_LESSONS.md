@@ -359,6 +359,25 @@ const versionHistory = [
 
 ---
 
+## Deleting Dead Code — Full Removal Checklist
+
+When removing a modal or feature, grep for ALL related symbols before committing:
+
+```
+// If you delete a modal, also delete:
+const [modalState, setModalState] = useState(...)   // the state declaration
+setModalState(...)                                   // ALL setter calls (may be in other functions)
+modalState && (...)                                  // the render gate
+```
+
+**The setStatsTab lesson:** The old tabbed stats modal was deleted and `statsTab` state removed,
+but `setStatsTab('stats')` inside `fetchPlayerStats` was missed. This caused a runtime crash
+whenever a player was tapped in the leaderboard.
+
+**Rule:** After deleting any `useState`, grep for the setter name (`set<X>`) before pushing.
+
+---
+
 ## Modal Rules
 
 **NEVER use `window.confirm`, `window.alert`, or `window.prompt`.**
