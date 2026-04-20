@@ -1751,7 +1751,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.34';
+const VERSION = '2.27.35';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4416,7 +4416,11 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
-    { version: '2.27.31', date: 'Apr 2026', changes: ['Draw animation: cards slide in from center-table when drawn after discard. Detects newly added drawnCards IDs, animates with dealIn from above for 0.55s.'] },
+    { version: '2.27.35', date: 'Apr 2026', changes: ['Release notes: tap version number in lobby to view changelog.'] },
+    { version: '2.27.34', date: 'Apr 2026', changes: ['Game list: finished games now show human player names. Removed redundant "Finished" sub-text (badge already says Done). Playing badge renamed Live.'] },
+    { version: '2.27.33', date: 'Apr 2026', changes: ['Bid flash suppressed while deal animation plays. Draw cards stagger 200ms apart (all 4 players). ShowHandsModal E/W row uses small cards so all 10 fit on screen.'] },
+    { version: '2.27.32', date: 'Apr 2026', changes: ['Opponent draw animation: N/E/W cards slide in from their direction when drawn after discard. Trick strip always reserves height during playing phase — no more layout jump between tricks.'] },
+    { version: '2.27.31', date: 'Apr 2026', changes: ['Draw animation: cards slide in when drawn after discard.'] },
     { version: '2.27.30', date: 'Apr 2026', changes: ['Exit button now shows themed Leave Game confirm modal (dark walnut, brass border, Cinzel) instead of browser system dialog. No more system dialogs going forward.'] },
     { version: '2.27.29', date: 'Apr 2026', changes: ['Deal animation: all 4 players animated in 3-3-3-3-kitty-2-2-2-2 sequence. 150ms stagger per card, kitty appears after first round, bidding locked until ~4.5s. All positions use getDealDelay helper keyed by deal order from dealer+1.'] },
     { version: '2.27.28', date: 'Apr 2026', changes: ['Kitty cards stay on table through bidding/trump-select; fly toward bid winner when trump is chosen. Deal cards slowed (0.65s, 300ms stagger, 3.5s lock). Kitty flies with direction-specific keyframes.'] },
@@ -6048,7 +6052,7 @@ function LoginScreen({ onLogin }) {
     </div>
   );
 }
-function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme, onThemeChange }) {  // Updated signature
+function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme, onThemeChange, onShowReleaseNotes }) {  // Updated signature
   const [games, setGames] = useState({});
   const [rejoinGame, setRejoinGame] = useState(null); // { gameId, seat, name }
   const [showCreateGame, setShowCreateGame] = useState(false);
@@ -6768,7 +6772,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           <div className="irlb-topbar-center">The Card Room</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div className="irlb-topbar-right-cluster">
-              <span className="irlb-version">v{VERSION}</span>
+              <span className="irlb-version" onClick={onShowReleaseNotes} style={{ cursor: onShowReleaseNotes ? 'pointer' : 'default', textDecoration: onShowReleaseNotes ? 'underline' : 'none', textDecorationColor: 'rgba(201,162,74,0.3)' }}>v{VERSION}</span>
               {playerName?.toLowerCase() === 'robr' && (
                 <a
                   href="admin-reset-stats.html"
@@ -9976,9 +9980,9 @@ function MultiplayerApp() {
     return (
       <>
         <LobbyScreen
-          userId={userId}  // Changed from playerId
+          userId={userId}
           playerName={playerName}
-          playerAvatar={playerAvatar}  // NEW
+          playerAvatar={playerAvatar}
           onJoinGame={handleJoinGame}
           activeTheme={activeTheme}
           onThemeChange={(themeId) => {
@@ -9986,6 +9990,7 @@ function MultiplayerApp() {
             setActiveTheme(themeId);
             database.ref(`users/${userId}/settings/theme`).set(themeId);
           }}
+          onShowReleaseNotes={() => setShowWhatsNew(true)}
         />
         <WhatsNewModal isOpen={showWhatsNew} onClose={handleCloseWhatsNew} />
 
