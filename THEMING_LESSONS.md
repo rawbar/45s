@@ -171,6 +171,21 @@ Keep positioning in the element style; keep only scale/opacity/rotation in keyfr
 
 ---
 
+## Badge Symbol Rendering Rule
+
+Badge `sym` values are a mix of emoji (`'⚡'`, `'🏆'`) and text (`'30'`, `'W10'`, `'30★'`).
+Text symbols MUST use `fontFamily: 'Cinzel, serif'` — without it they fall back to the browser's ugly system font.
+Browsers automatically override Cinzel with emoji rendering for actual emoji, so applying Cinzel universally is safe.
+
+Font size by symbol length:
+```javascript
+fontSize: sym.length <= 1 ? '22px' : sym.length === 2 ? '15px' : sym.length <= 4 ? '10px' : '8px'
+```
+
+Color: `earned ? brassHi : 'rgba(255,255,255,0.4)'` — never hardcode `'#bbb'` or `'#fff'`.
+
+---
+
 ## Version Bump Rule
 
 **Every time `VERSION` is changed, a matching entry MUST be added to `versionHistory` in `WhatsNewModal`.**

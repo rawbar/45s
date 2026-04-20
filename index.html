@@ -1757,7 +1757,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.40';
+const VERSION = '2.27.41';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4422,6 +4422,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.41', date: 'Apr 2026', changes: ['Badge symbols (30, W10, 30★, etc.) now render in Cinzel brass — no more ugly system font fallback.'] },
     { version: '2.27.40', date: 'Apr 2026', changes: ['E/W player areas no longer jump or shift during play — pinned to top of row regardless of table height changes.'] },
     { version: '2.27.39', date: 'Apr 2026', changes: ['View Round: E/W compact cards now show large center suit symbol (corner suit hidden), matching North/South style.'] },
     { version: '2.27.38', date: 'Apr 2026', changes: ['No more flash of old UI when game starts — waiting room stays visible until table is ready.'] },
@@ -7214,11 +7215,16 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                                   boxShadow: isActive
                                     ? '0 0 16px rgba(246,215,120,0.6), 0 0 0 4px rgba(246,215,120,0.1)'
                                     : earned ? '0 0 8px rgba(201,162,74,0.3)' : 'none',
-                                  fontSize: badge.sym.length > 2 ? '10px' : '22px',
-                                  color: earned ? '#fff' : '#bbb',
-                                  fontWeight: 'bold',
                                 }}>
-                                  <span style={{ opacity: earned ? 1 : 0.22, lineHeight: 1 }}>{badge.sym}</span>
+                                  <span style={{
+                                    opacity: earned ? 1 : 0.25,
+                                    lineHeight: 1,
+                                    fontFamily: 'Cinzel, serif',
+                                    fontWeight: 700,
+                                    fontSize: badge.sym.length <= 1 ? '22px' : badge.sym.length === 2 ? '15px' : badge.sym.length <= 4 ? '10px' : '8px',
+                                    color: earned ? brassHi : 'rgba(255,255,255,0.4)',
+                                    letterSpacing: badge.sym.length > 2 ? '-0.5px' : '0',
+                                  }}>{badge.sym}</span>
                                   {!earned && <span style={{ position: 'absolute', bottom: '-1px', right: '-1px', fontSize: '11px', lineHeight: 1 }}>🔒</span>}
                                 </div>
                                 <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '9px', color: 'rgba(232,228,217,0.45)', textAlign: 'center', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>{badge.name}</div>
@@ -7257,10 +7263,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                           style={{ position: 'absolute', top: '10px', right: '12px', background: 'none', border: 'none', color: 'rgba(201,162,74,0.6)', fontSize: '18px', cursor: 'pointer', lineHeight: 1, padding: '4px' }}
                         >×</button>
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                          <div style={{ fontSize: '40px', lineHeight: 1, flexShrink: 0, filter: earned ? 'drop-shadow(0 0 8px rgba(201,162,74,0.5))' : 'none' }}>
-                            {activeBadgeObj.sym.length > 2
-                              ? <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: activeBadgeObj.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#fff', fontWeight: 'bold' }}>{activeBadgeObj.sym}</div>
-                              : activeBadgeObj.sym}
+                          <div style={{ flexShrink: 0, width: '56px', height: '56px', borderRadius: '50%', background: earned ? felt : 'rgba(18,14,10,0.7)', border: `2px solid ${earned ? '#c9a24a' : 'rgba(255,255,255,0.15)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: earned ? '0 0 16px rgba(201,162,74,0.4)' : 'none' }}>
+                            <span style={{ fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: activeBadgeObj.sym.length <= 1 ? '28px' : activeBadgeObj.sym.length === 2 ? '20px' : activeBadgeObj.sym.length <= 4 ? '13px' : '10px', color: earned ? brassHi : 'rgba(255,255,255,0.3)', lineHeight: 1, letterSpacing: activeBadgeObj.sym.length > 2 ? '-0.5px' : '0' }}>{activeBadgeObj.sym}</span>
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontFamily: 'Cinzel, serif', fontSize: '17px', fontWeight: '700', background: 'linear-gradient(135deg, #f6d778, #c9a24a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', lineHeight: '1.15' }}>{activeBadgeObj.name}</div>
