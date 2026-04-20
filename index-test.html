@@ -680,6 +680,7 @@
   .v3-me-row { display: flex; align-items: center; gap: 10px; }
   .v3-my-hand {
     display: flex;
+    justify-content: center;
     gap: 4px;
     padding: 8px 4px 2px;
   }
@@ -3362,7 +3363,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.30.3';
+const VERSION = '2.30.4';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6057,6 +6058,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.30.4', date: 'Apr 2026', changes: ['Fix player hand cards left-justified — add justify-content:center to .v3-my-hand.'] },
     { version: '2.30.3', date: 'Apr 2026', changes: ['Arabian Nights: waiting room center circle — dark gold theme instead of Irish green felt.'] },
     { version: '2.30.2', date: 'Apr 2026', changes: ['Arabian Nights: fix center suit missing on show-hands cards (position:absolute inset:0 was absent).'] },
     { version: '2.30.1', date: 'Apr 2026', changes: ['Arabian Nights: card backs centered crescent, dark gold rail, all modals themed.'] },
