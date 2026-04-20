@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marble Theme Preview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #111; font-family: system-ui, sans-serif; padding: 16px; color: #eee; }
+  h1 { text-align: center; font-size: 14px; color: #666; margin-bottom: 16px; letter-spacing: 2px; text-transform: uppercase; }
+
+  .row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center; }
+
+  .phone {
+    width: 320px;
+    height: 560px;
+    border-radius: 28px;
+    overflow: hidden;
+    border: 2px solid #333;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .phone-label {
+    text-align: center;
+    font-size: 11px;
+    color: #555;
+    margin-top: 6px;
+    letter-spacing: 1px;
+  }
+
+  /* ── SHARED MARBLE BG ── */
+  .marble-bg {
+    position: absolute; inset: 0;
+    background-image: url('copilot_image_1776712112401.jpeg');
+    background-size: cover;
+    background-position: center;
+  }
+
+  /* ── VARIANT 1: Dark overlay — subdued, text-readable ── */
+  .v1 .overlay {
+    position: absolute; inset: 0;
+    background: rgba(5, 10, 20, 0.72);
+  }
+
+  /* ── VARIANT 2: Medium overlay — marble still pops ── */
+  .v2 .overlay {
+    position: absolute; inset: 0;
+    background: rgba(5, 10, 20, 0.52);
+  }
+
+  /* ── VARIANT 3: Vignette only — full marble, darkened edges ── */
+  .v3 .overlay {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center,
+      rgba(0,0,0,0.25) 0%,
+      rgba(0,0,0,0.65) 100%);
+  }
+
+  /* ── VARIANT 4: Blue tint — leans into the marble's blue ── */
+  .v4 .overlay {
+    position: absolute; inset: 0;
+    background: rgba(5, 15, 35, 0.60);
+  }
+
+  /* ── SAMPLE UI on top ── */
+  .ui { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 20px; }
+
+  .score-row { display: flex; gap: 20px; }
+  .score { font-size: 22px; font-weight: 900; font-family: 'Georgia', serif; }
+  .score.us { color: #5dd084; text-shadow: 0 0 12px rgba(93,208,132,0.6); }
+  .score.them { color: #ef7c74; text-shadow: 0 0 12px rgba(239,124,116,0.6); }
+
+  .nameplate {
+    background: rgba(10,6,2,0.82);
+    border: 1px solid rgba(201,162,74,0.5);
+    border-radius: 6px;
+    padding: 4px 14px;
+    font-size: 12px;
+    color: #f6d778;
+    font-family: 'Georgia', serif;
+    letter-spacing: 0.5px;
+  }
+  .nameplate.active {
+    border-color: #f6d778;
+    box-shadow: 0 0 10px rgba(246,215,120,0.5);
+  }
+
+  .card-row { display: flex; gap: 4px; }
+  .card {
+    width: 36px; height: 52px;
+    background: linear-gradient(145deg, #f5f0e8, #ede5d0);
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  }
+
+  .bid-pill {
+    background: rgba(8,18,32,0.92);
+    border: 1.5px solid rgba(66,165,245,0.9);
+    border-radius: 20px;
+    padding: 4px 16px;
+    font-size: 15px;
+    font-weight: 900;
+    color: #f6d778;
+    font-family: 'Georgia', serif;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 10px rgba(66,165,245,0.5); }
+    50% { box-shadow: 0 0 20px rgba(66,165,245,0.8); }
+  }
+
+  .divider {
+    width: 80%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,162,74,0.4), transparent);
+  }
+
+  .trump-label {
+    font-size: 11px;
+    color: rgba(246,215,120,0.6);
+    font-family: 'Georgia', serif;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Marble Background — Overlay Variants</h1>
+
+<div class="row">
+
+  <!-- Variant 1: Dark -->
+  <div>
+    <div class="phone v1">
+      <div class="marble-bg"></div>
+      <div class="overlay"></div>
+      <div class="ui">
+        <div class="score-row">
+          <span class="score us">N/S 55</span>
+          <span class="score them">E/W 40</span>
+        </div>
+        <div class="divider"></div>
+        <div class="nameplate">AI Player 1</div>
+        <div class="card-row">
+          <div class="card">🂡</div>
+          <div class="card">🂮</div>
+          <div class="card">🂭</div>
+          <div class="card">🂫</div>
+          <div class="card">🂪</div>
+        </div>
+        <div class="bid-pill">20 ♠</div>
+        <div class="trump-label">Trump ♠</div>
+        <div class="nameplate active">Robr (you)</div>
+        <div class="card-row">
+          <div class="card">♠</div>
+          <div class="card">♥</div>
+          <div class="card">♦</div>
+          <div class="card">♣</div>
+          <div class="card">♠</div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Dark (72% overlay)</div>
+  </div>
+
+  <!-- Variant 2: Medium -->
+  <div>
+    <div class="phone v2">
+      <div class="marble-bg"></div>
+      <div class="overlay"></div>
+      <div class="ui">
+        <div class="score-row">
+          <span class="score us">N/S 55</span>
+          <span class="score them">E/W 40</span>
+        </div>
+        <div class="divider"></div>
+        <div class="nameplate">AI Player 1</div>
+        <div class="card-row">
+          <div class="card">🂡</div>
+          <div class="card">🂮</div>
+          <div class="card">🂭</div>
+          <div class="card">🂫</div>
+          <div class="card">🂪</div>
+        </div>
+        <div class="bid-pill">20 ♠</div>
+        <div class="trump-label">Trump ♠</div>
+        <div class="nameplate active">Robr (you)</div>
+        <div class="card-row">
+          <div class="card">♠</div>
+          <div class="card">♥</div>
+          <div class="card">♦</div>
+          <div class="card">♣</div>
+          <div class="card">♠</div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Medium (52% overlay)</div>
+  </div>
+
+  <!-- Variant 3: Vignette -->
+  <div>
+    <div class="phone v3">
+      <div class="marble-bg"></div>
+      <div class="overlay"></div>
+      <div class="ui">
+        <div class="score-row">
+          <span class="score us">N/S 55</span>
+          <span class="score them">E/W 40</span>
+        </div>
+        <div class="divider"></div>
+        <div class="nameplate">AI Player 1</div>
+        <div class="card-row">
+          <div class="card">🂡</div>
+          <div class="card">🂮</div>
+          <div class="card">🂭</div>
+          <div class="card">🂫</div>
+          <div class="card">🂪</div>
+        </div>
+        <div class="bid-pill">20 ♠</div>
+        <div class="trump-label">Trump ♠</div>
+        <div class="nameplate active">Robr (you)</div>
+        <div class="card-row">
+          <div class="card">♠</div>
+          <div class="card">♥</div>
+          <div class="card">♦</div>
+          <div class="card">♣</div>
+          <div class="card">♠</div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Vignette only</div>
+  </div>
+
+  <!-- Variant 4: Blue tint -->
+  <div>
+    <div class="phone v4">
+      <div class="marble-bg"></div>
+      <div class="overlay"></div>
+      <div class="ui">
+        <div class="score-row">
+          <span class="score us">N/S 55</span>
+          <span class="score them">E/W 40</span>
+        </div>
+        <div class="divider"></div>
+        <div class="nameplate">AI Player 1</div>
+        <div class="card-row">
+          <div class="card">🂡</div>
+          <div class="card">🂮</div>
+          <div class="card">🂭</div>
+          <div class="card">🂫</div>
+          <div class="card">🂪</div>
+        </div>
+        <div class="bid-pill">20 ♠</div>
+        <div class="trump-label">Trump ♠</div>
+        <div class="nameplate active">Robr (you)</div>
+        <div class="card-row">
+          <div class="card">♠</div>
+          <div class="card">♥</div>
+          <div class="card">♦</div>
+          <div class="card">♣</div>
+          <div class="card">♠</div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Blue tint (60% overlay)</div>
+  </div>
+
+</div>
+</body>
+</html>
