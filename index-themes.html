@@ -809,19 +809,19 @@
     box-shadow: 0 3px 5px rgba(0,0,0,0.4), 0 1px 1px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.95), 0 0 8px rgba(100,170,230,0.4);
   }
 
-  /* ── Show Hands modal: mid cards scaled to 34px so 5 fit side-by-side ── */
-  .ir-show-hands-cards .cp-card.mid { width: 34px; height: 48px; border-radius: 4px; }
-  .ir-show-hands-cards .cp-card.mid .corner { top: 2px; left: 2px; }
-  .ir-show-hands-cards .cp-card.mid .corner.br { top: auto; left: auto; bottom: 2px; right: 2px; }
-  .ir-show-hands-cards .cp-card.mid .corner .rk { font-size: 9px; }
+  /* ── Show Hands modal: N/S use mid cards at full readable size ── */
+  .ir-show-hands-cards .cp-card.mid { width: 46px; height: 64px; border-radius: 6px; }
+  .ir-show-hands-cards .cp-card.mid .corner { top: 3px; left: 4px; }
+  .ir-show-hands-cards .cp-card.mid .corner.br { top: auto; left: auto; bottom: 3px; right: 4px; }
+  .ir-show-hands-cards .cp-card.mid .corner .rk { font-size: 13px; }
   .ir-show-hands-cards .cp-card.mid .corner .su { display: none !important; }
-  .ir-show-hands-cards .cp-card.mid .center { font-size: 22px; }
-  /* compact E/W row — small cards, same large-center-suit treatment */
-  .ir-show-hands-cards .cp-card.small .corner { top: 1px; left: 2px; }
-  .ir-show-hands-cards .cp-card.small .corner.br { top: auto; left: auto; bottom: 1px; right: 2px; }
-  .ir-show-hands-cards .cp-card.small .corner .rk { font-size: 8px; }
-  .ir-show-hands-cards .cp-card.small .corner .su { display: none !important; }
-  .ir-show-hands-cards .cp-card.small .center { font-size: 18px; }
+  .ir-show-hands-cards .cp-card.mid .center { font-size: 30px; }
+  /* E/W row — mid cards squeezed smaller so 5 fit per side, but still has center element */
+  .ir-show-hands-ew .ir-show-hands-cards .cp-card.mid { width: 30px; height: 44px; border-radius: 4px; }
+  .ir-show-hands-ew .ir-show-hands-cards .cp-card.mid .corner { top: 2px; left: 2px; }
+  .ir-show-hands-ew .ir-show-hands-cards .cp-card.mid .corner.br { top: auto; left: auto; bottom: 2px; right: 2px; }
+  .ir-show-hands-ew .ir-show-hands-cards .cp-card.mid .corner .rk { font-size: 9px; }
+  .ir-show-hands-ew .ir-show-hands-cards .cp-card.mid .center { font-size: 20px; }
 
   /* ── Irish dealer chip ── */
   .theme-irish .v3-dealer-chip {
@@ -1779,7 +1779,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.56';
+const VERSION = '2.27.57';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5115,7 +5115,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             return (
               <div key={i} style={{ position: 'relative' }}>
                 <div style={{ border: ledTrick ? `2px solid ${brassHi}` : 'none', borderRadius: '4px' }}>
-                  <Card card={c} small={compact} mid={!compact} disabled wasDrawn={drawnCards && drawnCards.has(c.id)} wasKitty={kittyCardIds && kittyCardIds.has(c.id)} isFaceUp={faceUpCard && faceUpCard.cardId === c.id} />
+                  <Card card={c} mid disabled wasDrawn={drawnCards && drawnCards.has(c.id)} wasKitty={kittyCardIds && kittyCardIds.has(c.id)} isFaceUp={faceUpCard && faceUpCard.cardId === c.id} />
                 </div>
                 {trickNum !== null && <div style={{ position: 'absolute', top: '-6px', right: '-6px', width: '14px', height: '14px', borderRadius: '50%', background: ledTrick ? brassHi : 'rgba(20,20,20,0.9)', border: ledTrick ? 'none' : `1px solid ${brass}`, color: ledTrick ? '#1a0e03' : brass, fontSize: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cinzel', serif" }}>{trickNum + 1}</div>}
               </div>
@@ -5179,8 +5179,8 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
         {/* North */}
         {renderHand(0, getPlayerName(0))}
 
-        {/* East / West side by side — compact (small cards) to fit on screen */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+        {/* East / West side by side — mid cards squeezed via .ir-show-hands-ew CSS */}
+        <div className="ir-show-hands-ew" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
           {renderHand(3, getPlayerName(3), true)}
           {renderHand(1, getPlayerName(1), true)}
         </div>
