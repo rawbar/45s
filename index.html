@@ -1757,7 +1757,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.43';
+const VERSION = '2.27.44';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4422,6 +4422,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.44', date: 'Apr 2026', changes: ['Stats modal: all accents now gold/brass (removed blue-for-me split). Stat values are bolder (weight 900).'] },
     { version: '2.27.43', date: 'Apr 2026', changes: ['Badge circles now show emoji at full size. Badge detail popup shows large glowing emoji icon instead of a small circle.'] },
     { version: '2.27.42', date: 'Apr 2026', changes: ['All badge symbols replaced with emoji — no more text in badge circles.'] },
     { version: '2.27.41', date: 'Apr 2026', changes: ['Badge symbols (30, W10, 30★, etc.) now render in Cinzel brass — no more ugly system font fallback.'] },
@@ -7034,10 +7035,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
         {/* Irish Card Room — Player Stats Modal (bottom sheet) */}
         {showStatsModal && (() => {
           const brass = '#c9a24a', brassHi = '#f6d778', felt = '#13572a';
-          const meBlue = '#6bb6ff';
           const isMe = statsPlayerId === userId;
-          const accentColor = isMe ? meBlue : brass;
-          const accentHi = isMe ? '#a8d8ff' : brassHi;
+          const accentColor = brass;
+          const accentHi = brassHi;
           const gp = statsData ? (statsData.gamesPlayed || 0) : 0;
           const gw = statsData ? (statsData.gamesWon || 0) : 0;
           const gl = statsData ? (statsData.gamesLost || 0) : (gp - gw);
@@ -7063,7 +7063,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           const statCard = (label, value, isHi) => (
             <div style={{ background: 'rgba(10,40,20,0.6)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '8px', padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '3px' }}>
               <div style={{ fontFamily: 'Merriweather, serif', fontStyle: 'italic', fontSize: '10px', color: 'rgba(251,246,228,0.5)', lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{label}</div>
-              <div style={{ fontFamily: 'Cinzel, serif', fontSize: '16px', fontWeight: '700', color: isHi ? accentHi : '#e8e4d9', lineHeight: 1 }}>{value}</div>
+              <div style={{ fontFamily: 'Cinzel, serif', fontSize: '16px', fontWeight: '900', color: isHi ? accentHi : '#e8e4d9', lineHeight: 1 }}>{value}</div>
             </div>
           );
 
@@ -7087,7 +7087,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               >
                 {/* Drag pill */}
                 <div style={{ flexShrink: 0, position: 'relative', display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
-                  <div style={{ width: '32px', height: '4px', borderRadius: '2px', background: isMe ? 'rgba(107,182,255,0.4)' : 'rgba(201,162,74,0.4)' }} />
+                  <div style={{ width: '32px', height: '4px', borderRadius: '2px', background: 'rgba(201,162,74,0.4)' }} />
                   <button
                     onClick={() => setShowStatsModal(false)}
                     style={{
@@ -7114,7 +7114,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                         background: felt, border: `2px solid ${accentColor}`,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: '34px', flexShrink: 0,
-                        boxShadow: isMe ? '0 0 18px rgba(107,182,255,0.28), 0 2px 10px rgba(0,0,0,0.6)' : '0 0 18px rgba(201,162,74,0.22), 0 2px 10px rgba(0,0,0,0.6)',
+                        boxShadow: '0 0 18px rgba(201,162,74,0.22), 0 2px 10px rgba(0,0,0,0.6)',
                       }}>
                         {getAvatarById(statsPlayer.avatar).emoji}
                       </div>
@@ -7143,7 +7143,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     <div style={{ marginBottom: '16px' }}>
                       {/* Hero card */}
                       <div style={{
-                        background: 'rgba(10,40,20,0.7)', border: `1px solid ${isMe ? 'rgba(107,182,255,0.35)' : 'rgba(201,162,74,0.3)'}`,
+                        background: 'rgba(10,40,20,0.7)', border: '1px solid rgba(201,162,74,0.3)',
                         borderRadius: '10px', padding: '14px 16px 12px',
                         display: 'flex', flexDirection: 'column', alignItems: 'center',
                         marginBottom: '8px', position: 'relative', overflow: 'hidden',
@@ -7155,7 +7155,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                           backgroundClip: 'text', lineHeight: 1,
                         }}>{totalPts.toLocaleString()}</div>
-                        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '9px', fontWeight: '700', letterSpacing: '3px', textTransform: 'uppercase', color: isMe ? 'rgba(107,182,255,0.6)' : 'rgba(201,162,74,0.5)', marginTop: '4px' }}>Total Points</div>
+                        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '9px', fontWeight: '700', letterSpacing: '3px', textTransform: 'uppercase', color: 'rgba(201,162,74,0.5)', marginTop: '4px' }}>Total Points</div>
                       </div>
 
                       {/* 3-col stat grid */}
