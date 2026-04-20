@@ -3074,7 +3074,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.29.7';
+const VERSION = '2.29.8';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5759,6 +5759,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isCyberpunk = currentThemeId === 'cyberpunk';
 
   const versionHistory = [
+    { version: '2.29.8', date: 'Apr 2026', changes: ['E/W Round Summary: matches Irish exactly — 12px padding, 8px gap, 30×50px cards, no overflow-x'] },
     { version: '2.29.7', date: 'Apr 2026', changes: ['E/W Round Summary: reduced modal padding to 8px so 30×50px cards fit without scroll'] },
     { version: '2.29.6', date: 'Apr 2026', changes: ['E/W cards: 27×46px — fits 144px column, no scroll; removed overflow-x from CSS'] },
     { version: '2.29.5', date: 'Apr 2026', changes: ['Bid/pass badges: solid green-tinted fill + thick border + strong glow — obvious against dark bg'] },
@@ -6526,7 +6527,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             <button className="cp-modal-close" onClick={onClose}>×</button>
           </div>
           <div className="cp-modal-hairline" />
-          <div className="cp-modal-body" style={{ padding: '8px' }}>
+          <div className="cp-modal-body" style={{ padding: '12px' }}>
             {/* Trump + scores row */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               {trumpSuit
@@ -6556,7 +6557,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             {renderHand(0, getPlayerName(0))}
 
             {/* East / West side by side */}
-            <div className="cp-show-hands-ew" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
+            <div className="cp-show-hands-ew" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
               {renderHand(3, getPlayerName(3), true)}
               {renderHand(1, getPlayerName(1), true)}
             </div>
