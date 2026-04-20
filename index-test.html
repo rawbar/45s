@@ -38,6 +38,14 @@
     @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
     @keyframes voicePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     @keyframes scoreChange { from { transform: scale(1.3); color: #d4af37; } to { transform: scale(1); } }
+    @keyframes bidPillPulse {
+      0%, 100% { box-shadow: 0 0 10px rgba(66,165,245,0.5), 0 0 22px rgba(66,165,245,0.22); }
+      50%       { box-shadow: 0 0 18px rgba(66,165,245,0.75), 0 0 36px rgba(66,165,245,0.35); }
+    }
+    @keyframes bidPillPulseRed {
+      0%, 100% { box-shadow: 0 0 10px rgba(239,68,68,0.5), 0 0 22px rgba(239,68,68,0.22); }
+      50%       { box-shadow: 0 0 18px rgba(239,68,68,0.75), 0 0 36px rgba(239,68,68,0.35); }
+    }
     @keyframes dealerGlow {
       0%, 100% { box-shadow: 0 0 6px rgba(239,68,68,0.5), 0 0 0 1px rgba(239,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.5); }
       50%       { box-shadow: 0 0 18px rgba(239,68,68,0.95), 0 0 0 3px rgba(239,68,68,0.55), inset 0 1px 0 rgba(255,255,255,0.5); }
@@ -1771,7 +1779,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.55';
+const VERSION = '2.27.56';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -10799,14 +10807,30 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       return <span style={{ padding: '2px 4px', background: '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{bids[pi]}</span>;
     }
     if (bidWinner !== pi || !trumpSuit) return null;
+    if (isIrishTheme) return null; // Irish playing-phase indicator handled by bidWinnerPill
     const showBagged = wasBagged && pi === bidWinner;
     if (showBagged) {
-      if (isIrishTheme) return <span style={{ padding: '2px 6px', background: 'rgba(139,26,31,0.85)', border: '1px solid #ef4444', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#ff6b6b', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>BAGGED</span>;
       return <span style={{ padding: '2px 4px', background: '#c62828', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span><span style={{ marginLeft: '2px' }}>BAGGED</span></span>;
     }
-    const suitColor = (trumpSuit === '♥' || trumpSuit === '♦') ? '#e07070' : '#f6d778';
-    if (isIrishTheme) return <span style={{ padding: '2px 6px', background: 'rgba(10,40,20,0.85)', border: '1px solid #c9a24a', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', fontFamily: "'Cinzel', serif", fontWeight: 700, color: '#f6d778' }}>{highBid}<span style={{ color: suitColor, marginLeft: '2px' }}>{trumpSuit}</span></span>;
     return <span style={{ padding: '2px 4px', background: '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span></span>;
+  };
+
+  // Irish playing-phase bid winner pill — blue glowing, own row below nameplate
+  const bidWinnerPill = (pi) => {
+    if (currentThemeId !== 'irish') return null;
+    if (phase === 'bidding' || phase === 'trump-select') return null;
+    if (bidWinner !== pi || !trumpSuit) return null;
+    const showBagged = wasBagged && pi === bidWinner;
+    const suitColor = (trumpSuit === '♥' || trumpSuit === '♦') ? '#e06060' : '#e8e4d9';
+    if (showBagged) {
+      return <div style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 12px', background: 'rgba(60,8,8,0.92)', border: '1.5px solid rgba(239,68,68,0.85)', borderRadius: '20px', animation: 'bidPillPulseRed 2.4s ease-in-out infinite', whiteSpace: 'nowrap' }}>
+        <span style={{ fontFamily: "'Cinzel', serif", fontSize: '16px', fontWeight: 900, color: '#ff6b6b', lineHeight: 1 }}>BAGGED</span>
+      </div>;
+    }
+    return <div style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 12px', background: 'rgba(8,18,32,0.92)', border: '1.5px solid rgba(66,165,245,0.9)', borderRadius: '20px', animation: 'bidPillPulse 2.4s ease-in-out infinite', whiteSpace: 'nowrap' }}>
+      <span style={{ fontFamily: "'Cinzel', serif", fontSize: '18px', fontWeight: 900, color: '#f6d778', lineHeight: 1 }}>{highBid}</span>
+      <span style={{ fontFamily: 'Georgia, serif', fontSize: '16px', color: suitColor, lineHeight: 1 }}>{trumpSuit}</span>
+    </div>;
   };
 
   // Sanitize values before Firebase write - Firebase rejects undefined values
@@ -12706,6 +12730,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 {drawn[pos] > 0 && <CardsDrawnIndicator count={drawn[pos]} />}
                 {bidIndicator(pos)}
               </div>
+              {bidWinnerPill(pos)}
               <div className="v3-facedown-row">
                 {getPlayerHand(pos).map((card, i) => {
                   const thisFaceUp = faceUpCard && card && faceUpCard.cardId === card.id;
@@ -12745,6 +12770,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 {dealer === pos && <DealerBadge />}
                 {drawn[pos] > 0 && <CardsDrawnIndicator count={drawn[pos]} />}
                 {bidIndicator(pos)}
+                {bidWinnerPill(pos)}
                 <div className="v3-facedown-col">
                   {getPlayerHand(pos).map((card, i) => {
                     const thisFaceUp = faceUpCard && card && faceUpCard.cardId === card.id;
@@ -12915,6 +12941,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 {dealer === pos && <DealerBadge />}
                 {drawn[pos] > 0 && <CardsDrawnIndicator count={drawn[pos]} />}
                 {bidIndicator(pos)}
+                {bidWinnerPill(pos)}
                 <div className="v3-facedown-col">
                   {getPlayerHand(pos).map((card, i) => {
                     const thisFaceUp = faceUpCard && card && faceUpCard.cardId === card.id;
@@ -12952,6 +12979,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 {bidIndicator(pos)}
                 {drawn[pos] > 0 && <CardsDrawnIndicator count={drawn[pos]} />}
               </div>
+              {bidWinnerPill(pos)}
               <div className={currentThemeId === 'cyberpunk' ? 'cp-hand' : 'v3-my-hand'}>
                 {myHand.map((card, i) => {
                   let isPlayable = false;
