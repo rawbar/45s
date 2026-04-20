@@ -91,6 +91,11 @@
      Phone frame + ambient lighting (game table background)
      ═══════════════════════════════════════════════════════════════ */
   .v3-phone {
+    height: 100vh;
+    height: -webkit-fill-available;
+    height: 100dvh;
+    overflow: hidden;
+    padding-bottom: env(safe-area-inset-bottom);
     background-color: #180b03;
     background-image:
       radial-gradient(ellipse 95% 50% at 50% -5%,
@@ -1757,7 +1762,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.45';
+const VERSION = '2.27.46';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4422,6 +4427,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.46', date: 'Apr 2026', changes: ['iOS Safari fix: game table now uses dynamic viewport height (100dvh) so cards and bid buttons are never hidden behind the browser toolbar on iPhone.'] },
     { version: '2.27.45', date: 'Apr 2026', changes: ['Stats modal: fixed Cinzel/Merriweather font rendering — explicit font quoting ensures the correct fonts load instead of falling back to Palatino. Avg Win Bid shows — when no 30-bids made. Badge detail close button fixed.'] },
     { version: '2.27.44', date: 'Apr 2026', changes: ['Stats modal: all accents now gold/brass (removed blue-for-me split). Stat values are bolder (weight 900).'] },
     { version: '2.27.43', date: 'Apr 2026', changes: ['Badge circles now show emoji at full size. Badge detail popup shows large glowing emoji icon instead of a small circle.'] },
@@ -12816,7 +12822,6 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
   return (
     <div className={`v3-phone ${currentThemeId === 'cyberpunk' ? 'theme-cyberpunk' : 'theme-irish'}`} style={{
-      height: '100%',
       display: 'flex',
       flexDirection: 'column',
       color: '#e8e4d9'
