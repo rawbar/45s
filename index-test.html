@@ -1757,7 +1757,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.41';
+const VERSION = '2.27.42';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -1797,15 +1797,15 @@ const BADGES = [
   { id:'swift_victory',   name:'Swift Victory',    desc:'Win a game in 5 hands',                                    pts:10, sym:'🚀',    color:'#1565c0' },
   { id:'quick_game',      name:'Quick Game',       desc:'Win a game in 6 hands',                                    pts:5,  sym:'💨',    color:'#909090' },
   // Bidding
-  { id:'calling_the_shot',  name:'Calling the Shot',   desc:'Bid 30 and make it',                                   pts:10, sym:'30',   color:'#1565c0' },
-  { id:'double_or_nothing', name:'Double or Nothing',  desc:'Make a 30-for-60 bid',                                 pts:20, sym:'30/60',color:'#d4af37' },
-  { id:'high_roller',       name:'High Roller',         desc:'Bid 25 and make it',                                  pts:5,  sym:'25',   color:'#909090' },
-  { id:'steady_hand',       name:'Steady Hand',         desc:'Bid 20 and make it',                                  pts:3,  sym:'20',   color:'#cd7f32' },
-  { id:'safe_bet',          name:'Safe Bet',             desc:'Bid 15 and make it',                                  pts:1,  sym:'15',   color:'#aaa'    },
+  { id:'calling_the_shot',  name:'Calling the Shot',   desc:'Bid 30 and make it',                                   pts:10, sym:'🎯',   color:'#1565c0' },
+  { id:'double_or_nothing', name:'Double or Nothing',  desc:'Make a 30-for-60 bid',                                 pts:20, sym:'🎲',   color:'#d4af37' },
+  { id:'high_roller',       name:'High Roller',         desc:'Bid 25 and make it',                                  pts:5,  sym:'💎',   color:'#909090' },
+  { id:'steady_hand',       name:'Steady Hand',         desc:'Bid 20 and make it',                                  pts:3,  sym:'🤲',   color:'#cd7f32' },
+  { id:'safe_bet',          name:'Safe Bet',             desc:'Bid 15 and make it',                                  pts:1,  sym:'🪙',   color:'#aaa'    },
   { id:'making_bail',       name:'Making Bail',          desc:'Make a bagged (forced 15) bid',                       pts:3,  sym:'⚖️',  color:'#cd7f32' },
   { id:'bailout',           name:'Bailout',              desc:'Win the game on a bagged hand',                       pts:10, sym:'🎪',   color:'#1565c0' },
   // Round Excellence
-  { id:'perfect_round',   name:'Perfect Round',    desc:'Score all 30 points in a round',                           pts:5,  sym:'30★',  color:'#909090' },
+  { id:'perfect_round',   name:'Perfect Round',    desc:'Score all 30 points in a round',                           pts:5,  sym:'💯',   color:'#909090' },
   { id:'hat_trick',       name:'Hat Trick',        desc:'Score 30 in 3 consecutive rounds in one game',             pts:10, sym:'🎩',   color:'#1565c0' },
   { id:'trump_slayer',    name:'Trump Slayer',      desc:'Make your bid without holding 5, J, or A♥',               pts:5,  sym:'🗡️',  color:'#909090' },
   { id:'never_surrender', name:'Never Surrender',  desc:'Win after being set 3+ times in one game',                 pts:5,  sym:'💪',   color:'#909090' },
@@ -1815,13 +1815,13 @@ const BADGES = [
   { id:'upset',         name:'Upset',          desc:"Set an opponent's 20 bid",                                      pts:2,  sym:'🥊',   color:'#cd7f32' },
   { id:'shutdown',      name:'Shutdown',       desc:'Set the opponent 3+ times in one game',                         pts:5,  sym:'🔒',   color:'#909090' },
   // Comebacks
-  { id:'comeback_kid',  name:'Comeback Kid',   desc:'Win when your team was ≤55 and opponent ≥90',                  pts:10, sym:'↑',    color:'#1565c0' },
+  { id:'comeback_kid',  name:'Comeback Kid',   desc:'Win when your team was ≤55 and opponent ≥90',                  pts:10, sym:'⬆️',   color:'#1565c0' },
   { id:'never_say_die', name:'Never Say Die',  desc:'Win after your team went negative',                             pts:5,  sym:'🌅',   color:'#909090' },
-  { id:'shutout',       name:'Shutout',         desc:'Win while opponent finishes at 0 or below',                   pts:15, sym:'0',    color:'#d4af37' },
+  { id:'shutout',       name:'Shutout',         desc:'Win while opponent finishes at 0 or below',                   pts:15, sym:'❄️',   color:'#d4af37' },
   // Flawless
   { id:'untouchable',         name:'Untouchable',          desc:"Win without your team's bidder ever being set",    pts:10, sym:'👑',   color:'#1565c0' },
   { id:'dominant',            name:'Dominant',              desc:'Your team scored more than the opponent in 4 consecutive rounds', pts:5, sym:'🔥', color:'#909090' },
-  { id:'exceed_expectations', name:'Exceed Expectations',  desc:'Beat your bid by 10+ points in a round',           pts:3,  sym:'+10',  color:'#cd7f32' },
+  { id:'exceed_expectations', name:'Exceed Expectations',  desc:'Beat your bid by 10+ points in a round',           pts:3,  sym:'📈',   color:'#cd7f32' },
   // Special Plays
   { id:'risk_taker',     name:'Risk Taker',      desc:'Discard all 5 cards (5-card draw)',                          pts:1,  sym:'🃏',   color:'#aaa'    },
   { id:'all_in',         name:'All In',           desc:'Win a game having used 5-card draw',                        pts:5,  sym:'🎰',   color:'#909090' },
@@ -1833,16 +1833,16 @@ const BADGES = [
   { id:'veteran',         name:'Veteran',           desc:'Play 50 games',                                           pts:3,  sym:'🎖️',  color:'#cd7f32' },
   { id:'legend',          name:'Legend',            desc:'Play 100 games',                                          pts:5,  sym:'🏆',   color:'#909090' },
   // Milestones – wins
-  { id:'winner',    name:'Winner',    desc:'Win 10 games',  pts:2, sym:'W10', color:'#cd7f32' },
-  { id:'champion',  name:'Champion',  desc:'Win 25 games',  pts:3, sym:'W25', color:'#cd7f32' },
-  { id:'master',    name:'Master',    desc:'Win 50 games',  pts:5, sym:'W50', color:'#909090' },
+  { id:'winner',    name:'Winner',    desc:'Win 10 games',  pts:2, sym:'🥇',  color:'#cd7f32' },
+  { id:'champion',  name:'Champion',  desc:'Win 25 games',  pts:3, sym:'🏅',  color:'#cd7f32' },
+  { id:'master',    name:'Master',    desc:'Win 50 games',  pts:5, sym:'🦅',  color:'#909090' },
   // Streaks
-  { id:'hot_streak',   name:'Hot Streak',   desc:'Win 3 games in a row',  pts:2,  sym:'3🔥',  color:'#cd7f32' },
-  { id:'on_fire',      name:'On Fire',       desc:'Win 5 games in a row',  pts:5,  sym:'5🔥',  color:'#909090' },
-  { id:'unstoppable',  name:'Unstoppable',  desc:'Win 10 games in a row', pts:15, sym:'10🔥', color:'#d4af37' },
+  { id:'hot_streak',   name:'Hot Streak',   desc:'Win 3 games in a row',  pts:2,  sym:'🌡️',  color:'#cd7f32' },
+  { id:'on_fire',      name:'On Fire',       desc:'Win 5 games in a row',  pts:5,  sym:'🌋',  color:'#909090' },
+  { id:'unstoppable',  name:'Unstoppable',  desc:'Win 10 games in a row', pts:15, sym:'💥',  color:'#d4af37' },
   // Special Combos
   { id:'card_shark',    name:'Card Shark',    desc:'Win 3 consecutive games without being set once',  pts:10, sym:'🦈',  color:'#1565c0' },
-  { id:'centurion',     name:'Centurion',     desc:'Win a game with exactly 120 points',               pts:5,  sym:'C',   color:'#909090' },
+  { id:'centurion',     name:'Centurion',     desc:'Win a game with exactly 120 points',               pts:5,  sym:'⚜️',  color:'#909090' },
   { id:'heartbreaker',  name:'Heartbreaker',  desc:'Lose a game where both teams scored 120+',         pts:10, sym:'💔',  color:'#1565c0' },
   { id:'photo_finish',  name:'Photo Finish',  desc:'Win a game where both teams scored 120+',          pts:15, sym:'📸',  color:'#d4af37' },
 ];
@@ -4422,6 +4422,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.42', date: 'Apr 2026', changes: ['All badge symbols replaced with emoji — no more text in badge circles.'] },
     { version: '2.27.41', date: 'Apr 2026', changes: ['Badge symbols (30, W10, 30★, etc.) now render in Cinzel brass — no more ugly system font fallback.'] },
     { version: '2.27.40', date: 'Apr 2026', changes: ['E/W player areas no longer jump or shift during play — pinned to top of row regardless of table height changes.'] },
     { version: '2.27.39', date: 'Apr 2026', changes: ['View Round: E/W compact cards now show large center suit symbol (corner suit hidden), matching North/South style.'] },
