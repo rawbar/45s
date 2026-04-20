@@ -49,6 +49,14 @@
       0%, 100% { box-shadow: 0 0 10px rgba(239,68,68,0.5), 0 0 22px rgba(239,68,68,0.22); }
       50%       { box-shadow: 0 0 18px rgba(239,68,68,0.75), 0 0 36px rgba(239,68,68,0.35); }
     }
+    @keyframes cpBidPillPulse {
+      0%, 100% { box-shadow: 0 0 8px rgba(0,229,255,0.4), 0 0 20px rgba(0,229,255,0.15); }
+      50%       { box-shadow: 0 0 16px rgba(0,229,255,0.7), 0 0 32px rgba(0,229,255,0.3); }
+    }
+    @keyframes cpBidPillMagenta {
+      0%, 100% { box-shadow: 0 0 8px rgba(255,0,204,0.45), 0 0 20px rgba(255,0,204,0.18); }
+      50%       { box-shadow: 0 0 16px rgba(255,0,204,0.75), 0 0 32px rgba(255,0,204,0.32); }
+    }
     @keyframes dealerGlow {
       0%, 100% { box-shadow: 0 0 6px rgba(239,68,68,0.5), 0 0 0 1px rgba(239,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.5); }
       50%       { box-shadow: 0 0 18px rgba(239,68,68,0.95), 0 0 0 3px rgba(239,68,68,0.55), inset 0 1px 0 rgba(255,255,255,0.5); }
@@ -3066,7 +3074,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.28.9';
+const VERSION = '2.29.0';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5751,6 +5759,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isCyberpunk = currentThemeId === 'cyberpunk';
 
   const versionHistory = [
+    { version: '2.29.0', date: 'Apr 2026', changes: ['Cyberpunk bidding: bid flash (Orbitron, amber/magenta/cyan)', 'Diamond announce: cyan arrow + dark panel + amber bid', 'Bid winner pill: cyan pulsing border (BAGGED = magenta)', 'High bidder nameplate: amber glow during bidding'] },
     { version: '2.28.9', date: 'Apr 2026', changes: ['Last trick cards show center suit (mid not small)', 'Show Hands: all colors/fonts are cyberpunk in cyberpunk mode', 'E/W show-hands cards hide corner suits'] },
     { version: '2.28.8', date: 'Apr 2026', changes: ['Side seat names no longer cut off: tighter padding + 9px font in cyberpunk'] },
     { version: '2.28.7', date: 'Apr 2026', changes: ['Cyberpunk stats: badges header shows earned/locked count'] },
@@ -12526,7 +12535,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
   // Bid flash: show large floating bid announcement at bidder's compass position
   useEffect(() => {
-    if (currentThemeId !== 'irish') { bidFlashPrevRef.current = [...bids]; return; }
+    const theme = currentThemeId;
+    if (theme !== 'irish' && theme !== 'cyberpunk') { bidFlashPrevRef.current = [...bids]; return; }
     if (dealAnimActive) { bidFlashPrevRef.current = [...bids]; return; } // suppress during deal
     const prev = bidFlashPrevRef.current;
     bids.forEach((bid, pi) => {
@@ -12535,9 +12545,15 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       if (wasUnset && nowSet) {
         const isBag = wasBagged && pi === bidWinner && bid === 15;
         let text, color;
-        if (isBag)          { text = 'BAGGED'; color = '#ff6b6b'; }
-        else if (bid === 0) { text = 'PASS';   color = 'rgba(201,162,74,0.7)'; }
-        else                { text = String(bid); color = '#f6d778'; }
+        if (theme === 'cyberpunk') {
+          if (isBag)          { text = 'BAGGED'; color = '#ff00cc'; }
+          else if (bid === 0) { text = 'PASS';   color = 'rgba(0,229,255,0.55)'; }
+          else                { text = String(bid); color = '#ff8c00'; }
+        } else {
+          if (isBag)          { text = 'BAGGED'; color = '#ff6b6b'; }
+          else if (bid === 0) { text = 'PASS';   color = 'rgba(201,162,74,0.7)'; }
+          else                { text = String(bid); color = '#f6d778'; }
+        }
         setBidFlash({ pos: pi, text, color });
         setTimeout(() => setBidFlash(null), 950);
       }
@@ -12547,7 +12563,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
   // Diamond announce: fired once when trumpSuit is first set (bid resolved)
   useEffect(() => {
-    if (currentThemeId !== 'irish') return;
+    if (currentThemeId !== 'irish' && currentThemeId !== 'cyberpunk') return;
     if (bidWinner >= 0 && trumpSuit && prevTrumpRef.current !== trumpSuit) {
       setDiamondAnim({ bidWinner, highBid, trumpSuit });
       setTimeout(() => setDiamondAnim(null), 2100);
@@ -12557,10 +12573,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
   // Returns extra inline style for a nameplate when this player is the current high bidder during bidding
   const bidHighlightStyle = (pi) => {
-    if (currentThemeId !== 'irish') return {};
     if (phase !== 'bidding' && phase !== 'trump-select') return {};
     if (bidWinner !== pi || highBid <= 0) return {};
-    return { boxShadow: '0 0 12px rgba(246,215,120,0.6), 0 0 0 2px #f6d778' };
+    if (currentThemeId === 'irish') return { boxShadow: '0 0 12px rgba(246,215,120,0.6), 0 0 0 2px #f6d778' };
+    if (currentThemeId === 'cyberpunk') return { boxShadow: '0 0 14px rgba(255,140,0,0.55), 0 0 0 2px rgba(255,140,0,0.8)', borderColor: 'rgba(255,140,0,0.9)' };
+    return {};
   };
 
   // Bid indicator with BAGGED support — Irish themed
@@ -12608,12 +12625,26 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     return <span style={{ padding: '2px 4px', background: '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span></span>;
   };
 
-  // Irish playing-phase bid winner pill — blue glowing, own row below nameplate
+  // Playing-phase bid winner pill — shows below nameplate during discard/playing phases
   const bidWinnerPill = (pi) => {
-    if (currentThemeId !== 'irish') return null;
     if (phase === 'bidding' || phase === 'trump-select') return null;
     if (bidWinner !== pi || !trumpSuit) return null;
     const showBagged = wasBagged && pi === bidWinner;
+
+    if (currentThemeId === 'cyberpunk') {
+      const suitColor = (trumpSuit === '♥' || trumpSuit === '♦') ? '#ff4466' : '#00e5ff';
+      if (showBagged) {
+        return <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '3px 10px', background: 'rgba(255,0,204,0.1)', border: '1.5px solid rgba(255,0,204,0.8)', borderRadius: '2px', animation: 'cpBidPillMagenta 2.4s ease-in-out infinite', whiteSpace: 'nowrap' }}>
+          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: '13px', fontWeight: 700, color: '#ff00cc', lineHeight: 1, letterSpacing: '1px' }}>BAGGED</span>
+        </div>;
+      }
+      return <div style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '3px 10px', background: 'rgba(4,10,20,0.92)', border: '1.5px solid rgba(0,229,255,0.75)', borderRadius: '2px', animation: 'cpBidPillPulse 2.4s ease-in-out infinite', whiteSpace: 'nowrap' }}>
+        <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: '16px', fontWeight: 900, color: '#ff8c00', lineHeight: 1 }}>{highBid}</span>
+        <span style={{ fontFamily: 'Georgia,serif', fontSize: '15px', color: suitColor, lineHeight: 1 }}>{trumpSuit}</span>
+      </div>;
+    }
+
+    if (currentThemeId !== 'irish') return null;
     const suitColor = (trumpSuit === '♥' || trumpSuit === '♦') ? '#e06060' : '#e8e4d9';
     if (showBagged) {
       return <div style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 12px', background: 'rgba(60,8,8,0.92)', border: '1.5px solid rgba(239,68,68,0.85)', borderRadius: '20px', animation: 'bidPillPulseRed 2.4s ease-in-out infinite', whiteSpace: 'nowrap' }}>
@@ -14671,6 +14702,47 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               )}
 
               {/* Irish diamond announce — centered over rail, arrow points at winner */}
+              {diamondAnim && currentThemeId === 'cyberpunk' && (() => {
+                const { bidWinner: bw, highBid: hb, trumpSuit: ts } = diamondAnim;
+                const isRed = ts === '♥' || ts === '♦';
+                const suitColor = isRed ? '#ff4466' : '#00e5ff';
+                const dir = bw === visualPositions.top ? 'top'
+                          : bw === visualPositions.right ? 'right'
+                          : bw === visualPositions.bottom ? 'bottom' : 'left';
+                const arrowColor = '#00e5ff';
+                const arrowGlow = 'drop-shadow(0 0 6px rgba(0,229,255,0.9))';
+                const triBase = { position: 'absolute', width: 0, height: 0, filter: arrowGlow };
+                const arrow = dir === 'top'
+                  ? <div style={{ ...triBase, top: '-22px', left: '50%', transform: 'translateX(-50%)', borderLeft: '18px solid transparent', borderRight: '18px solid transparent', borderBottom: `22px solid ${arrowColor}` }} />
+                  : dir === 'bottom'
+                  ? <div style={{ ...triBase, bottom: '-22px', left: '50%', transform: 'translateX(-50%)', borderLeft: '18px solid transparent', borderRight: '18px solid transparent', borderTop: `22px solid ${arrowColor}` }} />
+                  : dir === 'right'
+                  ? <div style={{ ...triBase, right: '-22px', top: '50%', transform: 'translateY(-50%)', borderTop: '18px solid transparent', borderBottom: '18px solid transparent', borderLeft: `22px solid ${arrowColor}` }} />
+                  : <div style={{ ...triBase, left: '-22px', top: '50%', transform: 'translateY(-50%)', borderTop: '18px solid transparent', borderBottom: '18px solid transparent', borderRight: `22px solid ${arrowColor}` }} />;
+                return (
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 400, pointerEvents: 'none' }}>
+                    <div style={{
+                      position: 'relative',
+                      animation: 'diamondAnnounce 2.1s ease-out forwards',
+                      fontFamily: "'Orbitron', sans-serif", fontWeight: 900,
+                      background: 'rgba(4,10,20,0.96)',
+                      border: '2px solid rgba(0,229,255,0.65)',
+                      borderRadius: '3px',
+                      padding: '10px 20px',
+                      backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+                      boxShadow: '0 0 36px rgba(0,229,255,0.3), 0 0 60px rgba(0,229,255,0.12), 0 8px 28px rgba(0,0,0,0.85)',
+                      textAlign: 'center', whiteSpace: 'nowrap',
+                    }}>
+                      {arrow}
+                      <span style={{ fontSize: '54px', lineHeight: 1 }}>
+                        <span style={{ color: '#ff8c00' }}>{hb}</span>
+                        <span style={{ color: suitColor, marginLeft: '4px' }}>{ts}</span>
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {diamondAnim && currentThemeId === 'irish' && (() => {
                 const { bidWinner: bw, highBid: hb, trumpSuit: ts } = diamondAnim;
                 const isRed = ts === '♥' || ts === '♦';
@@ -14835,6 +14907,37 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           );
         })()}
 
+
+        {/* Cyberpunk bid flash */}
+        {bidFlash && currentThemeId === 'cyberpunk' && (() => {
+          const { pos, text, color } = bidFlash;
+          const dir = pos === visualPositions.top ? 'top' : pos === visualPositions.right ? 'right' : pos === visualPositions.bottom ? 'bottom' : 'left';
+          const posStyle = dir === 'top'    ? { top: '10%',   left: '50%', marginLeft: '-44px' }
+                         : dir === 'bottom' ? { bottom: '18%', left: '50%', marginLeft: '-44px' }
+                         : dir === 'right'  ? { top: '44%',   right: '3%', marginTop: '-22px'  }
+                         :                    { top: '44%',   left: '3%',  marginTop: '-22px'  };
+          const isBag = text === 'BAGGED';
+          const isPass = text === 'PASS';
+          return (
+            <div style={{ position: 'absolute', ...posStyle, width: '88px', zIndex: 300, pointerEvents: 'none', textAlign: 'center' }}>
+              <div style={{
+                animation: 'bidFlashAnim 0.95s ease-out forwards',
+                fontFamily: "'Orbitron', sans-serif",
+                fontSize: isBag ? '15px' : isPass ? '16px' : '30px',
+                fontWeight: 700,
+                letterSpacing: '1px',
+                color,
+                textShadow: isBag ? '0 0 14px rgba(255,0,204,0.8)' : isPass ? '0 0 6px rgba(0,229,255,0.4)' : '0 0 14px rgba(255,140,0,0.85)',
+                background: isBag ? 'rgba(255,0,204,0.1)' : 'rgba(4,10,20,0.92)',
+                border: `1.5px solid ${isBag ? 'rgba(255,0,204,0.7)' : isPass ? 'rgba(0,229,255,0.3)' : 'rgba(255,140,0,0.7)'}`,
+                borderRadius: '3px',
+                padding: '6px 10px',
+                backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+                display: 'inline-block',
+              }}>{text}</div>
+            </div>
+          );
+        })()}
 
         {/* Irish bid flash — large floating announcement at bidder's compass position */}
         {bidFlash && currentThemeId === 'irish' && (() => {
