@@ -38,6 +38,14 @@
     @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
     @keyframes voicePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     @keyframes scoreChange { from { transform: scale(1.3); color: #d4af37; } to { transform: scale(1); } }
+    @keyframes bidPillPulse {
+      0%, 100% { box-shadow: 0 0 10px rgba(66,165,245,0.5), 0 0 22px rgba(66,165,245,0.22); }
+      50%       { box-shadow: 0 0 18px rgba(66,165,245,0.75), 0 0 36px rgba(66,165,245,0.35); }
+    }
+    @keyframes bidPillPulseRed {
+      0%, 100% { box-shadow: 0 0 10px rgba(239,68,68,0.5), 0 0 22px rgba(239,68,68,0.22); }
+      50%       { box-shadow: 0 0 18px rgba(239,68,68,0.75), 0 0 36px rgba(239,68,68,0.35); }
+    }
     @keyframes dealerGlow {
       0%, 100% { box-shadow: 0 0 6px rgba(239,68,68,0.5), 0 0 0 1px rgba(239,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.5); }
       50%       { box-shadow: 0 0 18px rgba(239,68,68,0.95), 0 0 0 3px rgba(239,68,68,0.55), inset 0 1px 0 rgba(255,255,255,0.5); }
@@ -755,6 +763,7 @@
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     font-weight: 700;
+    font-family: Georgia, 'Times New Roman', serif;
   }
   .theme-irish .cp-card.mid .center   { font-size: 28px; }
   .theme-irish .cp-card.large .center { font-size: 42px; }
@@ -800,19 +809,19 @@
     box-shadow: 0 3px 5px rgba(0,0,0,0.4), 0 1px 1px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.95), 0 0 8px rgba(100,170,230,0.4);
   }
 
-  /* ── Show Hands modal: mid cards scaled to 34px so 5 fit side-by-side ── */
-  .ir-show-hands-cards .cp-card.mid { width: 34px; height: 48px; border-radius: 4px; }
-  .ir-show-hands-cards .cp-card.mid .corner { top: 2px; left: 2px; }
-  .ir-show-hands-cards .cp-card.mid .corner.br { top: auto; left: auto; bottom: 2px; right: 2px; }
-  .ir-show-hands-cards .cp-card.mid .corner .rk { font-size: 9px; }
+  /* ── Show Hands modal: N/S use mid cards at full readable size ── */
+  .ir-show-hands-cards .cp-card.mid { width: 46px; height: 64px; border-radius: 6px; }
+  .ir-show-hands-cards .cp-card.mid .corner { top: 3px; left: 4px; }
+  .ir-show-hands-cards .cp-card.mid .corner.br { top: auto; left: auto; bottom: 3px; right: 4px; }
+  .ir-show-hands-cards .cp-card.mid .corner .rk { font-size: 13px; }
   .ir-show-hands-cards .cp-card.mid .corner .su { display: none !important; }
-  .ir-show-hands-cards .cp-card.mid .center { font-size: 18px; }
-  /* compact E/W row — small cards, same large-center-suit treatment */
-  .ir-show-hands-cards .cp-card.small .corner { top: 1px; left: 2px; }
-  .ir-show-hands-cards .cp-card.small .corner.br { top: auto; left: auto; bottom: 1px; right: 2px; }
-  .ir-show-hands-cards .cp-card.small .corner .rk { font-size: 8px; }
-  .ir-show-hands-cards .cp-card.small .corner .su { display: none !important; }
-  .ir-show-hands-cards .cp-card.small .center { font-size: 14px; }
+  .ir-show-hands-cards .cp-card.mid .center { font-size: 30px; }
+  /* E/W row — mid cards squeezed smaller so 5 fit per side, but still has center element */
+  .ir-show-hands-ew .ir-show-hands-cards .cp-card.mid { width: 30px; height: 44px; border-radius: 4px; }
+  .ir-show-hands-ew .ir-show-hands-cards .cp-card.mid .corner { top: 2px; left: 2px; }
+  .ir-show-hands-ew .ir-show-hands-cards .cp-card.mid .corner.br { top: auto; left: auto; bottom: 2px; right: 2px; }
+  .ir-show-hands-ew .ir-show-hands-cards .cp-card.mid .corner .rk { font-size: 9px; }
+  .ir-show-hands-ew .ir-show-hands-cards .cp-card.mid .center { font-size: 20px; }
 
   /* ── Irish dealer chip ── */
   .theme-irish .v3-dealer-chip {
@@ -825,9 +834,9 @@
   }
 
   /* ── Side seat nameplates: constrain so they never bleed off screen ── */
-  .v3-side-seat { width: 72px; }
+  .v3-side-seat { width: 82px; }
   .v3-side-seat .v3-nameplate {
-    max-width: 72px; overflow: hidden; white-space: nowrap; font-size: 9.5px;
+    max-width: 82px; overflow: hidden; white-space: nowrap; font-size: 10px;
     padding: 2px 7px 2px 3px;
   }
   .v3-side-seat .v3-nameplate .v3-avatar-chip {
@@ -1770,7 +1779,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.53';
+const VERSION = '2.27.57';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5106,7 +5115,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             return (
               <div key={i} style={{ position: 'relative' }}>
                 <div style={{ border: ledTrick ? `2px solid ${brassHi}` : 'none', borderRadius: '4px' }}>
-                  <Card card={c} small={compact} mid={!compact} disabled wasDrawn={drawnCards && drawnCards.has(c.id)} wasKitty={kittyCardIds && kittyCardIds.has(c.id)} isFaceUp={faceUpCard && faceUpCard.cardId === c.id} />
+                  <Card card={c} mid disabled wasDrawn={drawnCards && drawnCards.has(c.id)} wasKitty={kittyCardIds && kittyCardIds.has(c.id)} isFaceUp={faceUpCard && faceUpCard.cardId === c.id} />
                 </div>
                 {trickNum !== null && <div style={{ position: 'absolute', top: '-6px', right: '-6px', width: '14px', height: '14px', borderRadius: '50%', background: ledTrick ? brassHi : 'rgba(20,20,20,0.9)', border: ledTrick ? 'none' : `1px solid ${brass}`, color: ledTrick ? '#1a0e03' : brass, fontSize: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cinzel', serif" }}>{trickNum + 1}</div>}
               </div>
@@ -5170,8 +5179,8 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
         {/* North */}
         {renderHand(0, getPlayerName(0))}
 
-        {/* East / West side by side — compact (small cards) to fit on screen */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+        {/* East / West side by side — mid cards squeezed via .ir-show-hands-ew CSS */}
+        <div className="ir-show-hands-ew" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
           {renderHand(3, getPlayerName(3), true)}
           {renderHand(1, getPlayerName(1), true)}
         </div>
@@ -10798,14 +10807,30 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       return <span style={{ padding: '2px 4px', background: '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{bids[pi]}</span>;
     }
     if (bidWinner !== pi || !trumpSuit) return null;
+    if (isIrishTheme) return null; // Irish playing-phase indicator handled by bidWinnerPill
     const showBagged = wasBagged && pi === bidWinner;
     if (showBagged) {
-      if (isIrishTheme) return <span style={{ padding: '2px 6px', background: 'rgba(139,26,31,0.85)', border: '1px solid #ef4444', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#ff6b6b', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>BAGGED</span>;
       return <span style={{ padding: '2px 4px', background: '#c62828', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span><span style={{ marginLeft: '2px' }}>BAGGED</span></span>;
     }
-    const suitColor = (trumpSuit === '♥' || trumpSuit === '♦') ? '#e07070' : '#f6d778';
-    if (isIrishTheme) return <span style={{ padding: '2px 6px', background: 'rgba(10,40,20,0.85)', border: '1px solid #c9a24a', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', fontFamily: "'Cinzel', serif", fontWeight: 700, color: '#f6d778' }}>{highBid}<span style={{ color: suitColor, marginLeft: '2px' }}>{trumpSuit}</span></span>;
     return <span style={{ padding: '2px 4px', background: '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{highBid}<span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#ffcdd2' : '#fff' }}>{trumpSuit}</span></span>;
+  };
+
+  // Irish playing-phase bid winner pill — blue glowing, own row below nameplate
+  const bidWinnerPill = (pi) => {
+    if (currentThemeId !== 'irish') return null;
+    if (phase === 'bidding' || phase === 'trump-select') return null;
+    if (bidWinner !== pi || !trumpSuit) return null;
+    const showBagged = wasBagged && pi === bidWinner;
+    const suitColor = (trumpSuit === '♥' || trumpSuit === '♦') ? '#e06060' : '#e8e4d9';
+    if (showBagged) {
+      return <div style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 12px', background: 'rgba(60,8,8,0.92)', border: '1.5px solid rgba(239,68,68,0.85)', borderRadius: '20px', animation: 'bidPillPulseRed 2.4s ease-in-out infinite', whiteSpace: 'nowrap' }}>
+        <span style={{ fontFamily: "'Cinzel', serif", fontSize: '16px', fontWeight: 900, color: '#ff6b6b', lineHeight: 1 }}>BAGGED</span>
+      </div>;
+    }
+    return <div style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 12px', background: 'rgba(8,18,32,0.92)', border: '1.5px solid rgba(66,165,245,0.9)', borderRadius: '20px', animation: 'bidPillPulse 2.4s ease-in-out infinite', whiteSpace: 'nowrap' }}>
+      <span style={{ fontFamily: "'Cinzel', serif", fontSize: '18px', fontWeight: 900, color: '#f6d778', lineHeight: 1 }}>{highBid}</span>
+      <span style={{ fontFamily: 'Georgia, serif', fontSize: '16px', color: suitColor, lineHeight: 1 }}>{trumpSuit}</span>
+    </div>;
   };
 
   // Sanitize values before Firebase write - Firebase rejects undefined values
@@ -12705,6 +12730,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 {drawn[pos] > 0 && <CardsDrawnIndicator count={drawn[pos]} />}
                 {bidIndicator(pos)}
               </div>
+              {bidWinnerPill(pos)}
               <div className="v3-facedown-row">
                 {getPlayerHand(pos).map((card, i) => {
                   const thisFaceUp = faceUpCard && card && faceUpCard.cardId === card.id;
@@ -12744,6 +12770,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 {dealer === pos && <DealerBadge />}
                 {drawn[pos] > 0 && <CardsDrawnIndicator count={drawn[pos]} />}
                 {bidIndicator(pos)}
+                {bidWinnerPill(pos)}
                 <div className="v3-facedown-col">
                   {getPlayerHand(pos).map((card, i) => {
                     const thisFaceUp = faceUpCard && card && faceUpCard.cardId === card.id;
@@ -12914,6 +12941,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 {dealer === pos && <DealerBadge />}
                 {drawn[pos] > 0 && <CardsDrawnIndicator count={drawn[pos]} />}
                 {bidIndicator(pos)}
+                {bidWinnerPill(pos)}
                 <div className="v3-facedown-col">
                   {getPlayerHand(pos).map((card, i) => {
                     const thisFaceUp = faceUpCard && card && faceUpCard.cardId === card.id;
@@ -12951,6 +12979,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 {bidIndicator(pos)}
                 {drawn[pos] > 0 && <CardsDrawnIndicator count={drawn[pos]} />}
               </div>
+              {bidWinnerPill(pos)}
               <div className={currentThemeId === 'cyberpunk' ? 'cp-hand' : 'v3-my-hand'}>
                 {myHand.map((card, i) => {
                   let isPlayable = false;
