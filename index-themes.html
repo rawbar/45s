@@ -1762,7 +1762,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.47';
+const VERSION = '2.27.48';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4427,6 +4427,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.48', date: 'Apr 2026', changes: ['Stats: Bids Made, Bid Success %, and Avg Win Bid now count all bid levels (15/20/25/30) instead of only 30-bids. Avg Win Bid shows the true average bid amount on won bids.'] },
     { version: '2.27.47', date: 'Apr 2026', changes: ['Stats modal: player name and Badges label now render in Cinzel gold (removed unreliable gradient-text technique). Close button no longer clipped by border-radius. Badge grid uses equal column widths.'] },
     { version: '2.27.46', date: 'Apr 2026', changes: ['iOS Safari fix: game table now uses dynamic viewport height (100dvh) so cards and bid buttons are never hidden behind the browser toolbar on iPhone.'] },
     { version: '2.27.45', date: 'Apr 2026', changes: ['Stats modal: fixed Cinzel/Merriweather font rendering — explicit font quoting ensures the correct fonts load instead of falling back to Palatino. Avg Win Bid shows — when no 30-bids made. Badge detail close button fixed.'] },
@@ -7051,10 +7052,17 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           const gl = statsData ? (statsData.gamesLost || 0) : (gp - gw);
           const winRate = gp > 0 ? Math.round((gw / gp) * 100) : 0;
           const totalPts = statsData ? computePlayerScore(statsData, gp, gw) : 0;
-          const bids30Won = statsData ? (statsData.bid30Made || 0) : 0;
+          const bid15 = statsData ? (statsData.bid15Made || 0) : 0;
+          const bid20 = statsData ? (statsData.bid20Made || 0) : 0;
+          const bid25 = statsData ? (statsData.bid25Made || 0) : 0;
+          const bid30 = statsData ? (statsData.bid30Made || 0) : 0;
+          const bidBagged = statsData ? (statsData.baggedBidMade || 0) : 0;
+          const bidsWon = bid15 + bid20 + bid25 + bid30 + bidBagged;
           const timesSet = statsData ? (statsData.timesSet || 0) : 0;
-          const bidAttempts = bids30Won + timesSet;
-          const bidSuccessPct = bidAttempts > 0 ? Math.round((bids30Won / bidAttempts) * 100) : 0;
+          const bidAttempts = bidsWon + timesSet;
+          const bidSuccessPct = bidAttempts > 0 ? Math.round((bidsWon / bidAttempts) * 100) : 0;
+          const totalBidPts = bid15*15 + bid20*20 + bid25*25 + bid30*30 + bidBagged*15;
+          const avgWinBid = bidsWon > 0 ? (totalBidPts / bidsWon).toFixed(1) : '—';
           const lastSeenTs = statsData ? statsData.lastSeen : null;
           const isOnline = lastSeenTs && (Date.now() - lastSeenTs) < 5 * 60 * 1000;
           const lastSeenStr = lastSeenTs
@@ -7173,12 +7181,12 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                         {statCard('Win %', winRate + '%', true)}
                         {statCard('Cur. Streak 🔥', statsData.currentStreak || 0, false)}
                         {statCard('Max Streak ⭐', statsData.bestStreak || 0, false)}
-                        {statCard('Bids Made', bids30Won, false)}
+                        {statCard('Bids Made', bidsWon, false)}
                         {statCard('Bid Success %', bidAttempts > 0 ? bidSuccessPct + '%' : '—', true)}
                         {statCard('Times Set', timesSet, false)}
                         {statCard('Perfect 30s', statsData.perfect30s || 0, false)}
                         {statCard('Quits', statsData.gamesQuit || 0, false)}
-                        {statCard('Avg Win Bid', bids30Won > 0 ? (bids30Won * 30 / Math.max(bidAttempts, 1)).toFixed(1) : '—', false)}
+                        {statCard('Avg Win Bid', avgWinBid, false)}
                         {/* Last Seen full width */}
                         <div style={{ gridColumn: '1 / -1', background: 'rgba(10,40,20,0.6)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div style={{ fontFamily: "'Merriweather', Georgia, serif", fontStyle: 'italic', fontSize: '11px', color: 'rgba(251,246,228,0.5)' }}>Last Seen</div>
