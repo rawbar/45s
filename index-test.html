@@ -3362,7 +3362,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.30.2';
+const VERSION = '2.30.3';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6057,6 +6057,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.30.3', date: 'Apr 2026', changes: ['Arabian Nights: waiting room center circle — dark gold theme instead of Irish green felt.'] },
     { version: '2.30.2', date: 'Apr 2026', changes: ['Arabian Nights: fix center suit missing on show-hands cards (position:absolute inset:0 was absent).'] },
     { version: '2.30.1', date: 'Apr 2026', changes: ['Arabian Nights: card backs centered crescent, dark gold rail, all modals themed.'] },
     { version: '2.30.0', date: 'Apr 2026', changes: ['Arabian Nights theme — marble background, gemstone accents, gold/sapphire/ruby bid badges, all screens themed.'] },
@@ -11854,6 +11855,19 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
               justifySelf: 'center',
               gap: '4px',
               padding: '10px'
+            } : isArabian ? {
+              gridArea: 'center',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              background: 'radial-gradient(circle, #1a1000 0%, #0a0800 100%)',
+              border: '2px solid rgba(201,162,39,0.55)',
+              boxShadow: '0 0 18px rgba(201,162,39,0.2), inset 0 1px 8px rgba(0,0,0,0.6)',
+              borderRadius: '50%',
+              width: '110px',
+              height: '110px',
+              alignSelf: 'center',
+              justifySelf: 'center',
+              gap: '4px',
+              padding: '10px'
             } : {
               gridArea: 'center',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -11870,9 +11884,9 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
               gap: '4px',
               padding: '10px'
             }}>
-              <div style={isCyberpunk ? { fontSize: '22px', color: '#00e5ff', lineHeight: 1, textShadow: '0 0 10px rgba(0,229,255,0.5)' } : { fontSize: '22px', background: 'linear-gradient(180deg, ' + IR.brassHi + ' 0%, ' + IR.brass + ' 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))', lineHeight: 1 }}>♣</div>
-              <div style={isCyberpunk ? { fontFamily: "'Orbitron', sans-serif", fontWeight: 900, fontSize: '10px', letterSpacing: '1px', textAlign: 'center', color: '#00e5ff', textShadow: '0 0 12px rgba(0,229,255,0.6)' } : { fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '10px', letterSpacing: '1px', textAlign: 'center', background: 'linear-gradient(180deg, ' + IR.brassHi + ' 0%, ' + IR.brass + ' 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>45s</div>
-              <div style={isCyberpunk ? { fontFamily: "'Share Tech Mono', monospace", fontSize: '10px', color: 'rgba(0,229,255,0.5)', textAlign: 'center' } : { fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(201,162,74,0.5)', textAlign: 'center' }}>{playerCount} / 4</div>
+              <div style={isCyberpunk ? { fontSize: '22px', color: '#00e5ff', lineHeight: 1, textShadow: '0 0 10px rgba(0,229,255,0.5)' } : isArabian ? { fontSize: '22px', color: '#f6d778', lineHeight: 1, textShadow: '0 0 8px rgba(246,215,120,0.5)' } : { fontSize: '22px', background: 'linear-gradient(180deg, ' + IR.brassHi + ' 0%, ' + IR.brass + ' 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))', lineHeight: 1 }}>♣</div>
+              <div style={isCyberpunk ? { fontFamily: "'Orbitron', sans-serif", fontWeight: 900, fontSize: '10px', letterSpacing: '1px', textAlign: 'center', color: '#00e5ff', textShadow: '0 0 12px rgba(0,229,255,0.6)' } : isArabian ? { fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '10px', letterSpacing: '1px', textAlign: 'center', color: '#f6d778', textShadow: '0 0 6px rgba(246,215,120,0.4)' } : { fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '10px', letterSpacing: '1px', textAlign: 'center', background: 'linear-gradient(180deg, ' + IR.brassHi + ' 0%, ' + IR.brass + ' 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>45s</div>
+              <div style={isCyberpunk ? { fontFamily: "'Share Tech Mono', monospace", fontSize: '10px', color: 'rgba(0,229,255,0.5)', textAlign: 'center' } : isArabian ? { fontFamily: 'Cinzel, serif', fontSize: '10px', color: 'rgba(246,215,120,0.45)', textAlign: 'center' } : { fontFamily: 'Inter, sans-serif', fontSize: '10px', color: 'rgba(201,162,74,0.5)', textAlign: 'center' }}>{playerCount} / 4</div>
             </div>
 
             {renderIrishSeat('East', 'east')}
