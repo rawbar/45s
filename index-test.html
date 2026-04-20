@@ -1761,8 +1761,12 @@
       repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,229,255,0.012) 3px, rgba(0,229,255,0.012) 4px),
       linear-gradient(175deg, #060d18 0%, #020509 100%);
     background-attachment: fixed;
-    min-height: 100vh;
-    min-height: 100dvh;
+    height: 100vh;
+    height: -webkit-fill-available;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     color: #c0ddf0;
   }
   .cp-lobby-section-title {
@@ -3052,7 +3056,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.28.4';
+const VERSION = '2.28.6';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5737,6 +5741,8 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isCyberpunk = currentThemeId === 'cyberpunk';
 
   const versionHistory = [
+    { version: '2.28.6', date: 'Apr 2026', changes: ['Cyberpunk stats modal: all 12 stat boxes + Last Seen (matches Irish)'] },
+    { version: '2.28.5', date: 'Apr 2026', changes: ['Leaderboard tab now scrolls in cyberpunk lobby (flex layout fix)'] },
     { version: '2.28.4', date: 'Apr 2026', changes: ['Lobby white gap fixed: cp-lobby-bg fills full viewport height'] },
     { version: '2.28.3', date: 'Apr 2026', changes: ['Card rank corners use Orbitron bold — more readable', 'Stat boxes: visible cyan borders and consistent sizing', 'Leaderboard avatar chips cyberpunk dark/cyan (no more green)', 'Round Summary E/W cards scroll horizontally, no overflow'] },
     { version: '2.28.2', date: 'Apr 2026', changes: ['Dealer chip amber pulse glow animation', 'Pass bid badge dim cyan, bagged badge magenta', 'Choose Your Seat modal full cyberpunk styling', 'Lobby topbar, Create Game, Profile Settings modals cyberpunk', 'Round Summary E/W cards fit fix, close button styled', 'Waiting room center circle cyberpunk dark/cyan'] },
@@ -8615,10 +8621,21 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px', marginBottom: '12px' }}>
                           {cpStatCard('Games', gp)}
                           {cpStatCard('Wins', gw)}
+                          {cpStatCard('Losses', gl)}
                           {cpStatCard('Win %', `${winRate}%`)}
+                          {cpStatCard('Cur Streak 🔥', statsData.currentStreak || 0)}
+                          {cpStatCard('Max Streak ⭐', statsData.bestStreak || 0)}
+                          {cpStatCard('Bids Made', bidsWon)}
                           {cpStatCard('Bid %', `${bidSuccessPct}%`)}
-                          {cpStatCard('Avg Bid', avgWinBid)}
                           {cpStatCard('Times Set', timesSet)}
+                          {cpStatCard('Perfect 30s', statsData.perfect30s || 0)}
+                          {cpStatCard('Quits', statsData.gamesQuit || 0)}
+                          {cpStatCard('Avg Bid', avgWinBid)}
+                          {/* Last Seen full width */}
+                          <div style={{ gridColumn: '1 / -1', background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.15)', borderRadius: '8px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div className="cp-stat-label">Last Seen</div>
+                            <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '14px', color: isOnline ? '#00ff88' : '#c0ddf0' }}>{isOnline ? 'Online now' : lastSeenStr}</div>
+                          </div>
                         </div>
                         {/* Badges */}
                         <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '10px', color: '#3a5f78', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '8px' }}>Badges</div>
