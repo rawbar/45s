@@ -3074,7 +3074,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.29.0';
+const VERSION = '2.29.1';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5759,6 +5759,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isCyberpunk = currentThemeId === 'cyberpunk';
 
   const versionHistory = [
+    { version: '2.29.1', date: 'Apr 2026', changes: ['Deal + draw animations now play in cyberpunk (were Irish-only)', 'Kitty cards appear/fly in all themes'] },
     { version: '2.29.0', date: 'Apr 2026', changes: ['Cyberpunk bidding: bid flash (Orbitron, amber/magenta/cyan)', 'Diamond announce: cyan arrow + dark panel + amber bid', 'Bid winner pill: cyan pulsing border (BAGGED = magenta)', 'High bidder nameplate: amber glow during bidding'] },
     { version: '2.28.9', date: 'Apr 2026', changes: ['Last trick cards show center suit (mid not small)', 'Show Hands: all colors/fonts are cyberpunk in cyberpunk mode', 'E/W show-hands cards hide corner suits'] },
     { version: '2.28.8', date: 'Apr 2026', changes: ['Side seat names no longer cut off: tighter padding + 9px font in cyberpunk'] },
@@ -12278,7 +12279,6 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   useEffect(() => {
     const prev = prevPhaseForDealRef.current;
     prevPhaseForDealRef.current = phase;
-    if (currentThemeId !== 'irish') return;
     if (phase === 'bidding' && prev !== 'bidding') {
       // New round: deal all 4 players (3+kitty+2), lock bidding until done
       // 12 first-round cards + 3 kitty + 8 second-round = 23 × 150ms stagger
@@ -12302,7 +12302,6 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
   // Animate newly drawn cards sliding into hand (me)
   useEffect(() => {
-    if (currentThemeId !== 'irish') return;
     const prev = prevDrawnCardsRef.current;
     const newCards = [...drawnCards].filter(id => !prev.has(id));
     prevDrawnCardsRef.current = new Set(drawnCards);
@@ -12315,7 +12314,6 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
   // Animate draw for opponents — detect when drawn[pos] increases
   useEffect(() => {
-    if (currentThemeId !== 'irish') return;
     const prev = prevDrawnCountsRef.current;
     const updates = {};
     [0,1,2,3].forEach(pos => {
@@ -14432,7 +14430,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const KITTY_START = 12 * DEAL_STAGGER; // after 12 first-round cards
   const SECOND_ROUND_START = KITTY_START + 3 * DEAL_STAGGER; // after kitty
   const getDealDelay = (seatIndex, cardIndex) => {
-    if (!dealAnimActive || currentThemeId !== 'irish') return null;
+    if (!dealAnimActive) return null;
     const dealOrder = [0,1,2,3].map(i => (dealer + 1 + i) % 4);
     const p = dealOrder.indexOf(seatIndex);
     if (p < 0) return null;
@@ -14453,7 +14451,6 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   // Draw animation for opponent cards — applies to cards that appeared after discard
   const DRAW_DIR_OFFSETS = { top: [0, -120], left: [-120, 0], right: [120, 0] };
   const opponentDrawAnimStyle = (pos, cardIndex, handLen) => {
-    if (currentThemeId !== 'irish') return {};
     const anim = drawAnimOpponents[pos];
     if (!anim) return {};
     const drawnCount = anim.count;
@@ -14688,7 +14685,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               </div>
 
               {/* Kitty — appears during deal, stays on table through bidding/trump-select, flies to winner when trump is set */}
-              {kittyOnTable && currentThemeId === 'irish' && (
+              {kittyOnTable && (
                 <div className="deal-kitty-overlay" style={{
                   animation: kittyFlying
                     ? `kittyFly${kittyFlying.charAt(0).toUpperCase() + kittyFlying.slice(1)} 0.6s cubic-bezier(0.4, 0, 1, 1) forwards`
@@ -14872,7 +14869,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     position: 'relative',
                   } : undefined;
                   const drawIdx = drawAnimCards.has(card.id) ? [...drawAnimCards].indexOf(card.id) : -1;
-                  const drawAnim = drawIdx >= 0 && currentThemeId === 'irish' ? {
+                  const drawAnim = drawIdx >= 0 ? {
                     animation: `dealIn 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both`,
                     animationDelay: `${drawIdx * 200}ms`,
                     '--deal-dx': '0px',
