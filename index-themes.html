@@ -3236,8 +3236,15 @@
       linear-gradient(145deg,#1a0e05,#0d0702);
     border:1px solid rgba(201,162,39,0.45);
   }
-  .theme-arabian .cp-card.back::after { content:'☽'; font-size:14px; color:rgba(201,162,39,0.35); }
-  .theme-arabian .cp-card.small.back::after { font-size:10px; }
+  .theme-arabian .cp-card.back::after {
+    content: '☽';
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(201,162,39,0.55);
+    font-size: 18px;
+    text-shadow: 0 0 6px rgba(201,162,39,0.4);
+  }
+  .theme-arabian .cp-card.small.back::after { font-size:12px; }
   .theme-arabian .cp-card.playable {
     box-shadow:0 0 10px rgba(201,162,39,0.6),0 3px 10px rgba(0,0,0,0.5);
     border-color:#c9a227;
@@ -3355,7 +3362,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.30.0';
+const VERSION = '2.30.1';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6050,6 +6057,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.30.1', date: 'Apr 2026', changes: ['Arabian Nights: card backs centered crescent, dark gold rail, all modals themed.'] },
     { version: '2.30.0', date: 'Apr 2026', changes: ['Arabian Nights theme — marble background, gemstone accents, gold/sapphire/ruby bid badges, all screens themed.'] },
     { version: '2.29.9', date: 'Apr 2026', changes: ['Bid/pass animations: bright green motif throughout — bid coin, PASS badge, bid flash, winner pill, diamond announce'] },
     { version: '2.29.8', date: 'Apr 2026', changes: ['E/W Round Summary: matches Irish exactly — 12px padding, 8px gap, 30×50px cards, no overflow-x'] },
