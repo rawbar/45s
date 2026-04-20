@@ -171,6 +171,21 @@ Keep positioning in the element style; keep only scale/opacity/rotation in keyfr
 
 ---
 
+## Version Bump Rule
+
+**Every time `VERSION` is changed, a matching entry MUST be added to `versionHistory` in `WhatsNewModal`.**
+The array is at the top of `WhatsNewModal` (~line 4424). The newest entry goes first.
+Skipping this causes the What's New modal to show an outdated version number and missing entries.
+
+```javascript
+const versionHistory = [
+  { version: '2.27.41', date: 'Apr 2026', changes: ['Description of what changed.'] },
+  // ... older entries below
+];
+```
+
+---
+
 ## Modal Rules
 
 **NEVER use `window.confirm`, `window.alert`, or `window.prompt`.**
