@@ -1763,7 +1763,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.50';
+const VERSION = '2.27.51';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4428,6 +4428,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.51', date: 'Apr 2026', changes: ['Fix crash when tapping a player in leaderboard — stale setStatsTab call removed.'] },
     { version: '2.27.50', date: 'Apr 2026', changes: ['Font loading fix: added @import backup for Google Fonts and switched to display=block so Cinzel renders correctly on Android Chrome.'] },
     { version: '2.27.49', date: 'Apr 2026', changes: ['Removed old white stats modal (dead code). Removed unused statsTab state.'] },
     { version: '2.27.48', date: 'Apr 2026', changes: ['Stats: Bids Made, Bid Success %, and Avg Win Bid now count all bid levels (15/20/25/30) instead of only 30-bids. Avg Win Bid shows the true average bid amount on won bids.'] },
@@ -6237,7 +6238,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
     setStatsPlayer(playerInfo);
     setStatsPlayerId(playerId);
     setActiveBadge(null);
-    setStatsTab('stats');
     setShowStatsModal(true);
 
     try {
