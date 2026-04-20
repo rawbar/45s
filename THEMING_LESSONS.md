@@ -1,7 +1,8 @@
 # 45s Theming — Lessons & Architecture
 
 Everything an agent needs to implement a new theme correctly the first time.
-Derived from the Irish Card Room theming session (v2.26–v2.27.47).
+Derived from the Irish Card Room theming session (v2.26–v2.27.47) and the
+Cyberpunk theme session (v2.28.0–v2.28.6).
 
 ---
 
@@ -19,6 +20,37 @@ const [activeTheme, setActiveTheme] = useState('irish');
 - Theme change: update `currentThemeId`, call `setActiveTheme`, write to Firebase
 - CSS is gated with `.theme-irish` class on the root `.v3-phone` div
 - Theme tiles live in **Preferences modal** (not Profile Settings)
+
+---
+
+## Design Tokens — Cyberpunk (second theme implemented)
+
+```
+bg:         linear-gradient(175deg, #060d18 0%, #020509 100%)
+cyan:       #00e5ff   (primary accent, glows, borders)
+magenta:    #ff00cc   (secondary accent, alerts, warnings)
+amber:      #ff8c00   (dealer chip, bid buttons)
+green:      #00ff88   (online presence, positive indicators)
+red:        #ff1a75   (negative/error)
+darkBg:     #020509   (deepest background)
+panelBg:    rgba(4,10,20,0.85)   (card/panel surfaces)
+textPrimary: #c0ddf0  (body text)
+textMono:   #3a5f78   (dim labels)
+
+Fonts: Orbitron 700/900 (headings, numbers), Share Tech Mono 400 (labels, mono), Inter (body)
+Font root class: `theme-cyberpunk` on `.v3-phone` and lobby/WR root divs
+Lobby root class: `cp-lobby-bg`
+```
+
+**Confirmed working @font-face for Cyberpunk (April 2026):**
+```css
+@font-face { font-family: 'Orbitron'; font-style: normal; font-weight: 700; font-display: swap;
+  src: url(https://fonts.gstatic.com/s/orbitron/v31/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1nyKS6BogtscYY.ttf) format('truetype'); }
+@font-face { font-family: 'Orbitron'; font-style: normal; font-weight: 900; font-display: swap;
+  src: url(https://fonts.gstatic.com/s/orbitron/v31/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1nyGSmBogtscYY.ttf) format('truetype'); }
+@font-face { font-family: 'Share Tech Mono'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url(https://fonts.gstatic.com/s/sharetechmono/v15/J7aHnp1uDWRBEqV98dVQztYldFc7pAsEIc3Xew.ttf) format('truetype'); }
+```
 
 ---
 
@@ -214,18 +246,60 @@ time, the version may have changed — re-fetch to get updated URLs.
 
 ---
 
-## ⛔ Irish Theme Card Rule — CENTER SUIT ONLY, NO CORNER SUITS (repeated correction ×5)
+## Multi-Theme JSX Pattern
 
-**Irish theme design: large suit symbol in the CENTER of the card. Corner suits ALWAYS hidden.**
+When there are two or more themes, components branch by theme ID. The module-level variable
+`currentThemeId` is readable everywhere without props.
 
-This has been re-broken 5 times. The trap is the Card component:
+```javascript
+// Detection — declare at top of component
+const isCyberpunk = currentThemeId === 'cyberpunk';
+const isIrish = currentThemeId === 'irish';
+
+// Class switching
+<div className={isCyberpunk ? 'cp-lobby-bg' : 'irish-lobby-bg theme-irish'}>
+
+// Inline style switching
+style={isCyberpunk ? { color: '#00e5ff', fontFamily: "'Orbitron',sans-serif" }
+                   : { color: '#f6d778', fontFamily: "'Cinzel',serif" }}
+
+// Shared structure for themes with same layout
+{(isIrish || isCyberpunk) && <div className="compass-grid">...</div>}
+```
+
+### Modal Early-Return Pattern
+
+For modals with completely different styling, use an early-return for each theme:
+
+```jsx
+function SomeModal({ ... }) {
+  if (currentThemeId === 'cyberpunk') {
+    return <div className="cp-modal-overlay">...</div>;
+  }
+  // Irish (default) falls through
+  return <div style={{ ...irishStyles }}>...</div>;
+}
+```
+
+⛔ **Trap:** If a modal only checks `isIrish` and returns null for the else-case, cyberpunk
+gets a blank screen. Always add an explicit cyberpunk branch OR a default catch-all. This
+broke the GameOver modal — it returned null for cyberpunk until fixed.
+
+---
+
+## ⛔ Card Size Rule — NEVER USE `small` IN ANY THEMED CONTEXT (Irish + Cyberpunk)
+
+**The `small` card variant has NO `.center` element. Any theme that relies on center suit symbols
+(Irish, Cyberpunk, and likely any future theme) MUST NOT use `small`.**
+
+The trap is the Card component:
 ```javascript
 const showCenter = !small;  // small cards NEVER render .center
 ```
 
-**`small` cards have no center element. Using `small` in Irish theme = no suit visible anywhere.**
+This has been re-broken 5+ times across both themes. The rule applies universally.
 
-### Rule: NEVER use `small` cards in Irish theme. Always use `mid` + CSS wrapper to resize.
+### Rule: NEVER use `small` cards in any theme. Always use `mid` + CSS wrapper to resize.
 
 Every card context needs its own CSS wrapper class with sized-down `mid` rules:
 
@@ -431,6 +505,114 @@ bids30Won > 0 ? (bids30Won * 30 / Math.max(bidAttempts, 1)).toFixed(1) : '—'
 
 ---
 
+## Lobby Background — Must Be Fixed-Height Flex Container
+
+The lobby body uses a flex chain to make the leaderboard tab scrollable:
+
+```
+.lobby-bg  (flex column, fixed height)
+  └─ .irlb-screen  (flex:1, overflow:hidden)
+       └─ .irlb-scroll  (flex:1, overflow-y:auto)  ← this scrolls
+            └─ leaderboard list
+```
+
+For this chain to work, the root `lobby-bg` class **must** use `height` not `min-height`, and
+must be a flex column container with `overflow:hidden`.
+
+```css
+/* WRONG — breaks scroll chain, leaderboard won't scroll */
+.cp-lobby-bg {
+  min-height: 100dvh;
+  /* no display:flex, no overflow:hidden */
+}
+
+/* CORRECT — matches Irish lobby pattern */
+.cp-lobby-bg {
+  height: 100vh;
+  height: -webkit-fill-available;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+```
+
+Any new theme's lobby root class must follow this same pattern.
+
+---
+
+## Stats Modal — Must Show All 12 Boxes + Last Seen
+
+The stats modal (popup when tapping a player in lobby/leaderboard) must show exactly:
+
+| Box | Value |
+|-----|-------|
+| Games Played | `gamesPlayed` |
+| Wins | `gamesWon` |
+| Losses | `gamesPlayed - gamesWon` |
+| Win % | `gamesWon/gamesPlayed * 100` |
+| Cur Streak 🔥 | `currentStreak` |
+| Max Streak ⭐ | `bestStreak` |
+| Bids Made | `bid15Made + bid20Made + bid25Made + bid30Made + baggedBidMade` |
+| Bid % | `bidsWon / (bidsWon + timesSet) * 100` |
+| Times Set | `timesSet` |
+| Perfect 30s | `perfect30s` |
+| Quits | `gamesQuit` |
+| Avg Win Bid | `totalBidPts / bidsWon` (or `—`) |
+| Last Seen (full-width) | formatted timestamp |
+
+**Cyberpunk initial implementation had only 6 boxes.** When implementing a new theme's stats
+modal, always compare against the Irish version to ensure all 12 + Last Seen are present.
+
+---
+
+## Leaderboard Avatar Chips — Must Be Theme-Specific
+
+The leaderboard row renders a player avatar circle. The Irish version used a green felt
+background (`background: '#13572a'`). This was hardcoded and showed through in cyberpunk.
+
+Every theme needs its own avatar chip style. Use a conditional className:
+
+```jsx
+// In renderIrishLbRow (shared by Irish + Cyberpunk)
+<div className={isCyberpunk ? 'cp-lb-avatar' : 'irlb-lb-avatar'} ...>
+  {getAvatarById(p.avatar).emoji}
+</div>
+```
+
+```css
+/* Irish */
+.irlb-lb-avatar { background: #13572a; border: 1.5px solid #c9a24a; ... }
+
+/* Cyberpunk */
+.cp-lb-avatar { background: rgba(0,229,255,0.06); border: 1.5px solid rgba(0,229,255,0.35); ... }
+```
+
+Any shared render function that outputs a colored element must be checked for hardcoded
+Irish/theme values whenever a new theme is added.
+
+---
+
+## Cyberpunk Card Rank Corners
+
+Cyberpunk cards use Orbitron Bold for rank characters in corners to improve readability
+(the default system font was too thin on dark backgrounds):
+
+```css
+.theme-cyberpunk .cp-card .corner .rk {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+}
+/* Size by card variant */
+.theme-cyberpunk .cp-card.small .corner .rk { font-size: 10px; }
+.theme-cyberpunk .cp-card.mid .corner .rk   { font-size: 14px; }
+.theme-cyberpunk .cp-card.large .corner .rk { font-size: 19px; }
+```
+
+When adding a new theme with a custom heading font, apply it to `.corner .rk` as well.
+
+---
+
 ## Version Bump Rule
 
 **Every time `VERSION` is changed, a matching entry MUST be added to `versionHistory` in `WhatsNewModal`.**
@@ -535,32 +717,35 @@ Bid flash, diamond arrow, deal origin, draw animation direction — all derive f
 For each new theme, every one of these needs a themed implementation:
 
 1. **Login** — form, background, button
-2. **Lobby topbar** — logo, title, version number (tappable → release notes)
-3. **Lobby game list** — rows, status badges, seat pips
-4. **Lobby leaderboard** — rank rows, top-3 treatment, badges
-5. **Lobby online strip** — presence dots, usernames
-6. **Lobby action buttons** — Create Game, Refresh, tabs
-7. **Waiting room** — compass grid, seat cards, player chips, Start button
-8. **Seat picker** — compass layout, seat selection
-9. **Game table nameplates** — me/partner/opponent variants, active glow
-10. **Bid buttons** — brass/ghost/disabled states
-11. **Trump select buttons** — suit buttons
-12. **Follow-suit toast** — alert strip
-13. **Score strip** — tap-to-expand, column order (+pts LEFT of total)
-14. **Last-trick strip** — always reserves height during playing phase
-15. **Trick overlay** — cards in center rail (absolutely positioned)
-16. **Bid flash animation** — large floating text at bidder compass position
-17. **Diamond announce** — centered in rail, directional arrow to bid winner
-18. **Deal animation** — cards fly from dealer direction, 3-3-3-kitty-2-2-2-2 sequence
-19. **Kitty overlay** — 3 cards on table, flies to bid winner on trump select
-20. **Draw animation** — newly drawn cards slide in (all 4 players, 200ms stagger)
-21. **ShowHandsModal** — 4 players, E/W compact (small cards), large center suit
-22. **Stats/badges modal** — bottom sheet, single scroll, badge detail as floating overlay
-23. **Round-end modal** — scores, trick breakdown
-24. **Game-over modal** — winner announcement
-25. **Preferences modal** — house rules, theme tiles (themes live HERE not in profile)
-26. **Leave confirm modal** — themed, never system dialog
-27. **GameWrapper init** — return null
+2. **Lobby root bg** — `height:100dvh + overflow:hidden + display:flex` (NOT `min-height`) — required for leaderboard scroll
+3. **Lobby topbar** — logo, title, version number (tappable → release notes)
+4. **Lobby game list** — rows, status badges, seat pips
+5. **Lobby leaderboard tab** — rank rows, top-3 treatment, badges, **avatar chips** (theme-specific class, not hardcoded color)
+6. **Lobby online strip** — presence dots, usernames
+7. **Lobby action buttons** — Create Game, Refresh, tabs
+8. **Waiting room** — compass grid, seat cards, player chips, Start button
+9. **Seat picker** — compass layout, seat selection
+10. **Game table nameplates** — me/partner/opponent variants, active glow
+11. **Bid buttons** — primary/ghost/disabled states
+12. **Trump select buttons** — suit buttons (red suits vs black suits may glow differently)
+13. **Follow-suit toast** — alert strip
+14. **Score strip** — tap-to-expand, column order (+pts LEFT of total)
+15. **Last-trick strip** — always reserves height during playing phase
+16. **Trick overlay** — cards in center rail (absolutely positioned)
+17. **Bid flash animation** — large floating text at bidder compass position
+18. **Diamond announce** — centered in rail, directional arrow to bid winner
+19. **Deal animation** — cards fly from dealer direction, 3-3-3-kitty-2-2-2-2 sequence
+20. **Kitty overlay** — 3 cards on table, flies to bid winner on trump select
+21. **Draw animation** — newly drawn cards slide in (all 4 players, 200ms stagger)
+22. **Dealer chip** — `D` badge on dealer's nameplate (cyberpunk: amber pulse glow animation)
+23. **Bid coin/pass badge** — bid amount indicators on nameplates during bidding
+24. **ShowHandsModal** — 4 players, E/W compact (use `mid` sized down via CSS, NEVER `small`), large center suit
+25. **Stats/badges modal** — **all 12 stat boxes + Last Seen** (compare against Irish; cyberpunk v2.28 shipped with only 6 initially)
+26. **Round-end modal** — scores, trick breakdown, E/W cards must fit without overflow
+27. **Game-over modal** — winner announcement (⛔ must handle ALL themes — returning null for non-Irish breaks it)
+28. **Preferences modal** — house rules, theme tiles (themes live HERE not in profile)
+29. **Leave confirm modal** — themed, never system dialog
+30. **GameWrapper init** — return null
 
 ---
 
