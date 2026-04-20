@@ -27,6 +27,9 @@
     @font-face { font-family: 'Inter'; font-style: normal; font-weight: 500; font-display: swap; src: url(https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fMZg.ttf) format('truetype'); }
     @font-face { font-family: 'Inter'; font-style: normal; font-weight: 600; font-display: swap; src: url(https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuGKYMZg.ttf) format('truetype'); }
     @font-face { font-family: 'Inter'; font-style: normal; font-weight: 700; font-display: swap; src: url(https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYMZg.ttf) format('truetype'); }
+    @font-face { font-family: 'Orbitron'; font-weight: 700; font-display: swap; src: url(https://fonts.gstatic.com/s/orbitron/v31/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1nyGy6BoWg1fDAlOwFYmKByiDs.ttf) format('truetype'); }
+    @font-face { font-family: 'Orbitron'; font-weight: 900; font-display: swap; src: url(https://fonts.gstatic.com/s/orbitron/v31/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1nyGy6BoWg1fDAlOwFYmPtyiDs.ttf) format('truetype'); }
+    @font-face { font-family: 'Share Tech Mono'; font-weight: 400; font-display: swap; src: url(https://fonts.gstatic.com/s/sharetechmono/v15/J7aHnp1uDWRBEqV98dVQztYldFcLowEF.ttf) format('truetype'); }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { height: 100%; height: -webkit-fill-available; }
     body { font-family: 'Palatino Linotype', Palatino, Georgia, serif; overflow: hidden; width: 100%; height: 100%; height: -webkit-fill-available; }
@@ -1284,6 +1287,1020 @@
       linear-gradient(175deg, #060d18 0%, #020509 100%);
   }
 
+  /* ══════════════════════════════════════════════════════════════════
+     CYBERPUNK SCREENS & MODALS
+     ══════════════════════════════════════════════════════════════════ */
+
+  /* ── CP: Shared keyframes ── */
+  @keyframes cpScanMove {
+    from { background-position: 0 0; }
+    to   { background-position: 0 100px; }
+  }
+  @keyframes cpFlicker {
+    0%, 95%, 100% { opacity: 1; }
+    96%           { opacity: 0.85; }
+    97%           { opacity: 1; }
+    98%           { opacity: 0.9; }
+  }
+  @keyframes cpGlitch {
+    0%   { text-shadow: 0 0 14px rgba(0,229,255,0.8); }
+    10%  { text-shadow: 3px 0 14px rgba(255,0,204,0.8), -3px 0 14px rgba(0,229,255,0.8); clip-path: inset(10% 0 60% 0); }
+    20%  { text-shadow: -3px 0 14px rgba(255,0,204,0.8), 3px 0 14px rgba(0,229,255,0.8); clip-path: inset(0); }
+    30%  { text-shadow: 0 0 24px rgba(0,229,255,1); clip-path: inset(40% 0 30% 0); }
+    40%  { text-shadow: 0 0 14px rgba(0,229,255,0.8); clip-path: inset(0); }
+    100% { text-shadow: 0 0 14px rgba(0,229,255,0.8); clip-path: inset(0); }
+  }
+  @keyframes cpPulseAmber {
+    0%, 100% { box-shadow: 0 0 14px rgba(255,140,0,0.15); }
+    50%       { box-shadow: 0 0 22px rgba(255,140,0,0.35), 0 0 40px rgba(255,140,0,0.12); }
+  }
+  @keyframes cpPulseCyan {
+    0%, 100% { box-shadow: 0 0 10px rgba(0,229,255,0.15); }
+    50%       { box-shadow: 0 0 20px rgba(0,229,255,0.35), 0 0 36px rgba(0,229,255,0.1); }
+  }
+
+  /* ── CP: Login Screen ── */
+  .cp-login-bg {
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 40% at 50% 0%, rgba(0,229,255,0.08) 0%, transparent 60%),
+      repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,229,255,0.012) 3px, rgba(0,229,255,0.012) 4px),
+      linear-gradient(175deg, #060d18 0%, #020509 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    animation: cpFlicker 12s infinite;
+  }
+  .cp-login-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 110% 80% at 50% 50%, transparent 40%, rgba(0,0,0,0.7) 100%);
+    pointer-events: none;
+  }
+  .cp-login-card {
+    position: relative;
+    background: rgba(4,10,20,0.94);
+    background-image: repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,229,255,0.012) 3px, rgba(0,229,255,0.012) 4px);
+    border: 1px solid rgba(0,229,255,0.38);
+    border-radius: 2px;
+    max-width: 360px;
+    width: 100%;
+    padding: 32px 28px 28px;
+    z-index: 1;
+  }
+  .cp-login-card::before {
+    content: '';
+    position: absolute;
+    top: -2px; left: -2px;
+    width: 10px; height: 10px;
+    border-top: 1.5px solid #00e5ff;
+    border-left: 1.5px solid #00e5ff;
+    opacity: 0.7;
+    pointer-events: none;
+  }
+  .cp-login-card::after {
+    content: '';
+    position: absolute;
+    bottom: -2px; right: -2px;
+    width: 10px; height: 10px;
+    border-bottom: 1.5px solid #00e5ff;
+    border-right: 1.5px solid #00e5ff;
+    opacity: 0.7;
+    background: none;
+    pointer-events: none;
+  }
+  .cp-login-title {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 52px;
+    color: #00e5ff;
+    text-shadow: 0 0 18px rgba(0,229,255,0.7), 0 0 40px rgba(0,229,255,0.3);
+    text-align: center;
+    letter-spacing: 4px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .cp-login-subtitle {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: rgba(0,229,255,0.45);
+    text-align: center;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .cp-login-tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(0,229,255,0.15);
+    gap: 0;
+  }
+  .cp-login-tab {
+    flex: 1;
+    padding: 8px 0;
+    text-align: center;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(0,229,255,0.35);
+    cursor: pointer;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    transition: color 0.2s, border-color 0.2s;
+    margin-bottom: -1px;
+  }
+  .cp-login-tab.active {
+    color: #00e5ff;
+    border-bottom-color: #00e5ff;
+    text-shadow: 0 0 10px rgba(0,229,255,0.5);
+  }
+  .cp-login-tab:hover:not(.active) {
+    color: rgba(0,229,255,0.6);
+  }
+  .cp-login-label {
+    display: block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: rgba(0,229,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 5px;
+    margin-top: 14px;
+  }
+  .cp-login-input {
+    width: 100%;
+    background: rgba(0,229,255,0.03);
+    border: 1px solid rgba(0,229,255,0.2);
+    border-radius: 2px;
+    color: #c0ddf0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .cp-login-input:focus {
+    border-color: #00e5ff;
+    box-shadow: 0 0 10px rgba(0,229,255,0.15);
+  }
+  .cp-login-input::placeholder {
+    color: rgba(192,221,240,0.2);
+  }
+  .cp-login-btn-primary {
+    display: block;
+    width: 100%;
+    margin-top: 22px;
+    padding: 12px 0;
+    background: rgba(255,140,0,0.1);
+    border: 1px solid #ff8c00;
+    border-radius: 2px;
+    color: #ff8c00;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-shadow: 0 0 8px rgba(255,140,0,0.6);
+    box-shadow: 0 0 14px rgba(255,140,0,0.15);
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+    animation: cpPulseAmber 3s infinite;
+  }
+  .cp-login-btn-primary:hover {
+    background: rgba(255,140,0,0.18);
+    box-shadow: 0 0 22px rgba(255,140,0,0.3);
+  }
+  .cp-login-btn-ghost {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px 0;
+    background: rgba(0,229,255,0.05);
+    border: 1px solid rgba(0,229,255,0.35);
+    border-radius: 2px;
+    color: #00e5ff;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .cp-login-btn-ghost:hover {
+    background: rgba(0,229,255,0.1);
+    box-shadow: 0 0 12px rgba(0,229,255,0.15);
+  }
+  .cp-login-error {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: #ff00cc;
+    text-shadow: 0 0 6px rgba(255,0,204,0.5);
+    margin-top: 8px;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+  .cp-login-link {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: rgba(0,229,255,0.4);
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.2s;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+  .cp-login-link:hover {
+    color: #00e5ff;
+    text-shadow: 0 0 8px rgba(0,229,255,0.4);
+  }
+
+  /* ── CP: Lobby Screen ── */
+  .cp-lobby-bg {
+    background:
+      radial-gradient(ellipse 80% 40% at 50% 0%, rgba(0,229,255,0.07) 0%, transparent 60%),
+      repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,229,255,0.012) 3px, rgba(0,229,255,0.012) 4px),
+      linear-gradient(175deg, #060d18 0%, #020509 100%);
+    background-attachment: fixed;
+  }
+  .cp-lobby-section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    color: rgba(0,229,255,0.55);
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    margin-bottom: 8px;
+  }
+  .cp-game-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    background: rgba(4,10,20,0.7);
+    border-bottom: 1px solid rgba(0,229,255,0.07);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .cp-game-row::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: rgba(0,229,255,0.25);
+  }
+  .cp-game-row:hover {
+    background: rgba(0,229,255,0.04);
+    box-shadow: inset 0 0 20px rgba(0,229,255,0.03);
+  }
+  .cp-game-row:hover::before {
+    background: #00e5ff;
+    box-shadow: 0 0 6px rgba(0,229,255,0.6);
+  }
+  .cp-game-row-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: #c0ddf0;
+    flex: 1;
+  }
+  .cp-game-row-status {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 1px;
+    border: 1px solid;
+  }
+  .cp-game-row-status.waiting {
+    color: #ff8c00;
+    border-color: rgba(255,140,0,0.4);
+    background: rgba(255,140,0,0.08);
+  }
+  .cp-game-row-status.playing {
+    color: #ff00cc;
+    border-color: rgba(255,0,204,0.4);
+    background: rgba(255,0,204,0.08);
+  }
+  .cp-game-row-status.finished {
+    color: rgba(0,229,255,0.3);
+    border-color: rgba(0,229,255,0.15);
+    background: transparent;
+  }
+  .cp-seat-pip {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 1px;
+    margin: 0 1px;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+  .cp-seat-pip.filled {
+    background: #00e5ff;
+    box-shadow: 0 0 4px rgba(0,229,255,0.7);
+  }
+  .cp-seat-pip.empty {
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.2);
+  }
+  .cp-lobby-btn-create {
+    display: block;
+    width: 100%;
+    padding: 14px 0;
+    background: rgba(255,140,0,0.1);
+    border: 1px solid #ff8c00;
+    border-radius: 2px;
+    color: #ff8c00;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-shadow: 0 0 8px rgba(255,140,0,0.6);
+    box-shadow: 0 0 14px rgba(255,140,0,0.15);
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .cp-lobby-btn-create:hover {
+    background: rgba(255,140,0,0.18);
+    box-shadow: 0 0 22px rgba(255,140,0,0.3);
+  }
+  .cp-lobby-btn-ghost {
+    display: inline-block;
+    padding: 9px 16px;
+    background: rgba(0,229,255,0.05);
+    border: 1px solid rgba(0,229,255,0.35);
+    border-radius: 2px;
+    color: #00e5ff;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .cp-lobby-btn-ghost:hover {
+    background: rgba(0,229,255,0.1);
+    box-shadow: 0 0 12px rgba(0,229,255,0.15);
+  }
+  .cp-lobby-tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid rgba(0,229,255,0.15);
+    margin-bottom: 12px;
+  }
+  .cp-lobby-tab {
+    flex: 1;
+    padding: 9px 0;
+    text-align: center;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(0,229,255,0.35);
+    cursor: pointer;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    transition: color 0.2s, border-color 0.2s;
+    margin-bottom: -1px;
+  }
+  .cp-lobby-tab.active {
+    color: #00e5ff;
+    border-bottom-color: #00e5ff;
+    text-shadow: 0 0 8px rgba(0,229,255,0.4);
+  }
+  .cp-lobby-tab:hover:not(.active) {
+    color: rgba(0,229,255,0.6);
+  }
+  .cp-online-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    flex-wrap: wrap;
+  }
+  .cp-online-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #00ff88;
+    box-shadow: 0 0 5px rgba(0,255,136,0.8), 0 0 10px rgba(0,255,136,0.3);
+    flex-shrink: 0;
+    vertical-align: middle;
+  }
+  .cp-leaderboard-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: #c0ddf0;
+    border-bottom: 1px solid rgba(0,229,255,0.06);
+  }
+  .cp-leaderboard-row:nth-child(odd) {
+    background: rgba(0,229,255,0.02);
+  }
+  .cp-rank-num {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    color: rgba(0,229,255,0.4);
+    width: 24px;
+    flex-shrink: 0;
+  }
+
+  /* ── CP: Waiting Room ── */
+  .cp-waiting-bg {
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 40% at 50% 0%, rgba(0,229,255,0.07) 0%, transparent 60%),
+      repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,229,255,0.012) 3px, rgba(0,229,255,0.012) 4px),
+      linear-gradient(175deg, #060d18 0%, #020509 100%);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .cp-waiting-compass {
+    display: grid;
+    grid-template-areas:
+      ".    north ."
+      "west .     east"
+      ".    south .";
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-rows: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+    justify-items: center;
+    flex: 1;
+    padding: 16px;
+  }
+  .cp-seat-card {
+    position: relative;
+    background: rgba(4,10,20,0.88);
+    background-image: repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,229,255,0.01) 3px, rgba(0,229,255,0.01) 4px);
+    border: 1px solid rgba(0,229,255,0.28);
+    border-radius: 2px;
+    padding: 12px 16px;
+    min-width: 120px;
+    text-align: center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .cp-seat-card::before {
+    content: '';
+    position: absolute;
+    top: -2px; left: -2px;
+    width: 8px; height: 8px;
+    border-top: 1.5px solid rgba(0,229,255,0.5);
+    border-left: 1.5px solid rgba(0,229,255,0.5);
+    pointer-events: none;
+  }
+  .cp-seat-card::after {
+    content: '';
+    position: absolute;
+    bottom: -2px; right: -2px;
+    width: 8px; height: 8px;
+    border-bottom: 1.5px solid rgba(0,229,255,0.5);
+    border-right: 1.5px solid rgba(0,229,255,0.5);
+    background: none;
+    pointer-events: none;
+  }
+  .cp-seat-card.occupied {
+    border-color: rgba(0,255,136,0.4);
+  }
+  .cp-seat-card.occupied::before,
+  .cp-seat-card.occupied::after {
+    border-color: rgba(0,255,136,0.5);
+  }
+  .cp-seat-card.mine {
+    border-color: rgba(0,229,255,0.6);
+    box-shadow: 0 0 16px rgba(0,229,255,0.12), inset 0 0 8px rgba(0,229,255,0.04);
+    animation: cpPulseCyan 3s infinite;
+  }
+  .cp-seat-card.mine::before,
+  .cp-seat-card.mine::after {
+    border-color: #00e5ff;
+    opacity: 0.8;
+  }
+  .cp-seat-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(0,229,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+  .cp-seat-player {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: #c0ddf0;
+    text-shadow: 0 0 6px rgba(192,221,240,0.3);
+  }
+  .cp-seat-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid rgba(0,229,255,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin: 0 auto 6px;
+    background: rgba(0,229,255,0.05);
+  }
+  .cp-seat-vacant {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: rgba(0,229,255,0.18);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+  }
+  .cp-waiting-start-btn {
+    display: block;
+    width: 100%;
+    padding: 14px 0;
+    background: rgba(255,140,0,0.1);
+    border: 1px solid #ff8c00;
+    border-radius: 2px;
+    color: #ff8c00;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-shadow: 0 0 8px rgba(255,140,0,0.6);
+    box-shadow: 0 0 14px rgba(255,140,0,0.15);
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.2s, box-shadow 0.2s;
+    animation: cpPulseAmber 3s infinite;
+  }
+  .cp-waiting-start-btn:hover {
+    background: rgba(255,140,0,0.18);
+    box-shadow: 0 0 22px rgba(255,140,0,0.3);
+  }
+  .cp-waiting-leave-btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background: rgba(0,229,255,0.05);
+    border: 1px solid rgba(0,229,255,0.35);
+    border-radius: 2px;
+    color: #00e5ff;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .cp-waiting-leave-btn:hover {
+    background: rgba(0,229,255,0.1);
+    box-shadow: 0 0 12px rgba(0,229,255,0.15);
+  }
+
+  /* ── CP: Modals (shared) ── */
+  .cp-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .cp-modal {
+    position: relative;
+    background: rgba(2,5,10,0.96);
+    background-image: repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,229,255,0.012) 3px, rgba(0,229,255,0.012) 4px);
+    border: 1px solid rgba(0,229,255,0.38);
+    border-radius: 2px;
+    max-width: 420px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 0 40px rgba(0,229,255,0.06), 0 20px 60px rgba(0,0,0,0.8);
+  }
+  .cp-modal::before {
+    content: '';
+    position: absolute;
+    top: -2px; left: -2px;
+    width: 10px; height: 10px;
+    border-top: 1.5px solid #00e5ff;
+    border-left: 1.5px solid #00e5ff;
+    opacity: 0.6;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .cp-modal::after {
+    content: '';
+    position: absolute;
+    bottom: -2px; right: -2px;
+    width: 10px; height: 10px;
+    border-bottom: 1.5px solid #00e5ff;
+    border-right: 1.5px solid #00e5ff;
+    opacity: 0.6;
+    background: none;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .cp-modal-header {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px 0;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .cp-modal-title {
+    flex: 1;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: #00e5ff;
+    text-shadow: 0 0 10px rgba(0,229,255,0.4);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .cp-modal-hairline {
+    height: 1px;
+    background: linear-gradient(90deg, #00e5ff 0%, #ff00cc 50%, transparent 100%);
+    margin: 10px 0 0;
+    opacity: 0.6;
+    flex-shrink: 0;
+  }
+  .cp-modal-body {
+    padding: 16px;
+    overflow-y: auto;
+  }
+  .cp-modal-close {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,229,255,0.05);
+    border: 1px solid rgba(0,229,255,0.3);
+    border-radius: 1px;
+    color: #00e5ff;
+    font-size: 14px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s, box-shadow 0.15s;
+    line-height: 1;
+  }
+  .cp-modal-close:hover {
+    background: rgba(0,229,255,0.12);
+    box-shadow: 0 0 8px rgba(0,229,255,0.25);
+  }
+  .cp-modal-btn-primary {
+    display: inline-block;
+    padding: 10px 20px;
+    background: rgba(255,140,0,0.1);
+    border: 1px solid #ff8c00;
+    border-radius: 2px;
+    color: #ff8c00;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-shadow: 0 0 8px rgba(255,140,0,0.6);
+    box-shadow: 0 0 14px rgba(255,140,0,0.12);
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .cp-modal-btn-primary:hover {
+    background: rgba(255,140,0,0.18);
+    box-shadow: 0 0 20px rgba(255,140,0,0.25);
+  }
+  .cp-modal-btn-ghost {
+    display: inline-block;
+    padding: 10px 20px;
+    background: rgba(0,229,255,0.05);
+    border: 1px solid rgba(0,229,255,0.35);
+    border-radius: 2px;
+    color: #00e5ff;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .cp-modal-btn-ghost:hover {
+    background: rgba(0,229,255,0.1);
+    box-shadow: 0 0 12px rgba(0,229,255,0.15);
+  }
+  .cp-modal-section-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(0,229,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    margin-bottom: 8px;
+  }
+
+  /* ── CP: Show Hands Modal ── */
+  .cp-show-hands-cards {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: nowrap;
+    justify-content: center;
+  }
+  .cp-show-hands-cards .cp-card.mid {
+    width: 46px;
+    height: 64px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .cp-show-hands-cards .cp-card.mid .corner .rk {
+    font-size: 13px;
+  }
+  .cp-show-hands-ew {
+    /* compact variant for East/West players */
+  }
+  .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid {
+    width: 32px;
+    height: 52px;
+    border-radius: 3px;
+  }
+  .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .corner .rk {
+    font-size: 9px;
+  }
+  .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .corner .su {
+    font-size: 7px;
+  }
+  .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .center {
+    font-size: 20px;
+  }
+  .cp-trick-strip {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 0;
+    border-top: 1px solid rgba(0,229,255,0.1);
+    margin-top: 8px;
+  }
+  .cp-trick-strip .cp-card.mid {
+    width: 24px;
+    height: 36px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .cp-trick-strip .cp-card.mid .corner .rk {
+    font-size: 7px;
+  }
+  .cp-trick-strip .cp-card.mid .center {
+    font-size: 16px;
+  }
+
+  /* ── CP: Round End / Game Over Modals ── */
+  .cp-round-end-result {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 22px;
+    text-align: center;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .cp-round-end-made {
+    color: #00ff88;
+    text-shadow: 0 0 16px rgba(0,255,136,0.7), 0 0 32px rgba(0,255,136,0.3);
+  }
+  .cp-round-end-set {
+    color: #ff00cc;
+    text-shadow: 0 0 16px rgba(255,0,204,0.7), 0 0 32px rgba(255,0,204,0.3);
+  }
+  .cp-score-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0,229,255,0.08);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: rgba(192,221,240,0.7);
+  }
+  .cp-score-us {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #00ff88;
+    text-shadow: 0 0 14px rgba(0,255,136,0.6);
+    letter-spacing: 1px;
+  }
+  .cp-score-them {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #ff00cc;
+    text-shadow: 0 0 14px rgba(255,0,204,0.6);
+    letter-spacing: 1px;
+  }
+  .cp-game-over-title {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 36px;
+    color: #00e5ff;
+    text-align: center;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    animation: cpGlitch 3s infinite;
+    margin-bottom: 16px;
+  }
+  .cp-winner-line {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    color: #00ff88;
+    text-shadow: 0 0 18px rgba(0,255,136,0.7);
+    text-align: center;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .cp-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: rgba(192,221,240,0.65);
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(0,229,255,0.06);
+  }
+
+  /* ── CP: Preferences Modal ── */
+  .cp-pref-section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 10px;
+    color: rgba(0,229,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    margin: 16px 0 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(0,229,255,0.1);
+  }
+  .cp-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    background: rgba(4,10,20,0.6);
+    border-bottom: 1px solid rgba(0,229,255,0.05);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .cp-checkbox-row:hover {
+    background: rgba(0,229,255,0.04);
+  }
+  .cp-checkbox-custom {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    background: rgba(0,229,255,0.04);
+    border: 1px solid rgba(0,229,255,0.35);
+    border-radius: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  }
+  .cp-checkbox-custom.checked {
+    background: rgba(0,229,255,0.12);
+    border-color: #00e5ff;
+    box-shadow: 0 0 6px rgba(0,229,255,0.3);
+  }
+  .cp-checkbox-custom.checked::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: #00e5ff;
+    border-radius: 1px;
+    box-shadow: 0 0 4px rgba(0,229,255,0.6);
+  }
+
+  /* ── CP: Stats / Badges Modal ── */
+  .cp-stat-card {
+    position: relative;
+    background: rgba(4,10,20,0.8);
+    border: 1px solid rgba(0,229,255,0.25);
+    border-radius: 2px;
+    padding: 14px 12px;
+    text-align: center;
+  }
+  .cp-stat-card::before {
+    content: '';
+    position: absolute;
+    top: -2px; left: -2px;
+    width: 6px; height: 6px;
+    border-top: 1px solid rgba(0,229,255,0.5);
+    border-left: 1px solid rgba(0,229,255,0.5);
+    pointer-events: none;
+  }
+  .cp-stat-card::after {
+    content: '';
+    position: absolute;
+    bottom: -2px; right: -2px;
+    width: 6px; height: 6px;
+    border-bottom: 1px solid rgba(0,229,255,0.5);
+    border-right: 1px solid rgba(0,229,255,0.5);
+    background: none;
+    pointer-events: none;
+  }
+  .cp-stat-num {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #00e5ff;
+    text-shadow: 0 0 12px rgba(0,229,255,0.5);
+    letter-spacing: 1px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .cp-stat-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: rgba(0,229,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+  .cp-badge-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+  .cp-badge-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 2px;
+    background: rgba(4,10,20,0.6);
+    border: 1px solid rgba(0,229,255,0.08);
+    border-radius: 2px;
+  }
+  .cp-badge-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    border: 1px solid rgba(0,229,255,0.2);
+    background: rgba(0,229,255,0.04);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .cp-badge-circle.earned {
+    border-color: rgba(255,140,0,0.5);
+    background: rgba(255,140,0,0.08);
+    box-shadow: 0 0 10px rgba(255,140,0,0.2), inset 0 0 6px rgba(255,140,0,0.06);
+  }
+  .cp-badge-circle.locked {
+    opacity: 0.3;
+    filter: grayscale(1);
+  }
+  .cp-badge-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    color: rgba(0,229,255,0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  /* ── CP: Leave Confirm / Generic Confirm Modal ── */
+  .cp-confirm-msg {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: #c0ddf0;
+    line-height: 1.6;
+    text-align: center;
+    padding: 8px 0;
+  }
+
   /* ── Irish Login Screen ── */
   .theme-irish .irish-login-bg {
     background-color: #180b03;
@@ -1786,7 +2803,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.63';
+const VERSION = '2.28.0';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4450,7 +5467,10 @@ function ScoreTable({ roundHistory, mySeatIndex }) {
 function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
+  const isCyberpunk = currentThemeId === 'cyberpunk';
+
   const versionHistory = [
+    { version: '2.28.0', date: 'Apr 2026', changes: ['Complete cyberpunk theme: all screens, modals, and game table fully styled', 'Cyberpunk login, lobby, waiting room in full neon aesthetic', 'Cyberpunk variants for ShowHands, RoundEnd, GameOver, Stats, Preferences, and all modals', 'Font loading hardened: Orbitron and Share Tech Mono via embedded @font-face'] },
     { version: '2.27.63', date: 'Apr 2026', changes: ['Round Complete modal now shows correct score when bidder is set — displays −bid instead of raw trick points.'] },
     { version: '2.27.62', date: 'Apr 2026', changes: ['Last-trick strip: suits now show in center (not corner) on all 4 cards.', 'View Round: E/W card suit symbols larger (24px).'] },
     { version: '2.27.60', date: 'Apr 2026', changes: ['Bidding phase: bid indicators now glow blue. Current high bid glows brighter; other bids subtle glow; Pass stays muted.', 'Suit symbols restored on last-trick strip cards.'] },
@@ -4612,6 +5632,35 @@ function WhatsNewModal({ isOpen, onClose }) {
     { version: '2.10.1', changes: 'Fixed online players sync across sessions' },
     { version: '2.10.0', changes: 'Added connected players display with compact lobby header' }
   ];
+
+  if (isCyberpunk) {
+    return (
+      <div className="cp-modal-overlay">
+        <div className="cp-modal" style={{ width: '100%', maxWidth: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+          <div className="cp-modal-header">
+            <span className="cp-modal-title">What's New in 45s</span>
+            <button className="cp-modal-close" onClick={onClose}>×</button>
+          </div>
+          <div className="cp-modal-hairline" />
+          <div className="cp-modal-body" style={{ flex: 1, overflowY: 'auto' }}>
+            {versionHistory.map((item, idx) => (
+              <div key={idx} style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: idx < versionHistory.length - 1 ? '1px solid rgba(0,229,255,0.08)' : 'none' }}>
+                <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '13px', fontWeight: 700, color: idx === 0 ? '#00ff88' : '#00e5ff', marginBottom: '4px' }}>
+                  v{item.version} {idx === 0 && <span style={{ fontSize: '10px', background: '#00ff88', color: '#020509', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px', fontFamily: "'Share Tech Mono', monospace" }}>NEW</span>}
+                </div>
+                <div style={{ fontSize: '12px', color: 'rgba(0,229,255,0.6)', lineHeight: '1.4', fontFamily: "'Share Tech Mono', monospace" }}>
+                  {Array.isArray(item.changes) ? item.changes.join(' · ') : item.changes}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(0,229,255,0.15)' }}>
+            <button className="cp-modal-btn-primary" onClick={onClose} style={{ width: '100%' }}>Close</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -5062,6 +6111,7 @@ function RulesModal({ isOpen, onClose }) {
 function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, drawnCards, kittyCardIds, wasBagged, playHistory, bids, mySeatIndex, players, scores, faceUpCard = null }) {
   if (!isOpen || !hands) return null;
 
+  const isCyberpunk = currentThemeId === 'cyberpunk';
   const brass = '#c9a24a', brassHi = '#f6d778';
 
   const getPlayerName = (playerIdx) => {
@@ -5117,7 +6167,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
           </span>
         )}
         {/* Cards — fixed single row, no wrap */}
-        <div className="ir-show-hands-cards" style={{ display: 'flex', gap: compact ? '1px' : '2px', flexWrap: 'nowrap', justifyContent: 'center' }}>
+        <div className={isCyberpunk ? 'cp-show-hands-cards' : 'ir-show-hands-cards'} style={{ display: 'flex', gap: compact ? '1px' : '2px', flexWrap: 'nowrap', justifyContent: 'center' }}>
           {sortedHand.map((c, i) => {
             const playIdx = playHistory ? playHistory.findIndex(p => p.player === playerIdx && p.card.id === c.id) : -1;
             const trickNum = playIdx >= 0 && playHistory[playIdx] ? playHistory[playIdx].trick : null;
@@ -5138,6 +6188,61 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
   };
 
   const isRed = trumpSuit === '♥' || trumpSuit === '♦';
+
+  if (isCyberpunk) {
+    return (
+      <div className="cp-modal-overlay" onClick={onClose}>
+        <div className="cp-modal" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '400px', maxHeight: '92dvh', overflowY: 'auto' }}>
+          <div className="cp-modal-header">
+            <span className="cp-modal-title">Round Summary</span>
+            <button className="cp-modal-close" onClick={onClose}>×</button>
+          </div>
+          <div className="cp-modal-hairline" />
+          <div className="cp-modal-body">
+            {/* Trump + scores row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              {trumpSuit
+                ? <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '10px', color: '#3a5f78' }}>Trump</span>
+                    <span style={{ fontSize: '18px', color: isRed ? '#ff4466' : '#00e5ff' }}>{trumpSuit}</span>
+                    {highBid > 0 && <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '10px', color: '#00e5ff' }}>· {wasBagged ? 'BAGGED ' : ''}{highBid}</span>}
+                  </div>
+                : <div />}
+              {scores && <div style={{ display: 'flex', gap: '12px', fontSize: '11px' }}>
+                <span className="cp-score-us">N/S <strong>{scores[0]}</strong></span>
+                <span className="cp-score-them">E/W <strong>{scores[1]}</strong></span>
+              </div>}
+            </div>
+
+            {/* Legend */}
+            <div style={{ fontSize: '9px', color: '#3a5f78', fontFamily: "'Share Tech Mono', monospace", display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+              <span style={{ color: '#00e5ff' }}>cyan border</span><span>= led trick</span>
+              <span>·</span><span style={{ color: '#6bb6ff' }}>●</span><span>drawn</span>
+              <span>·</span><span style={{ color: '#ff8c00' }}>●</span><span>kitty</span>
+              <span>·</span><span>number = play order</span>
+            </div>
+
+            <div className="cp-modal-hairline" style={{ marginBottom: '8px' }} />
+
+            {/* North */}
+            {renderHand(0, getPlayerName(0))}
+
+            {/* East / West side by side */}
+            <div className="cp-show-hands-ew" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+              {renderHand(3, getPlayerName(3), true)}
+              {renderHand(1, getPlayerName(1), true)}
+            </div>
+
+            {/* South */}
+            {renderHand(2, getPlayerName(2))}
+          </div>
+          <div style={{ padding: '12px 16px' }}>
+            <button className="cp-modal-btn-primary" onClick={onClose} style={{ width: '100%' }}>Close</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.88)', zIndex: 1200, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px', animation: 'fadeIn 0.2s ease-out' }}>
@@ -5190,7 +6295,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
         {/* North */}
         {renderHand(0, getPlayerName(0))}
 
-        {/* East / West side by side — mid cards squeezed via .ir-show-hands-ew CSS */}
+        {/* East / West side by side — mid cards squeezed via CSS */}
         <div className="ir-show-hands-ew" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
           {renderHand(3, getPlayerName(3), true)}
           {renderHand(1, getPlayerName(1), true)}
@@ -5456,10 +6561,19 @@ function LoginScreen({ onLogin }) {
   };
 
   const isIrish = currentThemeId === 'irish';
+  const isCyberpunk = currentThemeId === 'cyberpunk';
   return (
     <div
-      className={isIrish ? 'theme-irish irish-login-bg' : ''}
+      className={isIrish ? 'theme-irish irish-login-bg' : isCyberpunk ? 'cp-login-bg' : ''}
       style={isIrish ? {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '20px',
+        position: 'relative'
+      } : isCyberpunk ? {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -5507,13 +6621,13 @@ function LoginScreen({ onLogin }) {
       </div>
 
       <div
-        className={isIrish ? 'irish-login-frame' : ''}
+        className={isIrish ? 'irish-login-frame' : isCyberpunk ? 'cp-login-card' : ''}
         style={isIrish ? {
           maxWidth: '400px',
           width: '100%',
           position: 'relative',
           zIndex: 1
-        } : {
+        } : isCyberpunk ? {} : {
           background: 'white',
           padding: '40px',
           borderRadius: '12px',
@@ -5565,6 +6679,8 @@ function LoginScreen({ onLogin }) {
               <span>♠</span>
             </div>
           </div>
+        ) : isCyberpunk ? (
+          <div className="cp-login-title">45s</div>
         ) : (
           <h1 style={{ marginBottom: '16px', textAlign: 'center', color: '#1a5f3f', fontSize: '22px' }}>
             45s Card Game
@@ -5572,7 +6688,7 @@ function LoginScreen({ onLogin }) {
         )}
 
         {/* Tab selector for Returning/New Player */}
-        <div style={isIrish ? {
+        <div className={isCyberpunk ? 'cp-login-tabs' : ''} style={isIrish ? {
           display: 'flex',
           marginBottom: '20px',
           background: 'linear-gradient(180deg, #2a1608 0%, #140802 100%)',
@@ -5580,7 +6696,7 @@ function LoginScreen({ onLogin }) {
           borderRadius: '4px',
           overflow: 'hidden',
           boxShadow: 'inset 0 1px 0 rgba(201,162,74,0.12), 0 2px 4px rgba(0,0,0,0.4)'
-        } : {
+        } : isCyberpunk ? {} : {
           display: 'flex',
           marginBottom: '24px',
           borderRadius: '8px',
@@ -5594,6 +6710,7 @@ function LoginScreen({ onLogin }) {
               setShowAvatarPicker(false);
               setError(null);
             }}
+            className={isCyberpunk ? `cp-login-tab${mode === 'login' ? ' active' : ''}` : ''}
             style={isIrish ? {
               flex: 1,
               padding: '10px 8px',
@@ -5606,7 +6723,7 @@ function LoginScreen({ onLogin }) {
               background: mode === 'login' ? 'linear-gradient(180deg, rgba(201,162,74,0.22) 0%, rgba(201,162,74,0.1) 100%)' : 'transparent',
               color: mode === 'login' ? '#f6d778' : 'rgba(201,162,74,0.5)',
               boxShadow: mode === 'login' ? 'inset 0 1px 0 rgba(201,162,74,0.3)' : 'none'
-            } : {
+            } : isCyberpunk ? {} : {
               flex: 1,
               padding: '12px 16px',
               fontSize: '14px',
@@ -5626,6 +6743,7 @@ function LoginScreen({ onLogin }) {
               setPin('');
               setError(null);
             }}
+            className={isCyberpunk ? `cp-login-tab${mode === 'register' ? ' active' : ''}` : ''}
             style={isIrish ? {
               flex: 1,
               padding: '10px 8px',
@@ -5639,7 +6757,7 @@ function LoginScreen({ onLogin }) {
               background: mode === 'register' ? 'linear-gradient(180deg, rgba(201,162,74,0.22) 0%, rgba(201,162,74,0.1) 100%)' : 'transparent',
               color: mode === 'register' ? '#f6d778' : 'rgba(201,162,74,0.5)',
               boxShadow: mode === 'register' ? 'inset 0 1px 0 rgba(201,162,74,0.3)' : 'none'
-            } : {
+            } : isCyberpunk ? {} : {
               flex: 1,
               padding: '12px 16px',
               fontSize: '14px',
@@ -5657,7 +6775,7 @@ function LoginScreen({ onLogin }) {
         </div>
 
         {error && (
-          <div style={isIrish ? {
+          <div className={isCyberpunk ? 'cp-login-error' : ''} style={isIrish ? {
             background: 'rgba(168,24,36,0.12)',
             border: '1px solid rgba(168,24,36,0.55)',
             borderRadius: '3px',
@@ -5666,7 +6784,7 @@ function LoginScreen({ onLogin }) {
             color: '#e8a0a8',
             fontSize: '13px',
             fontStyle: 'italic'
-          } : {
+          } : isCyberpunk ? {} : {
             background: '#ffebee',
             border: '2px solid #f44336',
             padding: '12px',
@@ -5681,7 +6799,7 @@ function LoginScreen({ onLogin }) {
 
         {/* Username input */}
         <div style={{ marginBottom: isIrish ? '14px' : '16px' }}>
-          <label style={isIrish ? {
+          <label className={isCyberpunk ? 'cp-login-label' : ''} style={isIrish ? {
             display: 'block',
             marginBottom: '4px',
             fontFamily: 'Cinzel, serif',
@@ -5690,7 +6808,7 @@ function LoginScreen({ onLogin }) {
             letterSpacing: '2px',
             textTransform: 'uppercase',
             color: 'rgba(201,162,74,0.75)'
-          } : {
+          } : isCyberpunk ? {} : {
             display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333'
           }}>
             {mode === 'register' ? 'Choose a Username' : 'Your Username'}
@@ -5700,6 +6818,7 @@ function LoginScreen({ onLogin }) {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder={mode === 'register' ? "Choose a username" : "Enter your username"}
+            className={isCyberpunk ? 'cp-login-input' : ''}
             style={isIrish ? {
               width: '100%',
               padding: '10px 12px',
@@ -5711,7 +6830,7 @@ function LoginScreen({ onLogin }) {
               borderRadius: '3px',
               outline: 'none',
               boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.5)'
-            } : {
+            } : isCyberpunk ? {} : {
               width: '100%',
               padding: '12px',
               fontSize: '16px',
@@ -5726,7 +6845,7 @@ function LoginScreen({ onLogin }) {
 
         {/* PIN input */}
         <div style={{ marginBottom: isIrish ? '14px' : '16px' }}>
-          <label style={isIrish ? {
+          <label className={isCyberpunk ? 'cp-login-label' : ''} style={isIrish ? {
             display: 'block',
             marginBottom: '4px',
             fontFamily: 'Cinzel, serif',
@@ -5735,7 +6854,7 @@ function LoginScreen({ onLogin }) {
             letterSpacing: '2px',
             textTransform: 'uppercase',
             color: 'rgba(201,162,74,0.75)'
-          } : {
+          } : isCyberpunk ? {} : {
             display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333'
           }}>
             {mode === 'register' ? 'Choose a 4-Digit PIN' : 'Your 4-Digit PIN'}
@@ -5745,6 +6864,7 @@ function LoginScreen({ onLogin }) {
             value={pin}
             onChange={(e) => handlePinInput(e.target.value, setPin)}
             placeholder="••••"
+            className={isCyberpunk ? 'cp-login-input' : ''}
             style={isIrish ? {
               width: '100%',
               padding: '10px 12px',
@@ -5760,7 +6880,7 @@ function LoginScreen({ onLogin }) {
               textAlign: 'center',
               letterSpacing: '14px',
               paddingLeft: '26px'
-            } : {
+            } : isCyberpunk ? {} : {
               width: '100%',
               padding: '12px',
               fontSize: '24px',
@@ -5782,7 +6902,7 @@ function LoginScreen({ onLogin }) {
         {/* Confirm PIN (registration only) */}
         {mode === 'register' && (
           <div style={{ marginBottom: isIrish ? '14px' : '16px' }}>
-            <label style={isIrish ? {
+            <label className={isCyberpunk ? 'cp-login-label' : ''} style={isIrish ? {
               display: 'block',
               marginBottom: '4px',
               fontFamily: 'Cinzel, serif',
@@ -5791,7 +6911,7 @@ function LoginScreen({ onLogin }) {
               letterSpacing: '2px',
               textTransform: 'uppercase',
               color: 'rgba(201,162,74,0.75)'
-            } : {
+            } : isCyberpunk ? {} : {
               display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333'
             }}>
               Confirm PIN
@@ -5801,6 +6921,7 @@ function LoginScreen({ onLogin }) {
               value={confirmPin}
               onChange={(e) => handlePinInput(e.target.value, setConfirmPin)}
               placeholder="••••"
+              className={isCyberpunk ? 'cp-login-input' : ''}
               style={isIrish ? {
                 width: '100%',
                 padding: '10px 12px',
@@ -5816,7 +6937,7 @@ function LoginScreen({ onLogin }) {
                 textAlign: 'center',
                 letterSpacing: '14px',
                 paddingLeft: '26px'
-              } : {
+              } : isCyberpunk ? {} : {
                 width: '100%',
                 padding: '12px',
                 fontSize: '24px',
@@ -5834,7 +6955,7 @@ function LoginScreen({ onLogin }) {
         {/* Email (registration only, optional) */}
         {mode === 'register' && (
           <div style={{ marginBottom: isIrish ? '14px' : '16px' }}>
-            <label style={isIrish ? {
+            <label className={isCyberpunk ? 'cp-login-label' : ''} style={isIrish ? {
               display: 'block',
               marginBottom: '4px',
               fontFamily: 'Cinzel, serif',
@@ -5843,7 +6964,7 @@ function LoginScreen({ onLogin }) {
               letterSpacing: '2px',
               textTransform: 'uppercase',
               color: 'rgba(201,162,74,0.75)'
-            } : {
+            } : isCyberpunk ? {} : {
               display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333'
             }}>
               Email <span style={isIrish ? {
@@ -5863,6 +6984,7 @@ function LoginScreen({ onLogin }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
+              className={isCyberpunk ? 'cp-login-input' : ''}
               style={isIrish ? {
                 width: '100%',
                 padding: '10px 12px',
@@ -5874,7 +6996,7 @@ function LoginScreen({ onLogin }) {
                 borderRadius: '3px',
                 outline: 'none',
                 boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.5)'
-              } : {
+              } : isCyberpunk ? {} : {
                 width: '100%',
                 padding: '12px',
                 fontSize: '16px',
@@ -5899,7 +7021,7 @@ function LoginScreen({ onLogin }) {
         {/* Avatar selection (registration only) */}
         {mode === 'register' && (
           <div style={{ marginBottom: isIrish ? '14px' : '16px' }}>
-            <label style={isIrish ? {
+            <label className={isCyberpunk ? 'cp-login-label' : ''} style={isIrish ? {
               display: 'block',
               marginBottom: '4px',
               fontFamily: 'Cinzel, serif',
@@ -5908,7 +7030,7 @@ function LoginScreen({ onLogin }) {
               letterSpacing: '2px',
               textTransform: 'uppercase',
               color: 'rgba(201,162,74,0.75)'
-            } : {
+            } : isCyberpunk ? {} : {
               display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 'bold', color: '#333'
             }}>
               Choose Avatar
@@ -6024,6 +7146,7 @@ function LoginScreen({ onLogin }) {
           <button
             onClick={handleLogin}
             disabled={loading || !username.trim() || pin.length !== 4}
+            className={isCyberpunk ? 'cp-login-btn-primary' : ''}
             style={isIrish ? {
               width: '100%',
               padding: '13px 16px',
@@ -6040,7 +7163,7 @@ function LoginScreen({ onLogin }) {
               boxShadow: '0 0 0 1px rgba(0,0,0,0.6), 0 3px 0 rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.6)',
               marginTop: '6px',
               opacity: (loading || !username.trim() || pin.length !== 4) ? 0.35 : 1
-            } : {
+            } : isCyberpunk ? {} : {
               width: '100%',
               padding: '14px',
               fontSize: '16px',
@@ -6052,12 +7175,13 @@ function LoginScreen({ onLogin }) {
               fontWeight: 'bold'
             }}
           >
-            {loading ? 'Logging in...' : (isIrish ? 'Enter the Room' : 'Login')}
+            {loading ? 'Logging in...' : (isIrish ? 'Enter the Room' : isCyberpunk ? 'JACK IN' : 'Login')}
           </button>
         ) : (
           <button
             onClick={handleRegister}
             disabled={loading || !username.trim() || pin.length !== 4 || pin !== confirmPin}
+            className={isCyberpunk ? 'cp-login-btn-primary' : ''}
             style={isIrish ? {
               width: '100%',
               padding: '13px 16px',
@@ -6074,7 +7198,7 @@ function LoginScreen({ onLogin }) {
               boxShadow: '0 0 0 1px rgba(0,0,0,0.6), 0 3px 0 rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.6)',
               marginTop: '6px',
               opacity: (loading || !username.trim() || pin.length !== 4 || pin !== confirmPin) ? 0.35 : 1
-            } : {
+            } : isCyberpunk ? {} : {
               width: '100%',
               padding: '14px',
               fontSize: '16px',
@@ -6086,17 +7210,17 @@ function LoginScreen({ onLogin }) {
               fontWeight: 'bold'
             }}
           >
-            {loading ? 'Creating Account...' : (isIrish ? 'Join the Room' : 'Create Account')}
+            {loading ? 'Creating Account...' : (isIrish ? 'Join the Room' : isCyberpunk ? 'CREATE PROFILE' : 'Create Account')}
           </button>
         )}
 
-        <p style={isIrish ? {
+        <p className={isCyberpunk ? 'cp-login-link' : ''} style={isIrish ? {
           marginTop: '14px',
           fontSize: '11px',
           color: 'rgba(201,162,74,0.4)',
           textAlign: 'center',
           fontStyle: 'italic'
-        } : {
+        } : isCyberpunk ? {} : {
           marginTop: '16px',
           fontSize: '12px',
           color: '#999',
@@ -6708,9 +7832,10 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
 
   const gameList = Object.entries(games).sort((a, b) => b[1].createdAt - a[1].createdAt);
   const isIrish = currentThemeId === 'irish';
+  const isCyberpunk = currentThemeId === 'cyberpunk';
 
-  // ── Irish Card Room lobby layout ────────────────────────────────────────────
-  if (isIrish) {
+  // ── Irish / Cyberpunk Card Room lobby layout ────────────────────────────────
+  if (isIrish || isCyberpunk) {
     const onlineList = Object.entries(onlinePlayers);
     const onlineCount = onlineList.length;
     const CHIP_MAX = 3;
@@ -6732,7 +7857,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       return (
         <div
           key={gameId}
-          className="irlb-game-row"
+          className={isCyberpunk ? 'cp-game-row' : 'irlb-game-row'}
           onClick={() => {
             if (isOpen) {
               setSelectedGameId(gameId);
@@ -6785,12 +7910,12 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       return (
         <div
           key={player.uid}
-          className={`irlb-lb-row ${rank < 3 ? 'top3 ' + rankClass : ''}`}
+          className={isCyberpunk ? `cp-leaderboard-row ${rank < 3 ? 'top3 ' + rankClass : ''}` : `irlb-lb-row ${rank < 3 ? 'top3 ' + rankClass : ''}`}
           style={{ opacity: dimmed ? 0.5 : 1 }}
           onClick={() => fetchPlayerStats(player.uid, { username: player.username, avatar: player.avatar })}
         >
           {rank === 0 && <span className="irlb-crown">👑</span>}
-          <div className={`irlb-lb-rank${rankLabel ? ' ' + rankLabel : ''}`}>{rank + 1}</div>
+          <div className={isCyberpunk ? `cp-rank-num${rankLabel ? ' ' + rankLabel : ''}` : `irlb-lb-rank${rankLabel ? ' ' + rankLabel : ''}`}>{rank + 1}</div>
           <div className="irlb-lb-avatar">{getAvatarById(player.avatar).emoji}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="irlb-lb-username">{player.username}</div>
@@ -6818,7 +7943,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
     };
 
     return (
-      <div className="irish-lobby-bg theme-irish">
+      <div className={`${isCyberpunk ? 'cp-lobby-bg' : 'irish-lobby-bg theme-irish'}`}>
         {/* Topbar */}
         <div className="irlb-topbar">
           <span className="irlb-logo">45s</span>
@@ -6866,7 +7991,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
         </div>
 
         {/* Online strip */}
-        <div className="irlb-online-strip">
+        <div className={isCyberpunk ? 'cp-online-strip' : 'irlb-online-strip'}>
           <span className="irlb-online-badge">{onlineCount} Online</span>
           {visibleChips.map(([id, player]) => (
             <div
@@ -6876,7 +8001,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
             >
               <div className="irlb-chip-avatar">
                 {getAvatarById(player.avatar).emoji}
-                <span className="irlb-chip-dot" />
+                <span className={isCyberpunk ? 'cp-online-dot' : 'irlb-chip-dot'} />
               </div>
               <span className="irlb-chip-name">{player.username}</span>
             </div>
@@ -6887,13 +8012,13 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
         </div>
 
         {/* Tab bar */}
-        <div className="irlb-tab-bar">
+        <div className={isCyberpunk ? 'cp-lobby-tab-bar' : 'irlb-tab-bar'}>
           <button
-            className={`irlb-tab${lobbyTab === 'games' ? ' active' : ''}`}
+            className={isCyberpunk ? `cp-lobby-tab${lobbyTab === 'games' ? ' active' : ''}` : `irlb-tab${lobbyTab === 'games' ? ' active' : ''}`}
             onClick={() => setLobbyTab('games')}
           >Games</button>
           <button
-            className={`irlb-tab${lobbyTab === 'leaderboard' ? ' active' : ''}`}
+            className={isCyberpunk ? `cp-lobby-tab${lobbyTab === 'leaderboard' ? ' active' : ''}` : `irlb-tab${lobbyTab === 'leaderboard' ? ' active' : ''}`}
             onClick={() => { setLobbyTab('leaderboard'); if (!leaderboardData.length) fetchLeaderboardData(); }}
           >Leaderboard</button>
         </div>
@@ -6931,7 +8056,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                 {/* Open games */}
                 {openGames.length > 0 && (
                   <>
-                    <div className="irlb-section-header">Open</div>
+                    <div className={isCyberpunk ? 'cp-lobby-section-title' : 'irlb-section-header'}>Open</div>
                     {openGames.map(renderIrishGameRow)}
                   </>
                 )}
@@ -6939,7 +8064,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                 {/* Playing games */}
                 {playingGames.length > 0 && (
                   <>
-                    <div className="irlb-section-header">In Progress</div>
+                    <div className={isCyberpunk ? 'cp-lobby-section-title' : 'irlb-section-header'}>In Progress</div>
                     {playingGames.map(renderIrishGameRow)}
                   </>
                 )}
@@ -6947,7 +8072,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                 {/* Finished games */}
                 {finishedGames.length > 0 && (
                   <>
-                    <div className="irlb-section-header">Finished</div>
+                    <div className={isCyberpunk ? 'cp-lobby-section-title' : 'irlb-section-header'}>Finished</div>
                     {finishedGames.map(renderIrishGameRow)}
                   </>
                 )}
@@ -6983,7 +8108,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   const inactiveWithBadges = inactive.map(p => ({ ...p, badgesObj: {} }));
                   return (
                     <div className="irlb-lb-list">
-                      <div className="irlb-section-header">Top Players</div>
+                      <div className={isCyberpunk ? 'cp-lobby-section-title' : 'irlb-section-header'}>Top Players</div>
                       {activeWithBadges.map((p, i) => renderIrishLbRow(p, i, false))}
                       {inactiveWithBadges.length > 0 && (
                         <>
@@ -7003,7 +8128,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           {lobbyTab === 'games' && (
             <div className="irlb-create-wrap">
               <button
-                className="irlb-create-btn"
+                className={isCyberpunk ? 'cp-lobby-btn-create' : 'irlb-create-btn'}
                 disabled={loading}
                 onClick={() => { SoundManager.play('buttonClick'); setShowCreateGame(true); }}
               >
@@ -7113,6 +8238,87 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               <div style={{ fontFamily: "'Cinzel', serif", fontSize: '16px', fontWeight: '900', color: isHi ? accentHi : '#e8e4d9', lineHeight: 1 }}>{value}</div>
             </div>
           );
+
+          if (currentThemeId === 'cyberpunk') {
+            const cpStatCard = (label, value) => (
+              <div style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.15)', borderRadius: '8px', padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '3px' }}>
+                <div className="cp-stat-label">{label}</div>
+                <div className="cp-stat-num">{value}</div>
+              </div>
+            );
+            return (
+              <div className="cp-modal-overlay" onClick={() => setShowStatsModal(false)}>
+                <div className="cp-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '420px', width: 'calc(100% - 32px)', maxHeight: '85vh', overflow: 'auto' }}>
+                  <div className="cp-modal-header">
+                    <span className="cp-modal-title">{statsPlayer ? statsPlayer.username : 'Stats'}</span>
+                    <button className="cp-modal-close" onClick={() => setShowStatsModal(false)}>×</button>
+                  </div>
+                  <div className="cp-modal-hairline" />
+                  <div className="cp-modal-body">
+                    {/* Profile header */}
+                    {statsPlayer && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+                        <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(0,229,255,0.08)', border: '2px solid rgba(0,229,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', flexShrink: 0, boxShadow: '0 0 16px rgba(0,229,255,0.2)' }}>
+                          {getAvatarById(statsPlayer.avatar).emoji}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: "'Orbitron', sans-serif", fontSize: '16px', fontWeight: 700, color: '#00e5ff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{statsPlayer.username}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
+                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOnline ? '#00ff88' : '#3a5f78', boxShadow: isOnline ? '0 0 5px rgba(0,255,136,0.7)' : 'none' }} />
+                            <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '11px', color: isOnline ? '#00ff88' : '#3a5f78' }}>{isOnline ? 'Online now' : lastSeenStr}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {statsLoading ? (
+                      <div style={{ textAlign: 'center', padding: '40px 0', fontFamily: "'Share Tech Mono', monospace", color: '#3a5f78', letterSpacing: '2px', fontSize: '12px' }}>Loading…</div>
+                    ) : statsData && (
+                      <>
+                        {/* Hero score */}
+                        <div style={{ background: 'rgba(0,229,255,0.06)', border: '1px solid rgba(0,229,255,0.2)', borderRadius: '10px', padding: '14px 16px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '12px' }}>
+                          <div className="cp-stat-label" style={{ marginBottom: '4px' }}>Score</div>
+                          <div className="cp-stat-num" style={{ fontSize: '32px' }}>{totalPts}</div>
+                          <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '10px', color: '#3a5f78', marginTop: '2px' }}>{gw}W / {gp}G · {winRate}%</div>
+                        </div>
+                        {/* Stats grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px', marginBottom: '12px' }}>
+                          {cpStatCard('Games', gp)}
+                          {cpStatCard('Wins', gw)}
+                          {cpStatCard('Win %', `${winRate}%`)}
+                          {cpStatCard('Bid %', `${bidSuccessPct}%`)}
+                          {cpStatCard('Avg Bid', avgWinBid)}
+                          {cpStatCard('Times Set', timesSet)}
+                        </div>
+                        {/* Badges */}
+                        <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '10px', color: '#3a5f78', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '8px' }}>Badges</div>
+                        <div className="cp-badge-grid">
+                          {BADGES.map(badge => {
+                            const earned = earnedIds.includes(badge.id);
+                            return (
+                              <div key={badge.id} className="cp-badge-item" onClick={() => setActiveBadge(activeBadge === badge.id ? null : badge.id)}>
+                                <div className="cp-badge-circle" style={{ opacity: earned ? 1 : 0.25, boxShadow: earned ? '0 0 8px rgba(255,140,0,0.6)' : 'none', borderColor: earned ? '#ff8c00' : '#3a5f78' }}>
+                                  <span style={{ fontSize: '18px' }}>{badge.sym}</span>
+                                </div>
+                                {activeBadge === badge.id && (
+                                  <div style={{ position: 'absolute', top: '110%', left: '50%', transform: 'translateX(-50%)', background: 'rgba(2,5,10,0.97)', border: '1px solid rgba(0,229,255,0.3)', borderRadius: '6px', padding: '8px 10px', zIndex: 10, minWidth: '140px', maxWidth: '180px', pointerEvents: 'none' }}>
+                                    <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '11px', color: '#ff8c00', marginBottom: '3px' }}>{badge.name}</div>
+                                    <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '10px', color: 'rgba(0,229,255,0.6)' }}>{badge.desc}</div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(0,229,255,0.15)' }}>
+                    <button className="cp-modal-btn-primary" onClick={() => setShowStatsModal(false)} style={{ width: '100%' }}>Close</button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
 
           return (
             <div
@@ -7377,7 +8583,84 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
 
         {showRules && <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />}
 
-        {showPreferences && (
+        {showPreferences && (currentThemeId === 'cyberpunk' ? (
+          <div className="cp-modal-overlay">
+            <div className="cp-modal" style={{ maxWidth: '420px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
+              <div className="cp-modal-header">
+                <span className="cp-modal-title">Preferences</span>
+                <button className="cp-modal-close" onClick={() => setShowPreferences(false)}>×</button>
+              </div>
+              <div className="cp-modal-hairline" />
+              <div className="cp-modal-body">
+                {/* Trick Speed */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div className="cp-pref-section-title">Trick Speed</div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {['fast', 'medium', 'slow'].map(speed => (
+                      <button key={speed} onClick={() => setEditTrickSpeed(speed)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: editTrickSpeed === speed ? '2px solid #ff8c00' : '1px solid rgba(0,229,255,0.2)', background: editTrickSpeed === speed ? 'rgba(255,140,0,0.1)' : 'rgba(0,229,255,0.03)', color: editTrickSpeed === speed ? '#ff8c00' : '#3a5f78', fontWeight: editTrickSpeed === speed ? 700 : 'normal', cursor: 'pointer', fontSize: '13px', textTransform: 'capitalize', fontFamily: "'Share Tech Mono', monospace" }}>{speed}</button>
+                    ))}
+                  </div>
+                </div>
+                {/* House Rules */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div className="cp-pref-section-title">House Rules</div>
+                  <div style={{ fontSize: '11px', color: '#3a5f78', fontFamily: "'Share Tech Mono', monospace", marginBottom: '12px' }}>Default for new games you create</div>
+                  {[{ key: 'fiveCardDraw', label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' }, { key: 'followAHearts', label: 'Follow A♥', desc: "When A♥ is led, void in trump must play a heart if holding one." }, { key: 'thirtyFor60', label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' }].map(({ key, label, desc }) => (
+                    <div key={key} className="cp-checkbox-row" onClick={() => setEditPrefHouseRules(prev => ({ ...prev, [key]: !prev[key] }))}>
+                      <div style={{ width: '18px', height: '18px', borderRadius: '3px', border: editPrefHouseRules[key] ? '2px solid #ff8c00' : '2px solid rgba(0,229,255,0.25)', background: editPrefHouseRules[key] ? 'rgba(255,140,0,0.15)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        {editPrefHouseRules[key] && <span style={{ color: '#ff8c00', fontSize: '12px', fontWeight: 700, lineHeight: 1 }}>✓</span>}
+                      </div>
+                      <span>
+                        <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '13px', fontWeight: 700, color: '#00e5ff' }}>{label}</span>
+                        <span style={{ fontSize: '11px', color: '#3a5f78', display: 'block', marginTop: '2px', fontFamily: "'Share Tech Mono', monospace" }}>{desc}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {/* Theme (reuse existing tile logic) */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div className="cp-pref-section-title">Theme</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    {THEME_ORDER.map(tid => {
+                      const theme = THEMES[tid]; const isUnlocked = theme.unlocked(myStats); const isActive = (activeTheme || currentThemeId) === tid;
+                      const progress = theme.progressStat ? Math.min(myStats?.[theme.progressStat] || 0, theme.progressOf) : 0;
+                      return (<div key={tid} onClick={() => setShowThemePreview(tid)} style={{ width: '140px', borderRadius: '10px', overflow: 'hidden', border: isActive ? '3px solid #ff8c00' : '2px solid rgba(0,229,255,0.15)', cursor: 'pointer', boxShadow: isActive ? '0 0 12px rgba(255,140,0,0.4)' : 'none', transition: 'all 0.2s', position: 'relative', background: '#020509' }}>
+                        <div className={tid === 'irish' ? 'theme-tile-thumb-irish' : 'theme-tile-thumb-cyberpunk'} style={{ height: '88px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: tid === 'irish' ? 'radial-gradient(ellipse at center, #1f7a3f 0%, #13572a 55%, #093a1a 100%)' : 'radial-gradient(ellipse at center, #060e1e 0%, #030609 100%)', border: tid === 'irish' ? '2px solid #c9a24a' : '2px solid rgba(0,229,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>{tid === 'irish' ? '♠' : '◈'}</div>
+                          {[0,1,2].map(n => (<div key={n} style={{ position: 'absolute', top: `${10 + n * 6}px`, left: `${14 + n * 4}px`, width: '14px', height: '20px', borderRadius: '2px', background: tid === 'irish' ? 'linear-gradient(135deg, #1a6b3a 0%, #0b3d1c 100%)' : '#040a12', border: tid === 'irish' ? '1px solid rgba(201,162,74,0.6)' : '1px solid rgba(0,229,255,0.4)', transform: `rotate(${(n-1)*8}deg)` }} />))}
+                        </div>
+                        <div style={{ padding: '8px 10px 10px', borderTop: tid === 'irish' ? '1px solid rgba(201,162,74,0.2)' : '1px solid rgba(0,229,255,0.15)', background: tid === 'irish' ? '#180b03' : '#020509' }}>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: tid === 'irish' ? '#c9a24a' : '#00e5ff', fontFamily: tid === 'irish' ? 'Cinzel, serif' : "'Share Tech Mono', monospace", letterSpacing: '0.5px', marginBottom: '4px' }}>{theme.name}</div>
+                          {isActive && <div style={{ fontSize: '10px', color: '#ff8c00', fontWeight: 600 }}>✓ Active</div>}
+                          {!isActive && isUnlocked && <div style={{ fontSize: '10px', color: '#3a5f78' }}>Tap to preview</div>}
+                          {!isUnlocked && (<div style={{ marginTop: '4px' }}><div style={{ fontSize: '9px', color: '#ff8c00', marginBottom: '3px' }}>{theme.unlockHint}</div><div style={{ height: '4px', borderRadius: '2px', background: 'rgba(0,229,255,0.1)', overflow: 'hidden' }}><div style={{ height: '100%', width: `${(progress / theme.progressOf) * 100}%`, background: '#ff8c00', borderRadius: '2px' }} /></div></div>)}
+                        </div>
+                        {isActive && (<div style={{ position: 'absolute', top: '6px', right: '6px', width: '18px', height: '18px', borderRadius: '50%', background: '#ff8c00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#000', fontWeight: 'bold' }}>✓</div>)}
+                      </div>);
+                    })}
+                  </div>
+                </div>
+                {/* Theme preview overlay — reuse Irish version unchanged */}
+                {showThemePreview && (() => {
+                  const theme = THEMES[showThemePreview]; const isUnlocked = theme.unlocked(myStats); const isAlreadyActive = (activeTheme || currentThemeId) === showThemePreview;
+                  return (<div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 9999, animation: 'fadeIn 0.2s' }}>
+                    <div style={{ position: 'absolute', top: '16px', right: '16px' }}><button onClick={() => setShowThemePreview(null)} style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '50%', width: '40px', height: '40px', color: '#fff', fontSize: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button></div>
+                    <div style={{ fontFamily: theme.id === 'irish' ? 'Cinzel, serif' : "'Share Tech Mono', monospace", fontSize: '22px', fontWeight: '900', color: theme.id === 'irish' ? '#c9a24a' : '#00e5ff', marginBottom: '8px', letterSpacing: '4px' }}>{theme.name}</div>
+                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '24px', textAlign: 'center', maxWidth: '260px' }}>{isUnlocked ? (isAlreadyActive ? 'This theme is currently active.' : 'Tap Apply to switch to this theme.') : theme.unlockHint}</div>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button onClick={() => setShowThemePreview(null)} style={{ padding: '12px 24px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)', background: 'transparent', color: '#fff', fontSize: '14px', cursor: 'pointer' }}>Back</button>
+                      {isUnlocked && !isAlreadyActive && (<button onClick={() => { if (onThemeChange) onThemeChange(showThemePreview); setShowThemePreview(null); setShowPreferences(false); }} style={{ padding: '12px 24px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #ff8c00, #cc6600)', color: '#fff', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}>Apply Theme</button>)}
+                    </div>
+                  </div>);
+                })()}
+              </div>
+              <div style={{ display: 'flex', gap: '10px', padding: '12px 16px', borderTop: '1px solid rgba(0,229,255,0.15)' }}>
+                <button onClick={() => setShowPreferences(false)} className="cp-modal-btn-ghost" style={{ flex: 1 }}>Cancel</button>
+                <button onClick={handleSavePreferences} className="cp-modal-btn-primary" style={{ flex: 1 }}>Save</button>
+              </div>
+            </div>
+          </div>
+        ) : (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, animation: 'fadeIn 0.2s ease-out' }}>
             <div style={{ background: 'rgba(12,6,2,0.97)', border: '2px solid #c9a24a', color: '#e8e4d9', animation: 'slideUp 0.25s ease-out', borderRadius: '12px', padding: '28px', maxWidth: '420px', width: '90%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.7)' }}>
               <h2 style={{ marginBottom: '20px', fontFamily: "'Cinzel', serif", color: '#f6d778', fontSize: '18px' }}>Preferences</h2>
@@ -7454,7 +8737,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               </div>
             </div>
           </div>
-        )}
+        ))}
 
         {/* Seat Picker Modal */}
         {selectedGameId && (() => {
@@ -8555,7 +9838,47 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
         <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
 
         {/* Preferences Modal */}
-        {showPreferences && (
+        {showPreferences && (currentThemeId === 'cyberpunk' ? (
+          <div className="cp-modal-overlay">
+            <div className="cp-modal" style={{ maxWidth: '420px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
+              <div className="cp-modal-header">
+                <span className="cp-modal-title">Preferences</span>
+                <button className="cp-modal-close" onClick={() => setShowPreferences(false)}>×</button>
+              </div>
+              <div className="cp-modal-hairline" />
+              <div className="cp-modal-body">
+                <div style={{ marginBottom: '20px' }}>
+                  <div className="cp-pref-section-title">Trick Speed</div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {[['fast', 'Fast'], ['medium', 'Medium'], ['slow', 'Slow']].map(([val, label]) => (
+                      <div key={val} onClick={() => setEditTrickSpeed(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '8px', border: editTrickSpeed === val ? '2px solid #ff8c00' : '2px solid rgba(0,229,255,0.15)', background: editTrickSpeed === val ? 'rgba(255,140,0,0.1)' : 'rgba(0,229,255,0.03)', transition: 'all 0.15s' }}>
+                        <div style={{ fontFamily: "'Share Tech Mono', monospace", fontWeight: 700, fontSize: '13px', color: editTrickSpeed === val ? '#ff8c00' : '#3a5f78' }}>{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ marginBottom: '20px' }}>
+                  <div className="cp-pref-section-title">House Rules</div>
+                  {[['fiveCardDraw', '5-Card Draw', 'Players may discard all 5 cards.'], ['followAHearts', 'Follow A♥', 'Void in trump must play a heart when A♥ led.'], ['thirtyFor60', '30 for 60', 'After a 30 bid, next may bid "30 for 60".']].map(([key, label, desc]) => (
+                    <div key={key} className="cp-checkbox-row" onClick={() => setEditPrefHouseRules(prev => ({ ...prev, [key]: !prev[key] }))}>
+                      <div style={{ width: '18px', height: '18px', borderRadius: '3px', border: editPrefHouseRules[key] ? '2px solid #ff8c00' : '2px solid rgba(0,229,255,0.25)', background: editPrefHouseRules[key] ? 'rgba(255,140,0,0.15)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        {editPrefHouseRules[key] && <span style={{ color: '#ff8c00', fontSize: '12px', fontWeight: 700, lineHeight: 1 }}>✓</span>}
+                      </div>
+                      <span>
+                        <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '13px', fontWeight: 700, color: '#00e5ff' }}>{label}</span>
+                        <span style={{ fontSize: '11px', color: '#3a5f78', display: 'block', marginTop: '2px', fontFamily: "'Share Tech Mono', monospace" }}>{desc}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', padding: '12px 16px', borderTop: '1px solid rgba(0,229,255,0.15)' }}>
+                <button onClick={() => setShowPreferences(false)} className="cp-modal-btn-ghost" style={{ flex: 1 }}>Cancel</button>
+                <button onClick={handleSavePreferences} className="cp-modal-btn-primary" style={{ flex: 1 }}>Save</button>
+              </div>
+            </div>
+          </div>
+        ) : (
           <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center',
@@ -8704,7 +10027,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               </div>
             </div>
           </div>
-        )}
+        ))}
     </div>
   );
 }
@@ -9233,6 +10556,7 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
   const playerCount = Object.keys(players).length;
   const seats = ['North', 'South', 'East', 'West'];
   const isIrish = currentThemeId === 'irish';
+  const isCyberpunk = currentThemeId === 'cyberpunk';
 
   // Irish design tokens
   const IR = {
@@ -9263,16 +10587,16 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
 
     if (!isOccupied) {
       return (
-        <div key={seat} style={{
+        <div key={seat} className={isCyberpunk ? 'cp-seat-card' : ''} style={{
           gridArea,
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           gap: '3px', padding: '8px 6px', borderRadius: '4px',
-          background: 'rgba(0,0,0,0.15)',
-          border: '1px dashed rgba(201,162,74,0.22)',
+          background: isCyberpunk ? undefined : 'rgba(0,0,0,0.15)',
+          border: isCyberpunk ? undefined : '1px dashed rgba(201,162,74,0.22)',
           alignSelf: 'stretch', justifySelf: 'stretch'
         }}>
-          <div style={{ fontFamily: 'Cinzel, serif', fontSize: '8px', fontWeight: 700, letterSpacing: '1.5px', color: 'rgba(201,162,74,0.55)', textTransform: 'uppercase' }}>{seat.toUpperCase()}</div>
-          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '10px', fontStyle: 'italic', color: 'rgba(201,162,74,0.28)' }}>Tap to join</div>
+          <div className={isCyberpunk ? 'cp-seat-label' : ''} style={isCyberpunk ? {} : { fontFamily: 'Cinzel, serif', fontSize: '8px', fontWeight: 700, letterSpacing: '1.5px', color: 'rgba(201,162,74,0.55)', textTransform: 'uppercase' }}>{seat.toUpperCase()}</div>
+          <div className={isCyberpunk ? 'cp-seat-vacant' : ''} style={isCyberpunk ? {} : { fontFamily: 'Inter, sans-serif', fontSize: '10px', fontStyle: 'italic', color: 'rgba(201,162,74,0.28)' }}>Tap to join</div>
         </div>
       );
     }
@@ -9287,19 +10611,19 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
     const teamDotColor = SEAT_TEAM[seat] === myTeam ? IR.teamUs : IR.teamThem;
 
     return (
-      <div key={seat} style={{
+      <div key={seat} className={isCyberpunk ? `cp-seat-card occupied${isMe ? ' mine' : ''}` : ''} style={{
         gridArea,
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         gap: '4px', padding: '8px 6px', borderRadius: '4px',
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.035) 0%, transparent 100%), ' + bg,
-        border: '1px solid ' + borderColor,
+        background: isCyberpunk ? undefined : ('linear-gradient(180deg, rgba(255,255,255,0.035) 0%, transparent 100%), ' + bg),
+        border: isCyberpunk ? undefined : ('1px solid ' + borderColor),
         alignSelf: 'stretch', justifySelf: 'stretch',
         position: 'relative'
       }}>
         {hasVoice && <div style={{ position: 'absolute', top: '5px', right: '5px', fontSize: '9px', opacity: 0.7 }}>🎤</div>}
-        <div style={{ fontFamily: 'Cinzel, serif', fontSize: '8px', fontWeight: 700, letterSpacing: '1.5px', color: 'rgba(201,162,74,0.55)', textTransform: 'uppercase' }}>{seat.toUpperCase()}</div>
-        <div style={{ fontSize: '22px', lineHeight: 1 }}>{getAvatarById(player.avatar).emoji}</div>
-        <div style={{
+        <div className={isCyberpunk ? 'cp-seat-label' : ''} style={isCyberpunk ? {} : { fontFamily: 'Cinzel, serif', fontSize: '8px', fontWeight: 700, letterSpacing: '1.5px', color: 'rgba(201,162,74,0.55)', textTransform: 'uppercase' }}>{seat.toUpperCase()}</div>
+        <div className={isCyberpunk ? 'cp-seat-avatar' : ''} style={{ fontSize: '22px', lineHeight: 1 }}>{getAvatarById(player.avatar).emoji}</div>
+        <div className={isCyberpunk ? 'cp-seat-player' : ''} style={isCyberpunk ? {} : {
           fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '10px', textAlign: 'center',
           color: isMe ? IR.meBlue : isPartner ? 'rgba(93,208,132,0.9)' : IR.paper,
           lineHeight: 1.2, wordBreak: 'break-word', maxWidth: '90%'
@@ -9314,8 +10638,8 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
     );
   };
 
-  // Irish theme render
-  if (isIrish) {
+  // Irish/Cyberpunk theme render (shared compass layout)
+  if (isIrish || isCyberpunk) {
     const humanPlayers = Object.values(game.players || {}).filter(p => p && !p.isAI);
     const otherHumans = humanPlayers.filter(p => p.userId !== userId);
     const hasOtherHumans = otherHumans.length > 0;
@@ -9323,11 +10647,14 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
     const isFull = playerCount >= 4;
 
     return (
-      <div className="fs-screen" style={{
+      <div className={`fs-screen ${isCyberpunk ? 'cp-waiting-bg' : ''}`} style={isIrish ? {
         color: '#e8e4d9',
         fontFamily: 'Inter, sans-serif',
         backgroundColor: IR.walnut,
         backgroundImage: 'radial-gradient(ellipse 95% 55% at 50% -5%, rgba(255,210,136,0.22) 0%, rgba(255,180,110,0.08) 30%, transparent 60%), linear-gradient(180deg, rgba(255,220,175,0.07) 0%, rgba(255,220,175,0.02) 22%, transparent 52%), linear-gradient(172deg, #3a2312 0%, #281609 35%, #180b03 68%, #1f0f05 100%)'
+      } : {
+        color: '#e8e4d9',
+        fontFamily: 'Inter, sans-serif'
       }}>
         {/* Topbar */}
         <div style={{
@@ -9342,7 +10669,7 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
           gap: '8px',
           zIndex: 10
         }}>
-          <button onClick={handleLeaveGame} style={{
+          <button onClick={handleLeaveGame} className={isCyberpunk ? 'cp-waiting-leave-btn' : ''} style={isCyberpunk ? {} : {
             display: 'flex', alignItems: 'center', gap: '4px',
             padding: '6px 10px', minHeight: '34px', minWidth: '44px',
             fontFamily: 'Cinzel, serif', fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px',
@@ -9512,7 +10839,8 @@ function WaitingRoom({ gameId, userId, playerName, playerAvatar, mySeat, onStart
               <button
                 onClick={handleStartGame}
                 disabled={loading}
-                style={{
+                className={isCyberpunk ? 'cp-waiting-start-btn' : ''}
+                style={isCyberpunk ? {} : {
                   width: '100%', padding: '13px', minHeight: '48px',
                   fontFamily: 'Cinzel, serif', fontSize: '13px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase',
                   color: '#1a0e03',
@@ -13287,6 +14615,34 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           const themPoints = myTeam === 0 ? team1Score : team0Score;
           const bidderName = bidWinner >= 0 ? getPlayerName(bidWinner) : '—';
           const suitColor = trumpSuit && (trumpSuit === '♥' || trumpSuit === '♦') ? '#e07070' : '#f6d778';
+          if (!isIrish) return (
+            <div className="cp-modal-overlay" style={{ position: 'absolute', inset: 0, animation: 'fadeIn 0.2s ease-out' }}>
+              <div className="cp-modal" style={{ minWidth: '280px', maxWidth: '340px', textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Orbitron', sans-serif", fontSize: '18px', fontWeight: 700, color: '#00e5ff', textShadow: '0 0 10px rgba(0,229,255,0.5)', marginBottom: '0', letterSpacing: '2px' }} className="cp-modal-title">ROUND COMPLETE</div>
+                <div className="cp-modal-hairline" />
+                <div className="cp-modal-body">
+                  <div className={`cp-round-end-result`} style={{ marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '4px 0', borderBottom: '1px solid rgba(0,229,255,0.15)' }}>
+                      <span style={{ color: '#3a5f78', fontFamily: "'Share Tech Mono', monospace", fontSize: '11px' }}>Bid</span>
+                      <span style={{ fontFamily: "'Orbitron', sans-serif", color: '#00e5ff', fontSize: '12px' }}>{highBid}<span style={{ color: suitColor, marginLeft: '3px' }}>{trumpSuit || ''}</span> <span style={{ color: 'rgba(0,229,255,0.5)', fontSize: '10px' }}>· {bidderName}</span></span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span className="cp-score-us" style={{ fontWeight: 600 }}>US</span>
+                      <span className={usPoints < 0 ? 'cp-round-end-set' : 'cp-round-end-made'} style={{ fontSize: '15px', fontWeight: 700, fontFamily: "'Orbitron', sans-serif" }}>{usPoints < 0 ? `(${Math.abs(usPoints)})` : `+${usPoints}`}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span className="cp-score-them" style={{ fontWeight: 600 }}>THEM</span>
+                      <span className={themPoints < 0 ? 'cp-round-end-set' : 'cp-round-end-made'} style={{ fontSize: '15px', fontWeight: 700, fontFamily: "'Orbitron', sans-serif" }}>{themPoints < 0 ? `(${Math.abs(themPoints)})` : `+${themPoints}`}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <button onClick={() => setShowHandsOpen(true)} className="cp-modal-btn-ghost">View Round</button>
+                    <button onClick={handleNextRound} className="cp-modal-btn-primary">Next Round</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
           if (isIrish) return (
             <div style={{
               position: 'absolute',
@@ -13354,6 +14710,77 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           }
           const achieveTotal = achieveItems.reduce((s, x) => s + x.pts, 0);
 
+          if (!isIrish) return (
+            <div className="cp-modal-overlay" style={{ position: 'absolute', inset: 0, animation: 'fadeIn 0.2s ease-out' }}>
+              <div className="cp-modal" style={{ maxWidth: '420px', width: 'calc(100% - 32px)', maxHeight: '85vh', overflow: 'auto', textAlign: 'center' }}>
+                <div className="cp-game-over-title" style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 900, fontSize: '28px', color: '#00e5ff', textShadow: '0 0 20px rgba(0,229,255,0.6), 0 0 40px rgba(0,229,255,0.3)', textAlign: 'center', letterSpacing: '4px', animation: 'cpGlitch 9s infinite' }}>GAME OVER</div>
+                <div className="cp-modal-hairline" />
+                <div className="cp-modal-body">
+                  <div className={`cp-winner-line`} style={{ fontSize: '16px', fontWeight: 700, fontFamily: "'Orbitron', sans-serif", color: isWin ? '#00ff88' : '#ff00cc', textShadow: isWin ? '0 0 12px rgba(0,255,136,0.5)' : '0 0 12px rgba(255,0,204,0.5)', marginBottom: '16px', letterSpacing: '2px' }}>
+                    {isWin ? 'VICTORY' : 'DEFEATED'}
+                  </div>
+
+                  {/* Scores */}
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginBottom: '16px' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '9px', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', marginBottom: '2px' }} className="cp-score-us">US</div>
+                      <div style={{ fontSize: '32px', fontFamily: "'Orbitron', sans-serif", fontWeight: 700, lineHeight: 1 }} className="cp-score-us">{scores[myTeam]}</div>
+                    </div>
+                    <div style={{ width: '1px', background: 'rgba(0,229,255,0.2)', margin: '4px 0' }}></div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '9px', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', marginBottom: '2px' }} className="cp-score-them">THEM</div>
+                      <div style={{ fontSize: '32px', fontFamily: "'Orbitron', sans-serif", fontWeight: 700, lineHeight: 1 }} className="cp-score-them">{scores[1 - myTeam]}</div>
+                    </div>
+                  </div>
+
+                  {/* Achievement summary */}
+                  {achieveItems.length > 0 && (
+                    <div style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.15)', borderRadius: '6px', padding: '10px 12px', marginBottom: '14px', fontSize: '11px', textAlign: 'left' }}>
+                      <div style={{ color: '#3a5f78', marginBottom: '6px', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1.5px', fontFamily: "'Share Tech Mono', monospace" }}>This Game</div>
+                      {achieveItems.map((item, i) => (
+                        <div key={i} className="cp-stat-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                          <span style={{ color: 'rgba(0,229,255,0.7)', fontFamily: "'Share Tech Mono', monospace" }}>{item.label}</span>
+                          <span style={{ color: item.color, fontWeight: 700, fontFamily: "'Orbitron', sans-serif", fontSize: '11px' }}>{item.pts > 0 ? '+' : ''}{item.pts}</span>
+                        </div>
+                      ))}
+                      <div style={{ borderTop: '1px solid rgba(0,229,255,0.15)', marginTop: '6px', paddingTop: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#3a5f78', fontFamily: "'Share Tech Mono', monospace", fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px' }}>Achievement pts</span>
+                        <span style={{ color: achieveTotal >= 0 ? '#00ff88' : '#ff00cc', fontWeight: 700, fontFamily: "'Orbitron', sans-serif", fontSize: '11px' }}>{achieveTotal > 0 ? '+' : ''}{achieveTotal}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Badges */}
+                  {newlyEarnedBadges.length > 0 && (
+                    <div style={{ background: 'rgba(255,140,0,0.06)', border: '1px solid rgba(255,140,0,0.3)', borderRadius: '6px', padding: '10px 12px', marginBottom: '14px', fontSize: '11px' }}>
+                      <div style={{ color: '#ff8c00', marginBottom: '6px', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1.5px', fontFamily: "'Share Tech Mono', monospace" }}>New Badges · tap for details</div>
+                      {newlyEarnedBadges.map(badge => (
+                        <div key={badge.id}>
+                          <div onClick={() => setExpandedBadge(expandedBadge === badge.id ? null : badge.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px', cursor: 'pointer', padding: '3px 4px', borderRadius: '4px', background: expandedBadge === badge.id ? 'rgba(255,140,0,0.1)' : 'transparent' }}>
+                            <span style={{ color: 'rgba(0,229,255,0.8)', fontFamily: "'Share Tech Mono', monospace" }}>🏅 {badge.name}</span>
+                            <span style={{ color: '#ff8c00', fontWeight: 700, fontFamily: "'Orbitron', sans-serif", fontSize: '11px' }}>+{badge.pts}</span>
+                          </div>
+                          {expandedBadge === badge.id && (
+                            <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '4px', padding: '6px 8px', marginBottom: '4px', fontSize: '10px' }}>
+                              <div style={{ color: '#ff8c00', fontWeight: 700, marginBottom: '2px', fontFamily: "'Share Tech Mono', monospace" }}>{badge.sym} {badge.name}</div>
+                              <div style={{ color: 'rgba(0,229,255,0.6)', fontFamily: "'Share Tech Mono', monospace" }}>{badge.desc}</div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Buttons */}
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <button onClick={() => setShowHandsOpen(true)} className="cp-modal-btn-ghost">View Round</button>
+                    <button onClick={onLeaveGame} className="cp-modal-btn-ghost">Lobby</button>
+                    <button onClick={handleRematch} className="cp-modal-btn-primary" style={{ width: '100%', marginTop: '4px' }}>New Game</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
           if (isIrish) return (
             <div style={{
               position: 'absolute',
@@ -13544,7 +14971,21 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       <HelpModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
 
       {/* Themed leave-game confirm */}
-      {confirmLeave && (
+      {confirmLeave && (currentThemeId === 'cyberpunk' ? (
+        <div className="cp-modal-overlay" style={{ zIndex: 9000 }}>
+          <div className="cp-modal" style={{ maxWidth: '300px', width: '88%', textAlign: 'center' }}>
+            <div className="cp-modal-title" style={{ marginBottom: '8px' }}>Leave Game?</div>
+            <div className="cp-modal-hairline" />
+            <div className="cp-modal-body">
+              <div className="cp-confirm-msg">You'll return to the lobby. Your seat will be taken by AI.</div>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                <button onClick={() => setConfirmLeave(false)} className="cp-modal-btn-ghost" style={{ flex: 1 }}>Stay</button>
+                <button onClick={() => { setConfirmLeave(false); onLeaveGame(); }} className="cp-modal-btn-primary" style={{ flex: 1, background: 'linear-gradient(135deg, #c9341a, #8b1f0e)', borderColor: 'rgba(201,52,26,0.7)', boxShadow: '0 0 12px rgba(201,52,26,0.4)' }}>Leave</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9000, animation: 'fadeIn 0.15s ease-out' }}>
           <div style={{ background: 'rgba(12,6,2,0.97)', border: '2px solid #c9a24a', borderRadius: '14px', padding: '28px 24px', maxWidth: '300px', width: '88%', boxShadow: '0 8px 40px rgba(0,0,0,0.8)', textAlign: 'center' }}>
             <div style={{ fontFamily: "'Cinzel', serif", fontSize: '17px', fontWeight: 700, color: '#f6d778', marginBottom: '10px', letterSpacing: '0.5px' }}>Leave Game?</div>
@@ -13555,7 +14996,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             </div>
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 
