@@ -3076,7 +3076,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.29.4';
+const VERSION = '2.29.5';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5761,6 +5761,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isCyberpunk = currentThemeId === 'cyberpunk';
 
   const versionHistory = [
+    { version: '2.29.5', date: 'Apr 2026', changes: ['Bid/pass badges: solid green-tinted fill + thick border + strong glow — obvious against dark bg'] },
     { version: '2.29.4', date: 'Apr 2026', changes: ['E/W Round Summary: 30×50px cards (matches Irish), no overflow scroll', 'Bid/pass badges: bright green glow in cyberpunk, much more visible'] },
     { version: '2.29.3', date: 'Apr 2026', changes: ['E/W cards reduced to 26×46px — fit in 144px column without overflow'] },
     { version: '2.29.2', date: 'Apr 2026', changes: ['Round Summary N/S cards bigger (52×74px), corner suits hidden', 'E/W cards bigger (32×50px), center suit bigger', 'Bid badge: bidder = navy+cyan glow (blue motif), pass = dark+dim cyan'] },
@@ -6468,15 +6469,15 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
         {/* Bid badge */}
         {playerBid !== null && (() => {
           const cpGreen = '#00ff88';
-          const cpBidBg     = isBag ? 'rgba(255,0,204,0.1)' : 'rgba(2,18,10,0.96)';
-          const cpBidBorder = isBag ? '#ff00cc' : isBidder ? cpGreen : 'rgba(0,255,136,0.55)';
-          const cpBidColor  = isBag ? '#ff00cc' : isBidder ? cpAmber : cpGreen;
+          const cpBidBg     = isBag ? 'rgba(255,0,204,0.22)' : isBidder ? 'rgba(0,255,136,0.22)' : 'rgba(0,255,136,0.12)';
+          const cpBidBorder = isBag ? '#ff00cc' : cpGreen;
+          const cpBidColor  = isBag ? '#ff00cc' : isBidder ? '#ffffff' : cpGreen;
           const cpBidShadow = isBag
-            ? '0 0 10px rgba(255,0,204,0.65), 0 0 20px rgba(255,0,204,0.25)'
+            ? '0 0 10px rgba(255,0,204,0.7), 0 0 22px rgba(255,0,204,0.3)'
             : isBidder
-            ? '0 0 12px rgba(0,255,136,0.8), 0 0 28px rgba(0,255,136,0.35)'
-            : '0 0 7px rgba(0,255,136,0.5), 0 0 14px rgba(0,255,136,0.2)';
-          const cpBorderWidth = isBidder && !isBag ? '1.5px' : '1px';
+            ? '0 0 14px rgba(0,255,136,0.9), 0 0 30px rgba(0,255,136,0.4)'
+            : '0 0 8px rgba(0,255,136,0.55), 0 0 16px rgba(0,255,136,0.2)';
+          const cpBorderWidth = isBidder && !isBag ? '2px' : '1.5px';
           return (
             <span style={{
               padding: '3px 10px', borderRadius: isCyberpunk ? '2px' : '3px', fontSize: '11px',
