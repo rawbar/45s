@@ -13,403 +13,596 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+:root {
+  --brass: #c9a24a;
+  --brass-hi: #f6d778;
+  --felt-1: #1f7a3f;
+  --felt-2: #13572a;
+  --felt-3: #093a1a;
+  --blue: rgba(66,165,245,0.9);
+  --blue-glow: rgba(66,165,245,0.5);
+  --blue-glow2: rgba(66,165,245,0.25);
+}
+
 body {
-  background: #0a0a0a;
+  background: #111;
   font-family: 'Inter', sans-serif;
   color: #e8e4d9;
-  min-height: 100vh;
-  padding: 20px;
+  padding: 20px 16px 60px;
+}
+
+.page-title {
+  font-family: 'Cinzel', serif;
+  font-size: 16px; font-weight: 700;
+  color: var(--brass-hi);
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+.page-sub {
+  font-size: 11px;
+  color: rgba(232,228,217,0.45);
+  margin-bottom: 28px;
 }
 
 h2 {
   font-family: 'Cinzel', serif;
-  font-size: 13px;
-  color: #c9a24a;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: 16px;
-  padding-bottom: 8px;
+  font-size: 11px; color: var(--brass);
+  letter-spacing: 0.12em; text-transform: uppercase;
+  margin-bottom: 14px;
+  padding-bottom: 6px;
   border-bottom: 1px solid rgba(201,162,74,0.2);
 }
 
-.section {
-  margin-bottom: 40px;
-}
+.section { margin-bottom: 40px; }
 
-/* ── Table sim ── */
-.table-wrap {
+/* ── Phone frame ── */
+.phone-wrap {
   display: flex;
   justify-content: center;
-  margin-bottom: 40px;
+  gap: 24px;
+  flex-wrap: wrap;
 }
 
-.table-sim {
-  position: relative;
-  width: 320px;
-  height: 480px;
+.phone {
+  width: 340px;
+  background: #080808;
+  border-radius: 28px;
+  border: 1.5px solid #333;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+.phone-label {
+  text-align: center;
+  font-size: 11px;
+  color: rgba(232,228,217,0.4);
+  margin-top: 10px;
+  font-style: italic;
+}
+
+/* ── Game surface inside phone ── */
+.game-surface {
+  display: flex;
+  flex-direction: column;
+  height: 580px;
   background: radial-gradient(ellipse at 50% 44%, #1f7a3f 0%, #13572a 55%, #093a1a 100%);
-  border-radius: 16px;
-  border: 2px solid rgba(201,162,74,0.35);
-  overflow: visible;
+  position: relative;
+  overflow: hidden;
 }
 
-/* ── Compass seats ── */
-.seat { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.seat.north { top: 12px; left: 50%; transform: translateX(-50%); }
-.seat.south { bottom: 12px; left: 50%; transform: translateX(-50%); }
-.seat.west  { left: 8px;  top: 50%; transform: translateY(-50%); }
-.seat.east  { right: 8px; top: 50%; transform: translateY(-50%); }
+/* ── Score strip ── */
+.score-strip {
+  height: 28px;
+  background: rgba(10,5,2,0.85);
+  border-bottom: 1px solid rgba(201,162,74,0.25);
+  display: flex; align-items: center; justify-content: center; gap: 20px;
+  flex-shrink: 0;
+}
+.score-team {
+  font-family: 'Cinzel', serif;
+  font-size: 11px; color: var(--brass-hi);
+  display: flex; align-items: center; gap: 6px;
+}
+.score-val { font-size: 14px; font-weight: 700; }
+.score-sep { color: rgba(201,162,74,0.3); font-size: 10px; }
 
+/* ── North area ── */
+.north-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 0 4px;
+  flex-shrink: 0;
+}
+.nameplate-row {
+  display: flex; align-items: center; gap: 6px;
+}
 .nameplate {
-  display: flex; align-items: center; gap: 5px;
+  display: flex; align-items: center; gap: 4px;
   background: rgba(12,6,2,0.82);
   border: 1px solid rgba(201,162,74,0.3);
   border-radius: 20px;
   padding: 3px 10px 3px 4px;
   white-space: nowrap;
 }
+.nameplate.me {
+  border-color: rgba(107,182,255,0.5);
+}
 .avatar {
-  width: 22px; height: 22px; border-radius: 50%;
+  width: 20px; height: 20px; border-radius: 50%;
   background: #13572a; border: 1.5px solid rgba(201,162,74,0.4);
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; flex-shrink: 0;
+  font-size: 12px; flex-shrink: 0;
 }
 .pname {
   font-family: 'Cinzel', serif;
   font-size: 10px; font-weight: 500;
   color: #e8e4d9;
-  letter-spacing: 0.04em;
+}
+.dealer-chip {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f6d778, #c9a24a 60%, #a07828);
+  border: 1px solid #f6d778;
+  font-family: 'Cinzel', serif; font-size: 8px; font-weight: 700;
+  color: #180b03;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
 }
 
-/* ── Bid badge ── */
-.bid-badge {
+/* ── Face-down cards row ── */
+.cards-row {
+  display: flex; gap: 3px;
+}
+.card-back {
+  width: 28px; height: 40px; border-radius: 4px;
+  background:
+    radial-gradient(circle at 7px 7px, rgba(201,162,74,0.7) 0.8px, transparent 1.2px),
+    radial-gradient(circle at 14px 14px, rgba(201,162,74,0.7) 0.8px, transparent 1.2px),
+    radial-gradient(circle at 7px 21px, rgba(201,162,74,0.7) 0.8px, transparent 1.2px),
+    linear-gradient(135deg, #1a6b3a 0%, #0b3d1c 100%);
+  border: 1px solid rgba(201,162,74,0.35);
+  position: relative;
+}
+.card-back::after {
+  content: '☘'; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  color: rgba(201,162,74,0.8); font-size: 12px;
+}
+
+/* ── Middle row ── */
+.middle-row {
+  flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1px;
-  width: 64px;
-  padding: 6px 8px 7px;
-  background: rgba(8, 18, 32, 0.92);
-  border: 1.5px solid rgba(66, 165, 245, 0.85);
-  border-radius: 10px;
-  box-shadow:
-    0 0 10px rgba(66, 165, 245, 0.5),
-    0 0 24px rgba(66, 165, 245, 0.25),
-    inset 0 1px 0 rgba(255,255,255,0.06);
-  animation: badgePulse 2.4s ease-in-out infinite;
+  gap: 0;
+  min-height: 0;
 }
 
-@keyframes badgePulse {
-  0%, 100% { box-shadow: 0 0 10px rgba(66,165,245,0.5), 0 0 24px rgba(66,165,245,0.25), inset 0 1px 0 rgba(255,255,255,0.06); }
-  50%       { box-shadow: 0 0 16px rgba(66,165,245,0.75), 0 0 36px rgba(66,165,245,0.35), inset 0 1px 0 rgba(255,255,255,0.06); }
+/* ── Side seats ── */
+.side-seat {
+  width: 82px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 4px;
+  padding: 0 4px;
 }
+.nameplate.compact .pname { font-size: 9px; }
+.nameplate.compact { padding: 2px 8px 2px 4px; }
+.nameplate.compact .avatar { width: 18px; height: 18px; font-size: 11px; }
 
-.bid-badge .crown {
-  font-size: 11px;
-  line-height: 1;
-  filter: drop-shadow(0 0 4px rgba(66,165,245,0.6));
+.cards-col {
+  display: flex; flex-direction: column; gap: 2px;
 }
-.bid-badge .amount {
-  font-family: 'Cinzel', serif;
-  font-size: 22px;
-  font-weight: 900;
-  line-height: 1;
-  color: #f6d778;
-  text-shadow: 0 0 8px rgba(246,215,120,0.4);
+.card-back.small {
+  width: 22px; height: 32px; border-radius: 3px;
 }
-.bid-badge .suit {
-  font-size: 18px;
-  line-height: 1;
-  font-family: Georgia, serif;
-}
-.suit.hearts   { color: #e05555; }
-.suit.diamonds { color: #e05555; }
-.suit.clubs    { color: #e8e4d9; }
-.suit.spades   { color: #e8e4d9; }
+.card-back.small::after { font-size: 9px; }
 
-/* badge placement relative to seat */
-.seat.north .bid-badge { margin-top: 2px; }
-.seat.south .bid-badge { margin-bottom: 2px; order: -1; }
-.seat.west  .bid-badge { margin-right: 0; }
-.seat.east  .bid-badge { margin-left: 0; }
-
-/* west/east: horizontal layout */
-.seat.west, .seat.east {
-  flex-direction: row;
-  gap: 6px;
-}
-.seat.west .nameplate, .seat.east .nameplate { writing-mode: vertical-lr; }
-
-/* side nameplates stay vertical */
-.seat.west .pname, .seat.east .pname { writing-mode: horizontal-tb; font-size: 9px; }
-
-/* table center */
+/* ── Table center ── */
 .table-center {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 120px; height: 120px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(201,162,74,0.25);
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px;
+}
+.brass-ring {
+  width: 130px; height: 130px; border-radius: 50%;
+  border: 2px solid rgba(201,162,74,0.4);
+  box-shadow: 0 0 0 6px rgba(10,5,2,0.3), inset 0 0 20px rgba(0,0,0,0.3);
+  background: radial-gradient(ellipse, #1a6b3a 0%, #0e4422 100%);
   display: flex; align-items: center; justify-content: center;
 }
-.trump-display {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 2px;
-}
-.trump-suit { font-size: 32px; font-family: Georgia, serif; color: #e05555; }
-.trump-label {
-  font-family: 'Cinzel', serif; font-size: 8px; color: rgba(201,162,74,0.6); letter-spacing: 0.1em;
+.trump-plaque {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(10,5,2,0.9);
+  border: 1.5px solid rgba(201,162,74,0.5);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-family: Georgia, serif;
+  color: #e05555;
 }
 
-/* ── Variant grid ── */
-.variants {
+/* ── South area (my hand) ── */
+.south-area {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 4px;
+  padding: 4px 0 8px;
+  flex-shrink: 0;
+}
+.my-cards-row {
+  display: flex; gap: 4px;
+}
+.card-face {
+  width: 44px; height: 62px; border-radius: 6px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, transparent 14%),
+    linear-gradient(160deg, #fffef8 0%, #f5efd8 100%);
+  border: 1px solid rgba(120,100,60,0.35);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+  display: flex; flex-direction: column;
+  padding: 3px 4px;
+  position: relative;
+}
+.card-rank { font-family: 'Cinzel', serif; font-size: 13px; font-weight: 700; color: #1a1409; line-height: 1; }
+.card-suit-corner { font-family: Georgia, serif; font-size: 11px; line-height: 1; }
+.card-suit-center { font-family: Georgia, serif; font-size: 26px; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+.red { color: #a81824; }
+.black { color: #1a1409; }
+
+/* ── Trick strip ── */
+.trick-strip {
+  height: 38px;
+  background: rgba(10,5,2,0.7);
+  border-top: 1px solid rgba(201,162,74,0.2);
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  flex-shrink: 0;
+  padding: 0 8px;
+}
+.trick-label { font-family: 'Cinzel', serif; font-size: 9px; color: rgba(201,162,74,0.5); margin-right: 4px; }
+.trick-mini-card {
+  width: 20px; height: 28px; border-radius: 3px;
+  background: linear-gradient(160deg, #fffef8 0%, #f5efd8 100%);
+  border: 1px solid rgba(120,100,60,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-family: Georgia, serif; font-size: 12px;
+}
+
+/* ══════════════════════════════
+   BID BADGE STYLES — the new thing
+   ══════════════════════════════ */
+
+/* Style A — horizontal pill, own row */
+.bid-row-pill {
   display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  margin-top: 8px;
-}
-.variant-box {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-}
-.variant-label {
-  font-size: 11px; color: rgba(232,228,217,0.5); text-align: center;
-}
-
-/* Variant B — larger, no crown */
-.bid-badge.v-b {
-  width: 72px;
-  padding: 8px 10px 9px;
-  border-radius: 12px;
-}
-.bid-badge.v-b .amount { font-size: 26px; }
-.bid-badge.v-b .suit   { font-size: 20px; }
-
-/* Variant C — compact pill, horizontal */
-.bid-badge.v-c {
-  flex-direction: row;
-  width: auto;
-  padding: 5px 12px;
+  align-items: center;
   gap: 5px;
+  padding: 4px 12px 4px 10px;
+  background: rgba(8,18,32,0.92);
+  border: 1.5px solid var(--blue);
   border-radius: 20px;
+  box-shadow: 0 0 10px var(--blue-glow), 0 0 22px var(--blue-glow2);
+  animation: pillPulse 2.4s ease-in-out infinite;
+  white-space: nowrap;
 }
-.bid-badge.v-c .amount { font-size: 20px; }
-.bid-badge.v-c .suit   { font-size: 16px; }
-.bid-badge.v-c .crown  { font-size: 13px; }
-
-/* Variant D — taller portrait, suit on top */
-.bid-badge.v-d {
-  width: 56px;
-  padding: 7px 8px;
-  border-radius: 10px;
-  flex-direction: column;
+@keyframes pillPulse {
+  0%,100% { box-shadow: 0 0 10px var(--blue-glow), 0 0 22px var(--blue-glow2); }
+  50%      { box-shadow: 0 0 16px rgba(66,165,245,0.7), 0 0 34px rgba(66,165,245,0.3); }
 }
-.bid-badge.v-d .suit   { font-size: 22px; order: -1; }
-.bid-badge.v-d .amount { font-size: 20px; }
-.bid-badge.v-d .crown  { display: none; }
-
-/* Teal variant */
-.bid-badge.teal {
-  border-color: rgba(38, 198, 218, 0.85);
-  box-shadow:
-    0 0 10px rgba(38,198,218,0.5),
-    0 0 24px rgba(38,198,218,0.25),
-    inset 0 1px 0 rgba(255,255,255,0.06);
-  animation: badgePulseTeal 2.4s ease-in-out infinite;
-}
-@keyframes badgePulseTeal {
-  0%, 100% { box-shadow: 0 0 10px rgba(38,198,218,0.5), 0 0 24px rgba(38,198,218,0.25), inset 0 1px 0 rgba(255,255,255,0.06); }
-  50%       { box-shadow: 0 0 16px rgba(38,198,218,0.75), 0 0 36px rgba(38,198,218,0.35), inset 0 1px 0 rgba(255,255,255,0.06); }
-}
-
-/* White/silver variant */
-.bid-badge.silver {
-  border-color: rgba(220, 220, 220, 0.7);
-  box-shadow:
-    0 0 10px rgba(220,220,220,0.35),
-    0 0 24px rgba(220,220,220,0.15),
-    inset 0 1px 0 rgba(255,255,255,0.06);
-  animation: badgePulseSilver 2.4s ease-in-out infinite;
-}
-@keyframes badgePulseSilver {
-  0%, 100% { box-shadow: 0 0 10px rgba(220,220,220,0.35), 0 0 24px rgba(220,220,220,0.15), inset 0 1px 0 rgba(255,255,255,0.06); }
-  50%       { box-shadow: 0 0 16px rgba(220,220,220,0.55), 0 0 36px rgba(220,220,220,0.25), inset 0 1px 0 rgba(255,255,255,0.06); }
-}
-
-.page-title {
+.pill-crown { font-size: 12px; line-height: 1; }
+.pill-amount {
   font-family: 'Cinzel', serif;
-  font-size: 18px;
-  font-weight: 700;
-  color: #f6d778;
-  letter-spacing: 0.1em;
-  margin-bottom: 6px;
+  font-size: 18px; font-weight: 900;
+  color: var(--brass-hi);
+  line-height: 1;
 }
-.page-sub {
-  font-size: 12px;
-  color: rgba(232,228,217,0.5);
-  margin-bottom: 30px;
+.pill-suit { font-family: Georgia, serif; font-size: 16px; line-height: 1; }
+.pill-suit.red   { color: #e06060; }
+.pill-suit.black { color: #e8e4d9; }
+
+/* Style B — wider pill with label */
+.bid-row-pill.v-b { padding: 4px 14px 4px 12px; gap: 6px; }
+.bid-row-pill.v-b .pill-amount { font-size: 20px; }
+.bid-row-pill.v-b .pill-suit   { font-size: 18px; }
+.bid-label {
+  font-family: 'Cinzel', serif;
+  font-size: 8px; font-weight: 500;
+  color: rgba(66,165,245,0.7);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
 }
+
+/* Style C — compact, inline with nameplate */
+.bid-inline {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 3px 8px;
+  background: rgba(8,18,32,0.92);
+  border: 1.5px solid var(--blue);
+  border-radius: 12px;
+  box-shadow: 0 0 8px var(--blue-glow), 0 0 18px var(--blue-glow2);
+  animation: pillPulse 2.4s ease-in-out infinite;
+}
+.bid-inline .pill-amount { font-size: 15px; }
+.bid-inline .pill-suit   { font-size: 13px; }
+
+/* side seat bid pill — horizontal, compact */
+.bid-row-pill.side {
+  padding: 3px 8px;
+  gap: 4px;
+  border-radius: 14px;
+}
+.bid-row-pill.side .pill-crown  { font-size: 10px; }
+.bid-row-pill.side .pill-amount { font-size: 14px; }
+.bid-row-pill.side .pill-suit   { font-size: 12px; }
+
 </style>
 </head>
 <body>
 
-<div class="page-title">Bid Badge — Mockup</div>
-<div class="page-sub">Persistent indicator at the bid winner's seat. Glows throughout the round.</div>
+<div class="page-title">Bid Badge — In-Layout Mockup</div>
+<div class="page-sub">Badge sits between nameplate and cards. No floating elements.</div>
 
-<!-- ── LIVE TABLE SIM ── -->
+<!-- ══ THREE PHONE VARIANTS SIDE BY SIDE ══ -->
+
 <div class="section">
-  <h2>On the table — North won the bid (20 ♥)</h2>
-  <div class="table-wrap">
-    <div class="table-sim">
+  <h2>Option A — Pill row, North is bid winner</h2>
+  <div class="phone-wrap">
 
-      <!-- NORTH — bid winner -->
-      <div class="seat north">
-        <div class="nameplate">
-          <div class="avatar">🧔</div>
-          <span class="pname">AI Player 2</span>
-        </div>
-        <div class="bid-badge">
-          <span class="crown">👑</span>
-          <span class="amount">20</span>
-          <span class="suit hearts">♥</span>
+    <!-- PHONE 1: North won bid -->
+    <div>
+      <div class="phone">
+        <div class="game-surface">
+
+          <div class="score-strip">
+            <span class="score-team">US <span class="score-val">45</span></span>
+            <span class="score-sep">·</span>
+            <span class="score-team">THEM <span class="score-val">30</span></span>
+          </div>
+
+          <!-- NORTH — bid winner -->
+          <div class="north-area">
+            <div class="nameplate-row">
+              <div class="nameplate">
+                <div class="avatar">🧔</div>
+                <span class="pname">AI Player 2</span>
+              </div>
+              <div class="dealer-chip">D</div>
+            </div>
+            <!-- BID BADGE ROW — sits here between nameplate and cards -->
+            <div class="bid-row-pill">
+              <span class="pill-crown">👑</span>
+              <span class="pill-amount">20</span>
+              <span class="pill-suit red">♥</span>
+            </div>
+            <div class="cards-row">
+              <div class="card-back"></div>
+              <div class="card-back"></div>
+              <div class="card-back"></div>
+              <div class="card-back"></div>
+              <div class="card-back"></div>
+            </div>
+          </div>
+
+          <!-- MIDDLE ROW -->
+          <div class="middle-row">
+            <!-- WEST -->
+            <div class="side-seat">
+              <div class="nameplate compact">
+                <div class="avatar">🧑</div>
+                <span class="pname">AI P3</span>
+              </div>
+              <div class="cards-col">
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+              </div>
+            </div>
+
+            <!-- CENTER -->
+            <div class="table-center">
+              <div class="brass-ring">
+                <div class="trump-plaque">♥</div>
+              </div>
+            </div>
+
+            <!-- EAST -->
+            <div class="side-seat">
+              <div class="nameplate compact">
+                <div class="avatar">👩</div>
+                <span class="pname">AI P1</span>
+              </div>
+              <div class="cards-col">
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TRICK STRIP -->
+          <div class="trick-strip">
+            <span class="trick-label">LAST</span>
+            <div class="trick-mini-card red">♥</div>
+            <div class="trick-mini-card black">♠</div>
+            <div class="trick-mini-card red">♦</div>
+            <div class="trick-mini-card black">♣</div>
+          </div>
+
+          <!-- SOUTH — me -->
+          <div class="south-area">
+            <div class="nameplate me">
+              <div class="avatar" style="border-color:rgba(107,182,255,0.55)">😎</div>
+              <span class="pname">You</span>
+            </div>
+            <div class="my-cards-row">
+              <div class="card-face"><span class="card-rank red">A</span><span class="card-suit-corner red">♥</span><span class="card-suit-center red">♥</span></div>
+              <div class="card-face"><span class="card-rank black">J</span><span class="card-suit-corner black">♠</span><span class="card-suit-center black">♠</span></div>
+              <div class="card-face"><span class="card-rank red">5</span><span class="card-suit-corner red">♥</span><span class="card-suit-center red">♥</span></div>
+              <div class="card-face"><span class="card-rank black">K</span><span class="card-suit-corner black">♣</span><span class="card-suit-center black">♣</span></div>
+              <div class="card-face"><span class="card-rank red">9</span><span class="card-suit-corner red">♦</span><span class="card-suit-center red">♦</span></div>
+            </div>
+          </div>
+
         </div>
       </div>
-
-      <!-- SOUTH — you -->
-      <div class="seat south">
-        <div class="nameplate" style="border-color:rgba(107,182,255,0.55)">
-          <div class="avatar" style="border-color:rgba(107,182,255,0.55)">😎</div>
-          <span class="pname">You</span>
-        </div>
-      </div>
-
-      <!-- WEST -->
-      <div class="seat west">
-        <div class="nameplate">
-          <div class="avatar">🧑</div>
-          <span class="pname">AI Player 3</span>
-        </div>
-      </div>
-
-      <!-- EAST -->
-      <div class="seat east">
-        <div class="nameplate">
-          <div class="avatar">👩</div>
-          <span class="pname">AI Player 1</span>
-        </div>
-      </div>
-
-      <!-- TABLE CENTER -->
-      <div class="table-center">
-        <div class="trump-display">
-          <span class="trump-suit">♥</span>
-          <span class="trump-label">TRUMP</span>
-        </div>
-      </div>
+      <div class="phone-label">North bid winner — pill below nameplate</div>
     </div>
+
+    <!-- PHONE 2: East won bid -->
+    <div>
+      <div class="phone">
+        <div class="game-surface">
+
+          <div class="score-strip">
+            <span class="score-team">US <span class="score-val">45</span></span>
+            <span class="score-sep">·</span>
+            <span class="score-team">THEM <span class="score-val">30</span></span>
+          </div>
+
+          <!-- NORTH — no badge -->
+          <div class="north-area">
+            <div class="nameplate-row">
+              <div class="nameplate">
+                <div class="avatar">🧔</div>
+                <span class="pname">AI Player 2</span>
+              </div>
+              <div class="dealer-chip">D</div>
+            </div>
+            <div class="cards-row">
+              <div class="card-back"></div>
+              <div class="card-back"></div>
+              <div class="card-back"></div>
+              <div class="card-back"></div>
+              <div class="card-back"></div>
+            </div>
+          </div>
+
+          <!-- MIDDLE ROW -->
+          <div class="middle-row">
+            <!-- WEST — no badge -->
+            <div class="side-seat">
+              <div class="nameplate compact">
+                <div class="avatar">🧑</div>
+                <span class="pname">AI P3</span>
+              </div>
+              <div class="cards-col">
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+              </div>
+            </div>
+
+            <!-- CENTER -->
+            <div class="table-center">
+              <div class="brass-ring">
+                <div class="trump-plaque">♠</div>
+              </div>
+            </div>
+
+            <!-- EAST — bid winner -->
+            <div class="side-seat">
+              <div class="nameplate compact">
+                <div class="avatar">👩</div>
+                <span class="pname">AI P1</span>
+              </div>
+              <!-- BID BADGE — side seat version -->
+              <div class="bid-row-pill side">
+                <span class="pill-crown">👑</span>
+                <span class="pill-amount">25</span>
+                <span class="pill-suit black">♠</span>
+              </div>
+              <div class="cards-col">
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+                <div class="card-back small"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TRICK STRIP -->
+          <div class="trick-strip">
+            <span class="trick-label">LAST</span>
+            <div class="trick-mini-card black">♠</div>
+            <div class="trick-mini-card black">♠</div>
+            <div class="trick-mini-card red">♥</div>
+            <div class="trick-mini-card black">♣</div>
+          </div>
+
+          <!-- SOUTH — me -->
+          <div class="south-area">
+            <div class="nameplate me">
+              <div class="avatar" style="border-color:rgba(107,182,255,0.55)">😎</div>
+              <span class="pname">You</span>
+            </div>
+            <div class="my-cards-row">
+              <div class="card-face"><span class="card-rank red">A</span><span class="card-suit-corner red">♥</span><span class="card-suit-center red">♥</span></div>
+              <div class="card-face"><span class="card-rank black">J</span><span class="card-suit-corner black">♠</span><span class="card-suit-center black">♠</span></div>
+              <div class="card-face"><span class="card-rank red">5</span><span class="card-suit-corner red">♥</span><span class="card-suit-center red">♥</span></div>
+              <div class="card-face"><span class="card-rank black">K</span><span class="card-suit-corner black">♣</span><span class="card-suit-center black">♣</span></div>
+              <div class="card-face"><span class="card-rank red">9</span><span class="card-suit-corner red">♦</span><span class="card-suit-center red">♦</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="phone-label">East bid winner — pill below nameplate</div>
+    </div>
+
   </div>
 </div>
 
-<!-- ── SHAPE VARIANTS ── -->
+<!-- ══ STYLE VARIANTS ══ -->
 <div class="section">
-  <h2>Shape Options (all blue glow)</h2>
-  <div class="variants">
+  <h2>Pill style options</h2>
+  <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start; margin-top:8px;">
 
-    <div class="variant-box">
-      <div class="bid-badge">
-        <span class="crown">👑</span>
-        <span class="amount">20</span>
-        <span class="suit hearts">♥</span>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <div class="bid-row-pill">
+        <span class="pill-crown">👑</span>
+        <span class="pill-amount">20</span>
+        <span class="pill-suit red">♥</span>
       </div>
-      <span class="variant-label">A — Portrait<br>crown + number + suit</span>
+      <span style="font-size:11px;color:rgba(232,228,217,0.4);text-align:center">A — Crown + number + suit<br>horizontal pill</span>
     </div>
 
-    <div class="variant-box">
-      <div class="bid-badge v-b">
-        <span class="crown">👑</span>
-        <span class="amount">20</span>
-        <span class="suit hearts">♥</span>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <div class="bid-row-pill v-b">
+        <span class="pill-crown">👑</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:0">
+          <span class="bid-label">BID</span>
+          <div style="display:flex;align-items:center;gap:5px">
+            <span class="pill-amount">20</span>
+            <span class="pill-suit red">♥</span>
+          </div>
+        </div>
       </div>
-      <span class="variant-label">B — Larger portrait<br>26px number</span>
+      <span style="font-size:11px;color:rgba(232,228,217,0.4);text-align:center">B — With "BID" label<br>slightly taller</span>
     </div>
 
-    <div class="variant-box">
-      <div class="bid-badge v-c">
-        <span class="crown">👑</span>
-        <span class="amount">20</span>
-        <span class="suit hearts">♥</span>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <div class="bid-row-pill" style="gap:4px;padding:4px 10px;">
+        <span class="pill-amount">20</span>
+        <span class="pill-suit red">♥</span>
       </div>
-      <span class="variant-label">C — Horizontal pill<br>compact, wide</span>
-    </div>
-
-    <div class="variant-box">
-      <div class="bid-badge v-d">
-        <span class="suit hearts">♥</span>
-        <span class="amount">20</span>
-      </div>
-      <span class="variant-label">D — Suit on top<br>no crown</span>
+      <span style="font-size:11px;color:rgba(232,228,217,0.4);text-align:center">C — No crown<br>minimal</span>
     </div>
 
   </div>
 </div>
 
-<!-- ── GLOW COLOR OPTIONS ── -->
+<!-- ══ ALL SUITS ══ -->
 <div class="section">
-  <h2>Glow Colour Options (shape A)</h2>
-  <div class="variants">
-
-    <div class="variant-box">
-      <div class="bid-badge">
-        <span class="crown">👑</span>
-        <span class="amount">20</span>
-        <span class="suit hearts">♥</span>
-      </div>
-      <span class="variant-label">Blue<br>#42a5f5</span>
-    </div>
-
-    <div class="variant-box">
-      <div class="bid-badge teal">
-        <span class="crown">👑</span>
-        <span class="amount">20</span>
-        <span class="suit hearts">♥</span>
-      </div>
-      <span class="variant-label">Teal<br>#26c6da</span>
-    </div>
-
-    <div class="variant-box">
-      <div class="bid-badge silver">
-        <span class="crown">👑</span>
-        <span class="amount">20</span>
-        <span class="suit hearts">♥</span>
-      </div>
-      <span class="variant-label">Silver/white<br>#dcdcdc</span>
-    </div>
-
-  </div>
-</div>
-
-<!-- ── SUIT SAMPLES ── -->
-<div class="section">
-  <h2>All suits (shape A, blue)</h2>
-  <div class="variants">
-    <div class="variant-box">
-      <div class="bid-badge"><span class="crown">👑</span><span class="amount">25</span><span class="suit spades">♠</span></div>
-      <span class="variant-label">25 Spades</span>
-    </div>
-    <div class="variant-box">
-      <div class="bid-badge"><span class="crown">👑</span><span class="amount">20</span><span class="suit hearts">♥</span></div>
-      <span class="variant-label">20 Hearts</span>
-    </div>
-    <div class="variant-box">
-      <div class="bid-badge"><span class="crown">👑</span><span class="amount">30</span><span class="suit diamonds">♦</span></div>
-      <span class="variant-label">30 Diamonds</span>
-    </div>
-    <div class="variant-box">
-      <div class="bid-badge"><span class="crown">👑</span><span class="amount">15</span><span class="suit clubs">♣</span></div>
-      <span class="variant-label">15 Clubs (bagged)</span>
-    </div>
+  <h2>All suits</h2>
+  <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:center; margin-top:8px;">
+    <div class="bid-row-pill"><span class="pill-crown">👑</span><span class="pill-amount">25</span><span class="pill-suit black">♠</span></div>
+    <div class="bid-row-pill"><span class="pill-crown">👑</span><span class="pill-amount">20</span><span class="pill-suit red">♥</span></div>
+    <div class="bid-row-pill"><span class="pill-crown">👑</span><span class="pill-amount">30</span><span class="pill-suit red">♦</span></div>
+    <div class="bid-row-pill"><span class="pill-crown">👑</span><span class="pill-amount">15</span><span class="pill-suit black">♣</span></div>
   </div>
 </div>
 
