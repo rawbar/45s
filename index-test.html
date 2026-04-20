@@ -1779,7 +1779,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.57';
+const VERSION = '2.27.58';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4444,6 +4444,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.57', date: 'Apr 2026', changes: ['View Round: suit symbols restored on all 20 cards. E/W and N/S cards larger and easier to read.', 'Bid winner now shown with a blue glowing pill below their nameplate for the whole round.', 'E/W player name areas wider so full name is always visible.'] },
     { version: '2.27.53', date: 'Apr 2026', changes: ['Fix flash of old loading screen on Start Game — WaitingRoom now returns null when game data not yet loaded instead of showing unstyled loading div.'] },
     { version: '2.27.52', date: 'Apr 2026', changes: ['Embedded @font-face declarations directly in HTML for Cinzel, Merriweather, and Inter — eliminates dependency on Google Fonts CSS loading correctly.'] },
     { version: '2.27.51', date: 'Apr 2026', changes: ['Fix crash when tapping a player in leaderboard — stale setStatsTab call removed.'] },
