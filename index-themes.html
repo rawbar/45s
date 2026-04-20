@@ -3363,7 +3363,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.30.4';
+const VERSION = '2.30.5';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6058,6 +6058,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.30.5', date: 'Apr 2026', changes: ['Arabian Nights: theme preview modal shows Arabian styling (dark navy, gold ring, no green felt).'] },
     { version: '2.30.4', date: 'Apr 2026', changes: ['Fix player hand cards left-justified — add justify-content:center to .v3-my-hand.'] },
     { version: '2.30.3', date: 'Apr 2026', changes: ['Arabian Nights: waiting room center circle — dark gold theme instead of Irish green felt.'] },
     { version: '2.30.2', date: 'Apr 2026', changes: ['Arabian Nights: fix center suit missing on show-hands cards (position:absolute inset:0 was absent).'] },
@@ -10725,9 +10726,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               {/* Header */}
               <div style={{
                 fontSize: '12px', letterSpacing: '2px', fontWeight: '700',
-                color: isCyberpunk ? '#00e5ff' : '#c9a24a',
+                color: isCyberpunk ? '#00e5ff' : isArabian ? '#f6d778' : '#c9a24a',
                 textTransform: 'uppercase', marginBottom: '12px',
-                textShadow: isCyberpunk ? '0 0 10px #00e5ff' : 'none'
+                textShadow: isCyberpunk ? '0 0 10px #00e5ff' : isArabian ? '0 0 8px rgba(246,215,120,0.3)' : 'none'
               }}>
                 PREVIEW — {theme.name}
               </div>
@@ -10739,11 +10740,11 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                 overflow: 'hidden',
                 background: isCyberpunk
                   ? 'linear-gradient(175deg, #060d18 0%, #020509 100%)'
-                  : '#180b03',
-                border: isCyberpunk ? '1px solid rgba(0,229,255,0.28)' : '1px solid rgba(201,162,74,0.3)',
+                  : isArabian ? 'linear-gradient(175deg, #060a16 0%, #030609 100%)' : '#180b03',
+                border: isCyberpunk ? '1px solid rgba(0,229,255,0.28)' : isArabian ? '1px solid rgba(201,162,39,0.4)' : '1px solid rgba(201,162,74,0.3)',
                 boxShadow: isCyberpunk
                   ? '0 0 40px rgba(0,229,255,0.08), 0 20px 60px rgba(0,0,0,0.9)'
-                  : '0 20px 60px rgba(0,0,0,0.8)',
+                  : isArabian ? '0 0 30px rgba(201,162,39,0.06), 0 20px 60px rgba(0,0,0,0.9)' : '0 20px 60px rgba(0,0,0,0.8)',
                 padding: '12px',
                 position: 'relative'
               }}>
@@ -10758,7 +10759,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                 <div style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   marginBottom: '10px',
-                  borderBottom: isCyberpunk ? '1px solid rgba(0,229,255,0.15)' : '1px solid rgba(201,162,74,0.3)',
+                  borderBottom: isCyberpunk ? '1px solid rgba(0,229,255,0.15)' : isArabian ? '1px solid rgba(201,162,39,0.3)' : '1px solid rgba(201,162,74,0.3)',
                   paddingBottom: '8px'
                 }}>
                   <div style={{
@@ -10776,13 +10777,13 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     {['US', 'THEM'].map((lbl, i) => (
                       <div key={lbl} style={{
                         padding: '2px 8px', borderRadius: isCyberpunk ? '3px' : '4px',
-                        background: isCyberpunk ? 'rgba(2,5,10,0.85)' : 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 40%), linear-gradient(180deg, #2a1608 0%, #140802 100%)',
+                        background: isCyberpunk ? 'rgba(2,5,10,0.85)' : isArabian ? 'rgba(8,5,1,0.85)' : 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 40%), linear-gradient(180deg, #2a1608 0%, #140802 100%)',
                         border: i === 0
-                          ? (isCyberpunk ? '1px solid rgba(0,255,136,0.45)' : '1px solid #5a3f16')
-                          : (isCyberpunk ? '1px solid rgba(255,0,204,0.45)' : '1px solid #5a3f16'),
+                          ? (isCyberpunk ? '1px solid rgba(0,255,136,0.45)' : isArabian ? '1px solid rgba(201,162,39,0.4)' : '1px solid #5a3f16')
+                          : (isCyberpunk ? '1px solid rgba(255,0,204,0.45)' : isArabian ? '1px solid rgba(201,162,39,0.25)' : '1px solid #5a3f16'),
                         minWidth: '36px', textAlign: 'center'
                       }}>
-                        <div style={{ fontSize: '7px', color: isCyberpunk ? (i===0?'rgba(0,255,136,0.65)':'rgba(255,0,204,0.65)') : 'rgba(201,162,74,0.7)', letterSpacing: '1.5px' }}>{lbl}</div>
+                        <div style={{ fontSize: '7px', color: isCyberpunk ? (i===0?'rgba(0,255,136,0.65)':'rgba(255,0,204,0.65)') : isArabian ? 'rgba(246,215,120,0.6)' : 'rgba(201,162,74,0.7)', letterSpacing: '1.5px' }}>{lbl}</div>
                         <div style={{
                           fontFamily: isCyberpunk ? "'Orbitron', sans-serif" : "'Merriweather', serif",
                           fontWeight: 700, fontSize: '13px', lineHeight: 1,
@@ -10800,19 +10801,19 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     width: '100px', height: '100px', borderRadius: '50%',
                     background: isCyberpunk
                       ? '#020407'
-                      : 'radial-gradient(ellipse at 32% 28%, #a26a3a 0%, #5e351a 35%, #3a1d0d 65%, #1e0e04 100%)',
-                    border: isCyberpunk ? '2px solid rgba(0,229,255,0.4)' : '3px solid #c9a24a',
+                      : isArabian ? 'radial-gradient(ellipse at center, #12100a 0%, #060402 100%)' : 'radial-gradient(ellipse at 32% 28%, #a26a3a 0%, #5e351a 35%, #3a1d0d 65%, #1e0e04 100%)',
+                    border: isCyberpunk ? '2px solid rgba(0,229,255,0.4)' : isArabian ? '2px solid rgba(201,162,39,0.6)' : '3px solid #c9a24a',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     position: 'relative',
-                    boxShadow: isCyberpunk ? '0 0 20px rgba(0,229,255,0.06)' : '0 0 0 1px rgba(0,0,0,0.5), 0 8px 20px rgba(0,0,0,0.8)'
+                    boxShadow: isCyberpunk ? '0 0 20px rgba(0,229,255,0.06)' : isArabian ? '0 0 16px rgba(201,162,39,0.15)' : '0 0 0 1px rgba(0,0,0,0.5), 0 8px 20px rgba(0,0,0,0.8)'
                   }}>
                     <div style={{
                       width: '80px', height: '80px', borderRadius: '50%',
                       background: isCyberpunk
                         ? 'radial-gradient(ellipse at center, #060e1e 0%, #030609 100%)'
-                        : 'radial-gradient(ellipse at center, #1f7a3f 0%, #13572a 55%, #093a1a 100%)',
+                        : isArabian ? 'radial-gradient(ellipse at center, #1a1000 0%, #0a0800 100%)' : 'radial-gradient(ellipse at center, #1f7a3f 0%, #13572a 55%, #093a1a 100%)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '28px', color: isCyberpunk ? 'rgba(0,229,255,0.3)' : 'rgba(255,255,255,0.06)'
+                      fontSize: '28px', color: isCyberpunk ? 'rgba(0,229,255,0.3)' : isArabian ? 'rgba(201,162,39,0.12)' : 'rgba(255,255,255,0.06)'
                     }}>♥</div>
                     <div style={{
                       position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)',
@@ -10828,9 +10829,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                       position: 'absolute', top: '8px', left: '50%', transform: 'translateX(-50%) rotate(-3deg)',
                       width: isCyberpunk?'22px':'20px', height: isCyberpunk?'32px':'28px', borderRadius: '2px',
                       background: isCyberpunk ? 'linear-gradient(180deg, #0d1828 0%, #070e1a 100%)' : 'linear-gradient(162deg, #fbf6e4 0%, #f1e8cf 100%)',
-                      border: isCyberpunk ? '1px solid rgba(255,26,117,0.28)' : '1px solid #9b8d6a',
+                      border: isCyberpunk ? '1px solid rgba(255,26,117,0.28)' : isArabian ? '1px solid rgba(201,162,39,0.5)' : '1px solid #9b8d6a',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '9px', color: isCyberpunk ? '#ff1a75' : '#a81824', fontWeight: 'bold'
+                      fontSize: '9px', color: isCyberpunk ? '#ff1a75' : isArabian ? '#cc0022' : '#a81824', fontWeight: 'bold'
                     }}>A♥</div>
                   </div>
                 </div>
@@ -10853,8 +10854,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                           : 'linear-gradient(162deg, #fbf6e4 0%, #f1e8cf 100%)',
                         border: isCyberpunk
                           ? (isRed ? '1px solid rgba(255,26,117,0.4)' : '1px solid rgba(0,229,255,0.28)')
-                          : '1px solid #9b8d6a',
-                        color: isCyberpunk ? (isRed ? '#ff1a75' : '#00e5ff') : (isRed ? '#a81824' : '#1a1409'),
+                          : isArabian ? '1px solid rgba(201,162,39,0.5)' : '1px solid #9b8d6a',
+                        color: isCyberpunk ? (isRed ? '#ff1a75' : '#00e5ff') : isArabian ? (isRed ? '#cc0022' : '#1a1409') : (isRed ? '#a81824' : '#1a1409'),
                         display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start',
                         fontSize: '7px', fontWeight: 'bold', padding: '2px',
                         transform: isFan ? `rotate(${fanRot}deg) translateY(${isPlayable ? -8 : fanY}px)` : 'none',
@@ -10884,7 +10885,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     }}
                     style={{
                       padding: '10px 24px',
-                      background: isUnlocked ? (isCyberpunk ? '#00e5ff' : '#c9a24a') : '#666',
+                      background: isUnlocked ? (isCyberpunk ? '#00e5ff' : isArabian ? '#c9a227' : '#c9a24a') : '#666',
                       color: isCyberpunk ? '#020509' : '#1a0f04',
                       border: 'none', borderRadius: '6px',
                       fontWeight: 'bold', fontSize: '14px',
