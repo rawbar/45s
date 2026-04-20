@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSS Stone Swatches — 45s Theme Test</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0e0e0e; font-family: system-ui, sans-serif; padding: 24px; color: #eee; }
+  h1 { text-align: center; font-size: 18px; font-weight: 600; color: #777; margin-bottom: 6px; letter-spacing: 2px; text-transform: uppercase; }
+  p.sub { text-align: center; font-size: 11px; color: #444; margin-bottom: 28px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; max-width: 1300px; margin: 0 auto; }
+  .panel {
+    height: 240px;
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.07);
+    transition: border-color 0.2s;
+  }
+  .panel:hover { border-color: rgba(255,255,255,0.25); }
+  .panel svg.tex {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  .label {
+    position: absolute; bottom: 10px; left: 12px;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.8px;
+    color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,1);
+    background: rgba(0,0,0,0.65);
+    padding: 4px 12px; border-radius: 10px;
+    z-index: 3; text-transform: uppercase;
+  }
+  .num {
+    position: absolute; top: 10px; right: 12px;
+    font-size: 11px; font-weight: 700;
+    color: rgba(255,255,255,0.35);
+    z-index: 3;
+  }
+</style>
+</head>
+<body>
+
+<h1>Stone & Texture Swatches</h1>
+<p class="sub">Pure CSS + SVG filters — no external images</p>
+
+<div class="grid">
+
+<!-- ═══════════════════════════════════════════════════
+     1. DARK GRANITE — fine salt-and-pepper speckle
+════════════════════════════════════════════════════ -->
+<div class="panel" style="background: linear-gradient(150deg, #2e2e2e 0%, #202020 60%, #282828 100%);">
+  <svg class="tex" xmlns="http://www.w3.org/2000/svg">
+    <filter id="f1" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.72 0.68" numOctaves="4" seed="3" stitchTiles="stitch" result="noise"/>
+      <feColorMatrix type="matrix" result="gray"
+        values="0 0 0 0 0.55
+                0 0 0 0 0.55
+                0 0 0 0 0.55
+                0 0 0 0.45 0"/>
+      <feBlend in="SourceGraphic" in2="gray" mode="screen"/>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#f1)"/>
+  </svg>
+  <div class="num">01</div>
+  <div class="label">Dark Granite</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     2. SANDSTONE — warm horizontal strata + grit
+════════════════════════════════════════════════════ -->
+<div class="panel" style="
+  background:
+    linear-gradient(180deg,
+      #c8a455 0%, #b89040 6%, #c5a250 12%, #ad8838 18%,
+      #c2a050 24%, #b59042 30%, #c4a354 36%, #b08538 42%,
+      #c3a150 48%, #ad8838 54%, #c5a455 60%, #b8923f 66%,
+      #c2a050 72%, #b59042 78%, #c0a050 84%, #ba9245 90%, #c4a454 100%);
+">
+  <svg class="tex" xmlns="http://www.w3.org/2000/svg">
+    <filter id="f2" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.85" numOctaves="3" seed="7" stitchTiles="stitch" result="noise"/>
+      <feColorMatrix type="saturate" values="0" result="gray"/>
+      <feBlend in="SourceGraphic" in2="gray" mode="multiply" result="blend"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#f2)"/>
+  </svg>
+  <div class="num">02</div>
+  <div class="label">Sandstone</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     3. BLACK MARBLE — dark base, white diagonal veins
+════════════════════════════════════════════════════ -->
+<div class="panel" style="background: #161616;">
+  <!-- Vein layer -->
+  <div style="position:absolute;inset:0;
+    background:
+      linear-gradient(118deg, transparent 18%, rgba(210,210,210,0.10) 19%, rgba(240,240,240,0.15) 20%, rgba(210,210,210,0.08) 21.5%, transparent 23%),
+      linear-gradient(118deg, transparent 38%, rgba(180,180,180,0.07) 39%, rgba(220,220,220,0.12) 40%, rgba(180,180,180,0.06) 41.5%, transparent 43%),
+      linear-gradient(122deg, transparent 55%, rgba(200,200,200,0.06) 56%, rgba(230,230,230,0.10) 57.5%, rgba(200,200,200,0.05) 59%, transparent 60.5%),
+      linear-gradient(115deg, transparent 68%, rgba(170,170,170,0.08) 69%, rgba(210,210,210,0.13) 70.5%, rgba(170,170,170,0.06) 72%, transparent 73.5%),
+      linear-gradient(120deg, transparent 80%, rgba(190,190,190,0.05) 81%, rgba(220,220,220,0.09) 82.5%, transparent 84%);
+  "></div>
+  <!-- Noise -->
+  <svg class="tex" xmlns="http://www.w3.org/2000/svg">
+    <filter id="f3" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.5 0.45" numOctaves="3" seed="11" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix"
+        values="0 0 0 0 0.6
+                0 0 0 0 0.6
+                0 0 0 0 0.6
+                0 0 0 0.12 0"/>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#f3)"/>
+  </svg>
+  <!-- Subtle gloss -->
+  <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.04) 0%,transparent 60%);pointer-events:none;"></div>
+  <div class="num">03</div>
+  <div class="label">Black Marble</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     4. BLUE SLATE — cool strata, horizontal cracks
+════════════════════════════════════════════════════ -->
+<div class="panel" style="background: linear-gradient(170deg, #3a4d60 0%, #293a4a 100%);">
+  <!-- Horizontal strata lines -->
+  <div style="position:absolute;inset:0;
+    background:
+      repeating-linear-gradient(180deg,
+        transparent 0px, transparent 14px,
+        rgba(0,0,0,0.18) 14px, rgba(0,0,0,0.18) 15px,
+        transparent 15px, transparent 22px,
+        rgba(255,255,255,0.04) 22px, rgba(255,255,255,0.04) 23px,
+        transparent 23px, transparent 36px,
+        rgba(0,0,0,0.12) 36px, rgba(0,0,0,0.12) 37px
+      );
+  "></div>
+  <svg class="tex" xmlns="http://www.w3.org/2000/svg">
+    <filter id="f4" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.04 0.92" numOctaves="3" seed="9" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix"
+        values="0 0 0 0 0.3
+                0 0 0 0 0.45
+                0 0 0 0 0.6
+                0 0 0 0.2 0"/>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#f4)"/>
+  </svg>
+  <div class="num">04</div>
+  <div class="label">Blue Slate</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     5. RED BRICK — classic staggered brick + mortar
+════════════════════════════════════════════════════ -->
+<div class="panel" style="background: #7a6055;">
+  <!-- Row 1 bricks (no offset) -->
+  <div style="position:absolute;inset:0;
+    background-image:
+      repeating-linear-gradient(90deg,
+        transparent 0px, transparent 55px,
+        #7a6055 55px, #7a6055 59px
+      ),
+      repeating-linear-gradient(180deg,
+        transparent 0px, transparent 25px,
+        #7a6055 25px, #7a6055 29px
+      );
+    background-color: #8b3a28;
+  "></div>
+  <!-- Row 2 bricks (offset) -->
+  <div style="position:absolute;inset:0;
+    background-image:
+      repeating-linear-gradient(90deg,
+        transparent 0px, transparent 55px,
+        #7a6055 55px, #7a6055 59px
+      );
+    background-size: 118px 58px;
+    background-position: 29px 29px;
+    background-color: transparent;
+  "></div>
+  <!-- Brick color variation -->
+  <div style="position:absolute;inset:0;
+    background-image:
+      radial-gradient(ellipse 30px 14px at 28px 14px, rgba(60,0,0,0.25) 0%, transparent 100%),
+      radial-gradient(ellipse 28px 12px at 86px 14px, rgba(80,10,0,0.2) 0%, transparent 100%),
+      radial-gradient(ellipse 30px 14px at 57px 43px, rgba(40,0,0,0.2) 0%, transparent 100%),
+      radial-gradient(ellipse 28px 12px at 115px 43px, rgba(70,5,0,0.25) 0%, transparent 100%);
+    background-size: 118px 58px;
+  "></div>
+  <svg class="tex" xmlns="http://www.w3.org/2000/svg">
+    <filter id="f5" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.88" numOctaves="2" seed="4" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix"
+        values="1 0 0 0 0
+                0 0.5 0 0 0
+                0 0 0.3 0 0
+                0 0 0 0.18 0"/>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#f5)"/>
+  </svg>
+  <div class="num">05</div>
+  <div class="label">Red Brick</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     6. COBBLESTONE — rounded stones in mortar
+════════════════════════════════════════════════════ -->
+<div class="panel" style="background: #4a4540;">
+  <svg class="tex" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%;">
+    <defs>
+      <filter id="f6bump" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="8" result="noise"/>
+        <feColorMatrix type="matrix" result="col"
+          values="0 0 0 0 0.4
+                  0 0 0 0 0.38
+                  0 0 0 0 0.34
+                  0 0 0 0.25 0"/>
+      </filter>
+      <pattern id="cobble" x="0" y="0" width="80" height="70" patternUnits="userSpaceOnUse">
+        <!-- row 1 -->
+        <ellipse cx="20" cy="18" rx="16" ry="13" fill="#5a5450"/>
+        <ellipse cx="60" cy="18" rx="16" ry="13" fill="#524e48"/>
+        <!-- row 2 (offset) -->
+        <ellipse cx="0" cy="52" rx="16" ry="13" fill="#504c46"/>
+        <ellipse cx="40" cy="52" rx="16" ry="13" fill="#565048"/>
+        <ellipse cx="80" cy="52" rx="16" ry="13" fill="#504c46"/>
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#cobble)"/>
+    <!-- edge shading on each stone -->
+    <rect width="100%" height="100%" filter="url(#f6bump)" opacity="0.5"/>
+  </svg>
+  <div class="num">06</div>
+  <div class="label">Cobblestone</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     7. PALE LIMESTONE — light cream, subtle grain
+════════════════════════════════════════════════════ -->
+<div class="panel" style="background: linear-gradient(160deg, #ddd0b0 0%, #cec0a0 50%, #d8caa8 100%);">
+  <div style="position:absolute;inset:0;
+    background: repeating-linear-gradient(175deg,
+      transparent 0px, transparent 18px,
+      rgba(0,0,0,0.04) 18px, rgba(0,0,0,0.04) 19px,
+      transparent 19px, transparent 35px,
+      rgba(255,255,255,0.08) 35px, rgba(255,255,255,0.08) 36px
+    );
+  "></div>
+  <svg class="tex" xmlns="http://www.w3.org/2000/svg">
+    <filter id="f7" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.55 0.5" numOctaves="3" seed="14" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix"
+        values="0.8 0 0 0 0.15
+                0 0.7 0 0 0.12
+                0 0 0.5 0 0.08
+                0 0 0 0.18 0"/>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#f7)"/>
+  </svg>
+  <div class="num">07</div>
+  <div class="label">Pale Limestone</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     8. OBSIDIAN — very dark volcanic glass, gloss sheen
+════════════════════════════════════════════════════ -->
+<div class="panel" style="background: linear-gradient(140deg, #0f0f14 0%, #080810 60%, #121218 100%);">
+  <!-- Glass sheen -->
+  <div style="position:absolute;inset:0;
+    background:
+      linear-gradient(130deg, rgba(255,255,255,0.07) 0%, transparent 40%),
+      linear-gradient(310deg, rgba(255,255,255,0.04) 0%, transparent 35%);
+  "></div>
+  <!-- Subtle fractures -->
+  <div style="position:absolute;inset:0;
+    background:
+      linear-gradient(142deg, transparent 35%, rgba(100,100,140,0.06) 36%, transparent 37%),
+      linear-gradient(138deg, transparent 55%, rgba(80,80,120,0.05) 56%, transparent 57%),
+      linear-gradient(148deg, transparent 65%, rgba(100,100,140,0.04) 66%, transparent 68%);
+  "></div>
+  <svg class="tex" xmlns="http://www.w3.org/2000/svg">
+    <filter id="f8" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65 0.6" numOctaves="3" seed="17" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix"
+        values="0.3 0 0 0 0.02
+                0.3 0 0 0 0.02
+                0.5 0 0 0 0.04
+                0 0 0 0.22 0"/>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#f8)"/>
+  </svg>
+  <div class="num">08</div>
+  <div class="label">Obsidian</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     9. DESERT ROCK — warm red-orange, chunky
+════════════════════════════════════════════════════ -->
+<div class="panel" style="background: linear-gradient(160deg, #a04828 0%, #8a3820 60%, #9c4425 100%);">
+  <!-- Rough strata -->
+  <div style="position:absolute;inset:0;
+    background: repeating-linear-gradient(172deg,
+      transparent 0px, transparent 20px,
+      rgba(0,0,0,0.2) 20px, rgba(0,0,0,0.2) 22px,
+      transparent 22px, transparent 42px,
+      rgba(255,255,255,0.06) 42px, rgba(255,255,255,0.06) 43px,
+      transparent 43px, transparent 55px,
+      rgba(0,0,0,0.15) 55px, rgba(0,0,0,0.15) 57px
+    );
+  "></div>
+  <svg class="tex" xmlns="http://www.w3.org/2000/svg">
+    <filter id="f9" color-interpolation-filters="sRGB">
+      <feTurbulence type="turbulence" baseFrequency="0.04 0.06" numOctaves="4" seed="6" stitchTiles="stitch" result="noise"/>
+      <feColorMatrix type="matrix" result="col"
+        values="1.2 0 0 0 -0.1
+                0.6 0 0 0 0
+                0.2 0 0 0 0
+                0 0 0 0.35 0"/>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#f9)"/>
+  </svg>
+  <div class="num">09</div>
+  <div class="label">Desert Rock</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     10. GREEN SERPENTINE — dark green marble
+════════════════════════════════════════════════════ -->
+<div class="panel" style="background: #121c14;">
+  <!-- Green veining -->
+  <div style="position:absolute;inset:0;
+    background:
+      linear-gradient(125deg, transparent 15%, rgba(60,120,60,0.12) 16.5%, rgba(80,160,80,0.18) 17.5%, rgba(60,120,60,0.10) 19%, transparent 20.5%),
+      linear-gradient(128deg, transparent 35%, rgba(40,100,50,0.08) 36%, rgba(70,150,70,0.14) 37.5%, rgba(40,100,50,0.07) 39%, transparent 40%),
+      linear-gradient(120deg, transparent 58%, rgba(55,115,60,0.10) 59.5%, rgba(75,155,75,0.15) 61%, rgba(55,115,60,0.08) 62.5%, transparent 64%),
+      linear-gradient(130deg, transparent 75%, rgba(45,110,55,0.09) 76%, rgba(65,145,65,0.13) 77.5%, transparent 79%);
+  "></div>
+  <svg class="tex" xmlns="http://www.w3.org/2000/svg">
+    <filter id="f10" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.48 0.44" numOctaves="3" seed="21" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix"
+        values="0.2 0 0 0 0.04
+                0.5 0 0 0 0.08
+                0.2 0 0 0 0.04
+                0 0 0 0.2 0"/>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#f10)"/>
+  </svg>
+  <div class="num">10</div>
+  <div class="label">Green Serpentine</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     11. ROUGH BASALT — very dark, volcanic, cracked
+════════════════════════════════════════════════════ -->
+<div class="panel" style="background: linear-gradient(155deg, #1a1a18 0%, #111110 60%, #181816 100%);">
+  <!-- Crack overlay -->
+  <div style="position:absolute;inset:0;
+    background:
+      linear-gradient(105deg, transparent 22%, rgba(255,255,255,0.03) 22.5%, transparent 23%),
+      linear-gradient(210deg, transparent 40%, rgba(255,255,255,0.02) 40.5%, transparent 41%),
+      linear-gradient(155deg, transparent 60%, rgba(255,255,255,0.025) 60.5%, transparent 61%),
+      linear-gradient(85deg, transparent 72%, rgba(255,255,255,0.02) 72.5%, transparent 73%);
+  "></div>
+  <svg class="tex" xmlns="http://www.w3.org/2000/svg">
+    <filter id="f11" color-interpolation-filters="sRGB">
+      <feTurbulence type="turbulence" baseFrequency="0.06 0.05" numOctaves="5" seed="13" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix"
+        values="0.4 0 0 0 0.05
+                0.4 0 0 0 0.05
+                0.3 0 0 0 0.04
+                0 0 0 0.38 0"/>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#f11)"/>
+  </svg>
+  <div class="num">11</div>
+  <div class="label">Rough Basalt</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     12. GREY FLAGSTONE — irregular flat tiles
+════════════════════════════════════════════════════ -->
+<div class="panel" style="background: #3e3e3c;">
+  <svg class="tex" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%;">
+    <defs>
+      <filter id="f12noise">
+        <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" seed="2" stitchTiles="stitch"/>
+        <feColorMatrix type="matrix"
+          values="0 0 0 0 0.5
+                  0 0 0 0 0.5
+                  0 0 0 0 0.48
+                  0 0 0 0.3 0"/>
+      </filter>
+      <pattern id="flags" x="0" y="0" width="160" height="120" patternUnits="userSpaceOnUse">
+        <!-- irregular flag stones as polygons -->
+        <polygon points="0,0 55,0 60,38 0,40" fill="#484846" stroke="#282826" stroke-width="2"/>
+        <polygon points="58,0 110,0 118,35 63,38" fill="#424240" stroke="#282826" stroke-width="2"/>
+        <polygon points="113,0 160,0 160,42 120,38" fill="#464644" stroke="#282826" stroke-width="2"/>
+        <polygon points="0,42 62,40 58,85 0,80" fill="#404040" stroke="#282826" stroke-width="2"/>
+        <polygon points="65,40 122,37 125,82 60,85" fill="#464644" stroke="#282826" stroke-width="2"/>
+        <polygon points="127,38 160,42 160,80 128,82" fill="#424240" stroke="#282826" stroke-width="2"/>
+        <polygon points="0,82 60,85 55,120 0,120" fill="#444442" stroke="#282826" stroke-width="2"/>
+        <polygon points="63,87 128,84 130,120 58,120" fill="#404040" stroke="#282826" stroke-width="2"/>
+        <polygon points="130,84 160,82 160,120 132,120" fill="#464644" stroke="#282826" stroke-width="2"/>
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#flags)"/>
+    <rect width="100%" height="100%" filter="url(#f12noise)"/>
+  </svg>
+  <div class="num">12</div>
+  <div class="label">Grey Flagstone</div>
+</div>
+
+</div><!-- .grid -->
+</body>
+</html>
