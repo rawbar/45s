@@ -2297,17 +2297,15 @@
   .cp-show-hands-cards .cp-card.mid .center { font-size: 28px; }
   .cp-show-hands-ew {
     /* compact variant for East/West players */
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
   }
   .cp-show-hands-ew .cp-show-hands-cards {
     flex-wrap: nowrap;
-    overflow-x: auto;
     justify-content: flex-start;
+    overflow: visible;
   }
   .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid {
-    width: 30px;
-    height: 50px;
+    width: 27px;
+    height: 46px;
     border-radius: 4px;
   }
   .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .corner .rk {
@@ -2317,7 +2315,7 @@
     display: none !important;
   }
   .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .center {
-    font-size: 24px;
+    font-size: 22px;
   }
   .cp-trick-strip {
     display: flex;
@@ -3076,7 +3074,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.29.5';
+const VERSION = '2.29.6';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5761,6 +5759,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isCyberpunk = currentThemeId === 'cyberpunk';
 
   const versionHistory = [
+    { version: '2.29.6', date: 'Apr 2026', changes: ['E/W cards: 27×46px — fits 144px column, no scroll; removed overflow-x from CSS'] },
     { version: '2.29.5', date: 'Apr 2026', changes: ['Bid/pass badges: solid green-tinted fill + thick border + strong glow — obvious against dark bg'] },
     { version: '2.29.4', date: 'Apr 2026', changes: ['E/W Round Summary: 30×50px cards (matches Irish), no overflow scroll', 'Bid/pass badges: bright green glow in cyberpunk, much more visible'] },
     { version: '2.29.3', date: 'Apr 2026', changes: ['E/W cards reduced to 26×46px — fit in 144px column without overflow'] },
