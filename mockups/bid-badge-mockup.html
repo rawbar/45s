@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>45s — Bid Badge Mockup</title>
+<style>
+@font-face { font-family: 'Cinzel'; font-weight: 500; font-display: swap; src: url(https://fonts.gstatic.com/s/cinzel/v26/8vIU7ww63mVu7gtR-kwKxNvkNOjw-uTnTYo.ttf) format('truetype'); }
+@font-face { font-family: 'Cinzel'; font-weight: 700; font-display: swap; src: url(https://fonts.gstatic.com/s/cinzel/v26/8vIU7ww63mVu7gtR-kwKxNvkNOjw-jHgTYo.ttf) format('truetype'); }
+@font-face { font-family: 'Cinzel'; font-weight: 900; font-display: swap; src: url(https://fonts.gstatic.com/s/cinzel/v26/8vIU7ww63mVu7gtR-kwKxNvkNOjw-n_gTYo.ttf) format('truetype'); }
+@font-face { font-family: 'Inter'; font-weight: 400; font-display: swap; src: url(https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf) format('truetype'); }
+@font-face { font-family: 'Inter'; font-weight: 600; font-display: swap; src: url(https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuGKYMZg.ttf) format('truetype'); }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0a0a0a;
+  font-family: 'Inter', sans-serif;
+  color: #e8e4d9;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  color: #c9a24a;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(201,162,74,0.2);
+}
+
+.section {
+  margin-bottom: 40px;
+}
+
+/* ── Table sim ── */
+.table-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 40px;
+}
+
+.table-sim {
+  position: relative;
+  width: 320px;
+  height: 480px;
+  background: radial-gradient(ellipse at 50% 44%, #1f7a3f 0%, #13572a 55%, #093a1a 100%);
+  border-radius: 16px;
+  border: 2px solid rgba(201,162,74,0.35);
+  overflow: visible;
+}
+
+/* ── Compass seats ── */
+.seat { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.seat.north { top: 12px; left: 50%; transform: translateX(-50%); }
+.seat.south { bottom: 12px; left: 50%; transform: translateX(-50%); }
+.seat.west  { left: 8px;  top: 50%; transform: translateY(-50%); }
+.seat.east  { right: 8px; top: 50%; transform: translateY(-50%); }
+
+.nameplate {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(12,6,2,0.82);
+  border: 1px solid rgba(201,162,74,0.3);
+  border-radius: 20px;
+  padding: 3px 10px 3px 4px;
+  white-space: nowrap;
+}
+.avatar {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #13572a; border: 1.5px solid rgba(201,162,74,0.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; flex-shrink: 0;
+}
+.pname {
+  font-family: 'Cinzel', serif;
+  font-size: 10px; font-weight: 500;
+  color: #e8e4d9;
+  letter-spacing: 0.04em;
+}
+
+/* ── Bid badge ── */
+.bid-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 64px;
+  padding: 6px 8px 7px;
+  background: rgba(8, 18, 32, 0.92);
+  border: 1.5px solid rgba(66, 165, 245, 0.85);
+  border-radius: 10px;
+  box-shadow:
+    0 0 10px rgba(66, 165, 245, 0.5),
+    0 0 24px rgba(66, 165, 245, 0.25),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  animation: badgePulse 2.4s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(66,165,245,0.5), 0 0 24px rgba(66,165,245,0.25), inset 0 1px 0 rgba(255,255,255,0.06); }
+  50%       { box-shadow: 0 0 16px rgba(66,165,245,0.75), 0 0 36px rgba(66,165,245,0.35), inset 0 1px 0 rgba(255,255,255,0.06); }
+}
+
+.bid-badge .crown {
+  font-size: 11px;
+  line-height: 1;
+  filter: drop-shadow(0 0 4px rgba(66,165,245,0.6));
+}
+.bid-badge .amount {
+  font-family: 'Cinzel', serif;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  color: #f6d778;
+  text-shadow: 0 0 8px rgba(246,215,120,0.4);
+}
+.bid-badge .suit {
+  font-size: 18px;
+  line-height: 1;
+  font-family: Georgia, serif;
+}
+.suit.hearts   { color: #e05555; }
+.suit.diamonds { color: #e05555; }
+.suit.clubs    { color: #e8e4d9; }
+.suit.spades   { color: #e8e4d9; }
+
+/* badge placement relative to seat */
+.seat.north .bid-badge { margin-top: 2px; }
+.seat.south .bid-badge { margin-bottom: 2px; order: -1; }
+.seat.west  .bid-badge { margin-right: 0; }
+.seat.east  .bid-badge { margin-left: 0; }
+
+/* west/east: horizontal layout */
+.seat.west, .seat.east {
+  flex-direction: row;
+  gap: 6px;
+}
+.seat.west .nameplate, .seat.east .nameplate { writing-mode: vertical-lr; }
+
+/* side nameplates stay vertical */
+.seat.west .pname, .seat.east .pname { writing-mode: horizontal-tb; font-size: 9px; }
+
+/* table center */
+.table-center {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(201,162,74,0.25);
+  display: flex; align-items: center; justify-content: center;
+}
+.trump-display {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 2px;
+}
+.trump-suit { font-size: 32px; font-family: Georgia, serif; color: #e05555; }
+.trump-label {
+  font-family: 'Cinzel', serif; font-size: 8px; color: rgba(201,162,74,0.6); letter-spacing: 0.1em;
+}
+
+/* ── Variant grid ── */
+.variants {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+.variant-box {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.variant-label {
+  font-size: 11px; color: rgba(232,228,217,0.5); text-align: center;
+}
+
+/* Variant B — larger, no crown */
+.bid-badge.v-b {
+  width: 72px;
+  padding: 8px 10px 9px;
+  border-radius: 12px;
+}
+.bid-badge.v-b .amount { font-size: 26px; }
+.bid-badge.v-b .suit   { font-size: 20px; }
+
+/* Variant C — compact pill, horizontal */
+.bid-badge.v-c {
+  flex-direction: row;
+  width: auto;
+  padding: 5px 12px;
+  gap: 5px;
+  border-radius: 20px;
+}
+.bid-badge.v-c .amount { font-size: 20px; }
+.bid-badge.v-c .suit   { font-size: 16px; }
+.bid-badge.v-c .crown  { font-size: 13px; }
+
+/* Variant D — taller portrait, suit on top */
+.bid-badge.v-d {
+  width: 56px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  flex-direction: column;
+}
+.bid-badge.v-d .suit   { font-size: 22px; order: -1; }
+.bid-badge.v-d .amount { font-size: 20px; }
+.bid-badge.v-d .crown  { display: none; }
+
+/* Teal variant */
+.bid-badge.teal {
+  border-color: rgba(38, 198, 218, 0.85);
+  box-shadow:
+    0 0 10px rgba(38,198,218,0.5),
+    0 0 24px rgba(38,198,218,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  animation: badgePulseTeal 2.4s ease-in-out infinite;
+}
+@keyframes badgePulseTeal {
+  0%, 100% { box-shadow: 0 0 10px rgba(38,198,218,0.5), 0 0 24px rgba(38,198,218,0.25), inset 0 1px 0 rgba(255,255,255,0.06); }
+  50%       { box-shadow: 0 0 16px rgba(38,198,218,0.75), 0 0 36px rgba(38,198,218,0.35), inset 0 1px 0 rgba(255,255,255,0.06); }
+}
+
+/* White/silver variant */
+.bid-badge.silver {
+  border-color: rgba(220, 220, 220, 0.7);
+  box-shadow:
+    0 0 10px rgba(220,220,220,0.35),
+    0 0 24px rgba(220,220,220,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  animation: badgePulseSilver 2.4s ease-in-out infinite;
+}
+@keyframes badgePulseSilver {
+  0%, 100% { box-shadow: 0 0 10px rgba(220,220,220,0.35), 0 0 24px rgba(220,220,220,0.15), inset 0 1px 0 rgba(255,255,255,0.06); }
+  50%       { box-shadow: 0 0 16px rgba(220,220,220,0.55), 0 0 36px rgba(220,220,220,0.25), inset 0 1px 0 rgba(255,255,255,0.06); }
+}
+
+.page-title {
+  font-family: 'Cinzel', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #f6d778;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+}
+.page-sub {
+  font-size: 12px;
+  color: rgba(232,228,217,0.5);
+  margin-bottom: 30px;
+}
+</style>
+</head>
+<body>
+
+<div class="page-title">Bid Badge — Mockup</div>
+<div class="page-sub">Persistent indicator at the bid winner's seat. Glows throughout the round.</div>
+
+<!-- ── LIVE TABLE SIM ── -->
+<div class="section">
+  <h2>On the table — North won the bid (20 ♥)</h2>
+  <div class="table-wrap">
+    <div class="table-sim">
+
+      <!-- NORTH — bid winner -->
+      <div class="seat north">
+        <div class="nameplate">
+          <div class="avatar">🧔</div>
+          <span class="pname">AI Player 2</span>
+        </div>
+        <div class="bid-badge">
+          <span class="crown">👑</span>
+          <span class="amount">20</span>
+          <span class="suit hearts">♥</span>
+        </div>
+      </div>
+
+      <!-- SOUTH — you -->
+      <div class="seat south">
+        <div class="nameplate" style="border-color:rgba(107,182,255,0.55)">
+          <div class="avatar" style="border-color:rgba(107,182,255,0.55)">😎</div>
+          <span class="pname">You</span>
+        </div>
+      </div>
+
+      <!-- WEST -->
+      <div class="seat west">
+        <div class="nameplate">
+          <div class="avatar">🧑</div>
+          <span class="pname">AI Player 3</span>
+        </div>
+      </div>
+
+      <!-- EAST -->
+      <div class="seat east">
+        <div class="nameplate">
+          <div class="avatar">👩</div>
+          <span class="pname">AI Player 1</span>
+        </div>
+      </div>
+
+      <!-- TABLE CENTER -->
+      <div class="table-center">
+        <div class="trump-display">
+          <span class="trump-suit">♥</span>
+          <span class="trump-label">TRUMP</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SHAPE VARIANTS ── -->
+<div class="section">
+  <h2>Shape Options (all blue glow)</h2>
+  <div class="variants">
+
+    <div class="variant-box">
+      <div class="bid-badge">
+        <span class="crown">👑</span>
+        <span class="amount">20</span>
+        <span class="suit hearts">♥</span>
+      </div>
+      <span class="variant-label">A — Portrait<br>crown + number + suit</span>
+    </div>
+
+    <div class="variant-box">
+      <div class="bid-badge v-b">
+        <span class="crown">👑</span>
+        <span class="amount">20</span>
+        <span class="suit hearts">♥</span>
+      </div>
+      <span class="variant-label">B — Larger portrait<br>26px number</span>
+    </div>
+
+    <div class="variant-box">
+      <div class="bid-badge v-c">
+        <span class="crown">👑</span>
+        <span class="amount">20</span>
+        <span class="suit hearts">♥</span>
+      </div>
+      <span class="variant-label">C — Horizontal pill<br>compact, wide</span>
+    </div>
+
+    <div class="variant-box">
+      <div class="bid-badge v-d">
+        <span class="suit hearts">♥</span>
+        <span class="amount">20</span>
+      </div>
+      <span class="variant-label">D — Suit on top<br>no crown</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── GLOW COLOR OPTIONS ── -->
+<div class="section">
+  <h2>Glow Colour Options (shape A)</h2>
+  <div class="variants">
+
+    <div class="variant-box">
+      <div class="bid-badge">
+        <span class="crown">👑</span>
+        <span class="amount">20</span>
+        <span class="suit hearts">♥</span>
+      </div>
+      <span class="variant-label">Blue<br>#42a5f5</span>
+    </div>
+
+    <div class="variant-box">
+      <div class="bid-badge teal">
+        <span class="crown">👑</span>
+        <span class="amount">20</span>
+        <span class="suit hearts">♥</span>
+      </div>
+      <span class="variant-label">Teal<br>#26c6da</span>
+    </div>
+
+    <div class="variant-box">
+      <div class="bid-badge silver">
+        <span class="crown">👑</span>
+        <span class="amount">20</span>
+        <span class="suit hearts">♥</span>
+      </div>
+      <span class="variant-label">Silver/white<br>#dcdcdc</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── SUIT SAMPLES ── -->
+<div class="section">
+  <h2>All suits (shape A, blue)</h2>
+  <div class="variants">
+    <div class="variant-box">
+      <div class="bid-badge"><span class="crown">👑</span><span class="amount">25</span><span class="suit spades">♠</span></div>
+      <span class="variant-label">25 Spades</span>
+    </div>
+    <div class="variant-box">
+      <div class="bid-badge"><span class="crown">👑</span><span class="amount">20</span><span class="suit hearts">♥</span></div>
+      <span class="variant-label">20 Hearts</span>
+    </div>
+    <div class="variant-box">
+      <div class="bid-badge"><span class="crown">👑</span><span class="amount">30</span><span class="suit diamonds">♦</span></div>
+      <span class="variant-label">30 Diamonds</span>
+    </div>
+    <div class="variant-box">
+      <div class="bid-badge"><span class="crown">👑</span><span class="amount">15</span><span class="suit clubs">♣</span></div>
+      <span class="variant-label">15 Clubs (bagged)</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
