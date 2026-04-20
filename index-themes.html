@@ -1779,7 +1779,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.59';
+const VERSION = '2.27.60';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4444,6 +4444,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.60', date: 'Apr 2026', changes: ['Bidding phase: bid indicators now glow blue. Current high bid glows brighter; other bids subtle glow; Pass stays muted.', 'Suit symbols restored on last-trick strip cards.'] },
     { version: '2.27.57', date: 'Apr 2026', changes: ['View Round: suit symbols restored on all 20 cards. E/W and N/S cards larger and easier to read.', 'Bid winner now shown with a blue glowing pill below their nameplate for the whole round.', 'E/W player name areas wider so full name is always visible.'] },
     { version: '2.27.53', date: 'Apr 2026', changes: ['Fix flash of old loading screen on Start Game — WaitingRoom now returns null when game data not yet loaded instead of showing unstyled loading div.'] },
     { version: '2.27.52', date: 'Apr 2026', changes: ['Embedded @font-face declarations directly in HTML for Cinzel, Merriweather, and Inter — eliminates dependency on Google Fonts CSS loading correctly.'] },
@@ -10797,14 +10798,24 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       if (bids[pi] === null || bids[pi] === undefined || bids[pi] === -1) return null; // Hide until player has bid or passed
       const showBagged = wasBagged && pi === bidWinner && bids[pi] === 15;
       if (bids[pi] === 0) {
-        if (isIrishTheme) return <span style={{ padding: '2px 6px', background: 'rgba(10,40,20,0.85)', border: '1px solid rgba(201,162,74,0.35)', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: 'rgba(201,162,74,0.65)', fontFamily: "'Merriweather', serif", fontStyle: 'italic' }}>Pass</span>;
+        if (isIrishTheme) return <span style={{ padding: '2px 6px', background: 'rgba(10,40,20,0.85)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: 'rgba(201,162,74,0.5)', fontFamily: "'Merriweather', serif", fontStyle: 'italic' }}>Pass</span>;
         return <span style={{ padding: '2px 4px', background: '#c9a227', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#000' }}>Pass</span>;
       }
       if (showBagged) {
-        if (isIrishTheme) return <span style={{ padding: '2px 6px', background: 'rgba(139,26,31,0.85)', border: '1px solid #ef4444', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#ff6b6b', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>BAGGED</span>;
+        if (isIrishTheme) return <span style={{ padding: '2px 6px', background: 'rgba(139,26,31,0.85)', border: '1px solid #ef4444', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#ff6b6b', fontFamily: "'Cinzel', serif", fontWeight: 700, boxShadow: '0 0 7px rgba(239,68,68,0.6)' }}>BAGGED</span>;
         return <span style={{ padding: '2px 4px', background: '#c62828', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{bids[pi]}<span style={{ marginLeft: '2px' }}>BAGGED</span></span>;
       }
-      if (isIrishTheme) return <span style={{ padding: '2px 6px', background: 'rgba(10,40,20,0.85)', border: '1px solid #c9a24a', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#f6d778', fontFamily: "'Cinzel', serif", fontWeight: 700 }}>{bids[pi]}</span>;
+      if (isIrishTheme) {
+        const isHighBid = pi === bidWinner;
+        return <span style={{
+          padding: '2px 6px',
+          background: isHighBid ? 'rgba(8,18,32,0.92)' : 'rgba(10,40,20,0.85)',
+          border: `1px solid ${isHighBid ? 'rgba(66,165,245,0.85)' : 'rgba(66,165,245,0.4)'}`,
+          borderRadius: '3px', fontSize: '10px', marginLeft: '4px',
+          color: '#f6d778', fontFamily: "'Cinzel', serif", fontWeight: 700,
+          boxShadow: isHighBid ? '0 0 8px rgba(66,165,245,0.55), 0 0 16px rgba(66,165,245,0.2)' : '0 0 5px rgba(66,165,245,0.3)',
+        }}>{bids[pi]}</span>;
+      }
       return <span style={{ padding: '2px 4px', background: '#2196f3', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{bids[pi]}</span>;
     }
     if (bidWinner !== pi || !trumpSuit) return null;
