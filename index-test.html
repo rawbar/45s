@@ -2304,7 +2304,7 @@
     font-size: 8px;
   }
   .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .corner .su {
-    font-size: 7px;
+    display: none !important;
   }
   .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .center {
     font-size: 16px;
@@ -2327,6 +2327,7 @@
   .cp-trick-strip .cp-card.mid .corner .rk {
     font-size: 7px;
   }
+  .cp-trick-strip .cp-card.mid .corner .su { display: none !important; }
   .cp-trick-strip .cp-card.mid .center {
     font-size: 16px;
   }
@@ -3065,7 +3066,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.28.8';
+const VERSION = '2.28.9';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5750,6 +5751,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isCyberpunk = currentThemeId === 'cyberpunk';
 
   const versionHistory = [
+    { version: '2.28.9', date: 'Apr 2026', changes: ['Last trick cards show center suit (mid not small)', 'Show Hands: all colors/fonts are cyberpunk in cyberpunk mode', 'E/W show-hands cards hide corner suits'] },
     { version: '2.28.8', date: 'Apr 2026', changes: ['Side seat names no longer cut off: tighter padding + 9px font in cyberpunk'] },
     { version: '2.28.7', date: 'Apr 2026', changes: ['Cyberpunk stats: badges header shows earned/locked count'] },
     { version: '2.28.6', date: 'Apr 2026', changes: ['Cyberpunk stats modal: all 12 stat boxes + Last Seen (matches Irish)'] },
@@ -6431,26 +6433,34 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
       sortedHand.sort((a, b) => (playOrder[a.id] ?? 999) - (playOrder[b.id] ?? 999));
     }
 
+    const cpAccent = '#00e5ff', cpAmber = '#ff8c00', cpDim = 'rgba(0,229,255,0.4)';
+    const ledColor = isCyberpunk ? cpAccent : brassHi;
+    const numBg = isCyberpunk ? 'rgba(4,10,20,0.92)' : 'rgba(20,20,20,0.9)';
+    const numBorder = isCyberpunk ? cpAccent : brass;
+    const numColor = isCyberpunk ? cpAccent : brass;
+    const nameFontFamily = isCyberpunk ? "'Orbitron',sans-serif" : "'Cinzel',serif";
+    const subFontFamily = isCyberpunk ? "'Share Tech Mono',monospace" : "'Merriweather',serif";
+    const nameColor = isMe ? (isCyberpunk ? cpAccent : '#6bb6ff') : (isCyberpunk ? '#c0ddf0' : brassHi);
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
         {/* Name row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span style={{ fontSize: '13px', lineHeight: 1 }}>{getAvatar(playerIdx)}</span>
-          <span style={{ fontFamily: "'Cinzel', serif", fontSize: '11px', fontWeight: 700, color: isMe ? '#6bb6ff' : brassHi }}>{label || getPlayerName(playerIdx)}</span>
-          {isDealer && <span style={{ padding: '1px 4px', background: 'radial-gradient(circle at 35% 30%, #f6d778, #c9a24a)', borderRadius: '10px', fontSize: '8px', fontWeight: 700, color: '#180b03', fontFamily: "'Cinzel', serif" }}>D</span>}
-          <span style={{ fontFamily: "'Merriweather', serif", fontWeight: 900, fontSize: '9px', color: brass }}>+{drawn[playerIdx] || 0}</span>
+          <span style={{ fontFamily: nameFontFamily, fontSize: '11px', fontWeight: 700, color: nameColor }}>{label || getPlayerName(playerIdx)}</span>
+          {isDealer && <span style={{ padding: '1px 4px', background: isCyberpunk ? 'rgba(255,140,0,0.15)' : 'radial-gradient(circle at 35% 30%, #f6d778, #c9a24a)', border: isCyberpunk ? '1px solid #ff8c00' : 'none', borderRadius: isCyberpunk ? '2px' : '10px', fontSize: '8px', fontWeight: 700, color: isCyberpunk ? cpAmber : '#180b03', fontFamily: isCyberpunk ? "'Share Tech Mono',monospace" : "'Cinzel',serif" }}>D</span>}
+          <span style={{ fontFamily: subFontFamily, fontWeight: 900, fontSize: '9px', color: isCyberpunk ? cpDim : brass }}>+{drawn[playerIdx] || 0}</span>
         </div>
         {/* Bid badge */}
         {playerBid !== null && (
           <span style={{
-            padding: '2px 6px', borderRadius: '3px', fontSize: '10px',
-            fontFamily: "'Cinzel', serif", fontWeight: 700,
-            background: isBag ? 'rgba(139,26,31,0.85)' : isBidder ? 'rgba(10,40,20,0.85)' : 'rgba(10,20,10,0.6)',
-            border: `1px solid ${isBag ? '#ef4444' : isBidder ? brass : 'rgba(201,162,74,0.25)'}`,
-            color: isBag ? '#ff6b6b' : isBidder ? brassHi : 'rgba(201,162,74,0.5)',
+            padding: '2px 6px', borderRadius: isCyberpunk ? '2px' : '3px', fontSize: '10px',
+            fontFamily: isCyberpunk ? "'Share Tech Mono',monospace" : "'Cinzel',serif", fontWeight: 700,
+            background: isBag ? (isCyberpunk ? 'rgba(255,0,204,0.15)' : 'rgba(139,26,31,0.85)') : isBidder ? (isCyberpunk ? 'rgba(0,229,255,0.08)' : 'rgba(10,40,20,0.85)') : 'rgba(10,20,10,0.6)',
+            border: `1px solid ${isBag ? (isCyberpunk ? '#ff00cc' : '#ef4444') : isBidder ? (isCyberpunk ? cpAccent : brass) : (isCyberpunk ? 'rgba(0,229,255,0.2)' : 'rgba(201,162,74,0.25)')}`,
+            color: isBag ? (isCyberpunk ? '#ff00cc' : '#ff6b6b') : isBidder ? (isCyberpunk ? cpAccent : brassHi) : (isCyberpunk ? cpDim : 'rgba(201,162,74,0.5)'),
           }}>
             {playerBid === 0 ? 'Pass' : playerBid}
-            {isBidder && trumpSuit && <span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? '#e87070' : brassHi, marginLeft: '2px' }}>{trumpSuit}</span>}
+            {isBidder && trumpSuit && <span style={{ color: (trumpSuit === '♥' || trumpSuit === '♦') ? (isCyberpunk ? '#ff4466' : '#e87070') : (isCyberpunk ? cpAccent : brassHi), marginLeft: '2px' }}>{trumpSuit}</span>}
             {isBag && <span style={{ marginLeft: '4px', fontSize: '9px' }}>BAGGED</span>}
           </span>
         )}
@@ -6463,10 +6473,10 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
               playHistory.findIndex(p => p.trick === trickNum) === playIdx;
             return (
               <div key={i} style={{ position: 'relative' }}>
-                <div style={{ border: ledTrick ? `2px solid ${brassHi}` : 'none', borderRadius: '4px' }}>
+                <div style={{ border: ledTrick ? `2px solid ${ledColor}` : 'none', borderRadius: '4px' }}>
                   <Card card={c} mid disabled wasDrawn={drawnCards && drawnCards.has(c.id)} wasKitty={kittyCardIds && kittyCardIds.has(c.id)} isFaceUp={faceUpCard && faceUpCard.cardId === c.id} />
                 </div>
-                {trickNum !== null && <div style={{ position: 'absolute', top: '-6px', right: '-6px', width: '14px', height: '14px', borderRadius: '50%', background: ledTrick ? brassHi : 'rgba(20,20,20,0.9)', border: ledTrick ? 'none' : `1px solid ${brass}`, color: ledTrick ? '#1a0e03' : brass, fontSize: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cinzel', serif" }}>{trickNum + 1}</div>}
+                {trickNum !== null && <div style={{ position: 'absolute', top: '-6px', right: '-6px', width: '14px', height: '14px', borderRadius: '50%', background: ledTrick ? ledColor : numBg, border: ledTrick ? 'none' : `1px solid ${numBorder}`, color: ledTrick ? (isCyberpunk ? '#020509' : '#1a0e03') : numColor, fontSize: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: isCyberpunk ? "'Share Tech Mono',monospace" : "'Cinzel',serif" }}>{trickNum + 1}</div>}
               </div>
             );
           })}
@@ -15390,7 +15400,25 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
       {/* Last Trick — absolute overlay, never pushes layout */}
       {/* Irish trick overlay moved in-flow — see score strip area below */}
-      {lastTrick && phase === 'playing' && currentThemeId !== 'irish' && (
+      {lastTrick && phase === 'playing' && currentThemeId === 'cyberpunk' && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', padding: '4px 8px', background: 'rgba(4,10,20,0.82)', border: '1px solid rgba(0,229,255,0.18)', borderRadius: '4px' }}>
+            <span style={{ fontSize: '9px', color: 'rgba(0,229,255,0.5)', fontFamily: "'Share Tech Mono',monospace", marginRight: '2px' }}>Last</span>
+            {lastTrick.cards.map((tc, i) => {
+              const isWinner = tc.player === lastTrick.winner;
+              return (
+                <div key={i} className="cp-trick-strip" style={{ position: 'relative', padding: 0, borderTop: 'none', marginTop: 0 }}>
+                  <Card card={tc.card} mid disabled />
+                  {isWinner && (
+                    <div style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#00ff88', borderRadius: '50%', width: '11px', height: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '7px', color: '#020509', fontWeight: 'bold' }}>✓</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {lastTrick && phase === 'playing' && currentThemeId !== 'irish' && currentThemeId !== 'cyberpunk' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '2px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
             <span style={{ fontSize: '9px', color: '#aaa' }}>Last:</span>
