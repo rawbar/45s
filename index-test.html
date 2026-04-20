@@ -2304,8 +2304,8 @@
     overflow: visible;
   }
   .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid {
-    width: 27px;
-    height: 46px;
+    width: 30px;
+    height: 50px;
     border-radius: 4px;
   }
   .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .corner .rk {
@@ -2315,7 +2315,7 @@
     display: none !important;
   }
   .cp-show-hands-ew .cp-show-hands-cards .cp-card.mid .center {
-    font-size: 22px;
+    font-size: 24px;
   }
   .cp-trick-strip {
     display: flex;
@@ -3074,7 +3074,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.29.6';
+const VERSION = '2.29.7';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5759,6 +5759,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isCyberpunk = currentThemeId === 'cyberpunk';
 
   const versionHistory = [
+    { version: '2.29.7', date: 'Apr 2026', changes: ['E/W Round Summary: reduced modal padding to 8px so 30×50px cards fit without scroll'] },
     { version: '2.29.6', date: 'Apr 2026', changes: ['E/W cards: 27×46px — fits 144px column, no scroll; removed overflow-x from CSS'] },
     { version: '2.29.5', date: 'Apr 2026', changes: ['Bid/pass badges: solid green-tinted fill + thick border + strong glow — obvious against dark bg'] },
     { version: '2.29.4', date: 'Apr 2026', changes: ['E/W Round Summary: 30×50px cards (matches Irish), no overflow scroll', 'Bid/pass badges: bright green glow in cyberpunk, much more visible'] },
@@ -6525,7 +6526,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             <button className="cp-modal-close" onClick={onClose}>×</button>
           </div>
           <div className="cp-modal-hairline" />
-          <div className="cp-modal-body">
+          <div className="cp-modal-body" style={{ padding: '8px' }}>
             {/* Trump + scores row */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               {trumpSuit
@@ -6555,7 +6556,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             {renderHand(0, getPlayerName(0))}
 
             {/* East / West side by side */}
-            <div className="cp-show-hands-ew" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+            <div className="cp-show-hands-ew" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
               {renderHand(3, getPlayerName(3), true)}
               {renderHand(1, getPlayerName(1), true)}
             </div>
