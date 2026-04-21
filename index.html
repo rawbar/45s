@@ -107,9 +107,9 @@
      Phone frame + ambient lighting (game table background)
      ═══════════════════════════════════════════════════════════════ */
   .v3-phone {
-    height: 100vh;
-    height: -webkit-fill-available;
-    height: 100dvh;
+    position: fixed;
+    top: 0; right: 0; bottom: 0; left: 0; /* longhand for iOS < 14.5 */
+    height: 100%; /* explicit height so flex children resolve flex:1 on iOS */
     overflow: hidden;
     padding-bottom: env(safe-area-inset-bottom);
     background-color: #180b03;
@@ -236,9 +236,10 @@
      ═══════════════════════════════════════════════════════════════ */
   .v3-surface {
     position: relative; z-index: 2;
-    flex: 1;
+    flex: 1 1 0%;
     display: flex; flex-direction: column;
     min-height: 0;
+    overflow: hidden; /* required for iOS flex height resolution */
     padding: 6px 6px 0;
   }
 
@@ -1853,7 +1854,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.64';
+const VERSION = '2.27.68';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4518,6 +4519,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.68', date: 'Apr 2026', changes: ['iOS layout fix: position:fixed + explicit height on .v3-phone, overflow:hidden + flex:1 1 0% on .v3-surface so south hand renders at bottom on iOS Safari.', 'Lead card glows red (filter:drop-shadow) — first card played each trick is highlighted.', 'Irish trump suit buttons now match bid button style — gold gradient, dark text.', 'Last trick bar centering fix — width:100% on score/strip wrapper.'] },
     { version: '2.27.64', date: 'Apr 2026', changes: ['Bidding badges redesigned: each bid now shows as a blue coin with brass rim and blue glow for readability. PASS gets its own muted blue coin. Losing bids fade out once a winner is locked in; the winning bidder pill is unchanged.'] },
     { version: '2.27.63', date: 'Apr 2026', changes: ['Round Complete modal now shows correct score when bidder is set — displays −bid instead of raw trick points.'] },
     { version: '2.27.62', date: 'Apr 2026', changes: ['Last-trick strip: suits now show in center (not corner) on all 4 cards.', 'View Round: E/W card suit symbols larger (24px).'] },
@@ -12914,6 +12916,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                       const isAnimating = animating !== null;
                       const winPos = isAnimating ? winnerPositions[winnerVisualPos] : { x: 0, y: 0 };
 
+                      const isLeadCard = idx === 0;
                       return (
                         <div
                           key={idx}
@@ -12922,7 +12925,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                             transition: isAnimating ? 'all 0.4s ease' : 'none',
                             transform: isAnimating ? `translate(${winPos.x}px, ${winPos.y}px) scale(0.2)` : undefined,
                             opacity: isAnimating ? 0 : 1,
-                            animation: !isAnimating ? 'cardPlay 0.2s ease-out' : 'none'
+                            animation: !isAnimating ? 'cardPlay 0.2s ease-out' : 'none',
+                            filter: isLeadCard && !isAnimating
+                              ? 'drop-shadow(0 5px 5px rgba(0,0,0,0.55)) drop-shadow(0 0 6px rgba(220,40,40,0.95)) drop-shadow(0 0 14px rgba(200,20,20,0.6))'
+                              : undefined,
                           }}
                         >
                           <Card card={tc.card} mid disabled />
@@ -13299,7 +13305,19 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             <button
               key={s}
               onClick={() => handleSelectTrump(s)}
-              style={{
+              style={ currentThemeId === 'irish' ? {
+                padding: '8px 16px',
+                fontSize: '20px',
+                fontFamily: "'Cinzel', serif",
+                fontWeight: 700,
+                background: 'linear-gradient(180deg, #f6d778 0%, #c9a24a 45%, #9a7630 100%)',
+                color: (s === '♥' || s === '♦') ? '#7a0e14' : '#1a0e03',
+                border: '1px solid rgba(0,0,0,0.6)',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,245,200,0.5)',
+                textShadow: (s === '♥' || s === '♦') ? '0 1px 0 rgba(120,14,20,0.2)' : '0 1px 0 rgba(255,220,100,0.4)',
+              } : {
                 padding: '8px 16px',
                 fontSize: '20px',
                 background: 'linear-gradient(180deg, rgba(42,28,12,0.95) 0%, rgba(20,8,2,0.95) 100%)',
@@ -13543,6 +13561,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        width: '100%',
         gap: '4px'
       }}>
         {/* Irish last trick strip — always reserved during playing to prevent layout shift */}
