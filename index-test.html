@@ -3363,7 +3363,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.30.5';
+const VERSION = '2.30.6';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6058,6 +6058,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.30.6', date: 'Apr 2026', changes: ['Lead card in trick glows red — makes it immediately obvious who led each trick.'] },
     { version: '2.30.5', date: 'Apr 2026', changes: ['Arabian Nights: theme preview modal shows Arabian styling (dark navy, gold ring, no green felt).'] },
     { version: '2.30.4', date: 'Apr 2026', changes: ['Fix player hand cards left-justified — add justify-content:center to .v3-my-hand.'] },
     { version: '2.30.3', date: 'Apr 2026', changes: ['Arabian Nights: waiting room center circle — dark gold theme instead of Irish green felt.'] },
@@ -15342,6 +15343,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                       const isAnimating = animating !== null;
                       const winPos = isAnimating ? winnerPositions[winnerVisualPos] : { x: 0, y: 0 };
 
+                      const isLeadCard = idx === 0;
                       return (
                         <div
                           key={idx}
@@ -15350,7 +15352,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                             transition: isAnimating ? 'all 0.4s ease' : 'none',
                             transform: isAnimating ? `translate(${winPos.x}px, ${winPos.y}px) scale(0.2)` : undefined,
                             opacity: isAnimating ? 0 : 1,
-                            animation: !isAnimating ? 'cardPlay 0.2s ease-out' : 'none'
+                            animation: !isAnimating ? 'cardPlay 0.2s ease-out' : 'none',
+                            borderRadius: '4px',
+                            boxShadow: isLeadCard && !isAnimating ? '0 0 8px 3px rgba(220,50,50,0.85), 0 0 18px 6px rgba(200,30,30,0.45)' : undefined,
                           }}
                         >
                           <Card card={tc.card} mid disabled />
