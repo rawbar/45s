@@ -118,11 +118,10 @@
      Phone frame + ambient lighting (game table background)
      ═══════════════════════════════════════════════════════════════ */
   .v3-phone {
-    height: 100vh;
-    height: -webkit-fill-available;
-    height: 100dvh;
-    overflow: hidden;
+    position: fixed;
+    inset: 0;
     padding-bottom: env(safe-area-inset-bottom);
+    overflow: hidden;
     background-color: #180b03;
     background-image:
       radial-gradient(ellipse 95% 50% at 50% -5%,
@@ -149,7 +148,6 @@
       linear-gradient(172deg, #3a2312 0%, #281609 35%, #180b03 68%, #1f0f05 100%);
     background-repeat: no-repeat;
     background-size: 100% 100%;
-    position: relative;
   }
   /* Edge vignette */
   .v3-phone::after {
@@ -3393,7 +3391,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.30.8';
+const VERSION = '2.30.9';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6088,6 +6086,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.30.9', date: 'Apr 2026', changes: ['iOS fix: .v3-phone now uses position:fixed;inset:0 instead of height:100dvh — eliminates iOS Safari south-cards-in-center layout bug.'] },
     { version: '2.30.8', date: 'Apr 2026', changes: ['Irish trump suit buttons now match bid button style — gold gradient, dark text, same shadow/border.'] },
     { version: '2.30.7', date: 'Apr 2026', changes: ['Irish bid badges: blue coin with brass rim + pulse glow. PASS gets muted blue coin. Losing bids fade out at trump-select.'] },
     { version: '2.30.6', date: 'Apr 2026', changes: ['Lead card in trick glows red — makes it immediately obvious who led each trick.'] },
