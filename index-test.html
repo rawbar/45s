@@ -344,6 +344,36 @@
   .v3-bid-coin .suit-s { font-family: 'Inter', sans-serif; font-weight: 700; }
   .v3-bid-coin .suit-s.red { color: #7a0e14; }
 
+  /* Blue bid coin — Irish theme bidding phase */
+  .v3-bid-coin.blue {
+    background: radial-gradient(circle at 32% 26%, #3a90ff 0%, #0d5edb 50%, #072566 100%);
+    border: 2px solid var(--brass);
+    color: #ffffff;
+    text-shadow: 0 1px 1px rgba(0,0,20,0.85), 0 0 2px rgba(0,0,40,0.6);
+    letter-spacing: -0.5px;
+    animation: bidCoinPulse 2.4s ease-in-out infinite;
+  }
+  .v3-bid-coin.blue .suit-s,
+  .v3-bid-coin.blue .suit-s.red { color: #ffffff; text-shadow: 0 1px 1px rgba(0,0,20,0.85); }
+  .v3-bid-coin.blue.pass {
+    background: radial-gradient(circle at 32% 26%, #2a6ec4 0%, #0a4aa8 50%, #05224f 100%);
+  }
+  .v3-bid-coin.blue .pass-label {
+    font-family: 'Inter', sans-serif; font-weight: 900; font-size: 8.5px;
+    letter-spacing: 0.6px; line-height: 1; color: #ffffff;
+    text-shadow: 0 1px 1px rgba(0,0,20,0.85);
+  }
+  .v3-bid-coin.blue.small .pass-label { font-size: 6.5px; letter-spacing: 0.2px; }
+  .v3-bid-coin.blue.vanishing {
+    opacity: 0; transform: scale(0.6); filter: blur(2px);
+    transition: opacity 550ms ease-out, transform 550ms ease-out, filter 550ms ease-out;
+    animation: none;
+  }
+  @keyframes bidCoinPulse {
+    0%, 100% { box-shadow: inset 0 1px 0 rgba(180,210,255,0.35), inset 0 -1.5px 0 rgba(0,10,40,0.6), inset 0 0 0 1px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(246,215,120,0.55), 0 0 0 2.5px rgba(0,0,0,0.35), 0 0 10px rgba(70,150,255,0.85), 0 0 20px rgba(40,120,255,0.5), 0 3px 5px rgba(0,0,0,0.5); }
+    50%       { box-shadow: inset 0 1px 0 rgba(180,210,255,0.35), inset 0 -1.5px 0 rgba(0,10,40,0.6), inset 0 0 0 1px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(246,215,120,0.55), 0 0 0 2.5px rgba(0,0,0,0.35), 0 0 14px rgba(70,150,255,1), 0 0 28px rgba(40,120,255,0.65), 0 3px 5px rgba(0,0,0,0.5); }
+  }
+
   /* ═══════════════════════════════════════════════════════════════
      Dealer chip
      ═══════════════════════════════════════════════════════════════ */
@@ -3363,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.30.6';
+const VERSION = '2.30.7';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6058,6 +6088,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.30.7', date: 'Apr 2026', changes: ['Irish bid badges: blue coin with brass rim + pulse glow. PASS gets muted blue coin. Losing bids fade out at trump-select.'] },
     { version: '2.30.6', date: 'Apr 2026', changes: ['Lead card in trick glows red — makes it immediately obvious who led each trick.'] },
     { version: '2.30.5', date: 'Apr 2026', changes: ['Arabian Nights: theme preview modal shows Arabian styling (dark navy, gold ring, no green felt).'] },
     { version: '2.30.4', date: 'Apr 2026', changes: ['Fix player hand cards left-justified — add justify-content:center to .v3-my-hand.'] },
@@ -13254,15 +13285,24 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   };
 
   // Bid indicator with BAGGED support — Irish themed
-  const bidIndicator = (pi) => {
+  const bidIndicator = (pi, compact = false) => {
     const isIrishTheme = currentThemeId === 'irish';
     const isCyberpunkTheme = currentThemeId === 'cyberpunk';
     const isArabianTheme = currentThemeId === 'arabian';
     if (phase === 'bidding' || phase === 'trump-select') {  // Show bids during bidding AND trump selection
       if (bids[pi] === null || bids[pi] === undefined || bids[pi] === -1) return null; // Hide until player has bid or passed
       const showBagged = wasBagged && pi === bidWinner && bids[pi] === 15;
+      // Irish theme: blue coin (brass rim + blue glow). Losing bids fade out once winner is locked (trump-select).
+      if (isIrishTheme && !showBagged) {
+        const isVanishing = phase === 'trump-select' && pi !== bidWinner;
+        const sizeClass = compact ? ' small' : '';
+        const vanishClass = isVanishing ? ' vanishing' : '';
+        if (bids[pi] === 0) {
+          return <div className={`v3-bid-coin blue pass${sizeClass}${vanishClass}`} style={{ marginLeft: '4px' }}><span className="pass-label">PASS</span></div>;
+        }
+        return <div className={`v3-bid-coin blue${sizeClass}${vanishClass}`} style={{ marginLeft: '4px' }}><span>{bids[pi]}</span></div>;
+      }
       if (bids[pi] === 0) {
-        if (isIrishTheme) return <span style={{ padding: '2px 6px', background: 'rgba(10,40,20,0.85)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: 'rgba(201,162,74,0.5)', fontFamily: "'Merriweather', serif", fontStyle: 'italic' }}>Pass</span>;
         if (isCyberpunkTheme) return <span className="v3-bid-coin pass" style={{ marginLeft: '4px' }}>PASS</span>;
         if (isArabianTheme) return <span className="v3-bid-coin pass" style={{ marginLeft: '4px' }}>PASS</span>;
         return <span style={{ padding: '2px 4px', background: '#c9a227', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#000' }}>Pass</span>;
@@ -13272,17 +13312,6 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         if (isCyberpunkTheme) return <span className="v3-bid-coin" style={{ marginLeft: '4px', background: 'rgba(255,0,204,0.22)', borderColor: '#ff00cc', color: '#ff00cc', boxShadow: '0 0 12px rgba(255,0,204,0.7), 0 0 24px rgba(255,0,204,0.3)', textShadow: '0 0 8px rgba(255,0,204,0.8)' }}>BAGGED</span>;
         if (isArabianTheme) return <span className="v3-bid-coin" style={{ marginLeft: '4px', background: 'radial-gradient(ellipse at 20% 40%,rgba(204,0,34,0.22) 0%,rgba(20,4,6,0.92) 60%)', borderColor: 'rgba(220,48,80,0.85)', color: '#ff8888', boxShadow: '0 0 12px rgba(220,0,40,0.6),0 0 24px rgba(220,0,40,0.25)', animation: 'anBagPulse 2.4s ease-in-out infinite' }}>BAGGED</span>;
         return <span style={{ padding: '2px 4px', background: '#c62828', borderRadius: '3px', fontSize: '10px', marginLeft: '4px', color: '#fff' }}>{bids[pi]}<span style={{ marginLeft: '2px' }}>BAGGED</span></span>;
-      }
-      if (isIrishTheme) {
-        const isHighBid = pi === bidWinner;
-        return <span style={{
-          padding: '2px 6px',
-          background: isHighBid ? 'rgba(8,18,32,0.92)' : 'rgba(10,40,20,0.85)',
-          border: `1px solid ${isHighBid ? 'rgba(66,165,245,0.85)' : 'rgba(66,165,245,0.4)'}`,
-          borderRadius: '3px', fontSize: '10px', marginLeft: '4px',
-          color: '#f6d778', fontFamily: "'Cinzel', serif", fontWeight: 700,
-          boxShadow: isHighBid ? '0 0 8px rgba(66,165,245,0.55), 0 0 16px rgba(66,165,245,0.2)' : '0 0 5px rgba(66,165,245,0.3)',
-        }}>{bids[pi]}</span>;
       }
       if (isCyberpunkTheme) {
         const isHighBid = pi === bidWinner;
@@ -15285,7 +15314,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 </div>
                 {dealer === pos && <DealerBadge />}
                 {drawn[pos] > 0 && <CardsDrawnIndicator count={drawn[pos]} />}
-                {bidIndicator(pos)}
+                {bidIndicator(pos, true)}
                 {bidWinnerPill(pos)}
                 <div className="v3-facedown-col">
                   {getPlayerHand(pos).map((card, i) => {
@@ -15541,7 +15570,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 </div>
                 {dealer === pos && <DealerBadge />}
                 {drawn[pos] > 0 && <CardsDrawnIndicator count={drawn[pos]} />}
-                {bidIndicator(pos)}
+                {bidIndicator(pos, true)}
                 {bidWinnerPill(pos)}
                 <div className="v3-facedown-col">
                   {getPlayerHand(pos).map((card, i) => {
