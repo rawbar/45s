@@ -3394,7 +3394,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.2';
+const VERSION = '2.31.3';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6090,6 +6090,7 @@ function WhatsNewModal({ isOpen, onClose }) {
 
   const versionHistory = [
     { version: '2.31.1', date: 'Apr 2026', changes: ['Lead card glow fix: switched from box-shadow to filter:drop-shadow so it renders correctly alongside the existing filter on .v3-trick-card.'] },
+    { version: '2.31.3', date: 'Apr 2026', changes: ['Fix last trick bar left-justified — add width:100% to score/trick-strip wrapper so the strip centers correctly.'] },
     { version: '2.31.2', date: 'Apr 2026', changes: ['Fix south hand cards left-justified — add width:100% to .v3-my-hand so justify-content:center works when parent uses align-items:center.'] },
     { version: '2.31.1', date: 'Apr 2026', changes: ['Lead card red glow: switched from box-shadow to filter:drop-shadow so glow is visible on elements that already have a CSS filter.'] },
     { version: '2.31.0', date: 'Apr 2026', changes: ['iOS layout fix: .v3-phone uses position:fixed with explicit top/right/bottom/left + height:100%; .v3-surface gets overflow:hidden and flex:1 1 0% so iOS properly resolves flex heights and south hand renders at the bottom.'] },
@@ -16494,6 +16495,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        width: '100%',
         gap: '4px'
       }}>
         {/* Irish last trick strip — always reserved during playing to prevent layout shift */}
