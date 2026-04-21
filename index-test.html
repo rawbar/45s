@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.30.7';
+const VERSION = '2.30.8';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6088,6 +6088,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.30.8', date: 'Apr 2026', changes: ['Irish trump suit buttons now match bid button style — gold gradient, dark text, same shadow/border.'] },
     { version: '2.30.7', date: 'Apr 2026', changes: ['Irish bid badges: blue coin with brass rim + pulse glow. PASS gets muted blue coin. Losing bids fade out at trump-select.'] },
     { version: '2.30.6', date: 'Apr 2026', changes: ['Lead card in trick glows red — makes it immediately obvious who led each trick.'] },
     { version: '2.30.5', date: 'Apr 2026', changes: ['Arabian Nights: theme preview modal shows Arabian styling (dark navy, gold ring, no green felt).'] },
@@ -16005,7 +16006,19 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   borderRadius: '3px',
                   cursor: 'pointer',
                 }
-              ) : {
+              ) : currentThemeId === 'irish' ? {
+                padding: '8px 16px',
+                fontSize: '20px',
+                fontFamily: "'Cinzel', serif",
+                fontWeight: 700,
+                background: 'linear-gradient(180deg, #f6d778 0%, #c9a24a 45%, #9a7630 100%)',
+                color: (s === '♥' || s === '♦') ? '#7a0e14' : '#1a0e03',
+                border: '1px solid rgba(0,0,0,0.6)',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,245,200,0.5)',
+                textShadow: (s === '♥' || s === '♦') ? '0 1px 0 rgba(120,14,20,0.2)' : '0 1px 0 rgba(255,220,100,0.4)',
+              } : {
                 padding: '8px 16px',
                 fontSize: '20px',
                 background: 'linear-gradient(180deg, rgba(42,28,12,0.95) 0%, rgba(20,8,2,0.95) 100%)',
