@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.4';
+const VERSION = '2.31.5';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6089,6 +6089,7 @@ function WhatsNewModal({ isOpen, onClose }) {
 
   const versionHistory = [
     { version: '2.31.1', date: 'Apr 2026', changes: ['Lead card glow fix: switched from box-shadow to filter:drop-shadow so it renders correctly alongside the existing filter on .v3-trick-card.'] },
+    { version: '2.31.5', date: 'Apr 2026', changes: ['iOS layout fix: switch .v3-phone from flexbox to CSS grid (grid 1fr fills viewport-unit height reliably on iOS Safari; flex:1 does not).'] },
     { version: '2.31.4', date: 'Apr 2026', changes: ['Revert erroneous width:100% on .v3-my-hand (south hand was not broken).'] },
     { version: '2.31.3', date: 'Apr 2026', changes: ['Fix last trick bar left-justified — add width:100% to score/trick-strip wrapper so the strip centers correctly.'] },
     { version: '2.31.1', date: 'Apr 2026', changes: ['Lead card red glow: switched from box-shadow to filter:drop-shadow so glow is visible on elements that already have a CSS filter.'] },
@@ -15202,8 +15203,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
   return (
     <div className={`v3-phone ${currentThemeId === 'cyberpunk' ? 'theme-cyberpunk' : currentThemeId === 'arabian' ? 'theme-arabian' : 'theme-irish'}`} style={{
-      display: 'flex',
-      flexDirection: 'column',
+      display: 'grid',
+      gridTemplateRows: 'auto 1fr',
       color: currentThemeId === 'arabian' ? '#f5eedc' : '#e8e4d9'
     }}>
       {/* ── v3 Topbar ── */}
