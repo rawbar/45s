@@ -1853,7 +1853,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.69';
+const VERSION = '2.27.70';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4518,6 +4518,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
+    { version: '2.27.70', date: 'Apr 2026', changes: ['iOS layout fix: switch .v3-phone from flexbox to CSS grid — grid 1fr fills viewport-unit height reliably on iOS Safari where flex:1 does not.'] },
     { version: '2.27.69', date: 'Apr 2026', changes: ['Revert iOS layout changes — position:fixed + overflow:hidden was clipping bid buttons off-screen on iOS.'] },
     { version: '2.27.68', date: 'Apr 2026', changes: ['Lead card glows red (filter:drop-shadow) — first card played each trick is highlighted.', 'Irish trump suit buttons now match bid button style — gold gradient, dark text.', 'Last trick bar centering fix — width:100% on score/strip wrapper.'] },
     { version: '2.27.64', date: 'Apr 2026', changes: ['Bidding badges redesigned: each bid now shows as a blue coin with brass rim and blue glow for readability. PASS gets its own muted blue coin. Losing bids fade out once a winner is locked in; the winning bidder pill is unchanged.'] },
@@ -12739,8 +12740,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
   return (
     <div className={`v3-phone ${currentThemeId === 'cyberpunk' ? 'theme-cyberpunk' : 'theme-irish'}`} style={{
-      display: 'flex',
-      flexDirection: 'column',
+      display: 'grid',
+      gridTemplateRows: 'auto 1fr',
       color: '#e8e4d9'
     }}>
       {/* ── v3 Topbar ── */}
