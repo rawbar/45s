@@ -107,9 +107,9 @@
      Phone frame + ambient lighting (game table background)
      ═══════════════════════════════════════════════════════════════ */
   .v3-phone {
-    position: fixed;
-    top: 0; right: 0; bottom: 0; left: 0; /* longhand for iOS < 14.5 */
-    height: 100%; /* explicit height so flex children resolve flex:1 on iOS */
+    height: 100vh;
+    height: -webkit-fill-available;
+    height: 100dvh;
     overflow: hidden;
     padding-bottom: env(safe-area-inset-bottom);
     background-color: #180b03;
@@ -236,10 +236,9 @@
      ═══════════════════════════════════════════════════════════════ */
   .v3-surface {
     position: relative; z-index: 2;
-    flex: 1 1 0%;
+    flex: 1;
     display: flex; flex-direction: column;
     min-height: 0;
-    overflow: hidden; /* required for iOS flex height resolution */
     padding: 6px 6px 0;
   }
 
@@ -1854,7 +1853,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.27.68';
+const VERSION = '2.27.69';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4519,7 +4518,8 @@ function WhatsNewModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const versionHistory = [
-    { version: '2.27.68', date: 'Apr 2026', changes: ['iOS layout fix: position:fixed + explicit height on .v3-phone, overflow:hidden + flex:1 1 0% on .v3-surface so south hand renders at bottom on iOS Safari.', 'Lead card glows red (filter:drop-shadow) — first card played each trick is highlighted.', 'Irish trump suit buttons now match bid button style — gold gradient, dark text.', 'Last trick bar centering fix — width:100% on score/strip wrapper.'] },
+    { version: '2.27.69', date: 'Apr 2026', changes: ['Revert iOS layout changes — position:fixed + overflow:hidden was clipping bid buttons off-screen on iOS.'] },
+    { version: '2.27.68', date: 'Apr 2026', changes: ['Lead card glows red (filter:drop-shadow) — first card played each trick is highlighted.', 'Irish trump suit buttons now match bid button style — gold gradient, dark text.', 'Last trick bar centering fix — width:100% on score/strip wrapper.'] },
     { version: '2.27.64', date: 'Apr 2026', changes: ['Bidding badges redesigned: each bid now shows as a blue coin with brass rim and blue glow for readability. PASS gets its own muted blue coin. Losing bids fade out once a winner is locked in; the winning bidder pill is unchanged.'] },
     { version: '2.27.63', date: 'Apr 2026', changes: ['Round Complete modal now shows correct score when bidder is set — displays −bid instead of raw trick points.'] },
     { version: '2.27.62', date: 'Apr 2026', changes: ['Last-trick strip: suits now show in center (not corner) on all 4 cards.', 'View Round: E/W card suit symbols larger (24px).'] },
