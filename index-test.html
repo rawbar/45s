@@ -2897,7 +2897,7 @@
     font-size: 10px;
     font-family: 'Inter', sans-serif;
     font-weight: 500;
-    color: rgba(232,228,217,0.75);
+    color: #e8e4d9;
     max-width: 50px;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.9';
+const VERSION = '2.31.10';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6089,6 +6089,7 @@ function WhatsNewModal({ isOpen, onClose }) {
 
   const versionHistory = [
     { version: '2.31.1', date: 'Apr 2026', changes: ['Lead card glow fix: switched from box-shadow to filter:drop-shadow so it renders correctly alongside the existing filter on .v3-trick-card.'] },
+    { version: '2.31.10', date: 'Apr 2026', changes: ['Online strip: non-me chip names now full opacity (#e8e4d9) — 75% opacity cream was washing out against the dark strip background.'] },
     { version: '2.31.9', date: 'Apr 2026', changes: ['Online strip: filter out presence entries with no username — stale/old-format entries showed as nameless avatar circles.'] },
     { version: '2.31.8', date: 'Apr 2026', changes: ['Fix bid level badges (high_roller, steady_hand, safe_bet etc): track via refs applied atomically in game-over transaction — eliminates race condition where badge check ran before async Firebase write completed.'] },
     { version: '2.31.7', date: 'Apr 2026', changes: ['Lobby: score shown on finished games too (not just in-progress)'] },
