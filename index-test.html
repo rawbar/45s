@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.5';
+const VERSION = '2.31.6';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6089,6 +6089,7 @@ function WhatsNewModal({ isOpen, onClose }) {
 
   const versionHistory = [
     { version: '2.31.1', date: 'Apr 2026', changes: ['Lead card glow fix: switched from box-shadow to filter:drop-shadow so it renders correctly alongside the existing filter on .v3-trick-card.'] },
+    { version: '2.31.6', date: 'Apr 2026', changes: ['Lobby: score shown on in-progress game cards (green N/S · red E/W)', 'Lobby: game start time shown on all game cards', 'Lobby: seat dots hidden on finished games'] },
     { version: '2.31.5', date: 'Apr 2026', changes: ['iOS layout fix: switch .v3-phone from flexbox to CSS grid (grid 1fr fills viewport-unit height reliably on iOS Safari; flex:1 does not).'] },
     { version: '2.31.4', date: 'Apr 2026', changes: ['Revert erroneous width:100% on .v3-my-hand (south hand was not broken).'] },
     { version: '2.31.3', date: 'Apr 2026', changes: ['Fix last trick bar left-justified — add width:100% to score/trick-strip wrapper so the strip centers correctly.'] },
@@ -8646,8 +8647,11 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       const seatKeys = ['North', 'South', 'East', 'West'];
       const isOpen = game.status === 'waiting';
       const isPlaying = game.status === 'playing';
+      const isFinished = !isOpen && !isPlaying;
       const takenSeats = seatKeys.filter(s => players[s]);
       const humanPlayers = seatKeys.map(s => players[s]).filter(p => p && !p.isAI);
+      const scores = game.gameState?.scores;
+      const startTime = game.createdAt ? new Date(game.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
       return (
         <div
           key={gameId}
@@ -8672,12 +8676,26 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               )}
             </div>
           </div>
-          <div className="irlb-seat-pips">
-            {seatKeys.map(s => {
-              const p = players[s];
-              const isMe = p?.userId === userId;
-              return <div key={s} className={`irlb-pip${p ? (isMe ? ' me' : ' taken') : ''}`} />;
-            })}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px', marginRight: '6px' }}>
+            {isPlaying && scores && (
+              <div style={{ fontSize: '11px', fontFamily: "'Cinzel', serif", color: 'rgba(201,162,74,0.85)', whiteSpace: 'nowrap' }}>
+                <span style={{ color: '#5dd084' }}>{scores[0]}</span>
+                <span style={{ color: 'rgba(201,162,74,0.5)', margin: '0 3px' }}>·</span>
+                <span style={{ color: '#ef7c74' }}>{scores[1]}</span>
+              </div>
+            )}
+            {startTime && (
+              <div style={{ fontSize: '10px', color: 'rgba(201,162,74,0.4)' }}>{startTime}</div>
+            )}
+            {!isFinished && (
+              <div className="irlb-seat-pips">
+                {seatKeys.map(s => {
+                  const p = players[s];
+                  const isMe = p?.userId === userId;
+                  return <div key={s} className={`irlb-pip${p ? (isMe ? ' me' : ' taken') : ''}`} />;
+                })}
+              </div>
+            )}
           </div>
           <span className={`irlb-status-badge ${isOpen ? 'irlb-badge-open' : isPlaying ? 'irlb-badge-playing' : 'irlb-badge-finished'}`}>
             {isOpen ? 'Open' : isPlaying ? 'Live' : 'Done'}
