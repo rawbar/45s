@@ -18,6 +18,14 @@
     .btn-wl:hover   { background: #ff9800; color: #111; }
     .btn-bdg  { border-color: #9c27b0; color: #9c27b0; }
     .btn-bdg:hover  { background: #9c27b0; color: white; }
+    .btn-grnt { border-color: #4caf50; color: #4caf50; }
+    .btn-grnt:hover { background: #4caf50; color: #111; }
+    #grantModal { display:none; position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.7); z-index:100; align-items:center; justify-content:center; }
+    #grantModal.open { display:flex; }
+    #grantBox { background:#222; border:1px solid #4caf50; border-radius:8px; padding:24px; min-width:320px; }
+    #grantBox h3 { margin:0 0 14px; color:#4caf50; font-size:14px; }
+    #grantBox select { width:100%; background:#111; color:#eee; border:1px solid #444; padding:6px; border-radius:4px; font-family:monospace; margin-bottom:12px; }
+    #grantBox .row { display:flex; gap:8px; justify-content:flex-end; }
     tr.ragequitter { background: #2a1010; }
     tr.clean { opacity: 0.5; }
     .badge { display: inline-block; background: #f44336; color: white; font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-left: 6px; }
@@ -63,6 +71,17 @@
 
   <div id="log" style="display:none"></div>
 
+  <div id="grantModal">
+    <div id="grantBox">
+      <h3 id="grantTitle">Grant Badge</h3>
+      <select id="grantSelect"></select>
+      <div class="row">
+        <button class="btn" onclick="closeGrantModal()">Cancel</button>
+        <button class="btn btn-grnt" onclick="confirmGrant()">Grant</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -97,6 +116,86 @@
     };
 
     let allUsers = {};
+
+    // Badge definitions: id, name, pts, and the stat to increment when granting
+    const BADGE_DEFS = [
+      { id: 'high_roller',       name: 'High Roller (Bid 25 made)',        pts: 5,  stat: 'bid25Made' },
+      { id: 'calling_the_shot',  name: 'Calling the Shot (Bid 30 made)',   pts: 10, stat: 'bid30Made' },
+      { id: 'double_or_nothing', name: 'Double or Nothing (30-for-60)',    pts: 20, stat: 'bid30For60Made' },
+      { id: 'steady_hand',       name: 'Steady Hand (Bid 20 made)',        pts: 3,  stat: 'bid20Made' },
+      { id: 'safe_bet',          name: 'Safe Bet (Bid 15 made)',           pts: 1,  stat: 'bid15Made' },
+      { id: 'making_bail',       name: 'Making Bail (Bagged bid made)',    pts: 3,  stat: 'baggedBidMade' },
+      { id: 'bailout',           name: 'Bailout (Won on bagged hand)',     pts: 10, stat: 'baggedGameWon' },
+      { id: 'perfect_round',     name: 'Perfect Round (Scored 30)',        pts: 5,  stat: 'perfect30s' },
+      { id: 'hat_trick',         name: 'Hat Trick (3 consec 30s in game)', pts: 10, stat: 'hatTrick' },
+      { id: 'giant_killer',      name: 'Giant Killer (Set opp 30 bid)',    pts: 10, stat: 'setsOn30' },
+      { id: 'spoiler',           name: 'Spoiler (Set opp 25 bid)',         pts: 5,  stat: 'setsOn25' },
+      { id: 'upset',             name: 'Upset (Set opp 20 bid)',           pts: 2,  stat: 'setsOn20' },
+      { id: 'comeback_kid',      name: 'Comeback Kid',                     pts: 10, stat: 'comebackWins' },
+      { id: 'untouchable',       name: 'Untouchable (Clean game win)',     pts: 10, stat: 'cleanGameWins' },
+      { id: 'never_say_die',     name: 'Never Say Die (Win from negative)',pts: 5,  stat: 'winFromNegative' },
+      { id: 'shutout',           name: 'Shutout (Opp finishes ≤0)',        pts: 15, stat: 'shutoutWins' },
+      { id: 'lightning_round',   name: 'Lightning Round (Win in 4 hands)', pts: 20, stat: 'fastWins4' },
+      { id: 'swift_victory',     name: 'Swift Victory (Win in 5 hands)',   pts: 10, stat: 'fastWins5' },
+      { id: 'quick_game',        name: 'Quick Game (Win in 6 hands)',       pts: 5,  stat: 'fastWins6' },
+      { id: 'exceed_expectations',name:'Exceed Expectations (Beat bid +10)',pts:3, stat: 'exceedBy10' },
+      { id: 'dominant',          name: 'Dominant (4 consec round wins)',   pts: 5,  stat: 'dominant' },
+      { id: 'never_surrender',   name: 'Never Surrender (Win after set 3×)',pts:5, stat: 'winAfterSet3' },
+      { id: 'shutdown',          name: 'Shutdown (Set opp 3× in one game)',pts:5, stat: 'set3InGame' },
+      { id: 'first_blood',       name: 'First Blood (First win)',          pts: 1,  stat: 'gamesWon' },
+      { id: 'hot_streak',        name: 'Hot Streak (3 wins in a row)',     pts: 2,  stat: 'bestStreak' },
+      { id: 'on_fire',           name: 'On Fire (5 wins in a row)',        pts: 5,  stat: 'bestStreak' },
+      { id: 'unstoppable',       name: 'Unstoppable (10 wins in a row)',   pts: 15, stat: 'bestStreak' },
+      { id: 'card_shark',        name: 'Card Shark (3 wins no set streak)',pts: 10, stat: 'cardSharkStreak' },
+      { id: 'centurion',         name: 'Centurion (Win 100+ in final rnd)',pts:5,  stat: 'centurionGames' },
+    ];
+
+    let grantTargetUid = null;
+    let grantTargetName = null;
+
+    function openGrantModal(uid, username) {
+      grantTargetUid = uid;
+      grantTargetName = username;
+      document.getElementById('grantTitle').textContent = `Grant Badge → ${username}`;
+      const sel = document.getElementById('grantSelect');
+      sel.innerHTML = BADGE_DEFS.map(b => `<option value="${b.id}">${b.name} (+${b.pts}pts)</option>`).join('');
+      document.getElementById('grantModal').classList.add('open');
+    }
+
+    function closeGrantModal() {
+      document.getElementById('grantModal').classList.remove('open');
+      grantTargetUid = null;
+      grantTargetName = null;
+    }
+
+    async function confirmGrant() {
+      if (!grantTargetUid) return;
+      const badgeId = document.getElementById('grantSelect').value;
+      const badge = BADGE_DEFS.find(b => b.id === badgeId);
+      if (!badge) return;
+      closeGrantModal();
+      try {
+        // Write badge
+        await db.ref(`users/${grantTargetUid}/badges/${badgeId}`).set({ earnedAt: Date.now() });
+        // Ensure backing stat >= 1
+        const statSnap = await db.ref(`users/${grantTargetUid}/stats/${badge.stat}`).once('value');
+        if (!statSnap.val() || statSnap.val() < 1) {
+          await db.ref(`users/${grantTargetUid}/stats/${badge.stat}`).set(1);
+        }
+        // Recalculate badge score from all earned badges
+        const badgeSnap = await db.ref(`users/${grantTargetUid}/badges`).once('value');
+        const earnedIds = Object.keys(badgeSnap.val() || {});
+        const totalBadgeScore = earnedIds.reduce((sum, id) => {
+          const b = BADGE_DEFS.find(x => x.id === id);
+          return sum + (b ? b.pts : 0);
+        }, 0);
+        await db.ref(`users/${grantTargetUid}/stats/badgeScore`).set(totalBadgeScore);
+        document.getElementById(`bdg-${grantTargetUid}`).textContent = totalBadgeScore;
+        log(`  ✓ ${grantTargetName} — granted "${badge.name}", badgeScore now ${totalBadgeScore}`, 'ok');
+      } catch (e) {
+        log(`  ✗ Failed: ${e.message}`, 'err');
+      }
+    }
 
     function isRagequitter(s) { return (s.disconnectsWhileLosing || 0) > 0; }
 
