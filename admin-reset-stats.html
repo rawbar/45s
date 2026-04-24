@@ -170,28 +170,30 @@
 
     async function confirmGrant() {
       if (!grantTargetUid) return;
+      const uid = grantTargetUid;
+      const name = grantTargetName;
       const badgeId = document.getElementById('grantSelect').value;
       const badge = BADGE_DEFS.find(b => b.id === badgeId);
       if (!badge) return;
       closeGrantModal();
       try {
         // Write badge
-        await db.ref(`users/${grantTargetUid}/badges/${badgeId}`).set({ earnedAt: Date.now() });
+        await db.ref(`users/${uid}/badges/${badgeId}`).set({ earnedAt: Date.now() });
         // Ensure backing stat >= 1
-        const statSnap = await db.ref(`users/${grantTargetUid}/stats/${badge.stat}`).once('value');
+        const statSnap = await db.ref(`users/${uid}/stats/${badge.stat}`).once('value');
         if (!statSnap.val() || statSnap.val() < 1) {
-          await db.ref(`users/${grantTargetUid}/stats/${badge.stat}`).set(1);
+          await db.ref(`users/${uid}/stats/${badge.stat}`).set(1);
         }
         // Recalculate badge score from all earned badges
-        const badgeSnap = await db.ref(`users/${grantTargetUid}/badges`).once('value');
+        const badgeSnap = await db.ref(`users/${uid}/badges`).once('value');
         const earnedIds = Object.keys(badgeSnap.val() || {});
         const totalBadgeScore = earnedIds.reduce((sum, id) => {
           const b = BADGE_DEFS.find(x => x.id === id);
           return sum + (b ? b.pts : 0);
         }, 0);
-        await db.ref(`users/${grantTargetUid}/stats/badgeScore`).set(totalBadgeScore);
-        document.getElementById(`bdg-${grantTargetUid}`).textContent = totalBadgeScore;
-        log(`  ✓ ${grantTargetName} — granted "${badge.name}", badgeScore now ${totalBadgeScore}`, 'ok');
+        await db.ref(`users/${uid}/stats/badgeScore`).set(totalBadgeScore);
+        document.getElementById(`bdg-${uid}`).textContent = totalBadgeScore;
+        log(`  ✓ ${name} — granted "${badge.name}", badgeScore now ${totalBadgeScore}`, 'ok');
       } catch (e) {
         log(`  ✗ Failed: ${e.message}`, 'err');
       }
