@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.8';
+const VERSION = '2.31.9';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6089,6 +6089,7 @@ function WhatsNewModal({ isOpen, onClose }) {
 
   const versionHistory = [
     { version: '2.31.1', date: 'Apr 2026', changes: ['Lead card glow fix: switched from box-shadow to filter:drop-shadow so it renders correctly alongside the existing filter on .v3-trick-card.'] },
+    { version: '2.31.9', date: 'Apr 2026', changes: ['Online strip: filter out presence entries with no username — stale/old-format entries showed as nameless avatar circles.'] },
     { version: '2.31.8', date: 'Apr 2026', changes: ['Fix bid level badges (high_roller, steady_hand, safe_bet etc): track via refs applied atomically in game-over transaction — eliminates race condition where badge check ran before async Firebase write completed.'] },
     { version: '2.31.7', date: 'Apr 2026', changes: ['Lobby: score shown on finished games too (not just in-progress)'] },
     { version: '2.31.6', date: 'Apr 2026', changes: ['Lobby: score shown on in-progress game cards (green N/S · red E/W)', 'Lobby: game start time shown on all game cards', 'Lobby: seat dots hidden on finished games'] },
@@ -8266,7 +8267,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       const activePlayers = {};
       for (const [id, player] of Object.entries(data)) {
         // Check if player data is valid and connected
-        if (player && player.connected === true && player.lastSeen) {
+        if (player && player.connected === true && player.lastSeen && player.username) {
           // Check if lastSeen is recent (within 5 minutes)
           const lastSeenTime = typeof player.lastSeen === 'number' ? player.lastSeen : 0;
           if ((now - lastSeenTime) < fiveMinutes) {
