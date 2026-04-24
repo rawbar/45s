@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.12';
+const VERSION = '2.31.13';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6088,6 +6088,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.13', date: 'Apr 2026', changes: ['Fix Perfect Round badge (perfect30s): same two bugs as bid-level badges — async Firebase write raced game-over transaction, and tracking was missing from AI round-end path. Now uses ref + applied atomically in transaction, mirrored in both play paths.'] },
     { version: '2.31.12', date: 'Apr 2026', changes: ['Fix bid-level badge tracking when AI plays the last card of the final trick — bid refs were only incremented in the human card-play path, missing when the AI path handled round-end.'] },
     { version: '2.31.11', date: 'Apr 2026', changes: ['Version history: zero-pad single-digit patch numbers (2.31.01 etc.) so string sort matches numeric order.'] },
     { version: '2.31.10', date: 'Apr 2026', changes: ['Online strip: non-me chip names now full opacity (#e8e4d9) — 75% opacity cream was washing out against the dark strip background.'] },
@@ -12773,13 +12774,14 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [gameBid30Made, setGameBid30Made] = useState(0);
   const [gameExceedBidPts, setGameExceedBidPts] = useState(0);
   const wasSetThisGame = useRef(false); // for cleanGameWins check
-  // Bid-level refs — updated immediately (no stale closure), applied in game-over transaction
+  // Per-round stat refs — updated immediately (no stale closure), applied in game-over transaction
   const gameBid30MadeRef = useRef(0);
   const gameBid25MadeRef = useRef(0);
   const gameBid20MadeRef = useRef(0);
   const gameBid15MadeRef = useRef(0);
   const gameBid30For60MadeRef = useRef(0);
   const gameBaggedBidMadeRef = useRef(0);
+  const gamePerfect30sRef = useRef(0);
 
   // Extended per-game badge tracking
   const [gameConsec30s, setGameConsec30s] = useState(0);          // current consecutive perfect-30 rounds
@@ -12803,6 +12805,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     gameBid15MadeRef.current = 0;
     gameBid30For60MadeRef.current = 0;
     gameBaggedBidMadeRef.current = 0;
+    gamePerfect30sRef.current = 0;
     setGameTimesSet(0);
     setGamePerfect30s(0);
     setGameBid30Made(0);
@@ -12918,6 +12921,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               if (gameBid15MadeRef.current > 0) stats.bid15Made = (stats.bid15Made || 0) + gameBid15MadeRef.current;
               if (gameBid30For60MadeRef.current > 0) stats.bid30For60Made = (stats.bid30For60Made || 0) + gameBid30For60MadeRef.current;
               if (gameBaggedBidMadeRef.current > 0) stats.baggedBidMade = (stats.baggedBidMade || 0) + gameBaggedBidMadeRef.current;
+              if (gamePerfect30sRef.current > 0) stats.perfect30s = (stats.perfect30s || 0) + gamePerfect30sRef.current;
             }
 
             return stats;
@@ -14319,10 +14323,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 gameBid15MadeRef.current += 1;
               }
             }
-            // Perfect 30 (bid < 30 but scored 30)
+            // Perfect 30 (bid < 30 but scored 30) — tracked via ref, applied in game-over transaction
             if (roundPtsScored >= 30 && highBid < 30) {
+              gamePerfect30sRef.current += 1;
               setGamePerfect30s(p => p + 1);
-              database.ref(`users/${userId}/stats`).update({ perfect30s: firebase.database.ServerValue.increment(1) });
             }
             // Trump Slayer: made bid without 5/J/A♥
             if (!bidderHadTopTrump.current) {
@@ -14936,6 +14940,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               } else if (highBid === 15) {
                 if (wasBagged) { gameBaggedBidMadeRef.current += 1; setGameWasBagged(true); }
                 else { gameBid15MadeRef.current += 1; }
+              }
+              if (finalRoundPts[bidderTeam] >= 30 && highBid < 30) {
+                gamePerfect30sRef.current += 1;
+                setGamePerfect30s(p => p + 1);
               }
             }
           } else {
