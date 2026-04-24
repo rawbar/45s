@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.11';
+const VERSION = '2.31.12';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6088,6 +6088,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.12', date: 'Apr 2026', changes: ['Fix bid-level badge tracking when AI plays the last card of the final trick — bid refs were only incremented in the human card-play path, missing when the AI path handled round-end.'] },
     { version: '2.31.11', date: 'Apr 2026', changes: ['Version history: zero-pad single-digit patch numbers (2.31.01 etc.) so string sort matches numeric order.'] },
     { version: '2.31.10', date: 'Apr 2026', changes: ['Online strip: non-me chip names now full opacity (#e8e4d9) — 75% opacity cream was washing out against the dark strip background.'] },
     { version: '2.31.09', date: 'Apr 2026', changes: ['Online strip: filter out presence entries with no username — stale/old-format entries showed as nameless avatar circles.'] },
@@ -14908,14 +14909,40 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           
           const bidderTeam = bidWinner % 2;
           const newScores = [...scores];
-          
+
           if (finalRoundPts[bidderTeam] >= highBid) {
             newScores[bidderTeam] += finalRoundPts[bidderTeam];
+
+            // Bid-level tracking (same logic as human path — runs here when AI plays last card)
+            if (bidWinner === mySeatIndex) {
+              const excess = finalRoundPts[bidderTeam] - highBid;
+              const exceedBonus = Math.floor(excess / 5);
+              if (exceedBonus > 0) {
+                setGameExceedBidPts(p => p + exceedBonus);
+                database.ref(`users/${userId}/stats`).update({ exceedBidPoints: firebase.database.ServerValue.increment(exceedBonus) });
+              }
+              if (excess >= 10) {
+                database.ref(`users/${userId}/stats`).update({ exceedBy10: firebase.database.ServerValue.increment(1) });
+              }
+              if (highBid === 30 && bidType === '30for60') {
+                gameBid30For60MadeRef.current += 1;
+              } else if (highBid === 30) {
+                gameBid30MadeRef.current += 1;
+                setGameBid30Made(p => p + 1);
+              } else if (highBid === 25) {
+                gameBid25MadeRef.current += 1;
+              } else if (highBid === 20) {
+                gameBid20MadeRef.current += 1;
+              } else if (highBid === 15) {
+                if (wasBagged) { gameBaggedBidMadeRef.current += 1; setGameWasBagged(true); }
+                else { gameBid15MadeRef.current += 1; }
+              }
+            }
           } else {
             newScores[bidderTeam] -= highBid;
           }
           newScores[1 - bidderTeam] += finalRoundPts[1 - bidderTeam];
-          
+
           // Update history for score table
           let usRoundScore, themRoundScore;
           if (bidderTeam === 0) {
