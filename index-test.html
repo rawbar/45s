@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.14';
+const VERSION = '2.31.15';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -3472,21 +3472,21 @@ const BADGES = [
   { id:'all_in',         name:'All In',           desc:'Win a game having used 5-card draw',                        pts:5,  sym:'🎰',   color:'#909090' },
   { id:'follow_the_ace', name:'Follow the Ace',   desc:'Play a heart under the Follow A♥ rule',                    pts:2,  sym:'♥',    color:'#cd7f32' },
   // Milestones – played
-  { id:'first_blood',     name:'First Blood',     desc:'Win your first game',                                       pts:1,  sym:'⭐',   color:'#aaa'    },
-  { id:'getting_started', name:'Getting Started', desc:'Play 10 games',                                             pts:1,  sym:'🎮',   color:'#aaa'    },
-  { id:'regular',         name:'Regular',          desc:'Play 25 games',                                            pts:2,  sym:'📅',   color:'#cd7f32' },
-  { id:'veteran',         name:'Veteran',           desc:'Play 50 games',                                           pts:3,  sym:'🎖️',  color:'#cd7f32' },
-  { id:'legend',          name:'Legend',            desc:'Play 100 games',                                          pts:5,  sym:'🏆',   color:'#909090' },
+  { id:'first_blood',     name:'First Blood',     desc:'Win your first game',   pts:1,  sym:'⭐',   color:'#aaa',    progressStat:'gamesWon',    threshold:1  },
+  { id:'getting_started', name:'Getting Started', desc:'Play 10 games',         pts:1,  sym:'🎮',   color:'#aaa',    progressStat:'gamesPlayed', threshold:10 },
+  { id:'regular',         name:'Regular',         desc:'Play 25 games',         pts:2,  sym:'📅',   color:'#cd7f32', progressStat:'gamesPlayed', threshold:25 },
+  { id:'veteran',         name:'Veteran',         desc:'Play 50 games',         pts:3,  sym:'🎖️',  color:'#cd7f32', progressStat:'gamesPlayed', threshold:50 },
+  { id:'legend',          name:'Legend',          desc:'Play 100 games',        pts:5,  sym:'🏆',   color:'#909090', progressStat:'gamesPlayed', threshold:100 },
   // Milestones – wins
-  { id:'winner',    name:'Winner',    desc:'Win 10 games',  pts:2, sym:'🥇',  color:'#cd7f32' },
-  { id:'champion',  name:'Champion',  desc:'Win 25 games',  pts:3, sym:'🏅',  color:'#cd7f32' },
-  { id:'master',    name:'Master',    desc:'Win 50 games',  pts:5, sym:'🦅',  color:'#909090' },
+  { id:'winner',    name:'Winner',    desc:'Win 10 games',  pts:2, sym:'🥇',  color:'#cd7f32', progressStat:'gamesWon', threshold:10 },
+  { id:'champion',  name:'Champion',  desc:'Win 25 games',  pts:3, sym:'🏅',  color:'#cd7f32', progressStat:'gamesWon', threshold:25 },
+  { id:'master',    name:'Master',    desc:'Win 50 games',  pts:5, sym:'🦅',  color:'#909090', progressStat:'gamesWon', threshold:50 },
   // Streaks
-  { id:'hot_streak',   name:'Hot Streak',   desc:'Win 3 games in a row',  pts:2,  sym:'🌡️',  color:'#cd7f32' },
-  { id:'on_fire',      name:'On Fire',       desc:'Win 5 games in a row',  pts:5,  sym:'🌋',  color:'#909090' },
-  { id:'unstoppable',  name:'Unstoppable',  desc:'Win 10 games in a row', pts:15, sym:'💥',  color:'#d4af37' },
+  { id:'hot_streak',   name:'Hot Streak',   desc:'Win 3 games in a row',  pts:2,  sym:'🌡️',  color:'#cd7f32', progressStat:'bestStreak', threshold:3  },
+  { id:'on_fire',      name:'On Fire',      desc:'Win 5 games in a row',  pts:5,  sym:'🌋',  color:'#909090', progressStat:'bestStreak', threshold:5  },
+  { id:'unstoppable',  name:'Unstoppable',  desc:'Win 10 games in a row', pts:15, sym:'💥',  color:'#d4af37', progressStat:'bestStreak', threshold:10 },
   // Special Combos
-  { id:'card_shark',    name:'Card Shark',    desc:'Win 3 consecutive games without being set once',  pts:10, sym:'🦈',  color:'#1565c0' },
+  { id:'card_shark',    name:'Card Shark',    desc:'Win 3 consecutive games without being set once',  pts:10, sym:'🦈',  color:'#1565c0', progressStat:'cardSharkStreak', threshold:3 },
   { id:'centurion',     name:'Centurion',     desc:'Win a game with exactly 120 points',               pts:5,  sym:'⚜️',  color:'#909090' },
   { id:'heartbreaker',  name:'Heartbreaker',  desc:'Lose a game where both teams scored 120+',         pts:10, sym:'💔',  color:'#1565c0' },
   { id:'photo_finish',  name:'Photo Finish',  desc:'Win a game where both teams scored 120+',          pts:15, sym:'📸',  color:'#d4af37' },
@@ -6088,6 +6088,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.15', date: 'Apr 2026', changes: ['Badge detail: restore progress bars on milestone/streak badges — added progressStat+threshold fields to BADGES array; progress bar now shows for both earned and unearned badges.'] },
     { version: '2.31.14', date: 'Apr 2026', changes: ['Fix all remaining round-end badge stats (exceed_expectations, trump_slayer, giant_killer, spoiler, upset, shutdown, timesSet): convert from async Firebase writes to refs applied atomically in game-over transaction; mirror all tracking in AI round-end path.'] },
     { version: '2.31.13', date: 'Apr 2026', changes: ['Fix Perfect Round badge (perfect30s): same two bugs as bid-level badges — async Firebase write raced game-over transaction, and tracking was missing from AI round-end path. Now uses ref + applied atomically in transaction, mirrored in both play paths.'] },
     { version: '2.31.12', date: 'Apr 2026', changes: ['Fix bid-level badge tracking when AI plays the last card of the final trick — bid refs were only incremented in the human card-play path, missing when the AI path handled round-end.'] },
@@ -9381,12 +9382,13 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                               <div style={{ fontFamily: "'Merriweather',serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(245,238,220,0.6)', lineHeight: 1.4 }}>{activeBadgeObj.desc}</div>
                             </div>
                           </div>
-                          {earned ? (
+                          {earned && (
                             <div style={{ background: 'rgba(201,162,39,0.1)', border: '1px solid rgba(201,162,39,0.3)', borderRadius: '8px', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span style={{ fontSize: '16px' }}>✦</span>
                               <div style={{ fontFamily: "'Cinzel',serif", fontSize: '12px', color: '#f6d778' }}>{earnedAt ? `Earned ${new Date(earnedAt).toLocaleDateString()}` : 'Earned'}</div>
                             </div>
-                          ) : goal > 0 ? (
+                          )}
+                          {goal > 0 && (
                             <div>
                               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                                 <div style={{ fontFamily: "'Merriweather',serif", fontStyle: 'italic', fontSize: '11px', color: 'rgba(245,238,220,0.4)' }}>Progress</div>
@@ -9396,7 +9398,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                                 <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#7a5c10,#c9a227)', borderRadius: '3px', transition: 'width 0.4s ease' }} />
                               </div>
                             </div>
-                          ) : null}
+                          )}
                           <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', alignItems: 'center' }}>
                             <div style={{ width: '6px', height: '6px', borderRadius: '1px', transform: 'rotate(45deg)', background: '#c9a227', opacity: 0.6 }} />
                             <div style={{ fontFamily: "'Cinzel',serif", fontSize: '11px', color: 'rgba(201,162,39,0.5)' }}>{activeBadgeObj.pts} {activeBadgeObj.pts === 1 ? 'pt' : 'pts'}</div>
@@ -9620,7 +9622,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                           <div style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', fontWeight: '700', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(201,162,74,0.45)' }}>How to Earn</div>
                           <div style={{ fontFamily: "'Inter', sans-serif", fontSize: '13px', color: 'rgba(232,228,217,0.85)', marginTop: '3px', lineHeight: '1.4' }}>{activeBadgeObj.desc}</div>
                         </div>
-                        {!earned && goal > 0 && (
+                        {goal > 0 && (
                           <div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '5px' }}>
                               <span style={{ fontFamily: "'Inter', sans-serif", fontSize: '11px', fontWeight: '500', color: 'rgba(201,162,74,0.7)' }}>{Math.min(progressVal, goal)} / {goal}</span>
