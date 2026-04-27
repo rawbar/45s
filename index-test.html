@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.15';
+const VERSION = '2.31.16';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6088,6 +6088,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.16', date: 'Apr 2026', changes: ["What's New modal: compare major.minor only — patch-only bumps no longer re-show the modal on every reload."] },
     { version: '2.31.15', date: 'Apr 2026', changes: ['Badge detail: restore progress bars on milestone/streak badges — added progressStat+threshold fields to BADGES array; progress bar now shows for both earned and unearned badges.'] },
     { version: '2.31.14', date: 'Apr 2026', changes: ['Fix all remaining round-end badge stats (exceed_expectations, trump_slayer, giant_killer, spoiler, upset, shutdown, timesSet): convert from async Firebase writes to refs applied atomically in game-over transaction; mirror all tracking in AI round-end path.'] },
     { version: '2.31.13', date: 'Apr 2026', changes: ['Fix Perfect Round badge (perfect30s): same two bugs as bid-level badges — async Firebase write raced game-over transaction, and tracking was missing from AI round-end path. Now uses ref + applied atomically in transaction, mirrored in both play paths.'] },
@@ -12210,10 +12211,11 @@ function MultiplayerApp() {
   const [emailPromptError, setEmailPromptError] = useState('');
   const [activeTheme, setActiveTheme] = useState('irish');
 
-  // Check if we should show What's New modal
+  // Check if we should show What's New modal — compare major.minor only so patches don't re-trigger
   useEffect(() => {
     const lastSeenVersion = localStorage.getItem('45s_lastSeenVersion');
-    if (lastSeenVersion !== VERSION) {
+    const toMinor = v => v ? v.split('.').slice(0,2).join('.') : '';
+    if (toMinor(lastSeenVersion) !== toMinor(VERSION)) {
       setShowWhatsNew(true);
     }
   }, []);
