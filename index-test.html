@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.17';
+const VERSION = '2.31.18';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6088,6 +6088,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.18', date: 'May 2026', changes: ['Stats modal: restored score breakdown — tap a player to see how their total points were earned (win rate, bids, streaks, badges, times set).', 'Lobby: in-progress and finished game player names now colored by team (green N/S · red E/W) to match the score colors.'] },
     { version: '2.31.17', date: 'Apr 2026', changes: ["What's New modal: mark as seen immediately when shown — navigating away without tapping Close no longer causes it to re-appear on next login."] },
     { version: '2.31.16', date: 'Apr 2026', changes: ["What's New modal: compare major.minor only — patch-only bumps no longer re-show the modal on every reload."] },
     { version: '2.31.15', date: 'Apr 2026', changes: ['Badge detail: restore progress bars on milestone/streak badges — added progressStat+threshold fields to BADGES array; progress bar now shows for both earned and unearned badges.'] },
@@ -8660,6 +8661,10 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       const isFinished = !isOpen && !isPlaying;
       const takenSeats = seatKeys.filter(s => players[s]);
       const humanPlayers = seatKeys.map(s => players[s]).filter(p => p && !p.isAI);
+      // Per-seat humans for team-colored name list (in-progress and finished only)
+      const humansBySeat = seatKeys
+        .map(seat => ({ seat, p: players[seat] }))
+        .filter(({ p }) => p && !p.isAI);
       const scores = game.gameState?.scores;
       const startTime = game.createdAt ? new Date(game.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
       return (
@@ -8680,8 +8685,20 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
             <div className="irlb-game-sub">
               {isOpen ? `${takenSeats.length} of 4 seated` : isPlaying ? 'In progress' : null}
               {humanPlayers.length > 0 && (
-                <div style={{ fontSize: '10px', color: 'rgba(201,162,74,0.45)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }}>
-                  {humanPlayers.map(p => p.username).join(' · ')}
+                <div style={{ fontSize: '10px', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }}>
+                  {(isPlaying || isFinished) ? (
+                    humansBySeat.map(({ seat, p }, i) => {
+                      const isNS = seat === 'North' || seat === 'South';
+                      return (
+                        <React.Fragment key={seat}>
+                          {i > 0 && <span style={{ color: 'rgba(201,162,74,0.4)' }}> · </span>}
+                          <span style={{ color: isNS ? '#5dd084' : '#ef7c74' }}>{p.username}</span>
+                        </React.Fragment>
+                      );
+                    })
+                  ) : (
+                    <span style={{ color: 'rgba(201,162,74,0.45)' }}>{humanPlayers.map(p => p.username).join(' · ')}</span>
+                  )}
                 </div>
               )}
             </div>
@@ -9169,6 +9186,24 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           const earnedIds = Object.keys(statsPlayerBadges);
           const activeBadgeObj = activeBadge ? BADGES.find(b => b.id === activeBadge) : null;
 
+          // Score breakdown — components matching computePlayerScore
+          const breakdownItems = statsData ? (() => {
+            const s = statsData;
+            const bestStreak = s.bestStreak || 0;
+            const items = [
+              { label: `Win Rate ${winRate}% × 5`, pts: winRate * 5 },
+              { label: `Best Streak ${bestStreak} × 1`, pts: bestStreak },
+              { label: `Bid 30 Made ${s.bid30Made || 0} × 5`, pts: (s.bid30Made || 0) * 5 },
+              { label: `Perfect 30s ${s.perfect30s || 0} × 2`, pts: (s.perfect30s || 0) * 2 },
+              { label: `Comeback Wins ${s.comebackWins || 0} × 10`, pts: (s.comebackWins || 0) * 10 },
+              { label: `Clean Wins ${s.cleanGameWins || 0} × 3`, pts: (s.cleanGameWins || 0) * 3 },
+              { label: 'Exceed Bid Pts', pts: s.exceedBidPoints || 0 },
+              { label: `Times Set ${s.timesSet || 0} × −1`, pts: -(s.timesSet || 0) },
+              { label: `Badges (${earnedIds.length})`, pts: s.badgeScore || 0 },
+            ];
+            return items.filter(i => i.pts !== 0);
+          })() : [];
+
           const statCard = (label, value, isHi) => (
             <div style={{ background: 'rgba(10,40,20,0.6)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '8px', padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '3px' }}>
               <div style={{ fontFamily: "'Merriweather', Georgia, serif", fontStyle: 'italic', fontSize: '10px', color: 'rgba(251,246,228,0.5)', lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{label}</div>
@@ -9217,6 +9252,18 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                           <div className="cp-stat-num" style={{ fontSize: '32px' }}>{totalPts}</div>
                           <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '10px', color: '#3a5f78', marginTop: '2px' }}>{gw}W / {gp}G · {winRate}%</div>
                         </div>
+                        {/* Score breakdown */}
+                        {breakdownItems.length > 0 && (
+                          <div style={{ background: 'rgba(0,229,255,0.03)', border: '1px solid rgba(0,229,255,0.12)', borderRadius: '8px', padding: '8px 12px', marginBottom: '12px' }}>
+                            <div className="cp-stat-label" style={{ marginBottom: '6px', fontSize: '9px' }}>Breakdown</div>
+                            {breakdownItems.map((it, i) => (
+                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'Share Tech Mono', monospace", fontSize: '11px', padding: '3px 0', borderTop: i === 0 ? 'none' : '1px solid rgba(0,229,255,0.08)' }}>
+                                <span style={{ color: 'rgba(192,221,240,0.75)' }}>{it.label}</span>
+                                <span style={{ fontWeight: 'bold', color: it.pts < 0 ? '#ff5c8a' : '#00ff88' }}>{it.pts > 0 ? '+' : ''}{it.pts}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {/* Stats grid */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px', marginBottom: '12px' }}>
                           {cpStatCard('Games', gp)}
@@ -9315,6 +9362,18 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                           <div style={{ fontFamily: "'Cinzel',serif", fontSize: '36px', fontWeight: '900', color: '#f6d778', lineHeight: 1 }}>{totalPts.toLocaleString()}</div>
                           <div style={{ fontFamily: "'Cinzel',serif", fontSize: '9px', fontWeight: '700', letterSpacing: '3px', textTransform: 'uppercase', color: 'rgba(201,162,39,0.5)', marginTop: '4px' }}>Total Points</div>
                         </div>
+                        {/* Score breakdown */}
+                        {breakdownItems.length > 0 && (
+                          <div style={{ background: 'rgba(8,5,1,0.5)', border: '1px solid rgba(201,162,39,0.2)', borderRadius: '8px', padding: '8px 12px', marginBottom: '8px' }}>
+                            <div style={{ fontFamily: "'Cinzel',serif", fontSize: '9px', fontWeight: '700', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(201,162,39,0.55)', marginBottom: '4px' }}>Breakdown</div>
+                            {breakdownItems.map((it, i) => (
+                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '3px 0', borderTop: i === 0 ? 'none' : '1px solid rgba(201,162,39,0.1)' }}>
+                                <span style={{ fontFamily: "'Merriweather',Georgia,serif", fontStyle: 'italic', color: 'rgba(245,238,220,0.7)' }}>{it.label}</span>
+                                <span style={{ fontFamily: "'Cinzel',serif", fontWeight: '700', color: it.pts < 0 ? '#ef7c74' : '#f6d778' }}>{it.pts > 0 ? '+' : ''}{it.pts}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {/* Stat grid */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '6px' }}>
                           {anStatCard('Games Played', gp, false)}
@@ -9504,6 +9563,18 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                         }}>{totalPts.toLocaleString()}</div>
                         <div style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', fontWeight: '700', letterSpacing: '3px', textTransform: 'uppercase', color: 'rgba(201,162,74,0.5)', marginTop: '4px' }}>Total Points</div>
                       </div>
+                      {/* Score breakdown */}
+                      {breakdownItems.length > 0 && (
+                        <div style={{ background: 'rgba(10,40,20,0.5)', border: '1px solid rgba(201,162,74,0.2)', borderRadius: '8px', padding: '8px 12px', marginBottom: '8px' }}>
+                          <div style={{ fontFamily: "'Cinzel', serif", fontSize: '9px', fontWeight: '700', letterSpacing: '2px', textTransform: 'uppercase', color: 'rgba(201,162,74,0.55)', marginBottom: '4px' }}>Breakdown</div>
+                          {breakdownItems.map((it, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '3px 0', borderTop: i === 0 ? 'none' : '1px solid rgba(201,162,74,0.1)' }}>
+                              <span style={{ fontFamily: "'Merriweather', Georgia, serif", fontStyle: 'italic', color: 'rgba(251,246,228,0.7)' }}>{it.label}</span>
+                              <span style={{ fontFamily: "'Cinzel', serif", fontWeight: '700', color: it.pts < 0 ? '#ef7c74' : '#f6d778' }}>{it.pts > 0 ? '+' : ''}{it.pts}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       {/* 3-col stat grid */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
