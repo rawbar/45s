@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.18';
+const VERSION = '2.31.19';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6088,6 +6088,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.19', date: 'May 2026', changes: ['Risk Taker badge fix: convert fiveCardDrawUsed to ref applied atomically inside the game-over transaction (was an async Firebase write — same race condition class as the v2.31.13/14 badge fixes).'] },
     { version: '2.31.18', date: 'May 2026', changes: ['Stats modal: restored score breakdown — tap a player to see how their total points were earned (win rate, bids, streaks, badges, times set).', 'Lobby: in-progress and finished game player names now colored by team (green N/S · red E/W) to match the score colors.'] },
     { version: '2.31.17', date: 'Apr 2026', changes: ["What's New modal: mark as seen immediately when shown — navigating away without tapping Close no longer causes it to re-appear on next login."] },
     { version: '2.31.16', date: 'Apr 2026', changes: ["What's New modal: compare major.minor only — patch-only bumps no longer re-show the modal on every reload."] },
@@ -12868,6 +12869,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const gameSetsOn25Ref = useRef(0);
   const gameSetsOn20Ref = useRef(0);
   const gameSet3InGameRef = useRef(false);
+  const gameFiveCardDrawUsedRef = useRef(0);
 
   // Extended per-game badge tracking
   const [gameConsec30s, setGameConsec30s] = useState(0);          // current consecutive perfect-30 rounds
@@ -12901,6 +12903,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     gameSetsOn25Ref.current = 0;
     gameSetsOn20Ref.current = 0;
     gameSet3InGameRef.current = false;
+    gameFiveCardDrawUsedRef.current = 0;
     setGameTimesSet(0);
     setGamePerfect30s(0);
     setGameBid30Made(0);
@@ -13025,6 +13028,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               if (gameSetsOn25Ref.current > 0) stats.setsOn25 = (stats.setsOn25 || 0) + gameSetsOn25Ref.current;
               if (gameSetsOn20Ref.current > 0) stats.setsOn20 = (stats.setsOn20 || 0) + gameSetsOn20Ref.current;
               if (gameSet3InGameRef.current) stats.set3InGame = (stats.set3InGame || 0) + 1;
+              if (gameFiveCardDrawUsedRef.current > 0) stats.fiveCardDrawUsed = (stats.fiveCardDrawUsed || 0) + gameFiveCardDrawUsedRef.current;
             }
 
             return stats;
@@ -13925,7 +13929,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     const fiveCardSwap = gameOptions.fiveCardDraw && keep.length === 0;
     if (fiveCardSwap) {
       setGameFiveCardDrawUsed(true);
-      database.ref(`users/${userId}/stats`).update({ fiveCardDrawUsed: firebase.database.ServerValue.increment(1) });
+      gameFiveCardDrawUsedRef.current += 1;
     }
     
     if (keep.length < 1 && !gameOptions.fiveCardDraw) {
