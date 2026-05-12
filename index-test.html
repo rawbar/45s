@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.19';
+const VERSION = '2.31.20';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5379,6 +5379,17 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
               break;
             }
           }
+          // DEFENDER 2ND-MAN BOSS-SAVE: defender, 2nd to play, offsuit lead, 2+ trump in hand
+          // — don't burn boss on a junk offsuit lead; fall through so 2nd-man-low can ruff cheap
+          {
+            const isDefender = (player % 2) !== (bidWinner % 2);
+            const ledIsOffsuit = getTrumpRank(trick[0], trumpSuit) < 0;
+            const myTrumpsCount = playable.filter(c => getTrumpRank(c, trumpSuit) >= 0).length;
+            if (isDefender && trick.length === 1 && ledIsOffsuit && myTrumpsCount >= 2) {
+              console.log(`🎯 BOSS SAVE: P${player + 1} (defender 2nd man) saving boss ${card.id} on offsuit lead — ruff cheap instead`);
+              break;
+            }
+          }
           console.log(`🎯 BOSS CARD: P${player} playing ${card.id} (beats current trick & guaranteed winner)`);
           return card;
         } else {
@@ -5787,6 +5798,20 @@ if (trick.length > 0) {
       }
     }
 
+    // RUFF CHEAP: offsuit led, I have 2+ trump → ruff with lowest trump
+    // Free trick captured at minimum cost; forces opponents to overtrump with higher cards
+    // if they want it back. Better than offsuit (concedes trick to bidder's team when 4th
+    // hand is partner forced to follow suit) AND better than wasting boss/high trump.
+    if (!isTrump(ledCard) && myTrumps.length >= 2) {
+      const lowestTrump = myTrumps.reduce((lowest, card) => {
+        const r1 = getTrumpRank(lowest, trumpSuit);
+        const r2 = getTrumpRank(card, trumpSuit);
+        return r1 < r2 ? lowest : card;
+      });
+      console.log(`🧠 2ND MAN RUFF: P${player + 1} ruffing offsuit lead with lowest trump ${lowestTrump.id} (have ${myTrumps.length} trump)`);
+      return lowestTrump;
+    }
+
     // Otherwise play low (2nd man low principle)
     return playable.reduce((lowest, card) => {
       const r1 = isTrump(lowest) ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
@@ -6088,6 +6113,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.20', date: 'May 2026', changes: ['AI: stop burning boss trump 2nd-man on a low offsuit lead. Defender 2nd-man with 2+ trump on an offsuit lead now ruffs with lowest trump instead of playing the 5/J/A♥. Two fixes: (1) BOSS CARD priority now skips when defender 2nd-man sees an offsuit lead, (2) 2nd-man-low now ruffs cheap instead of conceding the trick offsuit.'] },
     { version: '2.31.19', date: 'May 2026', changes: ['Risk Taker badge fix: convert fiveCardDrawUsed to ref applied atomically inside the game-over transaction (was an async Firebase write — same race condition class as the v2.31.13/14 badge fixes).'] },
     { version: '2.31.18', date: 'May 2026', changes: ['Stats modal: restored score breakdown — tap a player to see how their total points were earned (win rate, bids, streaks, badges, times set).', 'Lobby: in-progress and finished game player names now colored by team (green N/S · red E/W) to match the score colors.'] },
     { version: '2.31.17', date: 'Apr 2026', changes: ["What's New modal: mark as seen immediately when shown — navigating away without tapping Close no longer causes it to re-appear on next login."] },
