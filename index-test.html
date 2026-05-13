@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.21';
+const VERSION = '2.31.22';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4667,7 +4667,7 @@ function isTrump(card, trumpSuit) {
   return (card.rank === 'A' && card.suit === '\u2665') || card.suit === trumpSuit;
 }
 
-function decideDiscard(hand, trumpSuit, isBidWinner, bidAmount) {
+function decideDiscard(hand, trumpSuit, isBidWinner, bidAmount, fiveCardDraw) {
   const trumps = hand.filter(c => isTrump(c, trumpSuit));
   const offsuit = hand.filter(c => !isTrump(c, trumpSuit));
   let keep = [...trumps];
@@ -4702,6 +4702,12 @@ function decideDiscard(hand, trumpSuit, isBidWinner, bidAmount) {
   }
   
   if (keep.length === 0 && hand.length > 0) {
+    // 5-CARD DRAW: if house rule is enabled and we're not the bid winner,
+    // a hand with zero trump is weak enough that a full redraw beats keeping
+    // one offsuit card. (Bid winner picked trump so should never have 0 trump.)
+    if (fiveCardDraw && !isBidWinner) {
+      return { keep: [], discard: [...hand] };
+    }
     const sorted = [...hand].sort((a,b) => {
       const ar = isTrump(a,trumpSuit) ? getTrumpRank(a,trumpSuit)+100 : getOffSuitRank(a);
       const br = isTrump(b,trumpSuit) ? getTrumpRank(b,trumpSuit)+100 : getOffSuitRank(b);
@@ -6131,6 +6137,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.22', date: 'May 2026', changes: ['AI: take the 5-card draw when option is enabled and AI holds zero trump. Previously the AI discard logic fell through to a "keep one highest card" fallback, so AI never used the full redraw even with a useless hand. Also fixed the AI call site to actually pass the fiveCardDraw house-rule flag to the discard logic.'] },
     { version: '2.31.21', date: 'May 2026', changes: ['AI: stop burning boss trump 2nd-man on a low TRUMP lead when partner sits behind. If opponent leads low trump (rank < Q), 3rd seat (opp partner) is confirmed/estimated void in trump, and 4th seat (my partner) has trump, AI now renegers/saves the boss instead of overcommitting. Partner wins the trick with any trump above the low lead; boss stays available for a later trick.'] },
     { version: '2.31.20', date: 'May 2026', changes: ['AI: stop burning boss trump 2nd-man on a low offsuit lead. Defender 2nd-man with 2+ trump on an offsuit lead now ruffs with lowest trump instead of playing the 5/J/A♥. Two fixes: (1) BOSS CARD priority now skips when defender 2nd-man sees an offsuit lead, (2) 2nd-man-low now ruffs cheap instead of conceding the trick offsuit.'] },
     { version: '2.31.19', date: 'May 2026', changes: ['Risk Taker badge fix: convert fiveCardDrawUsed to ref applied atomically inside the game-over transaction (was an async Firebase write — same race condition class as the v2.31.13/14 badge fixes).'] },
@@ -14731,7 +14738,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       });
       
       // Use smart AI discard logic (matches 3.5.9)
-      const { keep } = decideDiscard(hand, trumpSuit, currentPlayer === bidWinner, highBid);
+      const { keep } = decideDiscard(hand, trumpSuit, currentPlayer === bidWinner, highBid, gameOptions?.fiveCardDraw);
       console.log(`  Keeping ${keep.length} cards:`, keep.map(c => c.id));
       
       const needToDraw = Math.max(0, 5 - keep.length);
