@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.20';
+const VERSION = '2.31.21';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5390,6 +5390,24 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
               break;
             }
           }
+          // 2ND-MAN BOSS RENEGE: low trump led by opponent, 3rd (opp partner) void, 4th (my partner) has trump
+          // — partner sits behind me and wins with any trump above the low lead. Save boss for a later trick.
+          // Threshold: ledRank < 90 catches all number-trump leads; Q+ leads are kept (partner may not beat).
+          {
+            const ledRankCheck = getTrumpRank(trick[0], trumpSuit);
+            const ledIsLowTrump = ledRankCheck >= 0 && ledRankCheck < 90;
+            if (trick.length === 1 && ledIsLowTrump) {
+              const thirdIdx = (leader + 2) % 4;
+              const partnerIdx = (player + 2) % 4;
+              const thirdVoid = (knownVoids && knownVoids[thirdIdx]?.trump === true) ||
+                                (intel.players[thirdIdx]?.estimatedTrumpRemaining || 0) === 0;
+              const partnerTrumpEst = intel.players[partnerIdx]?.estimatedTrumpRemaining || 0;
+              if (thirdVoid && partnerTrumpEst >= 1) {
+                console.log(`🎯 BOSS RENEGE: P${player + 1} (2nd man) saving boss ${card.id} — low trump ${trick[0].id} led, P${thirdIdx + 1} void in trump, partner P${partnerIdx + 1} has ~${partnerTrumpEst} trump`);
+                break;
+              }
+            }
+          }
           console.log(`🎯 BOSS CARD: P${player} playing ${card.id} (beats current trick & guaranteed winner)`);
           return card;
         } else {
@@ -6113,6 +6131,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.21', date: 'May 2026', changes: ['AI: stop burning boss trump 2nd-man on a low TRUMP lead when partner sits behind. If opponent leads low trump (rank < Q), 3rd seat (opp partner) is confirmed/estimated void in trump, and 4th seat (my partner) has trump, AI now renegers/saves the boss instead of overcommitting. Partner wins the trick with any trump above the low lead; boss stays available for a later trick.'] },
     { version: '2.31.20', date: 'May 2026', changes: ['AI: stop burning boss trump 2nd-man on a low offsuit lead. Defender 2nd-man with 2+ trump on an offsuit lead now ruffs with lowest trump instead of playing the 5/J/A♥. Two fixes: (1) BOSS CARD priority now skips when defender 2nd-man sees an offsuit lead, (2) 2nd-man-low now ruffs cheap instead of conceding the trick offsuit.'] },
     { version: '2.31.19', date: 'May 2026', changes: ['Risk Taker badge fix: convert fiveCardDrawUsed to ref applied atomically inside the game-over transaction (was an async Firebase write — same race condition class as the v2.31.13/14 badge fixes).'] },
     { version: '2.31.18', date: 'May 2026', changes: ['Stats modal: restored score breakdown — tap a player to see how their total points were earned (win rate, bids, streaks, badges, times set).', 'Lobby: in-progress and finished game player names now colored by team (green N/S · red E/W) to match the score colors.'] },
