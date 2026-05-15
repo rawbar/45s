@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.19';
+const VERSION = '2.31.23';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4667,7 +4667,7 @@ function isTrump(card, trumpSuit) {
   return (card.rank === 'A' && card.suit === '\u2665') || card.suit === trumpSuit;
 }
 
-function decideDiscard(hand, trumpSuit, isBidWinner, bidAmount) {
+function decideDiscard(hand, trumpSuit, isBidWinner, bidAmount, fiveCardDraw) {
   const trumps = hand.filter(c => isTrump(c, trumpSuit));
   const offsuit = hand.filter(c => !isTrump(c, trumpSuit));
   let keep = [...trumps];
@@ -4702,6 +4702,12 @@ function decideDiscard(hand, trumpSuit, isBidWinner, bidAmount) {
   }
   
   if (keep.length === 0 && hand.length > 0) {
+    // 5-CARD DRAW: if house rule is enabled and we're not the bid winner,
+    // a hand with zero trump is weak enough that a full redraw beats keeping
+    // one offsuit card. (Bid winner picked trump so should never have 0 trump.)
+    if (fiveCardDraw && !isBidWinner) {
+      return { keep: [], discard: [...hand] };
+    }
     const sorted = [...hand].sort((a,b) => {
       const ar = isTrump(a,trumpSuit) ? getTrumpRank(a,trumpSuit)+100 : getOffSuitRank(a);
       const br = isTrump(b,trumpSuit) ? getTrumpRank(b,trumpSuit)+100 : getOffSuitRank(b);
@@ -5379,6 +5385,37 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
               break;
             }
           }
+          // 2ND-MAN BOSS-SAVE: 2nd to play, offsuit lead, 2+ trump in hand
+          // — don't burn boss on a junk offsuit lead; fall through so 2nd-man-low can ruff cheap.
+          // Applies to all roles (defender, bidder, bidder's partner) — burning A♥ to ruff a
+          // 9♠ is wasteful regardless of seat. The lower trump still wins the trick AND
+          // forces opponents to spend higher trump if they want it back.
+          {
+            const ledIsOffsuit = getTrumpRank(trick[0], trumpSuit) < 0;
+            const myTrumpsCount = playable.filter(c => getTrumpRank(c, trumpSuit) >= 0).length;
+            if (trick.length === 1 && ledIsOffsuit && myTrumpsCount >= 2) {
+              console.log(`🎯 BOSS SAVE: P${player + 1} (2nd man) saving boss ${card.id} on offsuit lead — ruff cheap instead`);
+              break;
+            }
+          }
+          // 2ND-MAN BOSS RENEGE: low trump led by opponent, 3rd (opp partner) void, 4th (my partner) has trump
+          // — partner sits behind me and wins with any trump above the low lead. Save boss for a later trick.
+          // Threshold: ledRank < 90 catches all number-trump leads; Q+ leads are kept (partner may not beat).
+          {
+            const ledRankCheck = getTrumpRank(trick[0], trumpSuit);
+            const ledIsLowTrump = ledRankCheck >= 0 && ledRankCheck < 90;
+            if (trick.length === 1 && ledIsLowTrump) {
+              const thirdIdx = (leader + 2) % 4;
+              const partnerIdx = (player + 2) % 4;
+              const thirdVoid = (knownVoids && knownVoids[thirdIdx]?.trump === true) ||
+                                (intel.players[thirdIdx]?.estimatedTrumpRemaining || 0) === 0;
+              const partnerTrumpEst = intel.players[partnerIdx]?.estimatedTrumpRemaining || 0;
+              if (thirdVoid && partnerTrumpEst >= 1) {
+                console.log(`🎯 BOSS RENEGE: P${player + 1} (2nd man) saving boss ${card.id} — low trump ${trick[0].id} led, P${thirdIdx + 1} void in trump, partner P${partnerIdx + 1} has ~${partnerTrumpEst} trump`);
+                break;
+              }
+            }
+          }
           console.log(`🎯 BOSS CARD: P${player} playing ${card.id} (beats current trick & guaranteed winner)`);
           return card;
         } else {
@@ -5787,6 +5824,20 @@ if (trick.length > 0) {
       }
     }
 
+    // RUFF CHEAP: offsuit led, I have 2+ trump → ruff with lowest trump
+    // Free trick captured at minimum cost; forces opponents to overtrump with higher cards
+    // if they want it back. Better than offsuit (concedes trick to bidder's team when 4th
+    // hand is partner forced to follow suit) AND better than wasting boss/high trump.
+    if (!isTrump(ledCard) && myTrumps.length >= 2) {
+      const lowestTrump = myTrumps.reduce((lowest, card) => {
+        const r1 = getTrumpRank(lowest, trumpSuit);
+        const r2 = getTrumpRank(card, trumpSuit);
+        return r1 < r2 ? lowest : card;
+      });
+      console.log(`🧠 2ND MAN RUFF: P${player + 1} ruffing offsuit lead with lowest trump ${lowestTrump.id} (have ${myTrumps.length} trump)`);
+      return lowestTrump;
+    }
+
     // Otherwise play low (2nd man low principle)
     return playable.reduce((lowest, card) => {
       const r1 = isTrump(lowest) ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
@@ -6088,6 +6139,10 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.23', date: 'May 2026', changes: ['AI: extend the v2.31.20 2nd-man boss-save to all roles. The "don\'t burn boss trump on an offsuit lead" exception was previously gated on isDefender, so bidders and bidders\' partners still played A♥/J/5 of trump to ruff a low offsuit (e.g. 9♠). Now any 2nd-man with 2+ trump on an offsuit lead falls through to RUFF CHEAP and plays the lowest trump — saves the boss for a later trick where it can win independently.'] },
+    { version: '2.31.22', date: 'May 2026', changes: ['AI: take the 5-card draw when option is enabled and AI holds zero trump. Previously the AI discard logic fell through to a "keep one highest card" fallback, so AI never used the full redraw even with a useless hand. Also fixed the AI call site to actually pass the fiveCardDraw house-rule flag to the discard logic.'] },
+    { version: '2.31.21', date: 'May 2026', changes: ['AI: stop burning boss trump 2nd-man on a low TRUMP lead when partner sits behind. If opponent leads low trump (rank < Q), 3rd seat (opp partner) is confirmed/estimated void in trump, and 4th seat (my partner) has trump, AI now renegers/saves the boss instead of overcommitting. Partner wins the trick with any trump above the low lead; boss stays available for a later trick.'] },
+    { version: '2.31.20', date: 'May 2026', changes: ['AI: stop burning boss trump 2nd-man on a low offsuit lead. Defender 2nd-man with 2+ trump on an offsuit lead now ruffs with lowest trump instead of playing the 5/J/A♥. Two fixes: (1) BOSS CARD priority now skips when defender 2nd-man sees an offsuit lead, (2) 2nd-man-low now ruffs cheap instead of conceding the trick offsuit.'] },
     { version: '2.31.19', date: 'May 2026', changes: ['Risk Taker badge fix: convert fiveCardDrawUsed to ref applied atomically inside the game-over transaction (was an async Firebase write — same race condition class as the v2.31.13/14 badge fixes).'] },
     { version: '2.31.18', date: 'May 2026', changes: ['Stats modal: restored score breakdown — tap a player to see how their total points were earned (win rate, bids, streaks, badges, times set).', 'Lobby: in-progress and finished game player names now colored by team (green N/S · red E/W) to match the score colors.'] },
     { version: '2.31.17', date: 'Apr 2026', changes: ["What's New modal: mark as seen immediately when shown — navigating away without tapping Close no longer causes it to re-appear on next login."] },
@@ -14686,7 +14741,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       });
       
       // Use smart AI discard logic (matches 3.5.9)
-      const { keep } = decideDiscard(hand, trumpSuit, currentPlayer === bidWinner, highBid);
+      const { keep } = decideDiscard(hand, trumpSuit, currentPlayer === bidWinner, highBid, gameOptions?.fiveCardDraw);
       console.log(`  Keeping ${keep.length} cards:`, keep.map(c => c.id));
       
       const needToDraw = Math.max(0, 5 - keep.length);
