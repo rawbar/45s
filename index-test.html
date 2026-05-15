@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.22';
+const VERSION = '2.31.23';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5385,14 +5385,16 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
               break;
             }
           }
-          // DEFENDER 2ND-MAN BOSS-SAVE: defender, 2nd to play, offsuit lead, 2+ trump in hand
-          // — don't burn boss on a junk offsuit lead; fall through so 2nd-man-low can ruff cheap
+          // 2ND-MAN BOSS-SAVE: 2nd to play, offsuit lead, 2+ trump in hand
+          // — don't burn boss on a junk offsuit lead; fall through so 2nd-man-low can ruff cheap.
+          // Applies to all roles (defender, bidder, bidder's partner) — burning A♥ to ruff a
+          // 9♠ is wasteful regardless of seat. The lower trump still wins the trick AND
+          // forces opponents to spend higher trump if they want it back.
           {
-            const isDefender = (player % 2) !== (bidWinner % 2);
             const ledIsOffsuit = getTrumpRank(trick[0], trumpSuit) < 0;
             const myTrumpsCount = playable.filter(c => getTrumpRank(c, trumpSuit) >= 0).length;
-            if (isDefender && trick.length === 1 && ledIsOffsuit && myTrumpsCount >= 2) {
-              console.log(`🎯 BOSS SAVE: P${player + 1} (defender 2nd man) saving boss ${card.id} on offsuit lead — ruff cheap instead`);
+            if (trick.length === 1 && ledIsOffsuit && myTrumpsCount >= 2) {
+              console.log(`🎯 BOSS SAVE: P${player + 1} (2nd man) saving boss ${card.id} on offsuit lead — ruff cheap instead`);
               break;
             }
           }
@@ -6137,6 +6139,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.23', date: 'May 2026', changes: ['AI: extend the v2.31.20 2nd-man boss-save to all roles. The "don\'t burn boss trump on an offsuit lead" exception was previously gated on isDefender, so bidders and bidders\' partners still played A♥/J/5 of trump to ruff a low offsuit (e.g. 9♠). Now any 2nd-man with 2+ trump on an offsuit lead falls through to RUFF CHEAP and plays the lowest trump — saves the boss for a later trick where it can win independently.'] },
     { version: '2.31.22', date: 'May 2026', changes: ['AI: take the 5-card draw when option is enabled and AI holds zero trump. Previously the AI discard logic fell through to a "keep one highest card" fallback, so AI never used the full redraw even with a useless hand. Also fixed the AI call site to actually pass the fiveCardDraw house-rule flag to the discard logic.'] },
     { version: '2.31.21', date: 'May 2026', changes: ['AI: stop burning boss trump 2nd-man on a low TRUMP lead when partner sits behind. If opponent leads low trump (rank < Q), 3rd seat (opp partner) is confirmed/estimated void in trump, and 4th seat (my partner) has trump, AI now renegers/saves the boss instead of overcommitting. Partner wins the trick with any trump above the low lead; boss stays available for a later trick.'] },
     { version: '2.31.20', date: 'May 2026', changes: ['AI: stop burning boss trump 2nd-man on a low offsuit lead. Defender 2nd-man with 2+ trump on an offsuit lead now ruffs with lowest trump instead of playing the 5/J/A♥. Two fixes: (1) BOSS CARD priority now skips when defender 2nd-man sees an offsuit lead, (2) 2nd-man-low now ruffs cheap instead of conceding the trick offsuit.'] },
