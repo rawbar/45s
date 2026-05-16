@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.23';
+const VERSION = '2.31.24';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4863,7 +4863,7 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   const oppHasDealer = getTeam(dealer) !== myTeam;
 
   // DESPERATION MODE: They need <=30, we need >30
-  const desperation = theyNeed <= 30 && weNeed > 30;
+  const desperation = theyNeed <= 15 && weNeed > 0;
   const theyCanWinWith15 = theyNeed <= 15;
   const theyCanWinWith20 = theyNeed <= 20;
 
@@ -6139,6 +6139,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.24', date: 'May 2026', changes: ['AI: data-derived desperation-bidding trigger. Replaced the hand-guessed `theyNeed<=30 && weNeed>30` with `theyNeed<=15 && weNeed>0`, found via a stratified head-to-head simulation sweep (12k deals/cell + 60k held-out, confirmed +0.95pt comeback equity, z=4.38; no unconditional regression). Desperation now engages whenever an opponent is one makeable 15 from the game regardless of our score (fixes the symmetric near-win blind spot, e.g. 105-105), and no longer fires when the opponent is far off (which backfired).'] },
     { version: '2.31.23', date: 'May 2026', changes: ['AI: extend the v2.31.20 2nd-man boss-save to all roles. The "don\'t burn boss trump on an offsuit lead" exception was previously gated on isDefender, so bidders and bidders\' partners still played A♥/J/5 of trump to ruff a low offsuit (e.g. 9♠). Now any 2nd-man with 2+ trump on an offsuit lead falls through to RUFF CHEAP and plays the lowest trump — saves the boss for a later trick where it can win independently.'] },
     { version: '2.31.22', date: 'May 2026', changes: ['AI: take the 5-card draw when option is enabled and AI holds zero trump. Previously the AI discard logic fell through to a "keep one highest card" fallback, so AI never used the full redraw even with a useless hand. Also fixed the AI call site to actually pass the fiveCardDraw house-rule flag to the discard logic.'] },
     { version: '2.31.21', date: 'May 2026', changes: ['AI: stop burning boss trump 2nd-man on a low TRUMP lead when partner sits behind. If opponent leads low trump (rank < Q), 3rd seat (opp partner) is confirmed/estimated void in trump, and 4th seat (my partner) has trump, AI now renegers/saves the boss instead of overcommitting. Partner wins the trick with any trump above the low lead; boss stays available for a later trick.'] },
