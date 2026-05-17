@@ -73,14 +73,14 @@ def get_trump_rank(card: Card, trump_suit: Suit) -> int:
     if card.rank == 'Q':
         return 97
     
-    # Remaining trump cards - order depends on suit color
+    # Remaining trump (spot) cards - order MUST match index.html getTrumpRank exactly.
+    # JS: red ♥/♦  -> 80 + ['2','3','4','6','7','8','9','10'].indexOf(rank)  (2 low, 10 high)
+    #     black ♠/♣ -> 80 + ['10','9','8','7','6','4','3','2'].indexOf(rank) (10 low, 2 high)
     if trump_suit in [Suit.HEARTS, Suit.DIAMONDS]:
-        # Red suits: high to low
-        order = ['10', '9', '8', '7', '6', '4', '3', '2']
-    else:
-        # Black suits: low to high  
         order = ['2', '3', '4', '6', '7', '8', '9', '10']
-    
+    else:
+        order = ['10', '9', '8', '7', '6', '4', '3', '2']
+
     try:
         return 80 + order.index(card.rank)
     except ValueError:
@@ -135,35 +135,49 @@ def card_beats(card1: Card, card2: Card, trump_suit: Suit, led_suit: Suit) -> bo
     # Both same suit - higher rank wins
     return get_offsuit_rank(card1) > get_offsuit_rank(card2)
 
+def is_top_three_trump(card: Card, trump_suit: Suit) -> bool:
+    """5 of trump, J of trump, or A♥ — the three reneging-eligible trump."""
+    return ((card.rank == '5' and card.suit == trump_suit) or
+            (card.rank == 'J' and card.suit == trump_suit) or
+            (card.rank == 'A' and card.suit == Suit.HEARTS))
+
+
 def get_playable_cards(hand: List[Card], trump_suit: Suit, led_card: Optional[Card]) -> List[Card]:
     """
-    Get list of cards that can legally be played.
-    Implements reneging rules.
+    Faithful port of index.html getPlayableCards (reneging rules included).
+
+    Trump led:
+      - no trump in hand -> whole hand
+      - else split trump into `must` (non-top-3, OR top-3 not higher than led)
+        and `can_renege` (top-3 trump strictly higher than led rank).
+        must non-empty -> must + can_renege ; must empty -> whole hand (renege).
+    Offsuit led:
+      - follow = same led suit AND not trump
+      - follow empty -> whole hand ; else follow + all trump
     """
+    if not hand:
+        return []
     if not led_card:
-        # Leading - can play anything
         return hand.copy()
-    
+
     led_suit = led_card.suit
-    
-    # If trump was led
+
     if is_trump(led_card, trump_suit):
         trump_cards = [c for c in hand if is_trump(c, trump_suit)]
-        if trump_cards:
-            return trump_cards
-        # No trump - can renege with anything
-        return hand.copy()
-    
-    # Non-trump led - must follow suit if possible
-    # But can renege if you have trump (legal in 45s)
-    same_suit = [c for c in hand if c.suit == led_suit]
-    if same_suit:
-        # Can follow suit OR renege with trump
-        trump_cards = [c for c in hand if is_trump(c, trump_suit)]
-        return same_suit + trump_cards
-    
-    # Don't have led suit - can play anything
-    return hand.copy()
+        if not trump_cards:
+            return hand.copy()
+        led_rank = get_trump_rank(led_card, trump_suit)
+        must, can_renege = [], []
+        for c in trump_cards:
+            if is_top_three_trump(c, trump_suit) and get_trump_rank(c, trump_suit) > led_rank:
+                can_renege.append(c)
+            else:
+                must.append(c)
+        return (must + can_renege) if must else hand.copy()
+
+    follow = [c for c in hand if c.suit == led_suit and not is_trump(c, trump_suit)]
+    trumps = [c for c in hand if is_trump(c, trump_suit)]
+    return hand.copy() if not follow else (follow + trumps)
 
 @dataclass
 class GameState:
@@ -189,7 +203,17 @@ class GameState:
     # High trick tracking
     high_trump_rank: int = -1  # Rank of highest trump played so far
     high_trump_winner: int = -1  # Player who played highest trump
-    
+
+    # Rich void/renege tracking (mirrors index.html knownVoids).
+    # One dict per player: {'trump': True|'reneging', 'possibleTrump': [ids],
+    #                       'noLowTrump': bool, '<suit char>': True}
+    known_voids: Optional[List[dict]] = None
+
+    # Game-context (set by game_runner for score-conditioned endgame rules;
+    # None in round-context harnesses → score rules become no-ops).
+    team_scores: Optional[List[int]] = None   # [team0, team1] PRE-round
+    winning_total: int = 120
+
     def get_team(self, player: int) -> int:
         """Get team number (0 or 1) for a player"""
         return player % 2
