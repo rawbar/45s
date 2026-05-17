@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.32';
+const VERSION = '2.31.33';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4840,7 +4840,7 @@ function chooseTrumpSuit(hand) {
   return suit;
 }
     
-function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid) {
+function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid, _noSpoiler = false) {
   const { suit, trumpCount, has5, hasJ } = findBestTrumpSuit(hand);
   const hasAH = hasAceHearts(hand), hasAT = hasAceTrump(hand, suit);
   const highT = countHighTrumps(hand, suit);
@@ -4982,6 +4982,34 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
       if (can20At60Pct || has5) {
         console.log(`🚨 Preemptive 20 to block their potential 15`);
         return { bid: 20, suit };
+      }
+    }
+  }
+
+  // =========================================================================
+  // SPOILER (v2.31.33) — seize an opponent's likely game-winning bid
+  // =========================================================================
+  // Bids overmake often (focus-sim 400k: a 15 bid scores >=20 in 58.9%,
+  // >=25 in 34.8%). When an opponent holds a bid that, via overmake, likely
+  // carries them to 120 and champion would otherwise let it stand, take the
+  // contract with the minimum overbid even on a hand that does not justify
+  // it (passing there is a near-certain loss). Incremental over the
+  // validated v2.31.24 desperation: held-out +1.07pt in the trigger regime
+  // (z=4.2, no unconditional regression, clean no-op outside trigger).
+  if (!_noSpoiler) {
+    const oppHolds = (oppBidIs15 && currentHighBid === 15) ||
+                     (oppBidIs20 && currentHighBid === 20) ||
+                     (oppBidIs25 && currentHighBid === 25);
+    const danger = (currentHighBid === 15 && theyNeed <= 20) ||
+                    (currentHighBid === 20 && theyNeed <= 20) ||
+                    (currentHighBid === 25 && theyNeed <= 25);
+    const spoilTo = currentHighBid + 5;
+    if (oppHolds && danger && spoilTo <= 30) {
+      const champ = decideBid(hand, currentHighBid, playerIndex, dealer,
+                              teamScores, oppScores, partnerBid, true);
+      if (champ.bid < spoilTo) {
+        console.log(`🗡 SPOILER: opp holds ${currentHighBid}, theyNeed ${theyNeed} - overbid ${spoilTo}`);
+        return { bid: spoilTo, suit };
       }
     }
   }
@@ -6169,6 +6197,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.33', date: 'May 2026', changes: ['AI bidding: added a spoiler bid. When an opponent holds a bid that — given how often bids overmake (a 15 bid scores 20 or more about 59 percent of the time, 25 or more about 35 percent) — would likely carry them to 120, and the AI would otherwise pass or underbid, it now seizes the contract with the minimum overbid even on a hand that does not justify it. Passing in those spots is a near-certain loss, so trading bid points to deny the opponents the game is the better play. Validated by stratified head-to-head simulation incremental over the v2.31.24 desperation logic: held-out +1.07pt comeback equity in the trigger regime (z=4.2), no unconditional regression, and exactly zero effect outside the trigger.'] },
     { version: '2.31.32', date: 'May 2026', changes: ['Critical fix: v2.31.31 introduced a regression that froze multiplayer card play — a tapped legal card would highlight but never play, and the trick could not advance. The new per-player logging hook was declared in the wrong React component scope, so it threw an error on every card play before the move could be sent. Moved the hook into the game-table component. Multiplayer play is restored and the logging now works correctly when enabled.'] },
     { version: '2.31.31', date: 'May 2026', changes: ['Internal: optional per-player card-play decision logging for AI analysis (off by default, toggled per player from the admin tool). When enabled for a player, each card they play is recorded with the exact game state they faced, for offline comparison against the AI. Fire-and-forget and fully guarded — no effect on gameplay or performance. No bidding capture.'] },
     { version: '2.31.30', date: 'May 2026', changes: ['AI: a defender on lead in the endgame (trick 4 or 5) now leads its boss trump to win the trick when the bidding team is already known to be out of trump, instead of holding the boss and dribbling a low offsuit. The boss is a guaranteed winner regardless, so taking the trick now and keeping the lead is the play a human expects. Deduction-only (never on an estimate, so it can never lead into an overtrump). Head-to-head simulation confirmed exactly non-regressing (no win-rate change) over 120k games; shipped for intuitive play and trust in the AI logic.'] },
