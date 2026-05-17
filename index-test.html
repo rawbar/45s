@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.25';
+const VERSION = '2.31.26';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5783,26 +5783,10 @@ if (trick.length > 0) {
   
   // RULE 5: 2nd position - 2nd man low
   if (myPosition === 1) {
-    // NOTE (v2.31.25): AFTER-VOID and RUFF-CHEAP 2nd-man blocks removed here.
-    // Head-to-head simulation audit (20k games/rule, paired) showed RUFF-CHEAP
-    // cost ~2.8pt win rate and AFTER-VOID ~0.75pt. Strict 2nd-man-low
-    // (conserve trump, throw low offsuit) is materially stronger on average.
-
-    // EXCEPTION: Trick 3, offsuit led, I have trump, partner (4th) has 2+ trump remaining
-    // Trump in so partner can shed junk offsuit and save both trump for tricks 4 and 5
-    if (trickNum === 2 && !isTrump(ledCard) && myTrumps.length > 0) {
-      const partnerIdx = (player + 2) % 4;
-      const partnerTrumpEst = intel.players[partnerIdx].estimatedTrumpRemaining;
-      if (partnerTrumpEst >= 2) {
-        const lowestTrump = myTrumps.reduce((lowest, card) => {
-          const r1 = getTrumpRank(lowest, trumpSuit);
-          const r2 = getTrumpRank(card, trumpSuit);
-          return r1 < r2 ? lowest : card;
-        });
-        console.log(`🧠 2ND MAN EXCEPTION: P${player + 1} trick 3 - trumping offsuit lead with ${lowestTrump.id} (partner has ~${partnerTrumpEst} trump left)`);
-        return lowestTrump;
-      }
-    }
+    // NOTE: AFTER-VOID + RUFF-CHEAP (v2.31.25) and the trick-3 partner-shed
+    // EXCEPTION (v2.31.26) all removed — head-to-head audit proved each
+    // net-negative. 2nd man now pure strict 2nd-man-low: conserve trump,
+    // throw the lowest offsuit.
 
     // Otherwise play low (2nd man low principle)
     return playable.reduce((lowest, card) => {
@@ -6105,6 +6089,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.26', date: 'May 2026', changes: ['AI: removed the trick-3 2nd-man partner-shed exception — the conditional audit (40k games/rule vs the cleaned v2.31.25 champion) showed it cost ~0.7pt win rate. It was the last surviving member of the "2nd man ruff in" family; 2nd-man following is now pure strict 2nd-man-low. Validated still-load-bearing and kept: 2nd-man offsuit boss-save (~+1.8pt) and all-remaining-void min-win (~+1.0pt).'] },
     { version: '2.31.25', date: 'May 2026', changes: ['AI: removed two 2nd-man card-play rules that a head-to-head simulation audit (20k games/rule, paired mirrored deals) proved were net-negative. RUFF-CHEAP (ruff an offsuit lead with lowest trump when holding 2+) cost ~2.8pt win rate; the AFTER-VOID min-win-trump block cost ~0.75pt. 2nd man now follows strict 2nd-man-low (conserve trump, throw low offsuit). Note: the v2.31.20 RUFF-CHEAP rule was added earlier this development cycle from a single hand; the audit caught it.'] },
     { version: '2.31.24', date: 'May 2026', changes: ['AI: data-derived desperation-bidding trigger. Replaced the hand-guessed `theyNeed<=30 && weNeed>30` with `theyNeed<=15 && weNeed>0`, found via a stratified head-to-head simulation sweep (12k deals/cell + 60k held-out, confirmed +0.95pt comeback equity, z=4.38; no unconditional regression). Desperation now engages whenever an opponent is one makeable 15 from the game regardless of our score (fixes the symmetric near-win blind spot, e.g. 105-105), and no longer fires when the opponent is far off (which backfired).'] },
     { version: '2.31.23', date: 'May 2026', changes: ['AI: extend the v2.31.20 2nd-man boss-save to all roles. The "don\'t burn boss trump on an offsuit lead" exception was previously gated on isDefender, so bidders and bidders\' partners still played A♥/J/5 of trump to ruff a low offsuit (e.g. 9♠). Now any 2nd-man with 2+ trump on an offsuit lead falls through to RUFF CHEAP and plays the lowest trump — saves the boss for a later trick where it can win independently.'] },
