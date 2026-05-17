@@ -177,6 +177,26 @@ _ed.ai_flags = {'endgame_deny': True}
 REGISTRY["endgame_deny"] = _ed
 
 
+# BIDDER LEAD LOW TRUMP (H-A; opt-in, champion default off). When the
+# bidder is leading and the champion would lead a trump, lead the LOWEST
+# trump instead of the highest (conserve boss-class high trump for
+# later). Implemented at the TOP of the bidder-leading trump branch in
+# improved_ai.py so it intercepts BOTH champion lead-high paths
+# (len(trumps)>=3 return max, and >=1 return highest_trump). Reachable
+# in all non-void / non-narrow-endgame bidder-leading cases (the
+# bidder_after_void_lead site already leads low when opps are out).
+# RESULT (2026-05-17): TESTED, NO-SHIP. Reachability proven (5153
+# decision changes / 1500 games). Screen 30k deals: win 49.41%,
+# z=-2.91 SIGNIFICANTLY NEGATIVE (no held-out run — direction wrong).
+# The expert-divergence hypothesis does NOT replicate in simulation;
+# leading lowest trump as bidder is net-negative. Champion correctly
+# leads its highest trump. Do NOT re-test without a new mechanism.
+_bllt = Policy()
+_bllt.name = "bidder_lead_low_trump"
+_bllt.ai_flags = {'bidder_lead_low_trump': True}
+REGISTRY["bidder_lead_low_trump"] = _bllt
+
+
 # BIDDER LOW-TRUMP OFFSUIT (opt-in; champion default off). Bidder leading
 # with <=2 trump past trick 1: if cashing its (boss) top trump promotes a
 # >=Q-class trump a defender is estimated to hold, lead offsuit instead

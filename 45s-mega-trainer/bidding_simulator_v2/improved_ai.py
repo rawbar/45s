@@ -520,6 +520,17 @@ class ImprovedAI:
                 if opp_likely and trick_num == 4:
                     return non_trumps[0]
                 return trumps[0]
+            # H-A (opt-in bidder_lead_low_trump): when the bidder is
+            # leading and the champion would lead a trump, lead the
+            # LOWEST trump instead (conserve boss-class high trump for
+            # later). Covers BOTH champion lead-high paths below
+            # (>=3 → return max, and >=1 → return highest_trump).
+            # TESTED 2026-05-17, NO-SHIP: reachable (5153 changes/1500
+            # games) but screen 30k deals win 49.41% z=-2.91 SIGNIF
+            # NEGATIVE. Kept opt-in/default-off (champion bit-identical)
+            # purely as a documented dead-end; champion leads HIGH.
+            if Fon('bidder_lead_low_trump') and trumps:
+                return min(trumps, key=lambda c: _tr(c, trump))
             if len(trumps) >= 3:
                 return max(trumps, key=lambda c: _tr(c, trump))
             elif len(trumps) >= 1:
