@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.31';
+const VERSION = '2.31.32';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6169,6 +6169,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.32', date: 'May 2026', changes: ['Critical fix: v2.31.31 introduced a regression that froze multiplayer card play — a tapped legal card would highlight but never play, and the trick could not advance. The new per-player logging hook was declared in the wrong React component scope, so it threw an error on every card play before the move could be sent. Moved the hook into the game-table component. Multiplayer play is restored and the logging now works correctly when enabled.'] },
     { version: '2.31.31', date: 'May 2026', changes: ['Internal: optional per-player card-play decision logging for AI analysis (off by default, toggled per player from the admin tool). When enabled for a player, each card they play is recorded with the exact game state they faced, for offline comparison against the AI. Fire-and-forget and fully guarded — no effect on gameplay or performance. No bidding capture.'] },
     { version: '2.31.30', date: 'May 2026', changes: ['AI: a defender on lead in the endgame (trick 4 or 5) now leads its boss trump to win the trick when the bidding team is already known to be out of trump, instead of holding the boss and dribbling a low offsuit. The boss is a guaranteed winner regardless, so taking the trick now and keeping the lead is the play a human expects. Deduction-only (never on an estimate, so it can never lead into an overtrump). Head-to-head simulation confirmed exactly non-regressing (no win-rate change) over 120k games; shipped for intuitive play and trust in the AI logic.'] },
     { version: '2.31.29', date: 'May 2026', changes: ['AI bidding: a 5+Jack hand with exactly 4 trumps (no Ace of Hearts) now opens 20 instead of 25. The refreshed 5M-round data (under the improved v2.31.27 card play) shows 20 and 25 are essentially tied in expected value for this hand, but 25 gets set far more often, which reads as overbidding. 5+Jack with all 5 trumps still bids 25 (data strongly favors it). Plain 5+Jack hands are unchanged at 20. Desperation bidding is unaffected.'] },
@@ -12630,19 +12631,6 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
   const gameStateRef = useRef(null);
   const mySeatIndex = SEAT_TO_INDEX[mySeat];
 
-  // Per-player card-play decision logging (admin-toggled via
-  // loggingEnabled/{usernameLower}). Read ONCE per game, cached in a ref
-  // so the play path never reads Firebase / adds latency. Capture itself
-  // is fire-and-forget. Card-play only (bidding is 5M-oracle-covered).
-  const loggingOnRef = useRef(false);
-  useEffect(() => {
-    if (!playerName) return;
-    const uname = playerName.toLowerCase();
-    database.ref(`loggingEnabled/${uname}`).once('value')
-      .then(s => { loggingOnRef.current = s.val() === true; })
-      .catch(() => {});
-  }, [playerName, gameId]);
-
   // Voice: rejoin if player had voice enabled before (handles reconnects)
   useEffect(() => {
     if (!VoiceChat.active) {
@@ -12886,6 +12874,21 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [diamondAnim, setDiamondAnim] = useState(null);
   const bidFlashPrevRef = useRef([-1,-1,-1,-1]);
   const prevTrumpRef = useRef(null);
+
+  // Per-player card-play decision logging (admin-toggled via
+  // loggingEnabled/{usernameLower}). Read ONCE per game, cached in a ref so
+  // the play path never reads Firebase / adds latency. Capture itself is
+  // fire-and-forget. Card-play only (bidding is 5M-oracle-covered). MUST be
+  // in this component (same scope as handlePlayCard) — a cross-component
+  // ref ReferenceErrors on every play and wedges the table (v2.31.32 fix).
+  const loggingOnRef = useRef(false);
+  useEffect(() => {
+    if (!playerName) return;
+    const uname = playerName.toLowerCase();
+    database.ref(`loggingEnabled/${uname}`).once('value')
+      .then(s => { loggingOnRef.current = s.val() === true; })
+      .catch(() => {});
+  }, [playerName, gameId]);
   const [trick, setTrick] = useState([]);
   const [trickCards, setTrickCards] = useState([]);
   const [trickLeader, setTrickLeader] = useState(null);
