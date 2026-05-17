@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.35';
+const VERSION = '2.31.36';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5151,6 +5151,21 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
       console.log(`→ Dealer forced 15`);
       return { bid: 15, suit };
     }
+    // LOOSER OPEN (v2.31.36) — rig-confirmed +3.52pt held-out (z=17.2,
+    // 120k disjoint games, replicated). Data-derived from expert
+    // aggression (bid-wins/game 2.45 vs 1.39 at the same set rate: the
+    // extra opens are +EV, not reckless). When the AI would PASS a
+    // genuine open (no prior bid, partner has not bid) and it is not in
+    // the cruise / near-win-protection regime, open 15 on a
+    // marginal-but-real hand instead of conceding the auction to the
+    // bagged dealer. Mutually exclusive with the spoiler (that needs a
+    // prior opponent bid; this needs currentHighBid === 0).
+    if (currentHighBid === 0 && !(partnerBid > 0)
+        && !(weNeed <= 15 && oppScores <= 85)
+        && (trumpCount >= 3 || hasAH || hasAT)) {
+      console.log(`→ LOOSE-OPEN 15${suit}`);
+      return { bid: 15, suit };
+    }
     console.log(`→ Passing (bid ${bid} <= current ${currentHighBid})`);
     return { bid: 0, suit: null };
   }
@@ -6187,6 +6202,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.36', date: 'May 2026', changes: ['AI bidding: the AI now opens 15 on a band of marginal-but-real hands it used to pass (3+ trump, or the always-trump Ace of Hearts, or the Ace of trump) when the auction is still open and it is not protecting a near-win lead. Derived from expert play data and confirmed by head-to-head simulation: a 120k-game disjoint held-out shows +3.52pt win rate (z=17.2, replicated, no regression). The AI was passing too many positive-EV opening hands and conceding them to the bagged dealer.'] },
     { version: '2.31.35', date: 'May 2026', changes: ['Internal: optional per-player BID decision logging added alongside the existing card-play logging (same off-by-default per-player toggle). When enabled, each bid a player makes is recorded with their hand, the bidding so far, the dealer, and both teams live game scores — the game-context the offline 5M oracle does not cover. Fire-and-forget and fully guarded; no effect on gameplay.'] },
     { version: '2.31.34', date: 'May 2026', changes: ['AI play: removed a net-negative bidder rule. The AI used to lead a low offsuit card instead of its highest trump when that trump was not the boss; an ablation audit (head-to-head simulation, plus a disjoint 60k-deal held-out, +0.38pt win rate, z=2.62, replicated, no regression) showed this hurt more than it helped. The bidder now leads its trump in that spot. No effect on the boss-trump cases, which are handled separately.'] },
     { version: '2.31.33', date: 'May 2026', changes: ['AI bidding: added a spoiler bid. When an opponent holds a bid that — given how often bids overmake (a 15 bid scores 20 or more about 59 percent of the time, 25 or more about 35 percent) — would likely carry them to 120, and the AI would otherwise pass or underbid, it now seizes the contract with the minimum overbid even on a hand that does not justify it. Passing in those spots is a near-certain loss, so trading bid points to deny the opponents the game is the better play. Validated by stratified head-to-head simulation incremental over the v2.31.24 desperation logic: held-out +1.07pt comeback equity in the trigger regime (z=4.2), no unconditional regression, and exactly zero effect outside the trigger.'] },
