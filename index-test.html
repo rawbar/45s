@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.33';
+const VERSION = '2.31.34';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5581,21 +5581,11 @@ if (isBidder && isLeading) {
       return r2 > r1 ? card : best;
     });
     
-   if (nonTrumps.length > 0) {
-      const lowestOffsuit = nonTrumps.reduce((lowest, card) => {
-        const r1 = getOffSuitRank(lowest);
-        const r2 = getOffSuitRank(card);
-        return r1 < r2 ? lowest : card;
-      });
-      // Simulation (550k games): A♥/A-trump leading early when not boss = 97-100% better to lead offsuit
-      // Boss trump case is already handled above by the boss card check (returned before reaching here)
-      if (!isCardBoss(highestTrump, cardsPlayed, trumpSuit)) {
-        console.log(`🧠 TRUMP SAVE: P${player + 1} leading offsuit ${lowestOffsuit.id} (saving non-boss ${highestTrump.id})`);
-        return lowestOffsuit;
-      }
-      return highestTrump;
-    }
-    
+   // bidder_trump_save_lead REMOVED (v2.31.34). Ablation-audit proved
+   // this rule ("bidder leading, top trump not boss -> lead lowest
+   // offsuit instead") net-NEGATIVE: turning it off won +0.52pt screen
+   // (z=2.57) and +0.38pt on a disjoint 60k held-out (z=2.62, replicated,
+   // no regression). The bidder now leads its trump.
     return highestTrump;
   }
 }
@@ -6197,6 +6187,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.34', date: 'May 2026', changes: ['AI play: removed a net-negative bidder rule. The AI used to lead a low offsuit card instead of its highest trump when that trump was not the boss; an ablation audit (head-to-head simulation, plus a disjoint 60k-deal held-out, +0.38pt win rate, z=2.62, replicated, no regression) showed this hurt more than it helped. The bidder now leads its trump in that spot. No effect on the boss-trump cases, which are handled separately.'] },
     { version: '2.31.33', date: 'May 2026', changes: ['AI bidding: added a spoiler bid. When an opponent holds a bid that — given how often bids overmake (a 15 bid scores 20 or more about 59 percent of the time, 25 or more about 35 percent) — would likely carry them to 120, and the AI would otherwise pass or underbid, it now seizes the contract with the minimum overbid even on a hand that does not justify it. Passing in those spots is a near-certain loss, so trading bid points to deny the opponents the game is the better play. Validated by stratified head-to-head simulation incremental over the v2.31.24 desperation logic: held-out +1.07pt comeback equity in the trigger regime (z=4.2), no unconditional regression, and exactly zero effect outside the trigger.'] },
     { version: '2.31.32', date: 'May 2026', changes: ['Critical fix: v2.31.31 introduced a regression that froze multiplayer card play — a tapped legal card would highlight but never play, and the trick could not advance. The new per-player logging hook was declared in the wrong React component scope, so it threw an error on every card play before the move could be sent. Moved the hook into the game-table component. Multiplayer play is restored and the logging now works correctly when enabled.'] },
     { version: '2.31.31', date: 'May 2026', changes: ['Internal: optional per-player card-play decision logging for AI analysis (off by default, toggled per player from the admin tool). When enabled for a player, each card they play is recorded with the exact game state they faced, for offline comparison against the AI. Fire-and-forget and fully guarded — no effect on gameplay or performance. No bidding capture.'] },
