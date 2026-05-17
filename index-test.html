@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.26';
+const VERSION = '2.31.31';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5048,8 +5048,8 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     if (partnerBid === 15) {
       if (has5 && hasJ && hasAH && hasAT && trumpCount >= 5) bid = 30;  // ~99%+ near perfect
       else if (has5 && hasJ && hasAH && trumpCount >= 4) bid = 25;  // NEAR_GUARANTEED_30: 96.74%
-      else if (has5 && hasJ && trumpCount >= 4) bid = 25;  // 5_J_T4: 89.01%
-      else if (has5 && hasJ) bid = 20;  // 5_J_T2: 84.34%, 5_J_T3: 92.09%
+      else if (has5 && hasJ && trumpCount >= 5) bid = 25;  // 5_J_T5 only (kept; +2.9 EV vs 20). 5_J_T4 → 20 below (v2.31.29)
+      else if (has5 && hasJ) bid = 20;  // 5_J_T2/T3/T4: 5_J_T4 refreshed-EV ties 20, ship-on-correctness (less overbidding)
       else if (has5 && hasAH) bid = 20;  // 5_AH_T2: 78.42%, 5_AH_T3: 87.53%
       else if (has5 && trumpCount >= 3) bid = 20;  // 5_T3: 83.02%
       // Otherwise don't overbid partner's 15
@@ -5082,8 +5082,12 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     // Removed: 5_AT_T5 (81.3% < 85%)
     if (bid === 0) {
       if (has5 && hasJ && hasAH) bid = 25;  // 5_J_AH_T3: 85.88%, T4+: 96.74%
-      else if (has5 && hasJ && trumpCount >= 4) bid = 25;  // 5_J_T4: 89.01%
+      else if (has5 && hasJ && trumpCount >= 5) bid = 25;  // 5_J_T5 only (kept; refreshed-EV +2.9 vs 20)
       else if (has5 && hasAH && trumpCount >= 5) bid = 25;  // 5_AH_T5: 90.33%
+      // 5_J_T4 (5+J, exactly 4 trump, no A♥): now → 20 below. Refreshed 5M
+      // (v2.31.27) EV ties 20≈25; head-to-head #31 win-NEUTRAL (z=+0.33);
+      // shipped on correctness (less visible overbidding). Desperation path
+      // unaffected (separate branch).
     }
 
     // 20 bid - ≥67% success threshold (5M round data)
@@ -5302,6 +5306,26 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     for (const card of playable) {
       if (isCardBoss(card, cardsPlayed, trumpSuit)) {
         if (isLeadingTrick) {
+          // ENDGAME LEAD-BOSS (v2.31.30): a defender normally saves a boss
+          // and leads offsuit to drain bidder trump — but in the ENDGAME,
+          // when the BIDDING TEAM is already KNOWN trump-void, draining is
+          // moot. Lead the boss to take the trick now AND keep the lead
+          // (the human-expected play; a held boss is guaranteed anyway).
+          // Strict / deduction-only (knownVoids.trump===true — never on
+          // estimates, so it can never misfire into an overtrump). trickNum
+          // is 0-indexed so >=3 means trick 4 or 5. Head-to-head: exactly
+          // non-regressing (50.00%, z=-0.01, 120k games); shipped for
+          // intuitive play / AI-logic trust at zero win-rate cost.
+          if ((player % 2) !== (bidWinner % 2) && trickNum >= 3) {
+            const _bTeam = bidWinner % 2;
+            const _bOpps = [0, 1, 2, 3].filter(s => s % 2 === _bTeam);
+            const _allKnownVoid = _bOpps.every(s =>
+              knownVoids && knownVoids[s] && knownVoids[s].trump === true);
+            if (_allKnownVoid) {
+              console.log(`🎯 ENDGAME LEAD-BOSS: P${player + 1} (defender) leads boss ${card.id} — bidding team known trump-void, take it and keep the lead`);
+              return card;
+            }
+          }
           // Defenders: don't lead boss trump - save it, prefer offsuit to drain bidder team first
           // Simulation (550k games): defender boss trump leading → offsuit = 70-85% improvement
           if ((player % 2) !== (bidWinner % 2)) {
@@ -5395,6 +5419,32 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
             const myTrumpsCount = playable.filter(c => getTrumpRank(c, trumpSuit) >= 0).length;
             if (trick.length === 1 && ledIsOffsuit && myTrumpsCount >= 2) {
               console.log(`🎯 BOSS SAVE: P${player + 1} (2nd man) saving boss ${card.id} on offsuit lead — ruff cheap instead`);
+              break;
+            }
+          }
+          // 2ND-MAN HOLD-UP (v2.31.28): 2nd-man DEFENDER on an offsuit lead
+          // whose trumps are ALL high (≥K — no low trump to ruff cheap) and
+          // who has a non-trump → hold up (follow/play low) instead of
+          // wasting a high/boss trump on a junk 5pt trick. Either the offsuit
+          // follow still wins for the defenders, or declarer's partner is
+          // forced to overspend its trump to take a junk trick (promoting
+          // the held trump, cutting the bidding team's trick count → helps
+          // SET the bid). Extends 2ND-MAN BOSS-SAVE to the only/all-high-
+          // trump case (its ≥2-trump "ruff cheap" remedy can't apply with
+          // no low trump). Head-to-head: +0.30pt, held-out z=+2.91 (240k
+          // disjoint games).
+          {
+            const ledOff = getTrumpRank(trick[0], trumpSuit) < 0;
+            const isDefender = (player % 2) !== (bidWinner % 2);
+            const trumpRanks = playable
+              .map(c => getTrumpRank(c, trumpSuit))
+              .filter(r => r >= 0);
+            const hasNonTrump = playable.some(c => getTrumpRank(c, trumpSuit) < 0);
+            const allTrumpsHigh = trumpRanks.length > 0 &&
+              Math.min(...trumpRanks) >= 98;
+            if (trick.length === 1 && ledOff && isDefender &&
+                hasNonTrump && allTrumpsHigh) {
+              console.log(`🎯 HOLD-UP: P${player + 1} (2nd man defender) holding ${card.id} on offsuit lead — follow low, force declarer's side to spend trump`);
               break;
             }
           }
@@ -5733,7 +5783,37 @@ if (trick.length > 0) {
   }
   
   // We CAN beat current winner - now apply position-based strategy
-  
+
+  // RULE 2.5: ALL-AFTER HARD-VOID min-win (v2.31.27). If every player after
+  // me is KNOWN void in trump (deduced via knownVoids, NOT estimated), no
+  // one can overtrump — any winner takes the trick, so play the CHEAPEST
+  // winning card and conserve high trump for a later trick / the +5
+  // high-trump bonus. Generalizes RULE 3's min-win (4th only) to 2nd/3rd
+  // position. Strict (knownVoids.trump===true only): head-to-head sim
+  // 50.07% (z=+0.48, non-regressing) AND logically correct; the
+  // estimate-based variant was mildly negative so is deliberately excluded.
+  {
+    const afterSeats = [];
+    for (let pos = myPosition + 1; pos < 4; pos++) afterSeats.push((leader + pos) % 4);
+    const allAfterHardVoid = afterSeats.length > 0 && afterSeats.every(idx =>
+      knownVoids && knownVoids[idx] && knownVoids[idx].trump === true);
+    if (allAfterHardVoid) {
+      let cheapest = null, cheapestRank = 999;
+      for (const card of playable) {
+        const tt = [...trick, card];
+        while (tt.length < 4) tt.push({rank: '2', suit: '♣', id: 'dummy'});
+        if (determineTrickWinner(tt, trumpSuit, leader) === player) {
+          const cr = isTrump(card) ? getTrumpRank(card, trumpSuit) : getOffSuitRank(card);
+          if (cr < cheapestRank) { cheapest = card; cheapestRank = cr; }
+        }
+      }
+      if (cheapest) {
+        console.log(`🎯 MIN-WIN: P${player + 1} all after hard-void — cheapest winner ${cheapest.id}, save high trump`);
+        return cheapest;
+      }
+    }
+  }
+
   // RULE 3: 4th position (last to play) - win with MINIMUM necessary card
   if (myPosition === 3) {
     // Find the cheapest card that wins
@@ -6089,6 +6169,11 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.31', date: 'May 2026', changes: ['Internal: optional per-player card-play decision logging for AI analysis (off by default, toggled per player from the admin tool). When enabled for a player, each card they play is recorded with the exact game state they faced, for offline comparison against the AI. Fire-and-forget and fully guarded — no effect on gameplay or performance. No bidding capture.'] },
+    { version: '2.31.30', date: 'May 2026', changes: ['AI: a defender on lead in the endgame (trick 4 or 5) now leads its boss trump to win the trick when the bidding team is already known to be out of trump, instead of holding the boss and dribbling a low offsuit. The boss is a guaranteed winner regardless, so taking the trick now and keeping the lead is the play a human expects. Deduction-only (never on an estimate, so it can never lead into an overtrump). Head-to-head simulation confirmed exactly non-regressing (no win-rate change) over 120k games; shipped for intuitive play and trust in the AI logic.'] },
+    { version: '2.31.29', date: 'May 2026', changes: ['AI bidding: a 5+Jack hand with exactly 4 trumps (no Ace of Hearts) now opens 20 instead of 25. The refreshed 5M-round data (under the improved v2.31.27 card play) shows 20 and 25 are essentially tied in expected value for this hand, but 25 gets set far more often, which reads as overbidding. 5+Jack with all 5 trumps still bids 25 (data strongly favors it). Plain 5+Jack hands are unchanged at 20. Desperation bidding is unaffected.'] },
+    { version: '2.31.28', date: 'May 2026', changes: ['AI: 2nd-hand defender no longer over-ruffs a junk offsuit lead with a high trump. When the defender is 2nd to play, an offsuit card is led, and all of its trumps are high (King or above, no low trump to ruff cheaply), it now holds up (follows suit / plays low) instead of wasting a high or boss trump on a 5-point trick. Either the follow still wins for the defenders, or the declarer side is forced to overspend a trump to take a junk trick, promoting the held trump and cutting the bidding team trick count. Head-to-head simulation: +0.30pt win rate, confirmed on a 240k-game held-out (z=+2.91).'] },
+    { version: '2.31.27', date: 'May 2026', changes: ['AI: 2nd/3rd-hand now plays the lowest winning trump (not its highest) when every player still to act is KNOWN void in trump — no one can overtrump, so the cheapest winner takes the trick and the high trump is saved for a later trick or the +5 high-trump bonus. Previously only 4th hand did this min-win; 2nd/3rd wastefully spent their top trump. Deduction-only (never on estimates); head-to-head sim confirmed non-regressing.'] },
     { version: '2.31.26', date: 'May 2026', changes: ['AI: removed the trick-3 2nd-man partner-shed exception — the conditional audit (40k games/rule vs the cleaned v2.31.25 champion) showed it cost ~0.7pt win rate. It was the last surviving member of the "2nd man ruff in" family; 2nd-man following is now pure strict 2nd-man-low. Validated still-load-bearing and kept: 2nd-man offsuit boss-save (~+1.8pt) and all-remaining-void min-win (~+1.0pt).'] },
     { version: '2.31.25', date: 'May 2026', changes: ['AI: removed two 2nd-man card-play rules that a head-to-head simulation audit (20k games/rule, paired mirrored deals) proved were net-negative. RUFF-CHEAP (ruff an offsuit lead with lowest trump when holding 2+) cost ~2.8pt win rate; the AFTER-VOID min-win-trump block cost ~0.75pt. 2nd man now follows strict 2nd-man-low (conserve trump, throw low offsuit). Note: the v2.31.20 RUFF-CHEAP rule was added earlier this development cycle from a single hand; the audit caught it.'] },
     { version: '2.31.24', date: 'May 2026', changes: ['AI: data-derived desperation-bidding trigger. Replaced the hand-guessed `theyNeed<=30 && weNeed>30` with `theyNeed<=15 && weNeed>0`, found via a stratified head-to-head simulation sweep (12k deals/cell + 60k held-out, confirmed +0.95pt comeback equity, z=4.38; no unconditional regression). Desperation now engages whenever an opponent is one makeable 15 from the game regardless of our score (fixes the symmetric near-win blind spot, e.g. 105-105), and no longer fires when the opponent is far off (which backfired).'] },
@@ -12545,6 +12630,19 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
   const gameStateRef = useRef(null);
   const mySeatIndex = SEAT_TO_INDEX[mySeat];
 
+  // Per-player card-play decision logging (admin-toggled via
+  // loggingEnabled/{usernameLower}). Read ONCE per game, cached in a ref
+  // so the play path never reads Firebase / adds latency. Capture itself
+  // is fire-and-forget. Card-play only (bidding is 5M-oracle-covered).
+  const loggingOnRef = useRef(false);
+  useEffect(() => {
+    if (!playerName) return;
+    const uname = playerName.toLowerCase();
+    database.ref(`loggingEnabled/${uname}`).once('value')
+      .then(s => { loggingOnRef.current = s.val() === true; })
+      .catch(() => {});
+  }, [playerName, gameId]);
+
   // Voice: rejoin if player had voice enabled before (handles reconnects)
   useEffect(() => {
     if (!VoiceChat.active) {
@@ -14213,7 +14311,41 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     }
     const newTrickCards = [...trickCards, { player: mySeatIndex, card }];
     const newTrick = newTrickCards.map(tc => tc.card);
-    
+
+    // Per-player decision logging (fire-and-forget, fully guarded — must
+    // NEVER affect gameplay). Captures the exact PRE-play state the human
+    // faced (1:1 with chooseCardToPlay / Python ImprovedAI.choose_card)
+    // + the chosen card. Card-play only. Enabled per-player via admin tool.
+    if (loggingOnRef.current) {
+      try {
+        const _id = c => c && c.id;
+        const _uname = playerName.toLowerCase();
+        const _rec = {
+          username: _uname,
+          seat: mySeatIndex,
+          trickNum: trickNum,
+          trump: trumpSuit,
+          leader: trickLeader,
+          bidWinner: bidWinner,
+          highBid: highBid,
+          hand: hand.map(_id),                       // BEFORE removal
+          trick: trickCards.map(tc => _id(tc.card)),  // faced (pre-play)
+          legal: playable.map(_id),
+          chosen: _id(card),
+          cardsDrawn: Array.isArray(drawn) ? drawn.slice() : null,
+          knownOutOfTrump: Array.isArray(knownOutOfTrump) ? knownOutOfTrump.slice() : null,
+          knownVoids: JSON.stringify(knownVoids || null),
+          cardsPlayed: (cardsPlayed || []).map(_id),
+          playHistory: (playHistory || []).map(h => ({ p: h.player, c: _id(h.card), t: h.trick })),
+          bidderLostTrick: !!bidderLostTrick,
+          tricksWon: Array.isArray(tricksWon) ? tricksWon.slice() : null,
+          roundPts: Array.isArray(roundPts) ? roundPts.slice() : null,
+          ts: Date.now(),
+        };
+        database.ref(`decisionLog/${_uname}/${gameId}`).push(_rec).catch(() => {});
+      } catch (_e) { /* logging must never break play */ }
+    }
+
     // Track card in play history for modal
     setCardsPlayed(prev => [...prev, card]);
     const newPlayHistory = [...playHistory, { player: mySeatIndex, card, trick: trickNum }];

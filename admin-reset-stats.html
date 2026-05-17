@@ -219,6 +219,8 @@
       try {
         const snap = await db.ref('users').once('value');
         allUsers = snap.val() || {};
+        const logSnap = await db.ref('loggingEnabled').once('value');
+        const logCfg = logSnap.val() || {};
         const tbody = document.getElementById('userRows');
         let rqCount = 0, cleanCount = 0;
 
@@ -242,6 +244,8 @@
           const quits = s.gamesQuit || 0;
           const rowClass = rq ? 'ragequitter' : 'clean';
           const rqBadge = rq ? '<span class="badge">RQ</span>' : '';
+          const uname = (user.username || '').toLowerCase();
+          const logOn = logCfg[uname] === true;
           const email = user.email
             ? `<a href="mailto:${user.email}" style="color:#4caf50">${user.email}</a>`
             : '<span style="color:#444">—</span>';
@@ -259,6 +263,7 @@
               <button class="btn btn-wl"  onclick="resetWL('${uid}','${user.username}')">W/L</button>
               <button class="btn btn-bdg" onclick="resetUserBadges('${uid}','${user.username}')">Bdg</button>
               <button class="btn btn-grnt" onclick="openGrantModal('${uid}','${user.username}')">Grant</button>
+              <button class="btn" id="log-${uid}" onclick="toggleLogging('${uid}','${uname}')" style="background:${logOn ? '#4caf50' : '#555'}">Log ${logOn ? 'ON' : 'OFF'}</button>
               <button class="btn btn-del" onclick="deleteUser('${uid}','${user.username}')">Del</button>
             </td>
           </tr>`;
@@ -283,6 +288,24 @@
       el.style.display = 'block';
       el.innerHTML += `<span class="${cls || ''}">${msg}\n</span>`;
       el.scrollTop = el.scrollHeight;
+    }
+
+    // Per-player: toggle card-play decision logging on/off
+    // (game client writes to decisionLog/{usernameLower}/... only when ON)
+    async function toggleLogging(uid, uname) {
+      try {
+        const cur = (await db.ref(`loggingEnabled/${uname}`).once('value')).val() === true;
+        const next = !cur;
+        await db.ref(`loggingEnabled/${uname}`).set(next ? true : null);
+        const btn = document.getElementById(`log-${uid}`);
+        if (btn) {
+          btn.textContent = `Log ${next ? 'ON' : 'OFF'}`;
+          btn.style.background = next ? '#4caf50' : '#555';
+        }
+        log(`  ${next ? '✓ ENABLED' : '✗ disabled'} card-play logging for "${uname}"`, next ? 'ok' : '');
+      } catch (e) {
+        log(`  ✗ toggleLogging failed: ${e.message}`, 'err');
+      }
     }
 
     // Per-player: reset W/L stats (zeros games played/won/lost + streaks)
