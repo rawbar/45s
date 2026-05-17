@@ -219,8 +219,15 @@
       try {
         const snap = await db.ref('users').once('value');
         allUsers = snap.val() || {};
-        const logSnap = await db.ref('loggingEnabled').once('value');
-        const logCfg = logSnap.val() || {};
+        // Fail-soft: if DB rules do not yet permit /loggingEnabled the read
+        // throws permission_denied — must NOT abort the whole user table.
+        let logCfg = {};
+        try {
+          const logSnap = await db.ref('loggingEnabled').once('value');
+          logCfg = logSnap.val() || {};
+        } catch (e) {
+          log(`  (loggingEnabled unreadable: ${e.message} — toggles disabled until DB rules updated)`, 'err');
+        }
         const tbody = document.getElementById('userRows');
         let rqCount = 0, cleanCount = 0;
 
