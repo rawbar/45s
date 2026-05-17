@@ -44,7 +44,8 @@ CARD_RULES = [
     "following_2nd_man_low_trump_renege",
     "bidder_after_void_lead",
     "bidder_endgame_trump_timing",
-    "bidder_trump_save_lead",
+    # bidder_trump_save_lead REMOVED v2.31.34 — ablation proved net-negative
+    # (held-out +0.38pt z=2.62 to delete); rule no longer exists in code.
     "defender_partner_trump_load",
     "signal_3rd_man_high",
     "partner_low_trump_signal_response",
@@ -174,6 +175,18 @@ _ed = Policy()
 _ed.name = "endgame_deny"
 _ed.ai_flags = {'endgame_deny': True}
 REGISTRY["endgame_deny"] = _ed
+
+
+# BIDDER LOW-TRUMP OFFSUIT (opt-in; champion default off). Bidder leading
+# with <=2 trump past trick 1: if cashing its (boss) top trump promotes a
+# >=Q-class trump a defender is estimated to hold, lead offsuit instead
+# (keep tempo, let partner ruff, deny the boss-up). Round-context rule.
+# bidder_lowtrump_offsuit (B narrow + A broad) REMOVED — both proven
+# structurally dead: the insertion site after bidder_trump_save_lead is
+# never reached (0/1500 games) because bidder_after_void_lead returns
+# first. The user's low-trump-lead idea must be tested by ablating/
+# altering bidder_after_void_lead (already in CARD_RULES as
+# off:bidder_after_void_lead), not via a new bolt-on rule.
 
 
 # NOTE: the old mw:strict / mw:est opt-in challengers were removed — strict

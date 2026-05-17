@@ -525,10 +525,17 @@ class ImprovedAI:
             elif len(trumps) >= 1:
                 highest_trump = max(trumps, key=lambda c: _tr(c, trump))
                 if non_trumps:
-                    lowest_off = min(non_trumps, key=get_offsuit_rank)
-                    if (F('bidder_trump_save_lead')
-                            and not is_card_boss(highest_trump, cards_played, trump)):
-                        return lowest_off
+                    # bidder_trump_save_lead REMOVED (v2.31.34) — ablation
+                    # held-out +0.38pt z=+2.62 (replicated) proved the
+                    # "lead offsuit when top trump not boss" rule
+                    # net-negative. Champion now leads its trump.
+                    # NOTE: a bidder_lowtrump_offsuit rule was tested here
+                    # (narrow B + broad A) but proved STRUCTURALLY DEAD —
+                    # bidder_after_void_lead (line ~507) returns first in
+                    # every reachable case, so this site is never hit
+                    # (0/1500 games instrumented). Testing the user's
+                    # low-trump-lead idea requires ablating/altering
+                    # bidder_after_void_lead, not a new rule here.
                     return highest_trump
                 return highest_trump
             # bidder leading w/ no trump → JS goes Monte Carlo; approximate:
