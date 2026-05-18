@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.41';
+const VERSION = '2.31.42';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6224,6 +6224,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.42', date: 'May 2026', changes: ['Internal: per-player bid and card-play log records now stamp the build version, so offline analysis can separate builds (e.g. before vs after a rule change). No gameplay effect.'] },
     { version: '2.31.41', date: 'May 2026', changes: ['UI: the bid buttons (15 / 20 / 25 / 30 / Pass) are now spaced further apart as well, for easier and more accurate tapping.'] },
     { version: '2.31.40', date: 'May 2026', changes: ['UI: the four trump-suit buttons shown after winning the bid are now spaced much further apart, so they are easier to tap accurately and harder to hit the wrong suit by mistake. No change to the bid buttons.'] },
     { version: '2.31.39', date: 'May 2026', changes: ['AI play fix: when your partner has already won a trick, the AI no longer wastes a boss trump (the 5, Jack, or Ace of Hearts) on it. The bug: an opponent who could only be holding a trump that was ALREADY PLAYED was still treated as a live threat, so the AI dumped its top trump needlessly. It now recognizes that opponent as no threat and saves the boss for a later trick.'] },
@@ -13801,6 +13802,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           chosenBid: bidAmount,
           isAutoBag: !!isAutoBag,
           isThirtyFor60: !!isThirtyFor60,
+          version: VERSION,
           ts: Date.now(),
         };
         database.ref(`bidLog/${_uname}/${gameId}`).push(_bidRec).catch(() => {});
@@ -14439,6 +14441,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           bidderLostTrick: !!bidderLostTrick,
           tricksWon: Array.isArray(tricksWon) ? tricksWon.slice() : null,
           roundPts: Array.isArray(roundPts) ? roundPts.slice() : null,
+          version: VERSION,
           ts: Date.now(),
         };
         database.ref(`decisionLog/${_uname}/${gameId}`).push(_rec).catch(() => {});
