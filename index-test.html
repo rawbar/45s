@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.38';
+const VERSION = '2.31.39';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5724,11 +5724,18 @@ if (trick.length > 0) {
       if ((playerIdx % 2) !== myTeam) {
         opponentAfterMe = true;
         const oppVoids = voids[playerIdx] || {};
-        // Treat 'reneging' as void if all their possible trump are in OUR hand
-        // (e.g. J is only possible renege card but WE are holding J)
-        const regeningCardsAllInMyHand = oppVoids.trump === 'reneging' &&
-          (oppVoids.possibleTrump || []).every(id => hand.some(c => c.id === id));
-        const effectivelyVoidInTrump = oppVoids.trump === true || regeningCardsAllInMyHand;
+        // A reneging opp is effectively trump-void iff every trump they
+        // could still hold is PROVABLY GONE — in OUR hand OR already
+        // played. The old check only counted "in our hand", so a renege
+        // whose only possible trump was already PLAYED was still treated
+        // as a live threat and the boss 5/J/AH got dumped on a trick the
+        // side had ALREADY won (user-reported, round-summary T3). Safe:
+        // only marks void when they provably cannot beat our winner.
+        const regeningCardsGone = oppVoids.trump === 'reneging' &&
+          (oppVoids.possibleTrump || []).every(id =>
+            hand.some(c => c.id === id) ||
+            (cardsPlayed || []).some(c => c.id === id));
+        const effectivelyVoidInTrump = oppVoids.trump === true || regeningCardsGone;
         if (!effectivelyVoidInTrump) allRemainingOppsVoidInTrump = false;
         const voidInLedSuit = !!oppVoids[ledSuit];
         const voidInTrump = effectivelyVoidInTrump;
@@ -5767,6 +5774,14 @@ if (trick.length > 0) {
           const r2 = getTrumpRank(card, trumpSuit);
           return r2 > r1 ? card : best;
         });
+        // Never burn the 5 of trump (rank 102, unbeatable) to respond to
+        // a signal when partner already leads the trick: the 5 is a
+        // guaranteed FUTURE trick, so spending it to over-secure a trick
+        // partner already holds is strictly dominated. (user-reported T3)
+        if (getTrumpRank(highTrump, trumpSuit) >= 102) {
+          console.log(`🧠 PARTNER WIN: P${player + 1} saving the 5 of trump (boss) instead of dumping on partner's trick`);
+          return playLowest();
+        }
         const testTrick = [...trick, highTrump];
         while (testTrick.length < 4) testTrick.push({rank: '2', suit: '\u2660', id: 'dummy'});
         const testWinner = determineTrickWinner(testTrick, trumpSuit, leader);
@@ -6209,6 +6224,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.39', date: 'May 2026', changes: ['AI play fix: when your partner has already won a trick, the AI no longer wastes a boss trump (the 5, Jack, or Ace of Hearts) on it. The bug: an opponent who could only be holding a trump that was ALREADY PLAYED was still treated as a live threat, so the AI dumped its top trump needlessly. It now recognizes that opponent as no threat and saves the boss for a later trick.'] },
     { version: '2.31.38', date: 'May 2026', changes: ['AI bidding: an AI partnered with a HUMAN no longer opens 15 on every weak hand. It now uses the pre-auto-15 bidding so it plays as a sensible partner. AI players partnered with another AI keep the aggressive auto-15 open, so opponents stay tough. This is a deliberate player-enjoyment choice over raw win-rate.'] },
     { version: '2.31.37', date: 'May 2026', changes: ['AI bidding: the open-15 rule now applies to any opening hand when no one has bid yet, with one safeguard added: when an opponent is one bid away from winning the game and your side is behind, the AI no longer throws away a weak 15 and instead defers to its deny/fight logic. Head-to-head simulation (60k-game disjoint held-out): +1.19pt win rate (z=5.9), and the prior losing-state drag is neutralized.'] },
     { version: '2.31.36', date: 'May 2026', changes: ['AI bidding: the AI now opens 15 on a band of marginal-but-real hands it used to pass (3+ trump, or the always-trump Ace of Hearts, or the Ace of trump) when the auction is still open and it is not protecting a near-win lead. Derived from expert play data and confirmed by head-to-head simulation: a 120k-game disjoint held-out shows +3.52pt win rate (z=17.2, replicated, no regression). The AI was passing too many positive-EV opening hands and conceding them to the bagged dealer.'] },
