@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.36';
+const VERSION = '2.31.37';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5151,19 +5151,19 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
       console.log(`→ Dealer forced 15`);
       return { bid: 15, suit };
     }
-    // LOOSER OPEN (v2.31.36) — rig-confirmed +3.52pt held-out (z=17.2,
-    // 120k disjoint games, replicated). Data-derived from expert
-    // aggression (bid-wins/game 2.45 vs 1.39 at the same set rate: the
-    // extra opens are +EV, not reckless). When the AI would PASS a
-    // genuine open (no prior bid, partner has not bid) and it is not in
-    // the cruise / near-win-protection regime, open 15 on a
-    // marginal-but-real hand instead of conceding the auction to the
-    // bagged dealer. Mutually exclusive with the spoiler (that needs a
-    // prior opponent bid; this needs currentHighBid === 0).
+    // OPEN 15 (v2.31.37, open:nd) — the looser open (v2.31.36, +3.52pt)
+    // is now UNCONDITIONAL in a clean open, with one added safeguard:
+    // when desperation is active (opponent at game point AND we are
+    // behind) the AI must NOT throw away a junk 15 — the desperation /
+    // deny logic owns that regime. Held-out: +1.19pt overall (z=5.9);
+    // the prior -1.84pt comeback drag is neutralized to -0.66 (not
+    // significant). Fires only when no one has bid, partner has not bid,
+    // not cruising / ahead-protecting, and not in desperation. Still
+    // mutually exclusive with the spoiler (that needs a prior bid).
     if (currentHighBid === 0 && !(partnerBid > 0)
         && !(weNeed <= 15 && oppScores <= 85)
-        && (trumpCount >= 3 || hasAH || hasAT)) {
-      console.log(`→ LOOSE-OPEN 15${suit}`);
+        && !(theyNeed <= 15 && weNeed > 0)) {
+      console.log(`→ OPEN-15 ${suit}`);
       return { bid: 15, suit };
     }
     console.log(`→ Passing (bid ${bid} <= current ${currentHighBid})`);
@@ -6202,6 +6202,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.37', date: 'May 2026', changes: ['AI bidding: the open-15 rule now applies to any opening hand when no one has bid yet, with one safeguard added: when an opponent is one bid away from winning the game and your side is behind, the AI no longer throws away a weak 15 and instead defers to its deny/fight logic. Head-to-head simulation (60k-game disjoint held-out): +1.19pt win rate (z=5.9), and the prior losing-state drag is neutralized.'] },
     { version: '2.31.36', date: 'May 2026', changes: ['AI bidding: the AI now opens 15 on a band of marginal-but-real hands it used to pass (3+ trump, or the always-trump Ace of Hearts, or the Ace of trump) when the auction is still open and it is not protecting a near-win lead. Derived from expert play data and confirmed by head-to-head simulation: a 120k-game disjoint held-out shows +3.52pt win rate (z=17.2, replicated, no regression). The AI was passing too many positive-EV opening hands and conceding them to the bagged dealer.'] },
     { version: '2.31.35', date: 'May 2026', changes: ['Internal: optional per-player BID decision logging added alongside the existing card-play logging (same off-by-default per-player toggle). When enabled, each bid a player makes is recorded with their hand, the bidding so far, the dealer, and both teams live game scores — the game-context the offline 5M oracle does not cover. Fire-and-forget and fully guarded; no effect on gameplay.'] },
     { version: '2.31.34', date: 'May 2026', changes: ['AI play: removed a net-negative bidder rule. The AI used to lead a low offsuit card instead of its highest trump when that trump was not the boss; an ablation audit (head-to-head simulation, plus a disjoint 60k-deal held-out, +0.38pt win rate, z=2.62, replicated, no regression) showed this hurt more than it helped. The bidder now leads its trump in that spot. No effect on the boss-trump cases, which are handled separately.'] },
