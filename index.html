@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.35';
+const VERSION = '2.31.43';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4840,7 +4840,7 @@ function chooseTrumpSuit(hand) {
   return suit;
 }
     
-function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid, _noSpoiler = false) {
+function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid, _noSpoiler = false, partnerIsHuman = false) {
   const { suit, trumpCount, has5, hasJ } = findBestTrumpSuit(hand);
   const hasAH = hasAceHearts(hand), hasAT = hasAceTrump(hand, suit);
   const highT = countHighTrumps(hand, suit);
@@ -5151,6 +5151,28 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
       console.log(`→ Dealer forced 15`);
       return { bid: 15, suit };
     }
+    // OPEN 15 (v2.31.37, open:nd) — the looser open (v2.31.36, +3.52pt)
+    // is now UNCONDITIONAL in a clean open, with one added safeguard:
+    // when desperation is active (opponent at game point AND we are
+    // behind) the AI must NOT throw away a junk 15 — the desperation /
+    // deny logic owns that regime. Held-out: +1.19pt overall (z=5.9);
+    // the prior -1.84pt comeback drag is neutralized to -0.66 (not
+    // significant). Fires only when no one has bid, partner has not bid,
+    // not cruising / ahead-protecting, and not in desperation. Still
+    // mutually exclusive with the spoiler (that needs a prior bid).
+    // partnerIsHuman gate (v2.31.38): the aggressive auto-15 open is
+    // statistically best but a human dislikes an AI PARTNER that opens 15
+    // on junk every hand. So an AI partnered with a HUMAN reverts to the
+    // pre-auto-15 (v2.31.35) bidding here; AI partnered with AI keeps the
+    // auto-15 (opponents stay tough, AI/AI teams stay optimal). Rig is
+    // all-AI so partnerIsHuman is never set there — champion unaffected.
+    if (currentHighBid === 0 && !(partnerBid > 0)
+        && !(weNeed <= 15 && oppScores <= 85)
+        && !(theyNeed <= 15 && weNeed > 0)
+        && !partnerIsHuman) {
+      console.log(`→ OPEN-15 ${suit}`);
+      return { bid: 15, suit };
+    }
     console.log(`→ Passing (bid ${bid} <= current ${currentHighBid})`);
     return { bid: 0, suit: null };
   }
@@ -5327,7 +5349,54 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     }
     partnerCurrentlyWinning = (currentWinner % 2) === (player % 2);
   }
-  
+
+  // ========================================================================
+  // DEFENDER CASH PROVABLY-BOSS A♥ (FIX v2.31.43)
+  // ========================================================================
+  // isCardBoss only proves boss when EVERY higher trump is in cardsPlayed.
+  // A♥ (rank 100) is beaten only by 5-of-trump (102) and J-of-trump (101).
+  // When the J-of-trump is in the KITTY / a discard it is never in
+  // cardsPlayed, so isCardBoss(A♥) is forever false and a defender holding
+  // A♥ against a bidder leading trump every trick dribbles it onto the dead
+  // last trick (user-reported v2.31.42, round-summary screenshot). Here a
+  // DEFENDER who is FOLLOWING and can WIN the current trick with A♥ — while
+  // the BIDDING SIDE is currently winning it (real steal value) — cashes A♥
+  // now, but ONLY when it is PROVABLY unbeatable for THIS trick: 5-trump
+  // gone AND J-trump gone ("gone" = in cardsPlayed OR in my own hand), OR
+  // every seat that acts after me is KNOWN trump-void (cannot over-trump).
+  // Airtight: A♥ definitely wins the trick in every triggering case; the
+  // only change is cashing it EARLY (tempo + a real shot at a second
+  // defensive trick via the lead) instead of wasting it on trick 5.
+  // Flag-gated (champion default-ON; off:defender_cash_boss_ah reverts).
+  if (!isLeadingTrick && !partnerCurrentlyWinning &&
+      (player % 2) !== (bidWinner % 2)) {
+    const _ah = playable.find(c => c.rank === 'A' && c.suit === '♥');
+    if (_ah) {
+      const _testTrick = [...trick, _ah];
+      while (_testTrick.length < 4) _testTrick.push({ rank: '2', suit: '♣', id: 'dummy' });
+      if (determineTrickWinner(_testTrick, trumpSuit, leader) === player) {
+        const _playedIds = new Set((cardsPlayed || []).map(c => c.id));
+        const _handIds = new Set((hand || []).map(c => c.id));
+        const _gone = (id) => _playedIds.has(id) || _handIds.has(id);
+        const _fiveGone = _gone(`5${trumpSuit}`);
+        const _jackGone = _gone(`J${trumpSuit}`);
+        const _after = [];
+        for (let pos = trick.length + 1; pos < 4; pos++) _after.push((leader + pos) % 4);
+        // No one acts after me → A♥ winning the test trick IS the full
+        // proof. Otherwise every later seat must be unable to over-trump:
+        // known trump-void, OR both cards that beat A♥ (5/J of trump) are
+        // provably gone (played or in my hand).
+        const _provablyBoss = _after.length === 0 || _after.every(idx =>
+          (knownVoids && knownVoids[idx] && knownVoids[idx].trump === true) ||
+          (_fiveGone && _jackGone));
+        if (_provablyBoss) {
+          console.log(`🎯 CASH BOSS A♥: P${player + 1} (defender) cashing provably-boss ${_ah.id} now — 5/J trump gone or later seats trump-void; not dribbling to trick 5`);
+          return _ah;
+        }
+      }
+    }
+  }
+
   // Only play boss card if LEADING or OPPONENT is winning (save it if partner winning)
   // When following, also verify the boss card actually beats the current trick winner
   if (!partnerCurrentlyWinning) {
@@ -5702,11 +5771,18 @@ if (trick.length > 0) {
       if ((playerIdx % 2) !== myTeam) {
         opponentAfterMe = true;
         const oppVoids = voids[playerIdx] || {};
-        // Treat 'reneging' as void if all their possible trump are in OUR hand
-        // (e.g. J is only possible renege card but WE are holding J)
-        const regeningCardsAllInMyHand = oppVoids.trump === 'reneging' &&
-          (oppVoids.possibleTrump || []).every(id => hand.some(c => c.id === id));
-        const effectivelyVoidInTrump = oppVoids.trump === true || regeningCardsAllInMyHand;
+        // A reneging opp is effectively trump-void iff every trump they
+        // could still hold is PROVABLY GONE — in OUR hand OR already
+        // played. The old check only counted "in our hand", so a renege
+        // whose only possible trump was already PLAYED was still treated
+        // as a live threat and the boss 5/J/AH got dumped on a trick the
+        // side had ALREADY won (user-reported, round-summary T3). Safe:
+        // only marks void when they provably cannot beat our winner.
+        const regeningCardsGone = oppVoids.trump === 'reneging' &&
+          (oppVoids.possibleTrump || []).every(id =>
+            hand.some(c => c.id === id) ||
+            (cardsPlayed || []).some(c => c.id === id));
+        const effectivelyVoidInTrump = oppVoids.trump === true || regeningCardsGone;
         if (!effectivelyVoidInTrump) allRemainingOppsVoidInTrump = false;
         const voidInLedSuit = !!oppVoids[ledSuit];
         const voidInTrump = effectivelyVoidInTrump;
@@ -5745,6 +5821,14 @@ if (trick.length > 0) {
           const r2 = getTrumpRank(card, trumpSuit);
           return r2 > r1 ? card : best;
         });
+        // Never burn the 5 of trump (rank 102, unbeatable) to respond to
+        // a signal when partner already leads the trick: the 5 is a
+        // guaranteed FUTURE trick, so spending it to over-secure a trick
+        // partner already holds is strictly dominated. (user-reported T3)
+        if (getTrumpRank(highTrump, trumpSuit) >= 102) {
+          console.log(`🧠 PARTNER WIN: P${player + 1} saving the 5 of trump (boss) instead of dumping on partner's trick`);
+          return playLowest();
+        }
         const testTrick = [...trick, highTrump];
         while (testTrick.length < 4) testTrick.push({rank: '2', suit: '\u2660', id: 'dummy'});
         const testWinner = determineTrickWinner(testTrick, trumpSuit, leader);
@@ -6187,6 +6271,14 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.43', date: 'May 2026', changes: ['AI: a defender holding the A♥ (always the 3rd-highest trump) no longer hangs onto it until the meaningless last trick when the bidder keeps leading trump. If the A♥ is provably unbeatable (the 5 and Jack of trump are accounted for, or no remaining player can over-trump) the defender now cashes it on an earlier trick to steal a trick and fight for a second — fixes the reported case where the bidder ran every trump and the defender wasted the A♥ on trick 5.'] },
+    { version: '2.31.42', date: 'May 2026', changes: ['Internal: per-player bid and card-play log records now stamp the build version, so offline analysis can separate builds (e.g. before vs after a rule change). No gameplay effect.'] },
+    { version: '2.31.41', date: 'May 2026', changes: ['UI: the bid buttons (15 / 20 / 25 / 30 / Pass) are now spaced further apart as well, for easier and more accurate tapping.'] },
+    { version: '2.31.40', date: 'May 2026', changes: ['UI: the four trump-suit buttons shown after winning the bid are now spaced much further apart, so they are easier to tap accurately and harder to hit the wrong suit by mistake. No change to the bid buttons.'] },
+    { version: '2.31.39', date: 'May 2026', changes: ['AI play fix: when your partner has already won a trick, the AI no longer wastes a boss trump (the 5, Jack, or Ace of Hearts) on it. The bug: an opponent who could only be holding a trump that was ALREADY PLAYED was still treated as a live threat, so the AI dumped its top trump needlessly. It now recognizes that opponent as no threat and saves the boss for a later trick.'] },
+    { version: '2.31.38', date: 'May 2026', changes: ['AI bidding: an AI partnered with a HUMAN no longer opens 15 on every weak hand. It now uses the pre-auto-15 bidding so it plays as a sensible partner. AI players partnered with another AI keep the aggressive auto-15 open, so opponents stay tough. This is a deliberate player-enjoyment choice over raw win-rate.'] },
+    { version: '2.31.37', date: 'May 2026', changes: ['AI bidding: the open-15 rule now applies to any opening hand when no one has bid yet, with one safeguard added: when an opponent is one bid away from winning the game and your side is behind, the AI no longer throws away a weak 15 and instead defers to its deny/fight logic. Head-to-head simulation (60k-game disjoint held-out): +1.19pt win rate (z=5.9), and the prior losing-state drag is neutralized.'] },
+    { version: '2.31.36', date: 'May 2026', changes: ['AI bidding: the AI now opens 15 on a band of marginal-but-real hands it used to pass (3+ trump, or the always-trump Ace of Hearts, or the Ace of trump) when the auction is still open and it is not protecting a near-win lead. Derived from expert play data and confirmed by head-to-head simulation: a 120k-game disjoint held-out shows +3.52pt win rate (z=17.2, replicated, no regression). The AI was passing too many positive-EV opening hands and conceding them to the bagged dealer.'] },
     { version: '2.31.35', date: 'May 2026', changes: ['Internal: optional per-player BID decision logging added alongside the existing card-play logging (same off-by-default per-player toggle). When enabled, each bid a player makes is recorded with their hand, the bidding so far, the dealer, and both teams live game scores — the game-context the offline 5M oracle does not cover. Fire-and-forget and fully guarded; no effect on gameplay.'] },
     { version: '2.31.34', date: 'May 2026', changes: ['AI play: removed a net-negative bidder rule. The AI used to lead a low offsuit card instead of its highest trump when that trump was not the boss; an ablation audit (head-to-head simulation, plus a disjoint 60k-deal held-out, +0.38pt win rate, z=2.62, replicated, no regression) showed this hurt more than it helped. The bidder now leads its trump in that spot. No effect on the boss-trump cases, which are handled separately.'] },
     { version: '2.31.33', date: 'May 2026', changes: ['AI bidding: added a spoiler bid. When an opponent holds a bid that — given how often bids overmake (a 15 bid scores 20 or more about 59 percent of the time, 25 or more about 35 percent) — would likely carry them to 120, and the AI would otherwise pass or underbid, it now seizes the contract with the minimum overbid even on a hand that does not justify it. Passing in those spots is a near-certain loss, so trading bid points to deny the opponents the game is the better play. Validated by stratified head-to-head simulation incremental over the v2.31.24 desperation logic: held-out +1.07pt comeback equity in the trigger regime (z=4.2), no unconditional regression, and exactly zero effect outside the trigger.'] },
@@ -13758,6 +13850,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           chosenBid: bidAmount,
           isAutoBag: !!isAutoBag,
           isThirtyFor60: !!isThirtyFor60,
+          version: VERSION,
           ts: Date.now(),
         };
         database.ref(`bidLog/${_uname}/${gameId}`).push(_bidRec).catch(() => {});
@@ -13946,8 +14039,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       const oppScores = scores[1 - myTeam];
       const partnerIdx = (currentPlayer + 2) % 4;
       const partnerBid = bids[partnerIdx] !== null && bids[partnerIdx] !== -1 ? bids[partnerIdx] : 0;
-      
-      const bidResult = decideBid(hand, highBid, currentPlayer, dealer, teamScores, oppScores, partnerBid);
+      const partnerPlayer = players[SEAT_NAMES[partnerIdx]];
+      const partnerIsHuman = !!(partnerPlayer && !partnerPlayer.isAI);
+
+      const bidResult = decideBid(hand, highBid, currentPlayer, dealer, teamScores, oppScores, partnerBid, false, partnerIsHuman);
       let bid = bidResult.bid;
       console.log('🎲 AI decideBid result:', bidResult)
       
@@ -14394,6 +14489,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           bidderLostTrick: !!bidderLostTrick,
           tricksWon: Array.isArray(tricksWon) ? tricksWon.slice() : null,
           roundPts: Array.isArray(roundPts) ? roundPts.slice() : null,
+          version: VERSION,
           ts: Date.now(),
         };
         database.ref(`decisionLog/${_uname}/${gameId}`).push(_rec).catch(() => {});
@@ -16262,7 +16358,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         )}
 
         {/* Button Area */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', flexWrap: 'wrap', padding: '4px 0', minHeight: '36px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: phase === 'trump-select' ? '20px' : (phase === 'bidding' ? '12px' : '4px'), flexWrap: 'wrap', padding: '4px 0', minHeight: '36px' }}>
           {phase === 'bidding' && currentPlayer === mySeatIndex && !dealAnimActive && (
             <>
               {[15,20,25,30].map(b => (
