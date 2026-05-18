@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.37';
+const VERSION = '2.31.38';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4840,7 +4840,7 @@ function chooseTrumpSuit(hand) {
   return suit;
 }
     
-function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid, _noSpoiler = false) {
+function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid, _noSpoiler = false, partnerIsHuman = false) {
   const { suit, trumpCount, has5, hasJ } = findBestTrumpSuit(hand);
   const hasAH = hasAceHearts(hand), hasAT = hasAceTrump(hand, suit);
   const highT = countHighTrumps(hand, suit);
@@ -5160,9 +5160,16 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     // significant). Fires only when no one has bid, partner has not bid,
     // not cruising / ahead-protecting, and not in desperation. Still
     // mutually exclusive with the spoiler (that needs a prior bid).
+    // partnerIsHuman gate (v2.31.38): the aggressive auto-15 open is
+    // statistically best but a human dislikes an AI PARTNER that opens 15
+    // on junk every hand. So an AI partnered with a HUMAN reverts to the
+    // pre-auto-15 (v2.31.35) bidding here; AI partnered with AI keeps the
+    // auto-15 (opponents stay tough, AI/AI teams stay optimal). Rig is
+    // all-AI so partnerIsHuman is never set there — champion unaffected.
     if (currentHighBid === 0 && !(partnerBid > 0)
         && !(weNeed <= 15 && oppScores <= 85)
-        && !(theyNeed <= 15 && weNeed > 0)) {
+        && !(theyNeed <= 15 && weNeed > 0)
+        && !partnerIsHuman) {
       console.log(`→ OPEN-15 ${suit}`);
       return { bid: 15, suit };
     }
@@ -6202,6 +6209,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.38', date: 'May 2026', changes: ['AI bidding: an AI partnered with a HUMAN no longer opens 15 on every weak hand. It now uses the pre-auto-15 bidding so it plays as a sensible partner. AI players partnered with another AI keep the aggressive auto-15 open, so opponents stay tough. This is a deliberate player-enjoyment choice over raw win-rate.'] },
     { version: '2.31.37', date: 'May 2026', changes: ['AI bidding: the open-15 rule now applies to any opening hand when no one has bid yet, with one safeguard added: when an opponent is one bid away from winning the game and your side is behind, the AI no longer throws away a weak 15 and instead defers to its deny/fight logic. Head-to-head simulation (60k-game disjoint held-out): +1.19pt win rate (z=5.9), and the prior losing-state drag is neutralized.'] },
     { version: '2.31.36', date: 'May 2026', changes: ['AI bidding: the AI now opens 15 on a band of marginal-but-real hands it used to pass (3+ trump, or the always-trump Ace of Hearts, or the Ace of trump) when the auction is still open and it is not protecting a near-win lead. Derived from expert play data and confirmed by head-to-head simulation: a 120k-game disjoint held-out shows +3.52pt win rate (z=17.2, replicated, no regression). The AI was passing too many positive-EV opening hands and conceding them to the bagged dealer.'] },
     { version: '2.31.35', date: 'May 2026', changes: ['Internal: optional per-player BID decision logging added alongside the existing card-play logging (same off-by-default per-player toggle). When enabled, each bid a player makes is recorded with their hand, the bidding so far, the dealer, and both teams live game scores — the game-context the offline 5M oracle does not cover. Fire-and-forget and fully guarded; no effect on gameplay.'] },
@@ -13963,8 +13971,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       const oppScores = scores[1 - myTeam];
       const partnerIdx = (currentPlayer + 2) % 4;
       const partnerBid = bids[partnerIdx] !== null && bids[partnerIdx] !== -1 ? bids[partnerIdx] : 0;
-      
-      const bidResult = decideBid(hand, highBid, currentPlayer, dealer, teamScores, oppScores, partnerBid);
+      const partnerPlayer = players[SEAT_NAMES[partnerIdx]];
+      const partnerIsHuman = !!(partnerPlayer && !partnerPlayer.isAI);
+
+      const bidResult = decideBid(hand, highBid, currentPlayer, dealer, teamScores, oppScores, partnerBid, false, partnerIsHuman);
       let bid = bidResult.bid;
       console.log('🎲 AI decideBid result:', bidResult)
       
