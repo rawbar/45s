@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.43';
+const VERSION = '2.31.44';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4840,6 +4840,18 @@ function chooseTrumpSuit(hand) {
   return suit;
 }
     
+// Tunable mixed-strategy dials (v2.31.44). Deterministic optimal play is
+// predictable/exploitable + frustrating for humans; these add randomness
+// at a measured EV cost the user accepted (enjoyment/unpredictability
+// over raw win-rate). AUTO15: prob an AI OPPONENT passes a residual
+// bad-hand auto-15 open (rig held-out cost: 0.5 ≈ -1.4pt). DESP25: prob
+// an AI OPPONENT passes the desperation 25-sacrifice on a crap hand
+// (rig: ~0 cost — the spot is very rare). Set to 0 to fully restore
+// deterministic play. Human's-partner AI is handled separately (it skips
+// auto-15 and desperation overbids entirely — let the human decide).
+const AUTO15_PASS_PROB = 0.5;
+const DESP25_PASS_PROB = 0.5;
+
 function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid, _noSpoiler = false, partnerIsHuman = false) {
   const { suit, trumpCount, has5, hasJ } = findBestTrumpSuit(hand);
   const hasAH = hasAceHearts(hand), hasAT = hasAceTrump(hand, suit);
@@ -4890,7 +4902,11 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   // =========================================================================
   // DESPERATION BIDDING LOGIC
   // =========================================================================
-  if (desperation) {
+  // (A v2.31.44) AI partnered with a HUMAN skips the desperation OVERBID
+  // logic entirely — it just bids its own hand and lets the human decide
+  // whether to overbid/sacrifice. (Rig is all-AI so partnerIsHuman is
+  // never set there → champion/rig unaffected, same as the v2.31.38 gate.)
+  if (desperation && !partnerIsHuman) {
     console.log(`🚨 DESPERATION MODE - They need ${theyNeed}, we need ${weNeed}`);
 
     // RULE 1: If opponent bid 15 and they can win with 15, MUST overbid to 20
@@ -4901,6 +4917,17 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
 
     // RULE 2: If opponent bid 20 and they can win with 20, bid 25 if we're last chance
     if (oppBidIs20 && theyCanWinWith20 && playerIndex === dealer) {
+      // (C v2.31.44) The 25-sacrifice is exploitable: a human bids 20 on
+      // air knowing the AI always overbids into a doomed 25. 20-overbids
+      // stay always-on. Here, ONLY when the hand is crap for 25 (can't
+      // even make 20 → pure sacrifice), pass with DESP25_PASS_PROB ("you
+      // might be bluffing — try to make your 20"). Real (can20At60Pct)
+      // hands still always sacrifice. True Math.random() (genuine
+      // unpredictability for a live human).
+      if (!can20At60Pct && Math.random() < DESP25_PASS_PROB) {
+        console.log(`🎲 DESP-25 crap hand — randomized pass (let opp try their 20)`);
+        return { bid: 0, suit: null };
+      }
       console.log(`🚨 Opponent bid 20 and can win - bidding 25 to stay alive`);
       return { bid: 25, suit };
     }
@@ -5170,6 +5197,15 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
         && !(weNeed <= 15 && oppScores <= 85)
         && !(theyNeed <= 15 && weNeed > 0)
         && !partnerIsHuman) {
+      // (B v2.31.44) Residual bad-hand auto-15 is +EV but deterministic →
+      // predictable/exploitable + frustrating. AI opponents pass it with
+      // AUTO15_PASS_PROB (mixed strategy). True Math.random() so a live
+      // human sees genuine unpredictability. (partnerIsHuman already
+      // gates this whole block off for the human's partner AI.)
+      if (Math.random() < AUTO15_PASS_PROB) {
+        console.log(`🎲 AUTO-15 residual — randomized pass`);
+        return { bid: 0, suit: null };
+      }
       console.log(`→ OPEN-15 ${suit}`);
       return { bid: 15, suit };
     }
@@ -6271,6 +6307,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.44', date: 'May 2026', changes: ['AI bidding less predictable: an AI partnered with a HUMAN no longer auto-overbids in desperation — it bids its own hand and lets you decide whether to overbid. AI opponents now sometimes (about half the time) pass a weak auto-15 open and, on a junk hand, sometimes decline the desperation overbid to 25 instead of always sacrificing — so a human can no longer reliably bait or predict the AI. This is a deliberate fun/unpredictability choice with a small, measured win-rate cost.'] },
     { version: '2.31.43', date: 'May 2026', changes: ['AI: a defender holding the A♥ (always the 3rd-highest trump) no longer hangs onto it until the meaningless last trick when the bidder keeps leading trump. If the A♥ is provably unbeatable (the 5 and Jack of trump are accounted for, or no remaining player can over-trump) the defender now cashes it on an earlier trick to steal a trick and fight for a second — fixes the reported case where the bidder ran every trump and the defender wasted the A♥ on trick 5.'] },
     { version: '2.31.42', date: 'May 2026', changes: ['Internal: per-player bid and card-play log records now stamp the build version, so offline analysis can separate builds (e.g. before vs after a rule change). No gameplay effect.'] },
     { version: '2.31.41', date: 'May 2026', changes: ['UI: the bid buttons (15 / 20 / 25 / 30 / Pass) are now spaced further apart as well, for easier and more accurate tapping.'] },
