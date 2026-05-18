@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.42';
+const VERSION = '2.31.43';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5349,7 +5349,54 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     }
     partnerCurrentlyWinning = (currentWinner % 2) === (player % 2);
   }
-  
+
+  // ========================================================================
+  // DEFENDER CASH PROVABLY-BOSS A♥ (FIX v2.31.43)
+  // ========================================================================
+  // isCardBoss only proves boss when EVERY higher trump is in cardsPlayed.
+  // A♥ (rank 100) is beaten only by 5-of-trump (102) and J-of-trump (101).
+  // When the J-of-trump is in the KITTY / a discard it is never in
+  // cardsPlayed, so isCardBoss(A♥) is forever false and a defender holding
+  // A♥ against a bidder leading trump every trick dribbles it onto the dead
+  // last trick (user-reported v2.31.42, round-summary screenshot). Here a
+  // DEFENDER who is FOLLOWING and can WIN the current trick with A♥ — while
+  // the BIDDING SIDE is currently winning it (real steal value) — cashes A♥
+  // now, but ONLY when it is PROVABLY unbeatable for THIS trick: 5-trump
+  // gone AND J-trump gone ("gone" = in cardsPlayed OR in my own hand), OR
+  // every seat that acts after me is KNOWN trump-void (cannot over-trump).
+  // Airtight: A♥ definitely wins the trick in every triggering case; the
+  // only change is cashing it EARLY (tempo + a real shot at a second
+  // defensive trick via the lead) instead of wasting it on trick 5.
+  // Flag-gated (champion default-ON; off:defender_cash_boss_ah reverts).
+  if (!isLeadingTrick && !partnerCurrentlyWinning &&
+      (player % 2) !== (bidWinner % 2)) {
+    const _ah = playable.find(c => c.rank === 'A' && c.suit === '♥');
+    if (_ah) {
+      const _testTrick = [...trick, _ah];
+      while (_testTrick.length < 4) _testTrick.push({ rank: '2', suit: '♣', id: 'dummy' });
+      if (determineTrickWinner(_testTrick, trumpSuit, leader) === player) {
+        const _playedIds = new Set((cardsPlayed || []).map(c => c.id));
+        const _handIds = new Set((hand || []).map(c => c.id));
+        const _gone = (id) => _playedIds.has(id) || _handIds.has(id);
+        const _fiveGone = _gone(`5${trumpSuit}`);
+        const _jackGone = _gone(`J${trumpSuit}`);
+        const _after = [];
+        for (let pos = trick.length + 1; pos < 4; pos++) _after.push((leader + pos) % 4);
+        // No one acts after me → A♥ winning the test trick IS the full
+        // proof. Otherwise every later seat must be unable to over-trump:
+        // known trump-void, OR both cards that beat A♥ (5/J of trump) are
+        // provably gone (played or in my hand).
+        const _provablyBoss = _after.length === 0 || _after.every(idx =>
+          (knownVoids && knownVoids[idx] && knownVoids[idx].trump === true) ||
+          (_fiveGone && _jackGone));
+        if (_provablyBoss) {
+          console.log(`🎯 CASH BOSS A♥: P${player + 1} (defender) cashing provably-boss ${_ah.id} now — 5/J trump gone or later seats trump-void; not dribbling to trick 5`);
+          return _ah;
+        }
+      }
+    }
+  }
+
   // Only play boss card if LEADING or OPPONENT is winning (save it if partner winning)
   // When following, also verify the boss card actually beats the current trick winner
   if (!partnerCurrentlyWinning) {
@@ -6224,6 +6271,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.43', date: 'May 2026', changes: ['AI: a defender holding the A♥ (always the 3rd-highest trump) no longer hangs onto it until the meaningless last trick when the bidder keeps leading trump. If the A♥ is provably unbeatable (the 5 and Jack of trump are accounted for, or no remaining player can over-trump) the defender now cashes it on an earlier trick to steal a trick and fight for a second — fixes the reported case where the bidder ran every trump and the defender wasted the A♥ on trick 5.'] },
     { version: '2.31.42', date: 'May 2026', changes: ['Internal: per-player bid and card-play log records now stamp the build version, so offline analysis can separate builds (e.g. before vs after a rule change). No gameplay effect.'] },
     { version: '2.31.41', date: 'May 2026', changes: ['UI: the bid buttons (15 / 20 / 25 / 30 / Pass) are now spaced further apart as well, for easier and more accurate tapping.'] },
     { version: '2.31.40', date: 'May 2026', changes: ['UI: the four trump-suit buttons shown after winning the bid are now spaced much further apart, so they are easier to tap accurately and harder to hit the wrong suit by mistake. No change to the bid buttons.'] },
