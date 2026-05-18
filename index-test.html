@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.40';
+const VERSION = '2.31.41';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6224,6 +6224,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.41', date: 'May 2026', changes: ['UI: the bid buttons (15 / 20 / 25 / 30 / Pass) are now spaced further apart as well, for easier and more accurate tapping.'] },
     { version: '2.31.40', date: 'May 2026', changes: ['UI: the four trump-suit buttons shown after winning the bid are now spaced much further apart, so they are easier to tap accurately and harder to hit the wrong suit by mistake. No change to the bid buttons.'] },
     { version: '2.31.39', date: 'May 2026', changes: ['AI play fix: when your partner has already won a trick, the AI no longer wastes a boss trump (the 5, Jack, or Ace of Hearts) on it. The bug: an opponent who could only be holding a trump that was ALREADY PLAYED was still treated as a live threat, so the AI dumped its top trump needlessly. It now recognizes that opponent as no threat and saves the boss for a later trick.'] },
     { version: '2.31.38', date: 'May 2026', changes: ['AI bidding: an AI partnered with a HUMAN no longer opens 15 on every weak hand. It now uses the pre-auto-15 bidding so it plays as a sensible partner. AI players partnered with another AI keep the aggressive auto-15 open, so opponents stay tough. This is a deliberate player-enjoyment choice over raw win-rate.'] },
@@ -16306,7 +16307,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         )}
 
         {/* Button Area */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: phase === 'trump-select' ? '20px' : '4px', flexWrap: 'wrap', padding: '4px 0', minHeight: '36px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: phase === 'trump-select' ? '20px' : (phase === 'bidding' ? '12px' : '4px'), flexWrap: 'wrap', padding: '4px 0', minHeight: '36px' }}>
           {phase === 'bidding' && currentPlayer === mySeatIndex && !dealAnimActive && (
             <>
               {[15,20,25,30].map(b => (
