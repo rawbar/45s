@@ -3393,7 +3393,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.46';
+const VERSION = '2.31.47';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4902,21 +4902,30 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   // =========================================================================
   // DESPERATION BIDDING LOGIC
   // =========================================================================
-  // (A v2.31.44) AI partnered with a HUMAN skips the desperation OVERBID
-  // logic entirely — it just bids its own hand and lets the human decide
-  // whether to overbid/sacrifice. (Rig is all-AI so partnerIsHuman is
-  // never set there → champion/rig unaffected, same as the v2.31.38 gate.)
-  if (desperation && !partnerIsHuman) {
+  // (v2.31.47) AI partnered with a HUMAN skips only the aggressive OVERBID
+  // SACRIFICES (RULE 1 forced-overbid-20, RULE 2 desp-25) — those are the
+  // frustrating doomed bids the human should own. The DEFENSIVE logic
+  // (RULE 3 pass-to-set, RULE 4 bag-the-dealer, genuine strong-hand bids)
+  // still runs: a defensive pass is the prudent conservative line and the
+  // human partner cannot make it themselves (they do not bid for the AI).
+  // v2.31.44 over-gated the whole block, so the AI partner opened a
+  // hopeless 15 instead of bagging the dealer (user-reported, US 80 /
+  // THEM 115). Rig is all-AI (partnerIsHuman always false) so the
+  // champion/rig path is bit-identical — no rig change needed.
+  if (desperation) {
     console.log(`🚨 DESPERATION MODE - They need ${theyNeed}, we need ${weNeed}`);
 
-    // RULE 1: If opponent bid 15 and they can win with 15, MUST overbid to 20
-    if (oppBidIs15 && theyCanWinWith15) {
+    // RULE 1: If opponent bid 15 and they can win with 15, MUST overbid to
+    // 20 (aggressive sacrifice — gated for a human partner; the human owns
+    // this overbid decision since the AI cannot know their hand).
+    if (oppBidIs15 && theyCanWinWith15 && !partnerIsHuman) {
       console.log(`🚨 Opponent bid 15 and can win - MUST bid 20`);
       return { bid: 20, suit };
     }
 
-    // RULE 2: If opponent bid 20 and they can win with 20, bid 25 if we're last chance
-    if (oppBidIs20 && theyCanWinWith20 && playerIndex === dealer) {
+    // RULE 2: If opponent bid 20 and they can win with 20, bid 25 if we're
+    // last chance (aggressive sacrifice — gated for a human partner).
+    if (oppBidIs20 && theyCanWinWith20 && playerIndex === dealer && !partnerIsHuman) {
       // (C v2.31.44) The 25-sacrifice is exploitable: a human bids 20 on
       // air knowing the AI always overbids into a doomed 25. 20-overbids
       // stay always-on. Here, ONLY when the hand is crap for 25 (can't
@@ -6361,6 +6370,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.47', date: 'May 2026', changes: ['AI: when an AI partnered with a HUMAN is in a desperate spot (the opponents are one bid from winning), it again uses the defensive bag-the-dealer logic — passing to force the opponent dealer into a bid they may not make, instead of opening a hopeless bid. v2.31.44 had accidentally disabled all desperation logic for the AI when partnered with a human; now only the aggressive overbid sacrifices stay disabled (those remain the human decision), while the defensive passes and genuine strong-hand bids work normally again.'] },
     { version: '2.31.46', date: 'May 2026', changes: ['AI now deduces a player is out of trump when, forced to follow the 5 of trump, they played the Jack of trump — since the AI always discards its lowest trump first, the Jack must have been their only one. This sharper read feeds the next two fixes.', 'AI: a defender no longer concedes a guaranteed trick in the endgame. When the bidder leads a high offsuit (an Ace) on the 4th or 5th trick and the defender is out of that suit but holds trump, the defender now ruffs to win the trick and take the lead instead of throwing a low card away.', 'AI: your partner no longer trumps your already-winning card. When your offsuit card is the boss of its suit (e.g. the King, since the Ace is low offsuit) and every remaining opponent is known to be out of trump, your partner plays low and lets your trick stand instead of wasting a trump on it.'] },
     { version: '2.31.45', date: 'May 2026', changes: ['AI: a defender holding the A heart now also cashes it earlier when the 5 of trump is gone and it is the 4th or 5th trick — by then a live Jack of trump would almost certainly have been played, so the A heart is effectively unbeatable. The defender wins the trick now and takes the lead for a shot at a second trick, instead of dribbling the A heart to the dead last trick (extends the v2.31.43 fix to the case where the Jack sat unseen in the kitty).', 'AI: an AI partnered with a HUMAN no longer makes the spoiler sacrifice overbid (seizing an opponent likely-winning bid with a hand that cannot make it). It bids its own hand and lets you decide whether to overbid — consistent with the v2.31.44 desperation rule, and fixes the reported case where a partner overbid 25 over your valid 15, was set, and the opponent trick points won the game.'] },
     { version: '2.31.44', date: 'May 2026', changes: ['AI bidding less predictable: an AI partnered with a HUMAN no longer auto-overbids in desperation — it bids its own hand and lets you decide whether to overbid. AI opponents now sometimes (about half the time) pass a weak auto-15 open and, on a junk hand, sometimes decline the desperation overbid to 25 instead of always sacrificing — so a human can no longer reliably bait or predict the AI. This is a deliberate fun/unpredictability choice with a small, measured win-rate cost.'] },
