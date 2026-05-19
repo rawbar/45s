@@ -3394,7 +3394,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.49';
+const VERSION = '2.31.50';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6379,6 +6379,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.50', date: 'May 2026', changes: ['Fix: 5-Card Draw (and other house rules) are no longer lost when you start a rematch from the end-of-game screen. The rematch was being created with the default rules instead of the rules of the game you just played, due to a stale-value bug, so you could not discard all 5 cards even with 5-Card Draw enabled. Rematches now correctly carry the same house rules as the finished game.'] },
     { version: '2.31.49', date: 'May 2026', changes: ['Fix: corrected the Firebase web API key in the config, which was stale and did not match the project. Gameplay was unaffected (the database uses a different path) but it was the reason App Check tokens were all being rejected as invalid. App Check should now verify correctly.'] },
     { version: '2.31.48', date: 'May 2026', changes: ['Security: added Firebase App Check (reCAPTCHA v3) so the database can verify requests come from the real app and not a script. Currently in monitor-only mode — it records but does not block anything yet, so there is no gameplay impact while we confirm legitimate traffic verifies cleanly.'] },
     { version: '2.31.47', date: 'May 2026', changes: ['AI: when an AI partnered with a HUMAN is in a desperate spot (the opponents are one bid from winning), it again uses the defensive bag-the-dealer logic — passing to force the opponent dealer into a bid they may not make, instead of opening a hopeless bid. v2.31.44 had accidentally disabled all desperation logic for the AI when partnered with a human; now only the aggressive overbid sacrifices stay disabled (those remain the human decision), while the defensive passes and genuine strong-hand bids work normally again.'] },
@@ -15684,12 +15685,12 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     console.log('Creating rematch game...');
     try {
       const newGameId = await FirebaseAPI.createRematchGame(gameId, players, userId, gameOptions);
-      console.log('Rematch game created:', newGameId);
+      console.log('Rematch game created:', newGameId, 'options:', gameOptions);
       // The nextGameId listener in GameWrapper will handle the transition for all players
     } catch (error) {
       console.error('Failed to create rematch:', error);
     }
-  }, [gameId, players, userId]);
+  }, [gameId, players, userId, gameOptions]);
 
   // Render based on phase
   if (phase === 'start') {
