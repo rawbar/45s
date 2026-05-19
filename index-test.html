@@ -3394,7 +3394,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.48';
+const VERSION = '2.31.49';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4203,7 +4203,7 @@ function chooseCardMonteCarloAI(gameState, playableCards) {
 // ============================================================================
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDr-sFNC9l-k8iDlmE5vCRr_7W6gX7-xyg",
+  apiKey: "AIzaSyDPglxBgfiBVvRxZSXrei3tAeJceZ8sWHI",
   authDomain: "fir-nbpt.firebaseapp.com",
   databaseURL: "https://fir-nbpt-default-rtdb.firebaseio.com",
   projectId: "fir-nbpt",
@@ -6379,6 +6379,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.49', date: 'May 2026', changes: ['Fix: corrected the Firebase web API key in the config, which was stale and did not match the project. Gameplay was unaffected (the database uses a different path) but it was the reason App Check tokens were all being rejected as invalid. App Check should now verify correctly.'] },
     { version: '2.31.48', date: 'May 2026', changes: ['Security: added Firebase App Check (reCAPTCHA v3) so the database can verify requests come from the real app and not a script. Currently in monitor-only mode — it records but does not block anything yet, so there is no gameplay impact while we confirm legitimate traffic verifies cleanly.'] },
     { version: '2.31.47', date: 'May 2026', changes: ['AI: when an AI partnered with a HUMAN is in a desperate spot (the opponents are one bid from winning), it again uses the defensive bag-the-dealer logic — passing to force the opponent dealer into a bid they may not make, instead of opening a hopeless bid. v2.31.44 had accidentally disabled all desperation logic for the AI when partnered with a human; now only the aggressive overbid sacrifices stay disabled (those remain the human decision), while the defensive passes and genuine strong-hand bids work normally again.'] },
     { version: '2.31.46', date: 'May 2026', changes: ['AI now deduces a player is out of trump when, forced to follow the 5 of trump, they played the Jack of trump — since the AI always discards its lowest trump first, the Jack must have been their only one. This sharper read feeds the next two fixes.', 'AI: a defender no longer concedes a guaranteed trick in the endgame. When the bidder leads a high offsuit (an Ace) on the 4th or 5th trick and the defender is out of that suit but holds trump, the defender now ruffs to win the trick and take the lead instead of throwing a low card away.', 'AI: your partner no longer trumps your already-winning card. When your offsuit card is the boss of its suit (e.g. the King, since the Ace is low offsuit) and every remaining opponent is known to be out of trump, your partner plays low and lets your trick stand instead of wasting a trump on it.'] },
