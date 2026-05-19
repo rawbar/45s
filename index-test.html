@@ -3394,7 +3394,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.50';
+const VERSION = '2.31.51';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5899,6 +5899,34 @@ if (trick.length > 0) {
           console.log(`🧠 PARTNER WIN: P${player + 1} saving the 5 of trump (boss) instead of dumping on partner's trick`);
           return playLowest();
         }
+        // pso:guard (v2.31.51): only overtake a partner already winning
+        // with trump if our high trump can SECURE it. We only reach here
+        // when opponents are NOT all trump-void, so if any unseen trump
+        // outranks our highTrump a later opponent could hold it \u2014 then
+        // overtaking is strictly dominated (they over-trump us anyway, or
+        // partner already had it won). Renege the boss for a later trick.
+        // (user-reported: North A\u2665 over partner 8\u2665 vs possible East J\u2665.)
+        {
+          const _seen = new Set([
+            ...(cardsPlayed || []).map(c => c.id),
+            ...hand.map(c => c.id),
+            ...trick.map(c => c.id)
+          ]);
+          const _htr = getTrumpRank(highTrump, trumpSuit);
+          let _bestUnseen = -1;
+          const _ids = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']
+            .map(r => ({ rank: r, suit: trumpSuit, id: `${r}${trumpSuit}` }));
+          if (trumpSuit !== '\u2665') _ids.push({ rank: 'A', suit: '\u2665', id: 'A\u2665' });
+          for (const c of _ids) {
+            if (_seen.has(c.id)) continue;
+            const r = getTrumpRank(c, trumpSuit);
+            if (r > _bestUnseen) _bestUnseen = r;
+          }
+          if (_bestUnseen > _htr) {
+            console.log(`\ud83e\udde0 PARTNER WIN: P${player + 1} not overtaking \u2014 unseen trump (rank ${_bestUnseen}) beats my ${highTrump.id}; saving it`);
+            return playLowest();
+          }
+        }
         const testTrick = [...trick, highTrump];
         while (testTrick.length < 4) testTrick.push({rank: '2', suit: '\u2660', id: 'dummy'});
         const testWinner = determineTrickWinner(testTrick, trumpSuit, leader);
@@ -6379,6 +6407,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.51', date: 'May 2026', changes: ['AI: your partner no longer wastes a high trump overtaking a trick you are already winning with trump when it cannot actually secure it. If a still-unknown opponent could hold a trump higher than your partner can play, the partner now keeps that trump for a later trick instead of burning it on a trick that is either already won or lost regardless.'] },
     { version: '2.31.50', date: 'May 2026', changes: ['Fix: 5-Card Draw (and other house rules) are no longer lost when you start a rematch from the end-of-game screen. The rematch was being created with the default rules instead of the rules of the game you just played, due to a stale-value bug, so you could not discard all 5 cards even with 5-Card Draw enabled. Rematches now correctly carry the same house rules as the finished game.'] },
     { version: '2.31.49', date: 'May 2026', changes: ['Fix: corrected the Firebase web API key in the config, which was stale and did not match the project. Gameplay was unaffected (the database uses a different path) but it was the reason App Check tokens were all being rejected as invalid. App Check should now verify correctly.'] },
     { version: '2.31.48', date: 'May 2026', changes: ['Security: added Firebase App Check (reCAPTCHA v3) so the database can verify requests come from the real app and not a script. Currently in monitor-only mode — it records but does not block anything yet, so there is no gameplay impact while we confirm legitimate traffic verifies cleanly.'] },
