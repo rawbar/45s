@@ -10,6 +10,7 @@
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-check-compat.js"></script>
   <!-- React -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -3393,7 +3394,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.47';
+const VERSION = '2.31.48';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4212,6 +4213,14 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+// App Check (reCAPTCHA v3) — domain-bound bot attestation. Site key is
+// public/domain-locked (safe in client code). Second arg = auto-refresh
+// the App Check token. RTDB enforcement stays in MONITOR until verified.
+try {
+  firebase.appCheck().activate('6Lc8O_IsAAAAAG43OgCeT9VCLnCP9xr_ePp8x1FQ', true);
+} catch (e) {
+  console.warn('App Check activate failed (continuing):', e);
+}
 const database = firebase.database();
 
 const FirebaseAPI = {
@@ -6370,6 +6379,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.48', date: 'May 2026', changes: ['Security: added Firebase App Check (reCAPTCHA v3) so the database can verify requests come from the real app and not a script. Currently in monitor-only mode — it records but does not block anything yet, so there is no gameplay impact while we confirm legitimate traffic verifies cleanly.'] },
     { version: '2.31.47', date: 'May 2026', changes: ['AI: when an AI partnered with a HUMAN is in a desperate spot (the opponents are one bid from winning), it again uses the defensive bag-the-dealer logic — passing to force the opponent dealer into a bid they may not make, instead of opening a hopeless bid. v2.31.44 had accidentally disabled all desperation logic for the AI when partnered with a human; now only the aggressive overbid sacrifices stay disabled (those remain the human decision), while the defensive passes and genuine strong-hand bids work normally again.'] },
     { version: '2.31.46', date: 'May 2026', changes: ['AI now deduces a player is out of trump when, forced to follow the 5 of trump, they played the Jack of trump — since the AI always discards its lowest trump first, the Jack must have been their only one. This sharper read feeds the next two fixes.', 'AI: a defender no longer concedes a guaranteed trick in the endgame. When the bidder leads a high offsuit (an Ace) on the 4th or 5th trick and the defender is out of that suit but holds trump, the defender now ruffs to win the trick and take the lead instead of throwing a low card away.', 'AI: your partner no longer trumps your already-winning card. When your offsuit card is the boss of its suit (e.g. the King, since the Ace is low offsuit) and every remaining opponent is known to be out of trump, your partner plays low and lets your trick stand instead of wasting a trump on it.'] },
     { version: '2.31.45', date: 'May 2026', changes: ['AI: a defender holding the A heart now also cashes it earlier when the 5 of trump is gone and it is the 4th or 5th trick — by then a live Jack of trump would almost certainly have been played, so the A heart is effectively unbeatable. The defender wins the trick now and takes the lead for a shot at a second trick, instead of dribbling the A heart to the dead last trick (extends the v2.31.43 fix to the case where the Jack sat unseen in the kitty).', 'AI: an AI partnered with a HUMAN no longer makes the spoiler sacrifice overbid (seizing an opponent likely-winning bid with a hand that cannot make it). It bids its own hand and lets you decide whether to overbid — consistent with the v2.31.44 desperation rule, and fixes the reported case where a partner overbid 25 over your valid 15, was set, and the opponent trick points won the game.'] },
