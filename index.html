@@ -10,6 +10,7 @@
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-check-compat.js"></script>
   <!-- React -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -3393,7 +3394,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.44';
+const VERSION = '2.31.52';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4202,7 +4203,7 @@ function chooseCardMonteCarloAI(gameState, playableCards) {
 // ============================================================================
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDr-sFNC9l-k8iDlmE5vCRr_7W6gX7-xyg",
+  apiKey: "AIzaSyDPglxBgfiBVvRxZSXrei3tAeJceZ8sWHI",
   authDomain: "fir-nbpt.firebaseapp.com",
   databaseURL: "https://fir-nbpt-default-rtdb.firebaseio.com",
   projectId: "fir-nbpt",
@@ -4212,6 +4213,14 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+// App Check (reCAPTCHA v3) — domain-bound bot attestation. Site key is
+// public/domain-locked (safe in client code). Second arg = auto-refresh
+// the App Check token. RTDB enforcement stays in MONITOR until verified.
+try {
+  firebase.appCheck().activate('6Lc8O_IsAAAAAG43OgCeT9VCLnCP9xr_ePp8x1FQ', true);
+} catch (e) {
+  console.warn('App Check activate failed (continuing):', e);
+}
 const database = firebase.database();
 
 const FirebaseAPI = {
@@ -4902,21 +4911,30 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   // =========================================================================
   // DESPERATION BIDDING LOGIC
   // =========================================================================
-  // (A v2.31.44) AI partnered with a HUMAN skips the desperation OVERBID
-  // logic entirely — it just bids its own hand and lets the human decide
-  // whether to overbid/sacrifice. (Rig is all-AI so partnerIsHuman is
-  // never set there → champion/rig unaffected, same as the v2.31.38 gate.)
-  if (desperation && !partnerIsHuman) {
+  // (v2.31.47) AI partnered with a HUMAN skips only the aggressive OVERBID
+  // SACRIFICES (RULE 1 forced-overbid-20, RULE 2 desp-25) — those are the
+  // frustrating doomed bids the human should own. The DEFENSIVE logic
+  // (RULE 3 pass-to-set, RULE 4 bag-the-dealer, genuine strong-hand bids)
+  // still runs: a defensive pass is the prudent conservative line and the
+  // human partner cannot make it themselves (they do not bid for the AI).
+  // v2.31.44 over-gated the whole block, so the AI partner opened a
+  // hopeless 15 instead of bagging the dealer (user-reported, US 80 /
+  // THEM 115). Rig is all-AI (partnerIsHuman always false) so the
+  // champion/rig path is bit-identical — no rig change needed.
+  if (desperation) {
     console.log(`🚨 DESPERATION MODE - They need ${theyNeed}, we need ${weNeed}`);
 
-    // RULE 1: If opponent bid 15 and they can win with 15, MUST overbid to 20
-    if (oppBidIs15 && theyCanWinWith15) {
+    // RULE 1: If opponent bid 15 and they can win with 15, MUST overbid to
+    // 20 (aggressive sacrifice — gated for a human partner; the human owns
+    // this overbid decision since the AI cannot know their hand).
+    if (oppBidIs15 && theyCanWinWith15 && !partnerIsHuman) {
       console.log(`🚨 Opponent bid 15 and can win - MUST bid 20`);
       return { bid: 20, suit };
     }
 
-    // RULE 2: If opponent bid 20 and they can win with 20, bid 25 if we're last chance
-    if (oppBidIs20 && theyCanWinWith20 && playerIndex === dealer) {
+    // RULE 2: If opponent bid 20 and they can win with 20, bid 25 if we're
+    // last chance (aggressive sacrifice — gated for a human partner).
+    if (oppBidIs20 && theyCanWinWith20 && playerIndex === dealer && !partnerIsHuman) {
       // (C v2.31.44) The 25-sacrifice is exploitable: a human bids 20 on
       // air knowing the AI always overbids into a doomed 25. 20-overbids
       // stay always-on. Here, ONLY when the hand is crap for 25 (can't
@@ -5023,7 +5041,14 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   // it (passing there is a near-certain loss). Incremental over the
   // validated v2.31.24 desperation: held-out +1.07pt in the trigger regime
   // (z=4.2, no unconditional regression, clean no-op outside trigger).
-  if (!_noSpoiler) {
+  // v2.31.45: an AI partnered with a HUMAN does not make the spoiler
+  // sacrifice — consistent with the v2.31.44 desperation/auto-15 gate
+  // ("AI bids its hand; the human owns overbid/sacrifice decisions").
+  // A doomed spoiler over an opponent's forced overbid throws the game
+  // (user-reported: partner spoiled 25 over the human's valid 15, set,
+  // opponent's trick points won the game). Rig is all-AI so partnerIsHuman
+  // is never set there → champion/rig unaffected, same as v2.31.44.
+  if (!_noSpoiler && !partnerIsHuman) {
     const oppHolds = (oppBidIs15 && currentHighBid === 15) ||
                      (oppBidIs20 && currentHighBid === 20) ||
                      (oppBidIs25 && currentHighBid === 25);
@@ -5422,9 +5447,18 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
         // proof. Otherwise every later seat must be unable to over-trump:
         // known trump-void, OR both cards that beat A♥ (5/J of trump) are
         // provably gone (played or in my hand).
+        // v2.31.45 (dca:jlate, rig-neutral, shipped for intuitive play /
+        // AI-logic trust per v2.31.30 precedent): by trick 4 a live J of
+        // trump (2nd-highest trump) would almost always have been played,
+        // so if 5-trump is gone and it is trick 4+ treat J as effectively
+        // dead even when unseen — cash A♥ now (win + take the lead, a shot
+        // at a 2nd defensive trick) instead of dribbling it to the dead
+        // trick 5. A♥ already beats every card on the table (trick-winner
+        // test above); the only residual risk is a later-seat J over-trump.
+        const _jlateOk = _fiveGone && trickNum >= 3;
         const _provablyBoss = _after.length === 0 || _after.every(idx =>
           (knownVoids && knownVoids[idx] && knownVoids[idx].trump === true) ||
-          (_fiveGone && _jackGone));
+          (_fiveGone && _jackGone) || _jlateOk);
         if (_provablyBoss) {
           console.log(`🎯 CASH BOSS A♥: P${player + 1} (defender) cashing provably-boss ${_ah.id} now — 5/J trump gone or later seats trump-void; not dribbling to trick 5`);
           return _ah;
@@ -5865,6 +5899,34 @@ if (trick.length > 0) {
           console.log(`🧠 PARTNER WIN: P${player + 1} saving the 5 of trump (boss) instead of dumping on partner's trick`);
           return playLowest();
         }
+        // pso:guard (v2.31.51): only overtake a partner already winning
+        // with trump if our high trump can SECURE it. We only reach here
+        // when opponents are NOT all trump-void, so if any unseen trump
+        // outranks our highTrump a later opponent could hold it \u2014 then
+        // overtaking is strictly dominated (they over-trump us anyway, or
+        // partner already had it won). Renege the boss for a later trick.
+        // (user-reported: North A\u2665 over partner 8\u2665 vs possible East J\u2665.)
+        {
+          const _seen = new Set([
+            ...(cardsPlayed || []).map(c => c.id),
+            ...hand.map(c => c.id),
+            ...trick.map(c => c.id)
+          ]);
+          const _htr = getTrumpRank(highTrump, trumpSuit);
+          let _bestUnseen = -1;
+          const _ids = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']
+            .map(r => ({ rank: r, suit: trumpSuit, id: `${r}${trumpSuit}` }));
+          if (trumpSuit !== '\u2665') _ids.push({ rank: 'A', suit: '\u2665', id: 'A\u2665' });
+          for (const c of _ids) {
+            if (_seen.has(c.id)) continue;
+            const r = getTrumpRank(c, trumpSuit);
+            if (r > _bestUnseen) _bestUnseen = r;
+          }
+          if (_bestUnseen > _htr) {
+            console.log(`\ud83e\udde0 PARTNER WIN: P${player + 1} not overtaking \u2014 unseen trump (rank ${_bestUnseen}) beats my ${highTrump.id}; saving it`);
+            return playLowest();
+          }
+        }
         const testTrick = [...trick, highTrump];
         while (testTrick.length < 4) testTrick.push({rank: '2', suit: '\u2660', id: 'dummy'});
         const testWinner = determineTrickWinner(testTrick, trumpSuit, leader);
@@ -5881,6 +5943,30 @@ if (trick.length > 0) {
         // Remaining opponents can't follow suit or trump - safe
         console.log(`\uD83E\uDDE0 PARTNER WIN: P${player + 1} opponents void in ${ledSuit} and trump - play low`);
         return playLowest();
+      }
+
+      // pob:save (v2.31.46): do NOT ruff partner's winning OFFSUIT card
+      // when it is the BOSS of the led suit (every higher led-suit card is
+      // played or in my hand) AND every remaining opp is provably trump-
+      // void (cannot over-ruff). In 45s a King is the off-suit boss and you
+      // may always trump instead of following \u2014 so the only airtight safety
+      // is provable trump-void. Partner's trick is then guaranteed; ruffing
+      // only burns a trump and steals partner's trick. (user-reported: bidder
+      // led boss K\u2666, partner ruffed 7\u2660 though East was deducibly trump-void.)
+      if (allRemainingOppsVoidInTrump) {
+        const wr = getOffSuitRank(winningCard);
+        let higherOut = false;
+        for (const r of ['2','3','4','5','6','7','8','9','10','J','Q','K','A']) {
+          const c = { rank: r, suit: ledSuit, id: `${r}${ledSuit}` };
+          if (getTrumpRank(c, trumpSuit) >= 0) continue;
+          if (getOffSuitRank(c) > wr && c.id !== winningCard.id &&
+              !(cardsPlayed || []).some(x => x.id === c.id) &&
+              !hand.some(x => x.id === c.id)) { higherOut = true; break; }
+        }
+        if (!higherOut) {
+          console.log(`\uD83E\uDDE0 PARTNER WIN: P${player + 1} not ruffing \u2014 ${winningCard.id} is led-suit boss, all remaining opps trump-void`);
+          return playLowest();
+        }
       }
 
       if (myTrumps.length > 0) {
@@ -6005,6 +6091,20 @@ if (trick.length > 0) {
     // EXCEPTION (v2.31.26) all removed — head-to-head audit proved each
     // net-negative. 2nd man now pure strict 2nd-man-low: conserve trump,
     // throw the lowest offsuit.
+
+    // dre:bidace_eg (v2.31.46): NARROW endgame exception. Defender, trick
+    // 4+ (trickNum 0-indexed >=3), the BIDDER led a high offsuit (an Ace —
+    // a guaranteed winner unless trumped), I am void with trump → cheap-
+    // ruff to deny the bidder a free trick and take the lead. Far tighter
+    // than the removed broad v2.31.25 (any 2nd-man void, any trick).
+    if (trickNum >= 3 && leader === bidWinner &&
+        (player % 2) !== (bidWinner % 2) &&
+        !isTrump(trick[0]) && trick[0].rank === 'A' && myTrumps.length > 0) {
+      const lowRuff = myTrumps.reduce((lo, c) =>
+        getTrumpRank(c, trumpSuit) < getTrumpRank(lo, trumpSuit) ? c : lo);
+      console.log(`🧠 2ND-MAN: P${player + 1} (defender) cheap-ruffs bidder's endgame Ace with ${lowRuff.id}`);
+      return lowRuff;
+    }
 
     // Otherwise play low (2nd man low principle)
     return playable.reduce((lowest, card) => {
@@ -6307,6 +6407,14 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.52', date: 'May 2026', changes: ['UI: the discard validation messages ("Must keep at least 1 card", "Must discard down to 5 cards") now use the same themed in-game toast as the Must Follow Suit message, instead of the raw browser pop-up dialog.'] },
+    { version: '2.31.51', date: 'May 2026', changes: ['AI: your partner no longer wastes a high trump overtaking a trick you are already winning with trump when it cannot actually secure it. If a still-unknown opponent could hold a trump higher than your partner can play, the partner now keeps that trump for a later trick instead of burning it on a trick that is either already won or lost regardless.'] },
+    { version: '2.31.50', date: 'May 2026', changes: ['Fix: 5-Card Draw (and other house rules) are no longer lost when you start a rematch from the end-of-game screen. The rematch was being created with the default rules instead of the rules of the game you just played, due to a stale-value bug, so you could not discard all 5 cards even with 5-Card Draw enabled. Rematches now correctly carry the same house rules as the finished game.'] },
+    { version: '2.31.49', date: 'May 2026', changes: ['Fix: corrected the Firebase web API key in the config, which was stale and did not match the project. Gameplay was unaffected (the database uses a different path) but it was the reason App Check tokens were all being rejected as invalid. App Check should now verify correctly.'] },
+    { version: '2.31.48', date: 'May 2026', changes: ['Security: added Firebase App Check (reCAPTCHA v3) so the database can verify requests come from the real app and not a script. Currently in monitor-only mode — it records but does not block anything yet, so there is no gameplay impact while we confirm legitimate traffic verifies cleanly.'] },
+    { version: '2.31.47', date: 'May 2026', changes: ['AI: when an AI partnered with a HUMAN is in a desperate spot (the opponents are one bid from winning), it again uses the defensive bag-the-dealer logic — passing to force the opponent dealer into a bid they may not make, instead of opening a hopeless bid. v2.31.44 had accidentally disabled all desperation logic for the AI when partnered with a human; now only the aggressive overbid sacrifices stay disabled (those remain the human decision), while the defensive passes and genuine strong-hand bids work normally again.'] },
+    { version: '2.31.46', date: 'May 2026', changes: ['AI now deduces a player is out of trump when, forced to follow the 5 of trump, they played the Jack of trump — since the AI always discards its lowest trump first, the Jack must have been their only one. This sharper read feeds the next two fixes.', 'AI: a defender no longer concedes a guaranteed trick in the endgame. When the bidder leads a high offsuit (an Ace) on the 4th or 5th trick and the defender is out of that suit but holds trump, the defender now ruffs to win the trick and take the lead instead of throwing a low card away.', 'AI: your partner no longer trumps your already-winning card. When your offsuit card is the boss of its suit (e.g. the King, since the Ace is low offsuit) and every remaining opponent is known to be out of trump, your partner plays low and lets your trick stand instead of wasting a trump on it.'] },
+    { version: '2.31.45', date: 'May 2026', changes: ['AI: a defender holding the A heart now also cashes it earlier when the 5 of trump is gone and it is the 4th or 5th trick — by then a live Jack of trump would almost certainly have been played, so the A heart is effectively unbeatable. The defender wins the trick now and takes the lead for a shot at a second trick, instead of dribbling the A heart to the dead last trick (extends the v2.31.43 fix to the case where the Jack sat unseen in the kitty).', 'AI: an AI partnered with a HUMAN no longer makes the spoiler sacrifice overbid (seizing an opponent likely-winning bid with a hand that cannot make it). It bids its own hand and lets you decide whether to overbid — consistent with the v2.31.44 desperation rule, and fixes the reported case where a partner overbid 25 over your valid 15, was set, and the opponent trick points won the game.'] },
     { version: '2.31.44', date: 'May 2026', changes: ['AI bidding less predictable: an AI partnered with a HUMAN no longer auto-overbids in desperation — it bids its own hand and lets you decide whether to overbid. AI opponents now sometimes (about half the time) pass a weak auto-15 open and, on a junk hand, sometimes decline the desperation overbid to 25 instead of always sacrificing — so a human can no longer reliably bait or predict the AI. This is a deliberate fun/unpredictability choice with a small, measured win-rate cost.'] },
     { version: '2.31.43', date: 'May 2026', changes: ['AI: a defender holding the A♥ (always the 3rd-highest trump) no longer hangs onto it until the meaningless last trick when the bidder keeps leading trump. If the A♥ is provably unbeatable (the 5 and Jack of trump are accounted for, or no remaining player can over-trump) the defender now cashes it on an earlier trick to steal a trick and fight for a second — fixes the reported case where the bidder ran every trump and the defender wasted the A♥ on trick 5.'] },
     { version: '2.31.42', date: 'May 2026', changes: ['Internal: per-player bid and card-play log records now stamp the build version, so offline analysis can separate builds (e.g. before vs after a rule change). No gameplay effect.'] },
@@ -13099,7 +13207,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [bidType, setBidType] = useState(null); // '30for60' or null
 
   // Follow suit toast
-  const [followSuitToast, setFollowSuitToast] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
 
   // House Rules overlay — shown once at game start if any options are active
   const [showHouseRules, setShowHouseRules] = useState(false);
@@ -14225,12 +14333,14 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     }
     
     if (keep.length < 1 && !gameOptions.fiveCardDraw) {
-      alert('Must keep at least 1 card!');
+      setToastMsg('Must Keep At Least 1 Card');
+      setTimeout(() => setToastMsg(null), 2000);
       return;
     }
     
     if (keep.length > 5) {
-      alert('Must discard down to 5 cards or fewer!');
+      setToastMsg('Must Discard Down To 5 Cards');
+      setTimeout(() => setToastMsg(null), 2000);
       return;
     }
     
@@ -14451,8 +14561,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     const playable = getPlayableCards(hand, trumpSuit, ledCard, ledSuit, gameOptions);
     
     if (!playable.some(c => c.id === card.id)) {
-      setFollowSuitToast(true);
-      setTimeout(() => setFollowSuitToast(false), 2000);
+      setToastMsg('Must Follow Suit');
+      setTimeout(() => setToastMsg(null), 2000);
       return;
     }
 
@@ -14617,6 +14727,20 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               newKnownOutOfTrump[tc.player] = true; // backward compat
               console.log(`\uD83E\uDDE0 INTEL: P${tc.player + 1} played offsuit on trump lead - may hold: ${possibleHoldings.join(', ')}`);
             }
+          } else if (tc.player !== trickLeader &&
+                     getTrumpRank(tc.card, trumpSuit) === 101 &&
+                     ledRank > 101) {
+            // j_trump_dump_void (sound deduction for this AI): the AI follows
+            // a trump lead with its LOWEST trump and never sheds the J to
+            // promote A\u2665 (a human play). A FOLLOWER who plays the J of trump
+            // onto the 5 of trump (rank 102 \u2014 the only card outranking it,
+            // so the trick is unwinnable) had J as its ONLY trump \u2192 fully
+            // trump-void thereafter. (user-confirmed, v2.31.45 K\u2666 ruff.)
+            newKnownVoids[tc.player].trump = true;
+            delete newKnownVoids[tc.player].possibleTrump;
+            delete newKnownVoids[tc.player].noLowTrump;
+            newKnownOutOfTrump[tc.player] = true;
+            console.log(`\uD83E\uDDE0 INTEL: P${tc.player + 1} forced-dumped J of trump on the 5 lead \u2192 trump-void`);
           }
         });
       } else {
@@ -15246,6 +15370,19 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 newKnownOutOfTrump[tc.player] = true;
                 console.log(`\uD83E\uDDE0 INTEL: P${tc.player + 1} played offsuit on trump lead - may hold: ${possibleHoldings.join(', ')}`);
               }
+            } else if (tc.player !== trickLeader &&
+                       getTrumpRank(tc.card, trumpSuit) === 101 &&
+                       ledRank > 101) {
+              // j_trump_dump_void (sound deduction for this AI): a FOLLOWER
+              // who plays the J of trump onto the 5 of trump (the only card
+              // outranking it \u2192 unwinnable trick) had J as its ONLY trump
+              // (AI follows lowest-first, never sheds J to promote A\u2665) \u2192
+              // fully trump-void. (user-confirmed, v2.31.45 K\u2666 ruff.)
+              newKnownVoids[tc.player].trump = true;
+              delete newKnownVoids[tc.player].possibleTrump;
+              delete newKnownVoids[tc.player].noLowTrump;
+              newKnownOutOfTrump[tc.player] = true;
+              console.log(`\uD83E\uDDE0 INTEL: P${tc.player + 1} forced-dumped J of trump on the 5 lead \u2192 trump-void`);
             }
           });
         } else {
@@ -15580,12 +15717,12 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     console.log('Creating rematch game...');
     try {
       const newGameId = await FirebaseAPI.createRematchGame(gameId, players, userId, gameOptions);
-      console.log('Rematch game created:', newGameId);
+      console.log('Rematch game created:', newGameId, 'options:', gameOptions);
       // The nextGameId listener in GameWrapper will handle the transition for all players
     } catch (error) {
       console.error('Failed to create rematch:', error);
     }
-  }, [gameId, players, userId]);
+  }, [gameId, players, userId, gameOptions]);
 
   // Render based on phase
   if (phase === 'start') {
@@ -16296,7 +16433,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         })()}
 
         {/* Follow suit toast */}
-        {followSuitToast && (
+        {toastMsg && (
           <div style={ currentThemeId === 'cyberpunk' ? {
             position: 'absolute',
             top: '50%',
@@ -16356,7 +16493,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             pointerEvents: 'none',
             whiteSpace: 'nowrap',
           }}>
-            Must Follow Suit
+            {toastMsg}
           </div>
         )}
 
