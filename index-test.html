@@ -11,6 +11,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-check-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
   <!-- React -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -3394,7 +3395,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.52';
+const VERSION = '2.31.53';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4222,6 +4223,12 @@ try {
   console.warn('App Check activate failed (continuing):', e);
 }
 const database = firebase.database();
+// Cloud Functions client — server-side PIN auth (verifyPin / registerPin).
+// pinHash now lives only at /auth/{username} (server-only); these callables
+// are the sole way to verify or set it from the client.
+const functions = firebase.app().functions('us-central1');
+const verifyPinFn = functions.httpsCallable('verifyPin');
+const registerPinFn = functions.httpsCallable('registerPin');
 
 const FirebaseAPI = {
   // Create new game
@@ -6407,6 +6414,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.53', date: 'May 2026', changes: ['Security: PIN verification now happens on the server. PIN hashes have been moved to a server-only location so a script cannot read them from the database — the previous setup left the hashes readable, which made offline PIN guessing possible. The client never sees the hash now; it sends username + PIN to a server function that does the check and returns success or a typed error (wrong PIN, too many attempts, etc.). Repeated wrong-PIN attempts are throttled with a temporary lockout. No user action required — your existing username and PIN keep working unchanged.'] },
     { version: '2.31.52', date: 'May 2026', changes: ['UI: the discard validation messages ("Must keep at least 1 card", "Must discard down to 5 cards") now use the same themed in-game toast as the Must Follow Suit message, instead of the raw browser pop-up dialog.'] },
     { version: '2.31.51', date: 'May 2026', changes: ['AI: your partner no longer wastes a high trump overtaking a trick you are already winning with trump when it cannot actually secure it. If a still-unknown opponent could hold a trump higher than your partner can play, the partner now keeps that trump for a later trick instead of burning it on a trick that is either already won or lost regardless.'] },
     { version: '2.31.50', date: 'May 2026', changes: ['Fix: 5-Card Draw (and other house rules) are no longer lost when you start a rematch from the end-of-game screen. The rematch was being created with the default rules instead of the rules of the game you just played, due to a stale-value bug, so you could not discard all 5 cards even with 5-Card Draw enabled. Rematches now correctly carry the same house rules as the finished game.'] },
@@ -7570,9 +7578,6 @@ function LoginScreen({ onLogin }) {
         }
       }
 
-      // Create new user
-      const pinHash = await hashPin(username, pin);
-
       // Validate email if provided
       const emailTrimmed = email.trim().toLowerCase();
       if (emailTrimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
@@ -7581,9 +7586,26 @@ function LoginScreen({ onLogin }) {
         return;
       }
 
+      // Server-side write-once PIN registration. /auth is server-only;
+      // the client never sees or writes the hash.
+      try {
+        await registerPinFn({ username: usernameLower, pin, uid: userId });
+      } catch (e) {
+        const code = (e && e.code) || '';
+        if (code === 'functions/already-exists') {
+          setError('Username already taken');
+        } else {
+          debug.error('registerPin failed:', e);
+          setError('Registration failed. Please try again.');
+        }
+        // Roll back the username reservation so a retry can succeed.
+        try { await usernameRef.remove(); } catch (_) {}
+        setLoading(false);
+        return;
+      }
+
       const newUser = {
         username: usernameLower,
-        pinHash,
         avatar: selectedAvatar,
         email: emailTrimmed || null,
         emailPromptShown: emailTrimmed ? true : false,
@@ -7638,33 +7660,57 @@ function LoginScreen({ onLogin }) {
     setError(null);
     
     try {
-      const check = await checkUsername(username);
-      
-      if (!check.exists) {
-        setError('Username not found');
+      // Server-side PIN verification. The callable reads the pinHash from
+      // /auth/{usernameLower} (server-only) — we never read it client-side.
+      let verifyResp;
+      try {
+        verifyResp = await verifyPinFn({ username: username.trim(), pin });
+      } catch (e) {
+        const code = (e && e.code) || '';
+        if (code === 'functions/not-found') {
+          setError('Username not found');
+        } else if (code === 'functions/permission-denied') {
+          setError('Incorrect PIN');
+        } else if (code === 'functions/resource-exhausted') {
+          setError('Too many attempts. Try again later.');
+        } else {
+          debug.error('verifyPin failed:', e);
+          setError('Login failed. Please try again.');
+        }
         setLoading(false);
         return;
       }
-      
-      // Verify PIN
-      const pinHash = await hashPin(username, pin);
-      if (pinHash !== check.userData.pinHash) {
-        setError('Incorrect PIN');
-        setLoading(false);
+
+      const userId = verifyResp && verifyResp.data && verifyResp.data.uid;
+      if (!userId) {
+        // Auth record has no uid yet (legacy account); fall back to the
+        // username index to recover it.
+        const check = await checkUsername(username);
+        if (!check.exists) {
+          setError('Account record missing. Please contact support.');
+          setLoading(false);
+          return;
+        }
+        debug.auth('Login successful (legacy uid fallback):', check.userId);
+        await database.ref(`users/${check.userId}/lastLogin`).set(Date.now());
+        localStorage.setItem('45s_username', username.trim());
+        localStorage.setItem('45s_userId', check.userId);
+        localStorage.setItem('45s_avatar', check.userData.avatar);
+        onLogin(check.userId, username.trim(), check.userData.avatar);
         return;
       }
-      
-      debug.auth('Login successful:', check.userId);
-      
-      // Update last login
-      await database.ref(`users/${check.userId}/lastLogin`).set(Date.now());
-      
-      // Save credentials
+
+      const userSnap = await database.ref('users/' + userId).once('value');
+      const userData = userSnap.val() || {};
+      debug.auth('Login successful:', userId);
+
+      await database.ref('users/' + userId + '/lastLogin').set(Date.now());
+
       localStorage.setItem('45s_username', username.trim());
-      localStorage.setItem('45s_userId', check.userId);
-      localStorage.setItem('45s_avatar', check.userData.avatar);
-      
-      onLogin(check.userId, username.trim(), check.userData.avatar);
+      localStorage.setItem('45s_userId', userId);
+      localStorage.setItem('45s_avatar', userData.avatar);
+
+      onLogin(userId, username.trim(), userData.avatar);
     } catch (err) {
       debug.error('Login failed:', err);
       setError('Login failed. Please try again.');
