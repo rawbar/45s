@@ -57,10 +57,26 @@ def trick_winner(cards: List[Card], trump: Suit, leader: int) -> int:
     return (leader + win_idx) % 4
 
 
-def _pad4(cards: List[Card]) -> List[Card]:
+def _pad4(cards: List[Card], trump: Optional[Suit] = None) -> List[Card]:
+    """Pad partial trick to 4 cards for trick_winner() probes.
+
+    LEGACY (trump=None): dummy is 2♣, which is itself trump in clubs games
+    and ranks 87 (above real 3-10 of clubs trump). That makes canBeat-style
+    probes incorrectly report "can't beat" for any low-trump candidate when
+    trump is clubs — the AI underplays trump in clubs-trump games as a
+    result (user-reported, round T4).
+
+    SAFE (trump=<suit>): dummy is 2 of a non-trump suit, so it never wins
+    any probe and the candidate's true rank decides correctly.
+    """
     out = list(cards)
+    if trump is None:
+        dummy = Card('2', Suit.CLUBS)  # legacy buggy default
+    else:
+        # 2 of a non-trump suit. 2♥ in non-hearts trump; 2♣ otherwise.
+        dummy = Card('2', Suit.HEARTS if trump != Suit.HEARTS else Suit.CLUBS)
     while len(out) < 4:
-        out.append(Card('2', Suit.CLUBS))
+        out.append(dummy)
     return out
 
 
@@ -380,6 +396,63 @@ class ImprovedAI:
                     cw = (leader + i) % 4
             partner_winning_now = (cw % 2) == (player % 2)
 
+        # ── DEFENDER CASH PROVABLY-BOSS A♥ (FIX v2.31.43) ────────────────────
+        # is_card_boss only proves boss when EVERY higher trump is in
+        # cards_played. A♥ (rank 100) is beaten only by 5-of-trump (102) and
+        # J-of-trump (101). When the J-of-trump is in the KITTY / a discard
+        # it is never in cards_played, so is_card_boss(A♥) is forever False
+        # and a defender who holds A♥ against a bidder leading trump every
+        # trick dribbles it onto the dead last trick (user-reported v2.31.42,
+        # round-summary screenshot). Here a DEFENDER who is FOLLOWING and can
+        # WIN the current trick with A♥ — while the BIDDING SIDE is currently
+        # winning it (real steal value) — cashes A♥ now, but ONLY when it is
+        # PROVABLY unbeatable for THIS trick: 5-trump gone AND J-trump gone
+        # ("gone" = in cards_played OR in my own hand), OR every seat that
+        # acts after me is KNOWN trump-void (cannot over-trump regardless).
+        # Airtight: A♥ definitely wins the trick in every triggering case;
+        # the only change is cashing it EARLY (tempo + a real shot at a
+        # second defensive trick via the lead) instead of wasting it T5.
+        # Flag-gated, default-ON; off:defender_cash_boss_ah reverts.
+        if (F('defender_cash_boss_ah') and not is_leading
+                and not partner_winning_now
+                and (player % 2) != (bid_winner % 2)):
+            _ah = next((c for c in playable
+                        if c.rank == 'A' and c.suit == HEARTS), None)
+            if _ah is not None and trick_winner(
+                    _pad4(trick + [_ah], trump if F('safe_pad4') else None), trump, leader) == player:
+                _tv = trump.value
+                _played_ids = {cid(c) for c in cards_played}
+                _hand_ids = {cid(c) for c in hand}
+                _gone = lambda _id: _id in _played_ids or _id in _hand_ids
+                _five_gone = _gone(f"5{_tv}")
+                _jack_gone = _gone(f"J{_tv}")
+                _after = [(leader + pos) % 4
+                          for pos in range(len(trick) + 1, 4)]
+                # No one acts after me → A♥ winning the test trick IS the
+                # full proof. Otherwise every later seat must be unable to
+                # over-trump: known trump-void, OR both cards that beat A♥
+                # (5/J of trump) are provably gone (played or in my hand).
+                #
+                # OPT-IN looser trigger (defender_cash_ah_jlate): by trick 4
+                # a live J-of-trump (2nd-highest trump) would almost always
+                # have been played; if 5-trump is gone and it is trick 4+,
+                # treat J as effectively dead even though unseen, so A♥ is
+                # cashed now (win + take the lead → shot at a 2nd defensive
+                # trick) instead of dribbling it to the dead trick 5. A♥
+                # already beats every card on the table (trick_winner check
+                # above); the only residual risk is a later-seat J over-
+                # trump, which this bets against. Absent in champion (Fon →
+                # bit-identical); the rig measures whether the bet is +EV.
+                _jlate_ok = (F('defender_cash_ah_jlate')
+                             and _five_gone and trick_num >= 4)
+                _provably_boss = (not _after) or all(
+                    (known_voids[idx].get('trump') is True)
+                    or (_five_gone and _jack_gone)
+                    or _jlate_ok
+                    for idx in _after)
+                if _provably_boss:
+                    return _ah
+
         # ── STRATEGIC PRIORITY #1: BOSS CARD ─────────────────────────────────
         if not partner_winning_now:
             for card in playable:
@@ -433,7 +506,7 @@ class ImprovedAI:
                             return min(offs2, key=get_offsuit_rank)
                     return card
                 else:
-                    test = _pad4(trick + [card])
+                    test = _pad4(trick + [card], trump if F('safe_pad4') else None)
                     if trick_winner(test, trump, leader) == player:
                         # PARTNER BOSS-SAVE (bidder's partner, enemy trump low)
                         is_partner = player == (bid_winner + 2) % 4
@@ -594,7 +667,7 @@ class ImprovedAI:
                       is_bidder_signaling(led_card, trump, cards_played, trick_num))
             if F('signal_3rd_man_high') and signal and my_position == 2 and my_trumps:
                 high_trump = max(my_trumps, key=lambda c: _tr(c, trump))
-                if trick_winner(_pad4(trick + [high_trump]), trump, leader) == player:
+                if trick_winner(_pad4(trick + [high_trump], trump if F('safe_pad4') else None), trump, leader) == player:
                     return high_trump
 
             if partner_winning:
@@ -608,9 +681,26 @@ class ImprovedAI:
                     if (pidx % 2) != my_team:
                         opp_after = True
                         ov = voids[pidx] if pidx < len(voids) and voids[pidx] else {}
-                        renege_all_mine = (ov.get('trump') == 'reneging' and
-                                           all(any(cid(c) == pid for c in hand)
-                                               for pid in ov.get('possibleTrump', [])))
+                        # A reneging opp is effectively trump-void iff every
+                        # trump they could still hold is PROVABLY GONE. Old
+                        # code only checked "all in MY hand" — so a renege
+                        # whose only possible trump was already PLAYED was
+                        # still treated as a live threat and the boss 5/J/AH
+                        # got dumped on an already-won trick (user-reported,
+                        # round-summary T3). Fix: also count played cards as
+                        # gone. Logically safe — only treats them as void
+                        # when they provably cannot beat our winner.
+                        _rt = ov.get('trump') == 'reneging'
+                        _pt = ov.get('possibleTrump', [])
+                        if F('partner_winning_renege_prune'):
+                            renege_all_mine = _rt and all(
+                                any(cid(c) == pid for c in hand)
+                                or any(cid(c) == pid for c in cards_played)
+                                for pid in _pt)
+                        else:
+                            renege_all_mine = _rt and all(
+                                any(cid(c) == pid for c in hand)
+                                for pid in _pt)
                         eff_void = ov.get('trump') is True or renege_all_mine
                         if not eff_void:
                             all_opps_void_trump = False
@@ -627,18 +717,89 @@ class ImprovedAI:
                         return play_lowest(playable)
                     if F('partner_low_trump_signal_response') and my_trumps:
                         ht = max(my_trumps, key=lambda c: _tr(c, trump))
-                        if trick_winner(_pad4(trick + [ht]), trump, leader) == player:
+                        # Never burn the 5 of trump (rank 102, absolute
+                        # boss — unbeatable) to respond to a signal when
+                        # partner already leads the trick: the 5 is a
+                        # guaranteed FUTURE trick, so spending it to
+                        # over-secure a trick partner already holds is
+                        # strictly dominated. (user-reported T3)
+                        if F('partner_save_boss5') and _tr(ht, trump) >= 102:
+                            return play_lowest(playable)
+                        # partner_signal_overtake_guard (opt-in; flag-absent
+                        # → unchanged, bit-identical). Overtaking a partner
+                        # who is ALREADY winning with trump only helps if our
+                        # high trump can actually SECURE the trick against
+                        # every later opponent. If a not-provably-void later
+                        # opponent could still hold a trump ABOVE ours, then:
+                        # they over-trump us anyway (we lose either way), OR
+                        # they cannot (partner already had it won) — in both
+                        # cases burning our boss here is strictly dominated by
+                        # reneging it for a future trick. (user-reported:
+                        # North played A♥ over partner's winning 8♥ while a
+                        # possible East J♥ beats A♥ regardless.)
+                        if F('partner_signal_overtake_guard') and not all_opps_void_trump:
+                            _tv = trump.value
+                            if trump in (Suit.HEARTS, Suit.DIAMONDS):
+                                _rk = ['5', 'J', 'A', 'K', 'Q', '10', '9',
+                                       '8', '7', '6', '4', '3', '2']
+                            else:
+                                _rk = ['5', 'J', 'A', 'K', 'Q', '2', '3',
+                                       '4', '6', '7', '8', '9', '10']
+                            _seen = ({cid(c) for c in cards_played}
+                                     | {cid(c) for c in hand}
+                                     | {cid(c) for c in trick})
+                            _all_t = [Card(r, trump) for r in _rk]
+                            if trump != Suit.HEARTS:
+                                _all_t.append(Card('A', Suit.HEARTS))
+                            _best_unseen = max(
+                                (_tr(c, trump) for c in _all_t
+                                 if cid(c) not in _seen), default=-1)
+                            if _best_unseen > _tr(ht, trump):
+                                return play_lowest(playable)
+                        if trick_winner(_pad4(trick + [ht], trump if F('safe_pad4') else None), trump, leader) == player:
                             return ht
                     return play_lowest(playable)
                 else:
                     if all_opps_no_threat:
                         return play_lowest(playable)
+                    # partner_off_boss_save (opt-in; flag-absent → unchanged,
+                    # bit-identical). Do NOT ruff partner's winning OFFSUIT
+                    # card when it is the BOSS of the led suit (every higher
+                    # led-suit card is played or in my hand) AND every
+                    # remaining opp is PROVABLY trump-void (cannot over-ruff).
+                    # In 45s you may always trump instead of following, so
+                    # the ONLY airtight safety is provable trump-void — not
+                    # "forced to follow". Partner's trick is then guaranteed;
+                    # ruffing only burns a trump and steals partner's trick
+                    # (user-reported v2.31.45: bidder led boss K♦, partner
+                    # ruffed 7♠ though East was deducibly trump-void). The
+                    # j_trump_dump_void inference makes this fire on that
+                    # case (East showed only J-trump on the 5-trump lead).
+                    if (F('partner_off_boss_save') and all_opps_void_trump):
+                        _ls = trick[0].suit
+                        _wr = get_offsuit_rank(winning_card)
+                        _hi_out = False
+                        for _r in ('2', '3', '4', '5', '6', '7', '8', '9',
+                                   '10', 'J', 'Q', 'K', 'A'):
+                            _c = Card(_r, _ls)
+                            if _is_trump(_c, trump):
+                                continue
+                            if (get_offsuit_rank(_c) > _wr
+                                    and cid(_c) != cid(winning_card)
+                                    and not any(cid(x) == cid(_c)
+                                                for x in cards_played)
+                                    and not any(cid(x) == cid(_c)
+                                                for x in hand)):
+                                _hi_out = True
+                                break
+                        if not _hi_out:
+                            return play_lowest(playable)
                     if my_trumps:
                         return min(my_trumps, key=lambda c: _tr(c, trump))
                     return play_lowest(playable)
 
             can_beat = any(
-                trick_winner(_pad4(trick + [c]), trump, leader) == player
+                trick_winner(_pad4(trick + [c], trump if F('safe_pad4') else None), trump, leader) == player
                 for c in playable)
             if not can_beat:
                 return play_lowest(playable)
@@ -656,7 +817,7 @@ class ImprovedAI:
                 if after and all(known_voids[idx].get('trump') is True
                                  for idx in after):
                     winners = [c for c in playable
-                               if trick_winner(_pad4(trick + [c]), trump,
+                               if trick_winner(_pad4(trick + [c], trump if F('safe_pad4') else None), trump,
                                                leader) == player]
                     if winners:
                         return min(winners,
@@ -666,7 +827,7 @@ class ImprovedAI:
 
             if my_position == 3:
                 winners = [c for c in playable
-                           if trick_winner(_pad4(trick + [c]), trump, leader) == player]
+                           if trick_winner(_pad4(trick + [c], trump if F('safe_pad4') else None), trump, leader) == player]
                 if winners:
                     return min(winners, key=lambda c: _tr(c, trump) if _is_trump(c, trump)
                                else get_offsuit_rank(c))
@@ -708,6 +869,22 @@ class ImprovedAI:
                     return max(my_offsuit, key=get_offsuit_rank)
 
             if my_position == 1:
+                # def_ruff_be_eg (opt-in; champion: flag-absent → unchanged,
+                # bit-identical). NARROW endgame variant of the REMOVED
+                # v2.31.25 ruff-cheap: fire ONLY when I am a DEFENDER, it is
+                # the endgame (trick>=4), the BIDDER led a high offsuit (an
+                # Ace — a guaranteed winner unless trumped), and I am void
+                # with trump in hand → cheap-ruff to deny the bidder a free
+                # trick and take the lead. Far tighter than v2.31.25 (which
+                # fired on ANY 2nd-man void, ANY trick, ANY led card → net-
+                # negative because early low-offsuit leads want 2nd-man-low).
+                if (F('def_ruff_be_eg') and my_trumps
+                        and leader == bid_winner
+                        and (player % 2) != (bid_winner % 2)
+                        and trick_num >= 4
+                        and not _is_trump(trick[0], trump)
+                        and trick[0].rank == 'A'):
+                    return min(my_trumps, key=lambda c: _tr(c, trump))
                 # v2.31.25/26: AFTER-VOID + RUFF-CHEAP + trick-3 partner-shed
                 # exception all removed (audit proved each net-negative).
                 # 2nd man = pure strict 2nd-man-low.

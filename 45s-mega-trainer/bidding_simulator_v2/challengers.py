@@ -55,6 +55,63 @@ CARD_RULES = [
                            # off: ablation reverts to pre-2.31.28 over-ruff.
     "endgame_lead_boss",   # SHIPPED v2.31.30 (el:strict), champion default-ON;
                            # off: ablation reverts to pre-2.31.30 boss-save.
+    "partner_save_boss5",  # FIX v2.31.39, champion default-ON: never burn
+                           # the 5 of trump (rank 102, unbeatable) to
+                           # respond to a partner-winning low-trump signal —
+                           # it is a guaranteed future trick. off: reverts.
+    "defender_cash_boss_ah",  # FIX v2.31.43, champion default-ON: a
+                           # defender FOLLOWING who can win the current
+                           # trick with A♥ while the bidding side is
+                           # winning it cashes A♥ now when it is PROVABLY
+                           # unbeatable for this trick (5/J-trump gone or
+                           # all later seats known trump-void) — instead of
+                           # dribbling it to the dead last trick because
+                           # is_card_boss can't prove boss while J-trump is
+                           # in the kitty (user-reported v2.31.42). off:
+                           # reverts to the kitty-blind is_card_boss path.
+    "partner_signal_overtake_guard",  # SHIPPED v2.31.51, champion
+                           # default-ON (rig +0.08/+0.09, comeback
+                           # +0.10/+0.12, n.s.). Don't overtake a partner
+                           # already winning with trump when a not-void
+                           # later opp could hold a higher trump (futile).
+                           # off: reverts to always-respond-to-signal.
+    "def_ruff_be_eg",          # SHIPPED v2.31.46, champion default-ON
+                           # (rig-NEUTRAL): defender cheap-ruffs the bidder's
+                           # endgame offsuit Ace instead of strict 2nd-man-
+                           # low sluff. off: reverts to strict 2nd-man-low.
+    "partner_off_boss_save",   # SHIPPED v2.31.46, champion default-ON
+                           # (rig-NEUTRAL): don't ruff partner's winning
+                           # offsuit card when it is the led-suit boss AND
+                           # all remaining opps provably trump-void. off:
+                           # reverts to always-ruff-to-secure.
+    "defender_cash_ah_jlate",  # SHIPPED v2.31.45, champion default-ON
+                           # (rig-NEUTRAL: 50.04% primary / 50.03% held-out,
+                           # z<0.35, comeback ~0). Looser defender A♥ cash:
+                           # 5-trump gone + trick>=4 ⇒ treat J as dead even
+                           # if unseen (would have been played by trick 4).
+                           # Shipped for intuitive play / AI-logic trust at
+                           # zero win-rate cost (v2.31.30 precedent). off:
+                           # reverts to the strict 5-AND-J-provably-gone gate.
+    "safe_pad4",               # FIX v2.31.55, champion default-ON: the
+                           # _pad4 helper pads partial tricks for trick_winner
+                           # probes (canBeat / cheapest-winner / 3rd-man-high).
+                           # Legacy dummy was hardcoded 2♣ — which IS trump
+                           # in clubs-trump games and ranks 87, above the real
+                           # 3-10 of clubs. canBeat therefore misreported
+                           # "can't beat" for low-trump candidates in clubs
+                           # trump, and the AI dumped offsuit instead of
+                           # over-trumping (user-reported, round T4 north
+                           # held 4♣ vs 8♣). Fix: dummy is 2 of a non-trump
+                           # suit. Primary 20k +0.39pt z=1.56 / held-out 30k
+                           # +0.38pt z=1.85 (replicated, comeback +0.18/+0.22
+                           # n.s.). off: reverts to the buggy 2♣ dummy.
+    "partner_winning_renege_prune",  # FIX v2.31.39, champion default-ON:
+                           # partner-winning block treats a reneging opp as
+                           # trump-void if every possibly-reneged trump is
+                           # PROVABLY GONE (my hand OR already played), not
+                           # just "all in my hand". Stops the boss 5/J/AH
+                           # being dumped on an already-won trick (user-
+                           # reported T3). off: reverts to hand-only check.
     # following_2nd_man_after_void / ruff_cheap (v2.31.25) and trick3_exception
     # (v2.31.26) removed — audit net-negative, no longer in code.
 ]
@@ -128,6 +185,37 @@ def _el(name: str, flags: dict):
 REGISTRY["el:est"]    = _el("el:est", {'endgame_lead_boss_est': True})
 
 
+# safe:pad4 promoted to champion v2.31.55 (default-ON; rig +0.39pt z=1.56
+# primary 20k / +0.38pt z=1.85 held-out 30k, replicated). The meaningful
+# test now = off:safe_pad4 (auto from CARD_RULES, reverts to the buggy
+# 2♣ dummy). The legacy dummy was logically wrong in clubs-trump games.
+
+
+# pso:guard removed — it IS the champion now (SHIPPED v2.31.51, default-ON;
+# rig consistently +0.08/+0.09 unconditional & +0.10/+0.12 comeback, both
+# samples, z<1 n.s. — shipped as a non-negative trust fix per v2.31.30
+# precedent). Meaningful test = off:partner_signal_overtake_guard (auto
+# from CARD_RULES). user-reported: North played A♥ over partner's winning
+# 8♥ though a possible East J♥ beats A♥ regardless.
+
+
+# dre:bidace_eg / pob:save removed — both ARE the champion now (SHIPPED
+# v2.31.46, default-ON; rig-NEUTRAL 50.00%/50.00% z≈0 both samples,
+# shipped for intuitive play / AI-logic trust per v2.31.30 precedent +
+# user-confirmed j_trump_dump_void deduction). Meaningful tests are the
+# auto off:def_ruff_be_eg / off:partner_off_boss_save from CARD_RULES.
+# NOTE: j_trump_dump_void (the sound "follower J-on-5-lead → trump-void"
+# deduction) is baked into round_runner._update_known_voids (harness
+# deduction layer, NOT an ai_flag) — it only ever adds PROVABLY-true
+# voids, so it is not ablation-gated.
+
+
+# dca:jlate removed — it IS the champion now (SHIPPED v2.31.45, default-ON;
+# rig-neutral, shipped for intuitive play / AI-logic trust). The meaningful
+# test is off:defender_cash_ah_jlate (auto from CARD_RULES, ablates back to
+# the strict 5-AND-J-provably-gone gate of v2.31.43).
+
+
 class BidTighten5JT4(Policy):
     """DATA-DRIVEN (5M v2.31.27 re-run): category 5_J_T4 (has5 ∧ hasJ ∧ 4
     trump ∧ no A♥ ∧ no A-trump) refreshed round-EV says open 20 (EV+19.50)
@@ -164,6 +252,59 @@ class Spoiler(Policy):
 
 
 REGISTRY["spoiler"] = Spoiler()
+
+
+# RANDOMIZED AUTO-15 PASS (opt-in; champion default prob 0.0 = current nd,
+# bit-identical). The auto-15 on residual (5M-oracle-pass) hands is +EV
+# but deterministic → predictable/exploitable and human-frustrating. These
+# variants pass that residual open with probability p (mixed strategy).
+# The rig measures the EV cost of each dial so the user can choose the
+# setting with eyes open (cost is informational, NOT a ship gate — this
+# is a deliberate enjoyment/unpredictability-over-stats choice).
+class RndPass(Policy):
+    def __init__(self, p):
+        self.p = p
+        self.name = f"rnd:p{int(p*100):02d}"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  loose_open_pass_prob=self.p)
+
+
+for _p in (0.25, 0.50, 0.75):
+    _rp = RndPass(_p)
+    REGISTRY[_rp.name] = _rp
+
+
+# RANDOMIZED DESPERATION 25-SACRIFICE (opt-in; champion default 0.0 =
+# bit-identical). The hand-blind overbid to 25 (deny opp's game-point 20)
+# is exploitable + frustrating. These variants pass it with probability p
+# ONLY when the hand is crap for 25 (cannot even make 20 → pure
+# sacrifice); 20-overbids and real (can20_60) hands stay deterministic.
+# Rig measures the EV cost of each dial (informational, not a gate —
+# enjoyment/unpredictability-over-stats).
+class RndDesp25(Policy):
+    def __init__(self, p):
+        self.p = p
+        self.name = f"d25:p{int(p*100):02d}"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  desp_overbid25_pass_prob=self.p)
+
+
+for _p in (0.25, 0.50, 0.75):
+    _rd = RndDesp25(_p)
+    REGISTRY[_rd.name] = _rd
+
+
+# NOTE: a desp:callbluff challenger (pass instead of the desperation
+# sacrifice-overbid when holding "strong defensive trump") was built and
+# REMOVED — fatally flawed: the bid is made BEFORE trump selection, so the
+# AI cannot know its trump strength (the opponent picks the suit). The
+# only always-trump card is A♥; everything else (5/J/high-trump in our own
+# best suit) is irrelevant once the opponent chooses a different trump.
+# Any real call-the-bluff must be SCORE/odds-driven (or A♥-only), not
+# based on our hand's trump — and the all-AI rig cannot model a human who
+# deliberately bluff-bids at game point. Parked pending user direction.
 
 
 # ENDGAME POINT-BUDGET DENY (opt-in; champion default off). Bidder-side:
@@ -214,3 +355,201 @@ REGISTRY["bidder_lead_low_trump"] = _bllt
 # test is now the ablation `off:minwin_after_void` (auto-created from
 # CARD_RULES above), which reverts to pre-2.31.27 max-trump. The est
 # variant was proven mildly negative and is not in the champion at all.
+
+
+# LOOSER OPEN — SHIPPED v2.31.36 (champion default-ON via
+# bidding.decide_bid enable_loose_open=True). Rig-confirmed +3.52pt
+# held-out (z=17.2, 120k disjoint, replicated); data-derived from expert
+# aggression (bid-wins/game 2.45 vs robr 1.39 at the SAME ~23% set rate).
+# The old opt-in open:t3/t4/ah/at/loose challengers are GONE — open:loose
+# IS the champion now, and t3/t4/ah/at are strict subsets of it (adding
+# them on top of loose-champion is a no-op). The meaningful regression
+# test is the ablation `no-loose-open` below (reverts to pre-2.31.36).
+class NoLooseOpen(Policy):
+    name = "no-loose-open"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_loose_open=False)
+
+
+REGISTRY["no-loose-open"] = NoLooseOpen()
+
+
+# SEAT-AWARE OPEN (opt-in; champion default off). Forward-variant ON TOP
+# of the shipped loose-champion. Question (user): does bid-order position
+# matter? loose fires identically regardless of seat. This adds EXTRA
+# late-position aggression: when loose-champion STILL passes a clean open
+# (hand failed loose: <3 trump, no A♥, no A-trump) and the player is LATE
+# in bid order (>=2 earlier players already passed → strong evidence
+# partner+opps are weak, so the forced-bagged dealer likely holds junk),
+# open 15 anyway on a residual weak hand.
+#   open:seat2  late & >=2 trump
+#   open:seat1  late & >=1 trump (very aggressive)
+# bid-order position of p = (p - dealer - 1) mod 4 (0 = first to act,
+# dealer never reaches here — it is force-bagged at 15).
+class SeatOpen(Policy):
+    def __init__(self, min_trump):
+        self.min_trump = min_trump
+        self.name = f"open:seat{min_trump}"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb)
+        if b != 0:
+            return b, s                  # champion (incl. loose) bids
+        if chb != 0 or pb > 0:
+            return b, s                  # not a clean open spot
+        we_need = 120 - ts
+        if we_need <= 15 and os <= 85:   # cruise / ahead-protection
+            return b, s
+        bidorder = (pi - dl - 1) % 4
+        if bidorder < 2:                 # early position — status quo (loose)
+            return b, s
+        fb = bidding.find_best_trump_suit(hand)
+        suit, tc = fb['suit'], fb['trumpCount']
+        return (15, suit) if tc >= self.min_trump else (b, s)
+
+
+for _mt in (1, 2):
+    REGISTRY[f"open:seat{_mt}"] = SeatOpen(_mt)
+
+
+# EARLY-POSITION OPEN (opt-in; champion default off). User insight: the
+# real value of an aggressive open is largely a DENIAL effect — a P1 15
+# sets the floor BEFORE opponents act, so they can only bid 20+ (riskier,
+# more sets) or pass (concede the contract). That blocking value is
+# HIGHEST from early position (mirror-opposite of open:seat). When
+# loose-champion STILL passes a clean open (hand failed loose) and the
+# player is EARLY in bid order (bidorder < 2 — first or second to act,
+# i.e. P1/P2), open 15 anyway on a residual weak hand to deny opponents
+# the cheap 15. open:early2 = early & >=2 trump; open:early1 = early &
+# >=1 trump. Tests whether the extra-open edge concentrates early
+# (denial-driven) vs late (open:seat, info-driven) vs neither.
+class EarlyOpen(Policy):
+    def __init__(self, min_trump):
+        self.min_trump = min_trump
+        self.name = f"open:early{min_trump}"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb)
+        if b != 0:
+            return b, s                  # champion (incl. loose) bids
+        if chb != 0 or pb > 0:
+            return b, s                  # not a clean open spot
+        we_need = 120 - ts
+        if we_need <= 15 and os <= 85:   # cruise / ahead-protection
+            return b, s
+        bidorder = (pi - dl - 1) % 4
+        if bidorder >= 2:                # late position — status quo (loose)
+            return b, s
+        fb = bidding.find_best_trump_suit(hand)
+        suit, tc = fb['suit'], fb['trumpCount']
+        return (15, suit) if tc >= self.min_trump else (b, s)
+
+
+for _mt in (1, 2):
+    REGISTRY[f"open:early{_mt}"] = EarlyOpen(_mt)
+
+
+# UNCONDITIONAL OPEN (opt-in; champion default off). The likely ENDPOINT:
+# loose-champion + seat1 (late, confirmed +1.05) + early (untested) would
+# union to "in a clean open outside cruise, ALWAYS bid 15" — drop the
+# trump/honor condition entirely. This is the expert's LITERAL stated
+# heuristic ("almost always bid at least 15"). Test the endpoint directly
+# so we ship the final rule ONCE instead of loose→seat1→union in 3 hops.
+class AlwaysOpen(Policy):
+    name = "open:always"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb)
+        if b != 0:
+            return b, s
+        if chb != 0 or pb > 0:
+            return b, s
+        if (120 - ts) <= 15 and os <= 85:   # cruise / ahead-protection
+            return b, s
+        return 15, bidding.find_best_trump_suit(hand)['suit']
+
+
+REGISTRY["open:always"] = AlwaysOpen()
+
+
+# EARLY-GAME OPEN (opt-in; champion default off). THE EXPERT'S ACTUAL
+# STATED RULE (jack2112, messaged 2026-05-17): "early in the game he will
+# always bid 15; he evaluates more in later game as the score develops."
+# So aggression is conditioned on GAME PHASE BY SCORE — NOT hand-quality
+# (loose), NOT bid-order (seat/early — that is late-in-the-AUCTION, a
+# different 'late'), NOT all-game-unconditional (open:always, which the
+# expert explicitly is NOT). Rule: in a clean open outside the cruise
+# regime, if the game is EARLY (neither team's score has developed past
+# the threshold) → open 15 unconditionally; once scores develop → fall
+# straight back to champion (loose + cruise + desperation + spoiler =
+# the 'evaluate as the score develops' logic). Graduated thresholds on
+# max(team,opp) score — the rig picks where early-aggression stops
+# paying:  open:eg40 (<40), open:eg60 (<60), open:eg80 (<80).
+class EarlyGameOpen(Policy):
+    def __init__(self, thresh):
+        self.thresh = thresh
+        self.name = f"open:eg{thresh}"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb)
+        if b != 0:
+            return b, s                  # champion (incl. loose) bids
+        if chb != 0 or pb > 0:
+            return b, s                  # not a clean open spot
+        if (120 - ts) <= 15 and os <= 85:   # cruise / ahead-protection
+            return b, s
+        if max(ts, os) >= self.thresh:   # scores developed → champion judges
+            return b, s
+        return 15, bidding.find_best_trump_suit(hand)['suit']  # early → always 15
+
+
+for _t in (40, 60, 80):
+    REGISTRY[f"open:eg{_t}"] = EarlyGameOpen(_t)
+
+
+# DESPERATION-GUARDED OPEN (opt-in; champion default off). User insight
+# (2026-05-17), verified in code: the -2.11pt comeback drag of
+# open:always is NOT an inherent cost of aggression — it is a LEAK. When
+# desperation is active (they_need<=15 & we_need>0 == opp>=105 & we
+# behind), the desperation block OWNS that regime: with opp_has_dealer it
+# returns 20-fight / pass; but in the not-opp_has_dealer weak-hand case
+# it FALLS THROUGH to the (baked) loose-open, which bids 15 on junk and
+# deepens the loss. Fix = let desperation own that regime: gate the open
+# with `not desperation`. Champion is called with loose OFF, then the
+# open is re-applied here WITH the desperation guard (and the existing
+# cruise guard), so the leak is removed at the source.
+#   open:ndloose  minimal: shipped loose condition + desperation guard
+#                 (pure leak-fix of the SHIPPED rule, hand cond kept)
+#   open:nd       maximal: UNCONDITIONAL clean-open + desperation guard
+#                 (= open:always with the comeback leak removed)
+class DespGuardedOpen(Policy):
+    def __init__(self, unconditional):
+        self.unconditional = unconditional
+        self.name = "open:nd" if unconditional else "open:ndloose"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        # champion WITHOUT baked loose — so desperation/standard decide
+        # first; loose's in-desperation leak cannot fire at the source.
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_loose_open=False)
+        if b != 0:
+            return b, s                       # champion (incl. desp) bids
+        if chb != 0 or pb > 0:
+            return b, s                       # not a clean open spot
+        we_need, they_need = 120 - ts, 120 - os
+        if we_need <= 15 and os <= 85:        # cruise / ahead-protection
+            return b, s
+        if they_need <= 15 and we_need > 0:   # DESPERATION owns this regime
+            return b, s                       # → defer (no junk 15 leak)
+        fb = bidding.find_best_trump_suit(hand)
+        suit, tc = fb['suit'], fb['trumpCount']
+        if self.unconditional:
+            return 15, suit
+        hasAH = bidding.has_ace_hearts(hand)
+        hasAT = bidding.has_ace_trump(hand, suit)
+        return (15, suit) if (tc >= 3 or hasAH or hasAT) else (b, s)
+
+
+REGISTRY["open:ndloose"] = DespGuardedOpen(False)
+REGISTRY["open:nd"]      = DespGuardedOpen(True)
