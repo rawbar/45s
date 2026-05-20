@@ -4,7 +4,7 @@ const { GoogleAuth } = require('google-auth-library');
 
 const PROJECT_ID = 'fir-nbpt';
 const REGION = 'us-central1';
-const SERVICES = ['verifypin', 'registerpin'];
+const SERVICES = ['verifypin', 'registerpin', 'getvoicetoken'];
 
 async function main() {
   const auth = new GoogleAuth({

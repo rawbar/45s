@@ -10,10 +10,18 @@
 // so already-migrated hashes verify unchanged (no user PIN reset needed).
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
+const { RtcTokenBuilder, RtcRole } = require('agora-token');
 
 admin.initializeApp();
+
+// Agora token mint secret — value lives in Secret Manager as AGORA_APP_CERT.
+// Anyone with this can mint tokens for any channel/user, so it must never
+// reach the client or git.
+const AGORA_APP_CERT = defineSecret('AGORA_APP_CERT');
+const AGORA_APP_ID = '5a005fca7bf0401c9df7fd6665a99c28';
 
 function hashPin(username, pin) {
   return crypto
@@ -93,3 +101,45 @@ exports.registerPin = onCall({ region: 'us-central1' }, async (req) => {
   await ref.set({ uid: String(uid), pinHash: hashPin(username, pin) });
   return { ok: true };
 });
+
+// Mint an Agora RTC token bound to (channel, uid). The channel name and uid
+// sanitisation MUST match the client's VoiceChat.join() in index.html exactly,
+// otherwise the token won't verify when the client presents it to Agora.
+//
+// Verification policy: the caller must be a player in /games/{gameId}. That
+// data is publicly readable, so this only narrows abuse to "must claim a real
+// player slot in a real live game" — App Check (once enforced) will close
+// the residual hole by attesting that the caller is a real app instance.
+exports.getVoiceToken = onCall(
+  { region: 'us-central1', secrets: [AGORA_APP_CERT] },
+  async (req) => {
+    const gameId = req.data && req.data.gameId;
+    const uid = req.data && req.data.uid;
+    if (!gameId || !uid) {
+      throw new HttpsError('invalid-argument', 'gameId and uid required');
+    }
+
+    const playerSnap = await admin.database()
+      .ref('games/' + gameId + '/players/' + uid).get();
+    if (!playerSnap.exists()) {
+      throw new HttpsError('permission-denied', 'Not a player in this game');
+    }
+
+    const channel = (String(gameId).replace(/^-+/, '').slice(0, 64)) || 'default';
+    const cleanUid = String(uid).replace(/^-+/, '').slice(0, 64);
+    const ttlSec = 60 * 60; // 1h — long enough for a full game, short enough to bound abuse
+    const privilegeExpire = Math.floor(Date.now() / 1000) + ttlSec;
+
+    const token = RtcTokenBuilder.buildTokenWithUserAccount(
+      AGORA_APP_ID,
+      AGORA_APP_CERT.value(),
+      channel,
+      cleanUid,
+      RtcRole.PUBLISHER,
+      ttlSec,
+      privilegeExpire,
+    );
+
+    return { token, channel, uid: cleanUid, expiresAt: privilegeExpire * 1000 };
+  },
+);
