@@ -3395,7 +3395,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.53';
+const VERSION = '2.31.55';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -3734,13 +3734,26 @@ const VoiceChat = (() => {
       _client.enableAudioVolumeIndicator();
       _client.on('volume-indicator', (vols) => { if (_onSpeaking) _onSpeaking(vols); });
 
+      // Server-side token: a Cloud Function verifies the user is actually a
+      // player in this game, then mints a channel+uid-bound token signed
+      // with the (server-only) App Certificate. Falls back to null while
+      // Agora's auth mode is still permissive — once auth mode is flipped
+      // to "App ID + Token", null is rejected and only signed tokens work.
+      let token = null;
       try {
-        await _client.join(APP_ID, channel, null, uid);
+        const resp = await getVoiceTokenFn({ gameId, uid: userId });
+        token = (resp && resp.data && resp.data.token) || null;
+      } catch (e) {
+        console.warn('🎙 token fetch failed (joining with null while permissive):', e);
+      }
+
+      try {
+        await _client.join(APP_ID, channel, token, uid);
         _localTrack = await AgoraRTC.createMicrophoneAudioTrack();
         await _client.publish([_localTrack]);
         _active = true;
         _muted = false;
-        console.log('🎙 Voice joined:', channel);
+        console.log('🎙 Voice joined:', channel, token ? '(token)' : '(null)');
       } catch (e) {
         _client = null;
         throw e;
@@ -4229,6 +4242,10 @@ const database = firebase.database();
 const functions = firebase.app().functions('us-central1');
 const verifyPinFn = functions.httpsCallable('verifyPin');
 const registerPinFn = functions.httpsCallable('registerPin');
+// Mints an Agora RTC token bound to the channel + user. Called from
+// VoiceChat.join() before connecting to Agora — server verifies the user
+// is a player in the requested game.
+const getVoiceTokenFn = functions.httpsCallable('getVoiceToken');
 
 const FirebaseAPI = {
   // Create new game
@@ -4818,6 +4835,15 @@ function determineTrickWinner(trick, trumpSuit, startPlayer) {
   let winIdx = 0, winCard = trick[0];
   for (let i = 1; i < 4; i++) { if (cardBeats(trick[i], winCard, trumpSuit, ledSuit)) { winIdx = i; winCard = trick[i]; } }
   return (startPlayer + winIdx) % 4;
+}
+
+// 2 of a NON-trump suit — used to pad partial tricks for trick-winner
+// probes (canBeat / cheapest-winner / 3rd-man-high). A trump dummy would
+// artificially beat low real trumps in clubs/spades-trump games because
+// 2 of black-trump ranks 87 (above 3-10 of trump), so the dummy "won"
+// every probe and the AI under-played trump (user-reported, round T4).
+function dummyPadCard(trumpSuit) {
+  return { rank: '2', suit: trumpSuit === '♥' ? '♣' : '♥', id: 'dummy' };
 }
 
 const hasCard = (hand, rank, suit) => hand.some(c => c.rank === rank && c.suit === suit);
@@ -5441,7 +5467,7 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     const _ah = playable.find(c => c.rank === 'A' && c.suit === '♥');
     if (_ah) {
       const _testTrick = [...trick, _ah];
-      while (_testTrick.length < 4) _testTrick.push({ rank: '2', suit: '♣', id: 'dummy' });
+      while (_testTrick.length < 4) _testTrick.push(dummyPadCard(trumpSuit));
       if (determineTrickWinner(_testTrick, trumpSuit, leader) === player) {
         const _playedIds = new Set((cardsPlayed || []).map(c => c.id));
         const _handIds = new Set((hand || []).map(c => c.id));
@@ -5552,7 +5578,7 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
         }
         // Following: verify boss card actually wins the current trick
         const testTrick = [...trick, card];
-        while (testTrick.length < 4) testTrick.push({rank: '2', suit: '\u2663', id: 'dummy'});
+        while (testTrick.length < 4) testTrick.push(dummyPadCard(trumpSuit));
         const winner = determineTrickWinner(testTrick, trumpSuit, leader);
         if (winner === player) {
           // PARTNER BOSS-SAVE: bidder's partner following with boss trump should save it
@@ -5819,7 +5845,7 @@ if (trick.length > 0) {
     });
     // Verify our highest trump can actually win before committing it
     const testTrick = [...trick, highTrump];
-    while (testTrick.length < 4) testTrick.push({rank: '2', suit: '\u2663', id: 'dummy'});
+    while (testTrick.length < 4) testTrick.push(dummyPadCard(trumpSuit));
     const testWinner = determineTrickWinner(testTrick, trumpSuit, leader);
     if (testWinner === player) {
       console.log(`\uD83D\uDCE2 BIDDER SIGNAL: P${player} (3rd pos) playing ${highTrump.id} trump in response to bidder's signal`);
@@ -5935,7 +5961,7 @@ if (trick.length > 0) {
           }
         }
         const testTrick = [...trick, highTrump];
-        while (testTrick.length < 4) testTrick.push({rank: '2', suit: '\u2660', id: 'dummy'});
+        while (testTrick.length < 4) testTrick.push(dummyPadCard(trumpSuit));
         const testWinner = determineTrickWinner(testTrick, trumpSuit, leader);
         if (testWinner === player) {
           console.log(`\uD83E\uDDE0 PARTNER WIN: P${player + 1} responding to partner's low trump signal with ${highTrump.id}`);
@@ -5998,7 +6024,7 @@ if (trick.length > 0) {
     const testTrick = [...trick, card];
     // determineTrickWinner needs exactly 4 cards, so add dummy cards if needed
     while (testTrick.length < 4) {
-      testTrick.push({rank: '2', suit: '\u2663', id: 'dummy'});
+      testTrick.push(dummyPadCard(trumpSuit));
     }
     const winner = determineTrickWinner(testTrick, trumpSuit, leader);
     return winner === player;
@@ -6032,7 +6058,7 @@ if (trick.length > 0) {
       let cheapest = null, cheapestRank = 999;
       for (const card of playable) {
         const tt = [...trick, card];
-        while (tt.length < 4) tt.push({rank: '2', suit: '♣', id: 'dummy'});
+        while (tt.length < 4) tt.push(dummyPadCard(trumpSuit));
         if (determineTrickWinner(tt, trumpSuit, leader) === player) {
           const cr = isTrump(card) ? getTrumpRank(card, trumpSuit) : getOffSuitRank(card);
           if (cr < cheapestRank) { cheapest = card; cheapestRank = cr; }
@@ -6414,6 +6440,8 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.55', date: 'May 2026', changes: ['AI play fix: when checking "can my card take this trick?", the placeholder card used to fill empty seats in the test was hardcoded to 2♣, which is itself trump in clubs-trump games (and ranks higher than the real 3-10 of clubs trump). The check kept reporting "no, you can\'t win" for any low trump, so the AI dumped offsuit cards instead of trumping when it could have. Fix uses a 2 of a non-trump suit for the placeholder, so the check is accurate. User-reported case: North held 4♣ vs an opponent\'s 8♣ on trick 4 in clubs trump and dumped J♥ offsuit instead. Same bug also affected some spades-trump situations. Head-to-head simulation: 20k primary +0.39pt z=1.56 and disjoint 30k held-out +0.38pt z=1.85 (replicated, comeback equity +0.18/+0.22), so a small but consistent win-rate improvement on top of the logic correctness.'] },
+    { version: '2.31.54', date: 'May 2026', changes: ['Security: voice chat now uses a signed token. Before joining the voice channel, the app asks a server function to verify you are actually a player in the game and to mint a short-lived (1 hour) token bound to that specific channel and your user ID. The mint secret never reaches the browser. Functionally nothing changes — if your mic works today, it still works. The change closes a hole where anyone reading the public game list could have joined an active voice channel uninvited. (Strict server-enforced rejection of unsigned joins will be flipped on in Agora after a brief monitoring window.)'] },
     { version: '2.31.53', date: 'May 2026', changes: ['Security: PIN verification now happens on the server. PIN hashes have been moved to a server-only location so a script cannot read them from the database — the previous setup left the hashes readable, which made offline PIN guessing possible. The client never sees the hash now; it sends username + PIN to a server function that does the check and returns success or a typed error (wrong PIN, too many attempts, etc.). Repeated wrong-PIN attempts are throttled with a temporary lockout. No user action required — your existing username and PIN keep working unchanged.'] },
     { version: '2.31.52', date: 'May 2026', changes: ['UI: the discard validation messages ("Must keep at least 1 card", "Must discard down to 5 cards") now use the same themed in-game toast as the Must Follow Suit message, instead of the raw browser pop-up dialog.'] },
     { version: '2.31.51', date: 'May 2026', changes: ['AI: your partner no longer wastes a high trump overtaking a trick you are already winning with trump when it cannot actually secure it. If a still-unknown opponent could hold a trump higher than your partner can play, the partner now keeps that trump for a later trick instead of burning it on a trick that is either already won or lost regardless.'] },
