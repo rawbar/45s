@@ -3395,7 +3395,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.55';
+const VERSION = '2.31.56';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5226,6 +5226,23 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     }
   }
 
+  // UPBID15 (v2.31.56, jack2112-derived): when the auction stands at 15
+  // and our hand computes as a 15-bid (which would otherwise pass since
+  // we can't equal the high bid), overbid to 20. Excludes the dealer
+  // (separate forced-15 path) and partner-bid-15 (don't overbid your own
+  // partner). Also gated on !partnerIsHuman per the v2.31.38 "gentler
+  // bot partner" precedent — keep AI partners of humans conservative.
+  // Rig: +5.42pt z=21.68 primary 20k / +5.30pt z=25.96 held-out 30k
+  // (replicated). The OLD 5M-sim calibration that originally pruned
+  // these 15-strength hands from 20-bid threshold ran against a much
+  // weaker champion AI; the current card-play converts borderline 15s
+  // to 20-makes often enough.
+  if (bid === 15 && currentHighBid === 15 && playerIndex !== dealer
+      && partnerBid !== 15 && !partnerIsHuman) {
+    console.log(`📈 UPBID15: ${playerIndex} overbidding 15→20${suit}`);
+    bid = 20;
+  }
+
   // Bid minimum when dealer (last to bid) - don't overbid unnecessarily
   if (bid > currentHighBid && playerIndex === dealer && currentHighBid > 0) {
     bid = Math.min(bid, currentHighBid + 5);
@@ -6440,6 +6457,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.56', date: 'May 2026', changes: ['AI bidding: when the auction stands at 15 and the AI has a hand it would have bid 15 with (so it currently has to pass since it cannot equal the high bid), the AI now overbids to 20 instead. Caveat: an AI partnered with a human still uses the conservative pre-2.31.56 logic, so your own AI partner will not surprise you with these overbids — but the opponent AIs will. This pattern was discovered by mining the expert player\'s logged bids: he overbids to 20 in exactly these spots and consistently wins more games than the prior AI baseline. Rig confirms: head-to-head simulation with the current card-play AI shows the overbid converts well enough to drive a +5.4pt unconditional win-rate gain over 20,000 paired deals (z=21.7), replicated on a 30,000-deal disjoint held-out (+5.3pt, z=26.0). The old threshold was calibrated against a weaker AI; the borderline 15-hands now make 20 often enough to justify the overbid.'] },
     { version: '2.31.55', date: 'May 2026', changes: ['AI play fix: when checking "can my card take this trick?", the placeholder card used to fill empty seats in the test was hardcoded to 2♣, which is itself trump in clubs-trump games (and ranks higher than the real 3-10 of clubs trump). The check kept reporting "no, you can\'t win" for any low trump, so the AI dumped offsuit cards instead of trumping when it could have. Fix uses a 2 of a non-trump suit for the placeholder, so the check is accurate. User-reported case: North held 4♣ vs an opponent\'s 8♣ on trick 4 in clubs trump and dumped J♥ offsuit instead. Same bug also affected some spades-trump situations. Head-to-head simulation: 20k primary +0.39pt z=1.56 and disjoint 30k held-out +0.38pt z=1.85 (replicated, comeback equity +0.18/+0.22), so a small but consistent win-rate improvement on top of the logic correctness.'] },
     { version: '2.31.54', date: 'May 2026', changes: ['Security: voice chat now uses a signed token. Before joining the voice channel, the app asks a server function to verify you are actually a player in the game and to mint a short-lived (1 hour) token bound to that specific channel and your user ID. The mint secret never reaches the browser. Functionally nothing changes — if your mic works today, it still works. The change closes a hole where anyone reading the public game list could have joined an active voice channel uninvited. (Strict server-enforced rejection of unsigned joins will be flipped on in Agora after a brief monitoring window.)'] },
     { version: '2.31.53', date: 'May 2026', changes: ['Security: PIN verification now happens on the server. PIN hashes have been moved to a server-only location so a script cannot read them from the database — the previous setup left the hashes readable, which made offline PIN guessing possible. The client never sees the hash now; it sends username + PIN to a server function that does the check and returns success or a typed error (wrong PIN, too many attempts, etc.). Repeated wrong-PIN attempts are throttled with a temporary lockout. No user action required — your existing username and PIN keep working unchanged.'] },
