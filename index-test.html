@@ -3416,7 +3416,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.58';
+const VERSION = '2.31.59';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6554,6 +6554,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.59', date: 'May 2026', changes: ['Badges Phase 2a: instrumented six previously-locked badges so they now activate from gameplay: Razor\'s Edge (make a bid by exactly the bid amount), Suite Selector (win bids in all 4 trump suits), Trump Hoarder (win a round holding 5+J+A♥), Dead in the Water (make a bid with 2 or fewer trumps after draw), Carrying the Team (make a 20+ bid when partner drew 4 or 5), and Demolition (win where opponent finishes at -30 or below). Badge tooltips now show point values; badge borders use the tier color (gray/bronze/silver/sapphire/gold/legendary) so you can see at a glance how valuable each one is. The other locked badges (Sniper, Trump Drainer, Setter\'s Touch, Reverse Sweep, Survivor, Slow Burn, Final Stand, Untouchable Streak) remain pending in subsequent versions.'] },
     { version: '2.31.58', date: 'May 2026', changes: ['Badges: 19 new badges added across skill plays, bidding, drama, defense, streaks, and clean play (60 total now). Highlights: Trump Hoarder (hold all top-3 trump), Carrying the Team (make a 20+ bid when partner drew 4+), Final Stand (set the opp\'s game-winning bid), Survivor (win after team ≤0 with opp ≥100), Grandmaster (100 wins), and a new legendary tier with rainbow holographic glow border for the top apex badges: Lightning Round (win in 4 hands) and Unstoppable (10 in a row) both promoted to 50 pts; Bid Boss (10 30-bids career) and Streak Legend (15 in a row) added at 100 pts. Existing earnings auto-recompute against your stats at next view — anyone whose lifetime stats already qualify (e.g. ≥15 win streak, ≥100 wins, ≥50 clean wins) sees the badge unlocked immediately.'] },
     { version: '2.31.57', date: 'May 2026', changes: ['AI play: when the AI is the second player to act on trick 4 or 5, it now takes the trick with the cheapest card that wins — instead of always playing its lowest card to "conserve" for later. The general principle: at trick 4 the trick winner leads the final trick with everyone else holding only ONE card each, so taking trick 4 gives positional control over trick 5 too. This applies to all roles (defender, bidder, bidder\'s partner). User-derived from a round where the AI reneged its J of trump on the bidder\'s low-trump lead and the bid made; playing J would have set the bid. Head-to-head simulation: primary 20k +0.60pt z=2.42 / disjoint 30k held-out +0.70pt z=3.41 (replicated, comeback equity also directionally positive +0.54).'] },
     { version: '2.31.56', date: 'May 2026', changes: ['AI bidding: when the auction stands at 15 and the AI has a hand it would have bid 15 with (so it currently has to pass since it cannot equal the high bid), the AI now overbids to 20 instead. Caveat: an AI partnered with a human still uses the conservative pre-2.31.56 logic, so your own AI partner will not surprise you with these overbids — but the opponent AIs will. This pattern was discovered by mining the expert player\'s logged bids: he overbids to 20 in exactly these spots and consistently wins more games than the prior AI baseline. Rig confirms: head-to-head simulation with the current card-play AI shows the overbid converts well enough to drive a +5.4pt unconditional win-rate gain over 20,000 paired deals (z=21.7), replicated on a 30,000-deal disjoint held-out (+5.3pt, z=26.0). The old threshold was calibrated against a weaker AI; the borderline 15-hands now make 20 often enough to justify the overbid.'] },
@@ -13437,6 +13438,16 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const gameSetsOn20Ref = useRef(0);
   const gameSet3InGameRef = useRef(false);
   const gameFiveCardDrawUsedRef = useRef(0);
+  // Phase 2a (v2.31.58b) — new-badge counters
+  const gameExactBidsMadeRef = useRef(0);          // razors_edge
+  const gameSuiteSelectorRef = useRef({});         // suite_selector — {♠:true, ...}
+  const gameTopTrumpHandWinsRef = useRef(0);       // trump_hoarder — won round w/ 5+J+A♥
+  const gameDeadInWaterMadeRef = useRef(0);        // dead_in_water — bidder, post-draw trump≤2, made bid
+  const gameCarryingTeamMadeRef = useRef(0);       // carrying_the_team — bid≥20, partner drew≥4, made
+  // Round-start snapshots (filled by useEffect at phase=='playing')
+  const roundMyTrumpCount = useRef(0);             // for dead_in_water
+  const roundIHaveTop3 = useRef(false);            // for trump_hoarder
+  const roundPartnerDrawCount = useRef(0);         // for carrying_the_team
 
   // Extended per-game badge tracking
   const [gameConsec30s, setGameConsec30s] = useState(0);          // current consecutive perfect-30 rounds
@@ -13471,6 +13482,12 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     gameSetsOn20Ref.current = 0;
     gameSet3InGameRef.current = false;
     gameFiveCardDrawUsedRef.current = 0;
+    // Phase 2a counters reset
+    gameExactBidsMadeRef.current = 0;
+    gameSuiteSelectorRef.current = {};
+    gameTopTrumpHandWinsRef.current = 0;
+    gameDeadInWaterMadeRef.current = 0;
+    gameCarryingTeamMadeRef.current = 0;
     setGameTimesSet(0);
     setGamePerfect30s(0);
     setGameBid30Made(0);
@@ -13562,6 +13579,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 if (gameFiveCardDrawUsed) stats.wonAfter5Draw = (stats.wonAfter5Draw || 0) + 1;
                 if (myFinalScore === 120) stats.centurionGames = (stats.centurionGames || 0) + 1;
                 if (bothTeams120) stats.photoFinishGames = (stats.photoFinishGames || 0) + 1;
+                // Phase 2a game-end: demolition (opp finished at -30 or below)
+                if (typeof oppFinalScore === 'number' && oppFinalScore <= -30) {
+                  stats.demolitionWins = (stats.demolitionWins || 0) + 1;
+                }
                 // Card Shark: consecutive wins without being set
                 if (!wasSetThisGame.current) {
                   stats.cardSharkStreak = (stats.cardSharkStreak || 0) + 1;
@@ -13596,6 +13617,17 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               if (gameSetsOn20Ref.current > 0) stats.setsOn20 = (stats.setsOn20 || 0) + gameSetsOn20Ref.current;
               if (gameSet3InGameRef.current) stats.set3InGame = (stats.set3InGame || 0) + 1;
               if (gameFiveCardDrawUsedRef.current > 0) stats.fiveCardDrawUsed = (stats.fiveCardDrawUsed || 0) + gameFiveCardDrawUsedRef.current;
+              // Phase 2a counter writes
+              if (gameExactBidsMadeRef.current > 0) stats.exactBidsMade = (stats.exactBidsMade || 0) + gameExactBidsMadeRef.current;
+              if (gameTopTrumpHandWinsRef.current > 0) stats.topTrumpHandWins = (stats.topTrumpHandWins || 0) + gameTopTrumpHandWinsRef.current;
+              if (gameDeadInWaterMadeRef.current > 0) stats.deadInWaterMade = (stats.deadInWaterMade || 0) + gameDeadInWaterMadeRef.current;
+              if (gameCarryingTeamMadeRef.current > 0) stats.carryingTheTeamMade = (stats.carryingTheTeamMade || 0) + gameCarryingTeamMadeRef.current;
+              // suite_selector: bidMadeBySuit is an object of booleans, accumulated across games
+              const suitsThisGame = Object.keys(gameSuiteSelectorRef.current);
+              if (suitsThisGame.length > 0) {
+                stats.bidMadeBySuit = stats.bidMadeBySuit || {};
+                for (const s of suitsThisGame) stats.bidMadeBySuit[s] = true;
+              }
             }
 
             return stats;
@@ -13952,6 +13984,22 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       });
       bidderHadTopTrump.current = hasTop;
       console.log(`🗡️ Trump Slayer check: bidder P${bidWinner+1} hasTop=${hasTop}`);
+      // Phase 2a round-start snapshots for badge counters (my own POV).
+      if (mySeatIndex !== undefined && mySeatIndex !== null && gameState.hands[mySeatIndex]) {
+        const myHand = gameState.hands[mySeatIndex] || [];
+        roundMyTrumpCount.current = myHand.filter(c => {
+          if (!c) return false;
+          if (c.rank === 'A' && c.suit === '♥') return true;
+          return c.suit === trumpSuit;
+        }).length;
+        const has5 = myHand.some(c => c && c.rank === '5' && c.suit === trumpSuit);
+        const hasJ = myHand.some(c => c && c.rank === 'J' && c.suit === trumpSuit);
+        const hasAH = myHand.some(c => c && c.rank === 'A' && c.suit === '♥');
+        roundIHaveTop3.current = has5 && hasJ && hasAH;
+        const partnerSeat = (mySeatIndex + 2) % 4;
+        const drawn = gameState.drawn || gameState.cardsDrawn || [];
+        roundPartnerDrawCount.current = Array.isArray(drawn) ? (drawn[partnerSeat] || 0) : 0;
+      }
     }
   }, [phase]);
   
@@ -15075,6 +15123,19 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               setGamePerfect30s(p => p + 1);
             }
             if (!bidderHadTopTrump.current) gameTrumpSlayerRef.current += 1;
+            // Phase 2a per-round increments (bidder side)
+            if (excess === 0) gameExactBidsMadeRef.current += 1;
+            if (trumpSuit) gameSuiteSelectorRef.current[trumpSuit] = true;
+            if (roundMyTrumpCount.current <= 2) gameDeadInWaterMadeRef.current += 1;
+            if (highBid >= 20 && roundPartnerDrawCount.current >= 4) {
+              gameCarryingTeamMadeRef.current += 1;
+            }
+          }
+          // Phase 2a: trump_hoarder fires when MY team wins the round AND I held
+          // all top-3 trump (5+J+A♥) at round start (post-draw). Applies whether
+          // I was bidder or defender.
+          if (roundIHaveTop3.current && finalRoundPts[myTeam] > finalRoundPts[1 - myTeam]) {
+            gameTopTrumpHandWinsRef.current += 1;
           }
           // Track consecutive 30-pt rounds and dominant streak (for all players on my team)
           const myTeamPts = finalRoundPts[myTeam];
