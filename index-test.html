@@ -3416,7 +3416,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.60';
+const VERSION = '2.31.61';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6555,6 +6555,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.61', date: 'May 2026', changes: ['Badges Phase 3: the final two badges are now wired into per-trick gameplay. Trump Drainer fires when, as bidder, you lead trump on at least 3 tricks in a single round and win all of those leads. Setter\'s Touch fires when, as a defender, you take the specific trick that mathematically locks the set on an opponent\'s 25+ bid (their team\'s round score plus the maximum points still available is less than their bid). All 19 new badges from the May 2026 spec are now fully live.'] },
     { version: '2.31.60', date: 'May 2026', changes: ['Badges Phase 2b: the remaining 6 locked badges from the v2.31.58 spec are now wired into gameplay — Sniper (overbid an opponent\'s bid and made it), Reverse Sweep (win after being behind 80+ points), Survivor (win after team was at 0 or below while opponent was at 100+), Slow Burn (win a game that ran 12+ rounds), Final Stand (set the opponent\'s bid when making it would have won them the game), and Untouchable Streak (10 consecutive clean wins, reuses the existing Card Shark streak counter). All 19 new badges from the May 2026 spec are now live; the 4 retroactive earners (tdr26, robr, vodkaice, jack2112) should see their badges award on the next game.'] },
     { version: '2.31.59', date: 'May 2026', changes: ['Badges Phase 2a: instrumented six previously-locked badges so they now activate from gameplay: Razor\'s Edge (make a bid by exactly the bid amount), Suite Selector (win bids in all 4 trump suits), Trump Hoarder (win a round holding 5+J+A♥), Dead in the Water (make a bid with 2 or fewer trumps after draw), Carrying the Team (make a 20+ bid when partner drew 4 or 5), and Demolition (win where opponent finishes at -30 or below). Badge tooltips now show point values; badge borders use the tier color (gray/bronze/silver/sapphire/gold/legendary) so you can see at a glance how valuable each one is. The other locked badges (Sniper, Trump Drainer, Setter\'s Touch, Reverse Sweep, Survivor, Slow Burn, Final Stand, Untouchable Streak) remain pending in subsequent versions.'] },
     { version: '2.31.58', date: 'May 2026', changes: ['Badges: 19 new badges added across skill plays, bidding, drama, defense, streaks, and clean play (60 total now). Highlights: Trump Hoarder (hold all top-3 trump), Carrying the Team (make a 20+ bid when partner drew 4+), Final Stand (set the opp\'s game-winning bid), Survivor (win after team ≤0 with opp ≥100), Grandmaster (100 wins), and a new legendary tier with rainbow holographic glow border for the top apex badges: Lightning Round (win in 4 hands) and Unstoppable (10 in a row) both promoted to 50 pts; Bid Boss (10 30-bids career) and Streak Legend (15 in a row) added at 100 pts. Existing earnings auto-recompute against your stats at next view — anyone whose lifetime stats already qualify (e.g. ≥15 win streak, ≥100 wins, ≥50 clean wins) sees the badge unlocked immediately.'] },
@@ -13451,6 +13452,13 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const gameSurvivorFlagRef = useRef(false);       // survivor — was at ≤0 with opp ≥100
   const gameOverbidsMadeRef = useRef(0);           // sniper — bidder, someone else had bid lower
   const gameFinalStandRef = useRef(0);             // final_stand — set opp's game-winning bid
+  // Phase 3 (v2.31.61) — per-trick badges
+  const gameTrumpDrainerRef = useRef(0);           // trump_drainer — bidder led trump 3+ tricks AND won all
+  const gameSettersTouchRef = useRef(0);           // setters_touch — defender, took trick that locked set on 25+ bid
+  // Per-round refs (reset on phase==='playing' transition)
+  const roundMyTrumpLeads = useRef(0);
+  const roundMyTrumpWins = useRef(0);
+  const roundSettersTouchFired = useRef(false);    // fire at most once per round
   // Round-start snapshots (filled by useEffect at phase=='playing')
   const roundMyTrumpCount = useRef(0);             // for dead_in_water
   const roundIHaveTop3 = useRef(false);            // for trump_hoarder
@@ -13499,6 +13507,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     gameSurvivorFlagRef.current = false;
     gameOverbidsMadeRef.current = 0;
     gameFinalStandRef.current = 0;
+    gameTrumpDrainerRef.current = 0;
+    gameSettersTouchRef.current = 0;
     setGameTimesSet(0);
     setGamePerfect30s(0);
     setGameBid30Made(0);
@@ -13652,6 +13662,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               // Phase 2b per-round writes
               if (gameOverbidsMadeRef.current > 0) stats.overbidsMade = (stats.overbidsMade || 0) + gameOverbidsMadeRef.current;
               if (gameFinalStandRef.current > 0) stats.finalStandSets = (stats.finalStandSets || 0) + gameFinalStandRef.current;
+              // Phase 3 per-trick writes
+              if (gameTrumpDrainerRef.current > 0) stats.trumpDrainerRounds = (stats.trumpDrainerRounds || 0) + gameTrumpDrainerRef.current;
+              if (gameSettersTouchRef.current > 0) stats.settersTouchTricks = (stats.settersTouchTricks || 0) + gameSettersTouchRef.current;
             }
 
             return stats;
@@ -14008,6 +14021,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       });
       bidderHadTopTrump.current = hasTop;
       console.log(`🗡️ Trump Slayer check: bidder P${bidWinner+1} hasTop=${hasTop}`);
+      // Phase 3 per-round counter resets
+      roundMyTrumpLeads.current = 0;
+      roundMyTrumpWins.current = 0;
+      roundSettersTouchFired.current = false;
       // Phase 2a round-start snapshots for badge counters (my own POV).
       if (mySeatIndex !== undefined && mySeatIndex !== null && gameState.hands[mySeatIndex]) {
         const myHand = gameState.hands[mySeatIndex] || [];
@@ -15085,7 +15102,34 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       
       const newRoundPts = [...roundPts];
       newRoundPts[winnerTeam] += 5;
-      
+
+      // Phase 3 per-trick badge increments (host's POV)
+      {
+        const myTeam_ = mySeatIndex % 2;
+        const bidderTeam_ = bidWinner % 2;
+        const iLed = trickLeader === mySeatIndex;
+        const myTrickWin = winner === mySeatIndex;
+        // trump_drainer: I led trump on this trick (track per-round count + wins)
+        if (iLed && ledIsTrump) {
+          roundMyTrumpLeads.current += 1;
+          if (winnerTeam === myTeam_) roundMyTrumpWins.current += 1;
+        }
+        // setters_touch: 25+ bid, I'm defender, I won this trick, and after
+        // it the set is mathematically LOCKED (bidder team's round score +
+        // max remaining points < bid). Fires at most once per round.
+        if (!roundSettersTouchFired.current && highBid >= 25 && myTrickWin
+            && myTeam_ !== bidderTeam_) {
+          const bidderRoundScore = newRoundPts[bidderTeam_] || 0;
+          const remainingTricks = 5 - (trickNum + 1);
+          const remainingMax = remainingTricks * 5 + 5; // worst case: every remaining trick + bonus to bidder
+          if (bidderRoundScore + remainingMax < highBid) {
+            gameSettersTouchRef.current += 1;
+            roundSettersTouchFired.current = true;
+            console.log(`🥷 SETTER'S TOUCH: locked set on ${highBid}-bid (bidder ${bidderRoundScore} + max ${remainingMax} < ${highBid})`);
+          }
+        }
+      }
+
       // Check if round is over
       if (trickNum + 1 >= 5) {
         console.log('🎮 Round complete!');
@@ -15167,6 +15211,12 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             if (Array.isArray(bids)
                 && bids.some((b, i) => i !== bidWinner && b > 0)) {
               gameOverbidsMadeRef.current += 1;
+            }
+            // Phase 3: trump_drainer — I'm bidder, led trump on 3+ tricks
+            // AND won ALL of those leads.
+            if (roundMyTrumpLeads.current >= 3
+                && roundMyTrumpLeads.current === roundMyTrumpWins.current) {
+              gameTrumpDrainerRef.current += 1;
             }
           }
           // Phase 2a: trump_hoarder fires when MY team wins the round AND I held
