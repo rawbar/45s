@@ -3416,7 +3416,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.59';
+const VERSION = '2.31.60';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -3610,7 +3610,8 @@ function getBadgeIds(stats) {
   if ((s.finalStandSets||0)>=1)       ids.push('final_stand');
   // Streaks / volume / clean
   if ((s.bestStreak||0)>=15)          ids.push('streak_legend');
-  if ((s.consecCleanWins||0)>=10)     ids.push('untouchable_streak');
+  // untouchable_streak reuses cardSharkStreak (= consecutive wins without being set)
+  if ((s.cardSharkStreak||0)>=10)     ids.push('untouchable_streak');
   if ((s.gamesWon||0)>=100)           ids.push('grandmaster');
   if ((s.cleanGameWins||0)>=50)       ids.push('the_untouchable');
   return ids;
@@ -6554,6 +6555,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.60', date: 'May 2026', changes: ['Badges Phase 2b: the remaining 6 locked badges from the v2.31.58 spec are now wired into gameplay — Sniper (overbid an opponent\'s bid and made it), Reverse Sweep (win after being behind 80+ points), Survivor (win after team was at 0 or below while opponent was at 100+), Slow Burn (win a game that ran 12+ rounds), Final Stand (set the opponent\'s bid when making it would have won them the game), and Untouchable Streak (10 consecutive clean wins, reuses the existing Card Shark streak counter). All 19 new badges from the May 2026 spec are now live; the 4 retroactive earners (tdr26, robr, vodkaice, jack2112) should see their badges award on the next game.'] },
     { version: '2.31.59', date: 'May 2026', changes: ['Badges Phase 2a: instrumented six previously-locked badges so they now activate from gameplay: Razor\'s Edge (make a bid by exactly the bid amount), Suite Selector (win bids in all 4 trump suits), Trump Hoarder (win a round holding 5+J+A♥), Dead in the Water (make a bid with 2 or fewer trumps after draw), Carrying the Team (make a 20+ bid when partner drew 4 or 5), and Demolition (win where opponent finishes at -30 or below). Badge tooltips now show point values; badge borders use the tier color (gray/bronze/silver/sapphire/gold/legendary) so you can see at a glance how valuable each one is. The other locked badges (Sniper, Trump Drainer, Setter\'s Touch, Reverse Sweep, Survivor, Slow Burn, Final Stand, Untouchable Streak) remain pending in subsequent versions.'] },
     { version: '2.31.58', date: 'May 2026', changes: ['Badges: 19 new badges added across skill plays, bidding, drama, defense, streaks, and clean play (60 total now). Highlights: Trump Hoarder (hold all top-3 trump), Carrying the Team (make a 20+ bid when partner drew 4+), Final Stand (set the opp\'s game-winning bid), Survivor (win after team ≤0 with opp ≥100), Grandmaster (100 wins), and a new legendary tier with rainbow holographic glow border for the top apex badges: Lightning Round (win in 4 hands) and Unstoppable (10 in a row) both promoted to 50 pts; Bid Boss (10 30-bids career) and Streak Legend (15 in a row) added at 100 pts. Existing earnings auto-recompute against your stats at next view — anyone whose lifetime stats already qualify (e.g. ≥15 win streak, ≥100 wins, ≥50 clean wins) sees the badge unlocked immediately.'] },
     { version: '2.31.57', date: 'May 2026', changes: ['AI play: when the AI is the second player to act on trick 4 or 5, it now takes the trick with the cheapest card that wins — instead of always playing its lowest card to "conserve" for later. The general principle: at trick 4 the trick winner leads the final trick with everyone else holding only ONE card each, so taking trick 4 gives positional control over trick 5 too. This applies to all roles (defender, bidder, bidder\'s partner). User-derived from a round where the AI reneged its J of trump on the bidder\'s low-trump lead and the bid made; playing J would have set the bid. Head-to-head simulation: primary 20k +0.60pt z=2.42 / disjoint 30k held-out +0.70pt z=3.41 (replicated, comeback equity also directionally positive +0.54).'] },
@@ -13444,6 +13446,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const gameTopTrumpHandWinsRef = useRef(0);       // trump_hoarder — won round w/ 5+J+A♥
   const gameDeadInWaterMadeRef = useRef(0);        // dead_in_water — bidder, post-draw trump≤2, made bid
   const gameCarryingTeamMadeRef = useRef(0);       // carrying_the_team — bid≥20, partner drew≥4, made
+  // Phase 2b (v2.31.60) — game-flag badges
+  const gameMaxDeficitRef = useRef(0);             // reverse_sweep — max (opp - me) over the game
+  const gameSurvivorFlagRef = useRef(false);       // survivor — was at ≤0 with opp ≥100
+  const gameOverbidsMadeRef = useRef(0);           // sniper — bidder, someone else had bid lower
+  const gameFinalStandRef = useRef(0);             // final_stand — set opp's game-winning bid
   // Round-start snapshots (filled by useEffect at phase=='playing')
   const roundMyTrumpCount = useRef(0);             // for dead_in_water
   const roundIHaveTop3 = useRef(false);            // for trump_hoarder
@@ -13488,6 +13495,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     gameTopTrumpHandWinsRef.current = 0;
     gameDeadInWaterMadeRef.current = 0;
     gameCarryingTeamMadeRef.current = 0;
+    gameMaxDeficitRef.current = 0;
+    gameSurvivorFlagRef.current = false;
+    gameOverbidsMadeRef.current = 0;
+    gameFinalStandRef.current = 0;
     setGameTimesSet(0);
     setGamePerfect30s(0);
     setGameBid30Made(0);
@@ -13583,6 +13594,16 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 if (typeof oppFinalScore === 'number' && oppFinalScore <= -30) {
                   stats.demolitionWins = (stats.demolitionWins || 0) + 1;
                 }
+                // Phase 2b game-end checks
+                if (roundsPlayed >= 12) {
+                  stats.slowBurnWins = (stats.slowBurnWins || 0) + 1;
+                }
+                if (gameMaxDeficitRef.current >= 80) {
+                  stats.reverseSweepWins = (stats.reverseSweepWins || 0) + 1;
+                }
+                if (gameSurvivorFlagRef.current) {
+                  stats.survivorWins = (stats.survivorWins || 0) + 1;
+                }
                 // Card Shark: consecutive wins without being set
                 if (!wasSetThisGame.current) {
                   stats.cardSharkStreak = (stats.cardSharkStreak || 0) + 1;
@@ -13628,6 +13649,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 stats.bidMadeBySuit = stats.bidMadeBySuit || {};
                 for (const s of suitsThisGame) stats.bidMadeBySuit[s] = true;
               }
+              // Phase 2b per-round writes
+              if (gameOverbidsMadeRef.current > 0) stats.overbidsMade = (stats.overbidsMade || 0) + gameOverbidsMadeRef.current;
+              if (gameFinalStandRef.current > 0) stats.finalStandSets = (stats.finalStandSets || 0) + gameFinalStandRef.current;
             }
 
             return stats;
@@ -15090,6 +15114,14 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         const bidderSeat = SEAT_NAMES[bidWinner];
         const bidderIsMe = bidWinner === mySeatIndex;
         const myTeam = mySeatIndex % 2;
+        // Phase 2b: per-round deficit/survivor tracking (state-of-scores BEFORE this round)
+        {
+          const myPreScore = scores[myTeam] || 0;
+          const oppPreScore = scores[1 - myTeam] || 0;
+          const deficit = oppPreScore - myPreScore;
+          if (deficit > gameMaxDeficitRef.current) gameMaxDeficitRef.current = deficit;
+          if (myPreScore <= 0 && oppPreScore >= 100) gameSurvivorFlagRef.current = true;
+        }
         if (finalRoundPts[bidderTeam] >= highBid) {
           // Made bid - add points
           newScores[bidderTeam] += finalRoundPts[bidderTeam];
@@ -15129,6 +15161,12 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             if (roundMyTrumpCount.current <= 2) gameDeadInWaterMadeRef.current += 1;
             if (highBid >= 20 && roundPartnerDrawCount.current >= 4) {
               gameCarryingTeamMadeRef.current += 1;
+            }
+            // Phase 2b: sniper — I'm bidder and at least one other player
+            // had a non-pass bid > 0 (= I overbid them).
+            if (Array.isArray(bids)
+                && bids.some((b, i) => i !== bidWinner && b > 0)) {
+              gameOverbidsMadeRef.current += 1;
             }
           }
           // Phase 2a: trump_hoarder fires when MY team wins the round AND I held
@@ -15179,6 +15217,12 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             else if (highBid === 20) gameSetsOn20Ref.current += 1;
             if (gameOppSetsRef.current >= 3 && !gameSet3InGameRef.current) {
               gameSet3InGameRef.current = true; // award once per game
+            }
+            // Phase 2b: final_stand — set opp's bid when making it would
+            // have won them the game (opp pre-round score + bid ≥ 120).
+            const oppPreScore = scores[bidderTeam] || 0;
+            if (oppPreScore + highBid >= 120) {
+              gameFinalStandRef.current += 1;
             }
           }
           // Round wins streak: defending team gets points, bidding team loses
