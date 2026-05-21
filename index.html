@@ -42,6 +42,27 @@
     @keyframes cardPlay { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
     @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
     @keyframes voicePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    /* Legendary badge (50+pt tier): rainbow holographic glow that pulses
+       between magenta/cyan and cyan/gold, with a gold border. Cleaner
+       implementation via box-shadow animation (no DOM-structure change). */
+    @keyframes legendaryGlow {
+      0%, 100% {
+        box-shadow:
+          0 0 8px 2px rgba(255,0,255,0.75),
+          0 0 22px 5px rgba(0,229,255,0.45),
+          inset 0 0 6px rgba(255,255,255,0.18);
+      }
+      50% {
+        box-shadow:
+          0 0 8px 2px rgba(0,229,255,0.75),
+          0 0 22px 5px rgba(255,200,50,0.5),
+          inset 0 0 6px rgba(255,255,255,0.18);
+      }
+    }
+    .legendary-badge-earned {
+      animation: legendaryGlow 2.5s ease-in-out infinite !important;
+      border: 2px solid #ffd700 !important;
+    }
     @keyframes scoreChange { from { transform: scale(1.3); color: #d4af37; } to { transform: scale(1); } }
     @keyframes bidPillPulse {
       0%, 100% { box-shadow: 0 0 10px rgba(66,165,245,0.5), 0 0 22px rgba(66,165,245,0.22); }
@@ -3395,7 +3416,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.57';
+const VERSION = '2.31.60';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -3440,7 +3461,7 @@ let currentThemeId = 'irish';
 //              sapphire=#1565c0(10pt), gold=#d4af37(15-20pt)
 const BADGES = [
   // Speed Victories
-  { id:'lightning_round', name:'Lightning Round',  desc:'Win a game in 4 hands',                                    pts:20, sym:'⚡',    color:'#d4af37' },
+  { id:'lightning_round', name:'Lightning Round',  desc:'Win a game in 4 hands',                                    pts:50, sym:'⚡',    color:'#e5e4e2', tier:'legendary' },
   { id:'swift_victory',   name:'Swift Victory',    desc:'Win a game in 5 hands',                                    pts:10, sym:'🚀',    color:'#1565c0' },
   { id:'quick_game',      name:'Quick Game',       desc:'Win a game in 6 hands',                                    pts:5,  sym:'💨',    color:'#909090' },
   // Bidding
@@ -3486,12 +3507,37 @@ const BADGES = [
   // Streaks
   { id:'hot_streak',   name:'Hot Streak',   desc:'Win 3 games in a row',  pts:2,  sym:'🌡️',  color:'#cd7f32', progressStat:'bestStreak', threshold:3  },
   { id:'on_fire',      name:'On Fire',      desc:'Win 5 games in a row',  pts:5,  sym:'🌋',  color:'#909090', progressStat:'bestStreak', threshold:5  },
-  { id:'unstoppable',  name:'Unstoppable',  desc:'Win 10 games in a row', pts:15, sym:'💥',  color:'#d4af37', progressStat:'bestStreak', threshold:10 },
+  { id:'unstoppable',  name:'Unstoppable',  desc:'Win 10 games in a row', pts:50, sym:'💥',  color:'#e5e4e2', tier:'legendary', progressStat:'bestStreak', threshold:10 },
+  { id:'streak_legend',name:'Streak Legend',desc:'Win 15 games in a row', pts:100,sym:'🌠',  color:'#e5e4e2', tier:'legendary', progressStat:'bestStreak', threshold:15 },
   // Special Combos
   { id:'card_shark',    name:'Card Shark',    desc:'Win 3 consecutive games without being set once',  pts:10, sym:'🦈',  color:'#1565c0', progressStat:'cardSharkStreak', threshold:3 },
   { id:'centurion',     name:'Centurion',     desc:'Win a game with exactly 120 points',               pts:5,  sym:'⚜️',  color:'#909090' },
   { id:'heartbreaker',  name:'Heartbreaker',  desc:'Lose a game where both teams scored 120+',         pts:10, sym:'💔',  color:'#1565c0' },
   { id:'photo_finish',  name:'Photo Finish',  desc:'Win a game where both teams scored 120+',          pts:15, sym:'📸',  color:'#d4af37' },
+  // ─── New 2026-05-21 ──────────────────────────────────────────────────────
+  // Skill plays
+  { id:'trump_hoarder',     name:'Trump Hoarder',     desc:'Win a round holding 5+J+A♥ all in hand (post-draw)',                         pts:10, sym:'🃏',  color:'#1565c0' },
+  { id:'trump_drainer',     name:'Trump Drainer',     desc:'As bidder, lead trump on 3+ tricks in one round and win them all',           pts:5,  sym:'🌪️', color:'#909090' },
+  { id:'sniper',            name:'Sniper',            desc:'Overbid an opponent\'s bid AND make it (10 lifetime instances)',             pts:5,  sym:'🎯',  color:'#909090' },
+  { id:'dead_in_water',     name:'Dead in the Water', desc:'Win a round as bidder with 2 or fewer trump in post-draw hand',              pts:5,  sym:'💀',  color:'#909090' },
+  { id:'setters_touch',     name:"Setter's Touch",    desc:'Personally take the trick that mathematically locks the set on a 25+ bid',  pts:10, sym:'🥷',  color:'#1565c0' },
+  { id:'carrying_the_team', name:'Carrying the Team', desc:'Make a 20+ bid when partner drew 4 or 5 replacement cards',                  pts:10, sym:'💪',  color:'#1565c0' },
+  // Bidding extensions
+  { id:'razors_edge',       name:"Razor's Edge",      desc:'Make a bid by EXACTLY the bid amount (no excess)',                           pts:3,  sym:'⚔️', color:'#cd7f32' },
+  { id:'bidding_sage',      name:'Bidding Sage',      desc:'Make 100 successful bids in your career (any level)',                        pts:5,  sym:'🦉',  color:'#909090' },
+  { id:'suite_selector',    name:'Suite Selector',    desc:'Win and make a bid in all 4 trump suits (lifetime)',                         pts:5,  sym:'🎴',  color:'#909090' },
+  { id:'bid_boss',          name:'Bid Boss',          desc:'Make 10 separate 30-bids in your career',                                    pts:100,sym:'👑',  color:'#e5e4e2', tier:'legendary' },
+  // Drama / score edges
+  { id:'reverse_sweep',     name:'Reverse Sweep',     desc:'Win a game after being behind by 80+ points at any moment',                  pts:10, sym:'🔄',  color:'#1565c0' },
+  { id:'demolition',        name:'Demolition',        desc:'Win a game where opponent finishes at -30 or below',                         pts:10, sym:'💥',  color:'#1565c0' },
+  { id:'survivor',          name:'Survivor',          desc:'Win after team was ≤0 while opp was simultaneously ≥100',                   pts:20, sym:'⛑️', color:'#d4af37' },
+  { id:'slow_burn',         name:'Slow Burn',         desc:'Win a game lasting 12+ rounds',                                              pts:5,  sym:'🕰️', color:'#909090' },
+  // Defense extension
+  { id:'final_stand',       name:'Final Stand',       desc:"Set the opp's bid when making it would have won them the game",             pts:10, sym:'🛡️', color:'#1565c0' },
+  // Streaks / volume extensions
+  { id:'untouchable_streak',name:'Untouchable Streak',desc:'Win 10 games in a row without being set in any',                             pts:20, sym:'👑',  color:'#d4af37' },
+  { id:'grandmaster',       name:'Grandmaster',       desc:'Win 100 games',                                                              pts:15, sym:'🏛️', color:'#d4af37', progressStat:'gamesWon', threshold:100 },
+  { id:'the_untouchable',   name:'The Untouchable',   desc:'50 clean game wins lifetime',                                                pts:15, sym:'✨',  color:'#d4af37', progressStat:'cleanGameWins', threshold:50 },
 ];
 
 // Check which badges a stats object qualifies for (returns array of badge ids)
@@ -3540,6 +3586,34 @@ function getBadgeIds(stats) {
   if ((s.centurionGames||0)>=1)      ids.push('centurion');
   if ((s.heartbreakerGames||0)>=1)   ids.push('heartbreaker');
   if ((s.photoFinishGames||0)>=1)    ids.push('photo_finish');
+  // ─── New 2026-05-21 conditions ─────────────────────────────────────────
+  // Skill plays — need new per-game/per-round stats (Phase 3/4)
+  if ((s.topTrumpHandWins||0)>=1)     ids.push('trump_hoarder');
+  if ((s.trumpDrainerRounds||0)>=1)   ids.push('trump_drainer');
+  if ((s.overbidsMade||0)>=10)        ids.push('sniper');
+  if ((s.deadInWaterMade||0)>=1)      ids.push('dead_in_water');
+  if ((s.settersTouchTricks||0)>=1)   ids.push('setters_touch');
+  if ((s.carryingTheTeamMade||0)>=1)  ids.push('carrying_the_team');
+  // Bidding extensions
+  if ((s.exactBidsMade||0)>=1)        ids.push('razors_edge');
+  const totalBids = (s.bid15Made||0) + (s.bid20Made||0) + (s.bid25Made||0) + (s.bid30Made||0) + (s.baggedBidMade||0);
+  if (totalBids >= 100)               ids.push('bidding_sage');
+  const sb = s.bidMadeBySuit || {};
+  if (sb.H && sb.D && sb.C && sb.S)   ids.push('suite_selector');
+  if ((s.bid30Made||0)>=10)           ids.push('bid_boss');
+  // Drama / score edges
+  if ((s.reverseSweepWins||0)>=1)     ids.push('reverse_sweep');
+  if ((s.demolitionWins||0)>=1)       ids.push('demolition');
+  if ((s.survivorWins||0)>=1)         ids.push('survivor');
+  if ((s.slowBurnWins||0)>=1)         ids.push('slow_burn');
+  // Defense extension
+  if ((s.finalStandSets||0)>=1)       ids.push('final_stand');
+  // Streaks / volume / clean
+  if ((s.bestStreak||0)>=15)          ids.push('streak_legend');
+  // untouchable_streak reuses cardSharkStreak (= consecutive wins without being set)
+  if ((s.cardSharkStreak||0)>=10)     ids.push('untouchable_streak');
+  if ((s.gamesWon||0)>=100)           ids.push('grandmaster');
+  if ((s.cleanGameWins||0)>=50)       ids.push('the_untouchable');
   return ids;
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -6481,6 +6555,9 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.60', date: 'May 2026', changes: ['Badges Phase 2b: the remaining 6 locked badges from the v2.31.58 spec are now wired into gameplay — Sniper (overbid an opponent\'s bid and made it), Reverse Sweep (win after being behind 80+ points), Survivor (win after team was at 0 or below while opponent was at 100+), Slow Burn (win a game that ran 12+ rounds), Final Stand (set the opponent\'s bid when making it would have won them the game), and Untouchable Streak (10 consecutive clean wins, reuses the existing Card Shark streak counter). All 19 new badges from the May 2026 spec are now live; the 4 retroactive earners (tdr26, robr, vodkaice, jack2112) should see their badges award on the next game.'] },
+    { version: '2.31.59', date: 'May 2026', changes: ['Badges Phase 2a: instrumented six previously-locked badges so they now activate from gameplay: Razor\'s Edge (make a bid by exactly the bid amount), Suite Selector (win bids in all 4 trump suits), Trump Hoarder (win a round holding 5+J+A♥), Dead in the Water (make a bid with 2 or fewer trumps after draw), Carrying the Team (make a 20+ bid when partner drew 4 or 5), and Demolition (win where opponent finishes at -30 or below). Badge tooltips now show point values; badge borders use the tier color (gray/bronze/silver/sapphire/gold/legendary) so you can see at a glance how valuable each one is. The other locked badges (Sniper, Trump Drainer, Setter\'s Touch, Reverse Sweep, Survivor, Slow Burn, Final Stand, Untouchable Streak) remain pending in subsequent versions.'] },
+    { version: '2.31.58', date: 'May 2026', changes: ['Badges: 19 new badges added across skill plays, bidding, drama, defense, streaks, and clean play (60 total now). Highlights: Trump Hoarder (hold all top-3 trump), Carrying the Team (make a 20+ bid when partner drew 4+), Final Stand (set the opp\'s game-winning bid), Survivor (win after team ≤0 with opp ≥100), Grandmaster (100 wins), and a new legendary tier with rainbow holographic glow border for the top apex badges: Lightning Round (win in 4 hands) and Unstoppable (10 in a row) both promoted to 50 pts; Bid Boss (10 30-bids career) and Streak Legend (15 in a row) added at 100 pts. Existing earnings auto-recompute against your stats at next view — anyone whose lifetime stats already qualify (e.g. ≥15 win streak, ≥100 wins, ≥50 clean wins) sees the badge unlocked immediately.'] },
     { version: '2.31.57', date: 'May 2026', changes: ['AI play: when the AI is the second player to act on trick 4 or 5, it now takes the trick with the cheapest card that wins — instead of always playing its lowest card to "conserve" for later. The general principle: at trick 4 the trick winner leads the final trick with everyone else holding only ONE card each, so taking trick 4 gives positional control over trick 5 too. This applies to all roles (defender, bidder, bidder\'s partner). User-derived from a round where the AI reneged its J of trump on the bidder\'s low-trump lead and the bid made; playing J would have set the bid. Head-to-head simulation: primary 20k +0.60pt z=2.42 / disjoint 30k held-out +0.70pt z=3.41 (replicated, comeback equity also directionally positive +0.54).'] },
     { version: '2.31.56', date: 'May 2026', changes: ['AI bidding: when the auction stands at 15 and the AI has a hand it would have bid 15 with (so it currently has to pass since it cannot equal the high bid), the AI now overbids to 20 instead. Caveat: an AI partnered with a human still uses the conservative pre-2.31.56 logic, so your own AI partner will not surprise you with these overbids — but the opponent AIs will. This pattern was discovered by mining the expert player\'s logged bids: he overbids to 20 in exactly these spots and consistently wins more games than the prior AI baseline. Rig confirms: head-to-head simulation with the current card-play AI shows the overbid converts well enough to drive a +5.4pt unconditional win-rate gain over 20,000 paired deals (z=21.7), replicated on a 30,000-deal disjoint held-out (+5.3pt, z=26.0). The old threshold was calibrated against a weaker AI; the borderline 15-hands now make 20 often enough to justify the overbid.'] },
     { version: '2.31.55', date: 'May 2026', changes: ['AI play fix: when checking "can my card take this trick?", the placeholder card used to fill empty seats in the test was hardcoded to 2♣, which is itself trump in clubs-trump games (and ranks higher than the real 3-10 of clubs trump). The check kept reporting "no, you can\'t win" for any low trump, so the AI dumped offsuit cards instead of trumping when it could have. Fix uses a 2 of a non-trump suit for the placeholder, so the check is accurate. User-reported case: North held 4♣ vs an opponent\'s 8♣ on trick 4 in clubs trump and dumped J♥ offsuit instead. Same bug also affected some spades-trump situations. Head-to-head simulation: 20k primary +0.39pt z=1.56 and disjoint 30k held-out +0.38pt z=1.85 (replicated, comeback equity +0.18/+0.22), so a small but consistent win-rate improvement on top of the logic correctness.'] },
@@ -9762,14 +9839,18 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                         <div className="cp-badge-grid">
                           {BADGES.map(badge => {
                             const earned = earnedIds.includes(badge.id);
+                            const isLegendary = badge.tier === 'legendary' && earned;
                             return (
                               <div key={badge.id} className="cp-badge-item" onClick={() => setActiveBadge(activeBadge === badge.id ? null : badge.id)}>
-                                <div className="cp-badge-circle" style={{ opacity: earned ? 1 : 0.25, boxShadow: earned ? '0 0 8px rgba(255,140,0,0.6)' : 'none', borderColor: earned ? '#ff8c00' : '#3a5f78' }}>
+                                <div className={`cp-badge-circle${isLegendary ? ' legendary-badge-earned' : ''}`} style={{ opacity: earned ? 1 : 0.25, boxShadow: earned && !isLegendary ? `0 0 8px ${badge.color || '#ff8c00'}99` : (isLegendary ? undefined : 'none'), borderColor: isLegendary ? undefined : (earned ? (badge.color || '#ff8c00') : '#3a5f78') }}>
                                   <span style={{ fontSize: '18px' }}>{badge.sym}</span>
                                 </div>
                                 {activeBadge === badge.id && (
                                   <div style={{ position: 'absolute', top: '110%', left: '50%', transform: 'translateX(-50%)', background: 'rgba(2,5,10,0.97)', border: '1px solid rgba(0,229,255,0.3)', borderRadius: '6px', padding: '8px 10px', zIndex: 10, minWidth: '140px', maxWidth: '180px', pointerEvents: 'none' }}>
-                                    <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '11px', color: '#ff8c00', marginBottom: '3px' }}>{badge.name}</div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                                      <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '11px', color: '#ff8c00' }}>{badge.name}</div>
+                                      <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '10px', color: badge.color, fontWeight: 700 }}>+{badge.pts}</div>
+                                    </div>
                                     <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '10px', color: 'rgba(0,229,255,0.6)' }}>{badge.desc}</div>
                                   </div>
                                 )}
@@ -9878,9 +9959,10 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                           {BADGES.map(badge => {
                             const earned = earnedIds.includes(badge.id);
                             const isActive = activeBadge === badge.id;
+                            const isLegendary = badge.tier === 'legendary' && earned;
                             return (
                               <div key={badge.id} onClick={() => setActiveBadge(isActive ? null : badge.id)} title={badge.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
-                                <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0, borderRadius: '50%', aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', background: earned ? 'rgba(10,7,2,0.8)' : 'rgba(18,14,10,0.7)', border: isActive ? '2.5px solid #f6d778' : `1.5px solid ${earned ? '#c9a227' : 'rgba(255,255,255,0.1)'}`, boxShadow: isActive ? '0 0 16px rgba(201,162,39,0.6),0 0 0 4px rgba(201,162,39,0.1)' : earned ? '0 0 8px rgba(201,162,39,0.3)' : 'none' }}>
+                                <div className={isLegendary ? 'legendary-badge-earned' : ''} style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0, borderRadius: '50%', aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', background: earned ? 'rgba(10,7,2,0.8)' : 'rgba(18,14,10,0.7)', border: isLegendary ? undefined : (isActive ? '2.5px solid #f6d778' : `2px solid ${earned ? (badge.color || '#c9a227') : 'rgba(255,255,255,0.1)'}`), boxShadow: isLegendary ? undefined : (isActive ? '0 0 16px rgba(201,162,39,0.6),0 0 0 4px rgba(201,162,39,0.1)' : earned ? `0 0 8px ${badge.color || '#c9a227'}55` : 'none') }}>
                                   <span style={{ opacity: earned ? 1 : 0.25, lineHeight: 1, fontSize: '22px' }}>{badge.sym}</span>
                                   {!earned && <span style={{ position: 'absolute', bottom: '-1px', right: '-1px', fontSize: '11px', lineHeight: 1 }}>🔒</span>}
                                 </div>
@@ -9905,7 +9987,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                         <div onClick={e => e.stopPropagation()} style={{ position: 'relative', background: 'rgba(8,5,1,0.97)', border: '1px solid #c9a227', borderRadius: '14px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', width: '82%', maxWidth: '320px', boxShadow: '0 0 30px rgba(201,162,39,0.2),0 8px 32px rgba(0,0,0,0.8)', animation: 'slideUp 0.2s ease-out' }}>
                           <button onClick={() => setActiveBadge(null)} style={{ position: 'absolute', top: '10px', right: '12px', background: 'none', border: 'none', color: 'rgba(201,162,39,0.6)', fontSize: '18px', cursor: 'pointer', lineHeight: 1, padding: '4px' }}>×</button>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                            <div style={{ width: '56px', height: '56px', borderRadius: '50%', flexShrink: 0, background: earned ? 'rgba(10,7,2,0.8)' : 'rgba(18,14,10,0.7)', border: `2px solid ${earned ? '#c9a227' : 'rgba(255,255,255,0.1)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', boxShadow: earned ? '0 0 14px rgba(201,162,39,0.4)' : 'none' }}>
+                            <div className={(activeBadgeObj.tier === 'legendary' && earned) ? 'legendary-badge-earned' : ''} style={{ width: '56px', height: '56px', borderRadius: '50%', flexShrink: 0, background: earned ? 'rgba(10,7,2,0.8)' : 'rgba(18,14,10,0.7)', border: (activeBadgeObj.tier === 'legendary' && earned) ? undefined : `2px solid ${earned ? (activeBadgeObj.color || '#c9a227') : 'rgba(255,255,255,0.1)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', boxShadow: (activeBadgeObj.tier === 'legendary' && earned) ? undefined : (earned ? `0 0 14px ${activeBadgeObj.color || '#c9a227'}66` : 'none') }}>
                               <span style={{ opacity: earned ? 1 : 0.3 }}>{activeBadgeObj.sym}</span>
                             </div>
                             <div>
@@ -10088,6 +10170,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                           {BADGES.map(badge => {
                             const earned = earnedIds.includes(badge.id);
                             const isActive = activeBadge === badge.id;
+                            const isLegendary = badge.tier === 'legendary' && earned;
                             return (
                               <div
                                 key={badge.id}
@@ -10095,16 +10178,16 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                                 title={badge.name}
                                 style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
                               >
-                                <div style={{
+                                <div className={isLegendary ? 'legendary-badge-earned' : ''} style={{
                                   position: 'relative',
                                   width: '44px', height: '44px', flexShrink: 0,
                                   borderRadius: '50%', aspectRatio: '1',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                                   background: earned ? felt : 'rgba(18,14,10,0.7)',
-                                  border: isActive ? '2.5px solid #f6d778' : `1.5px solid ${earned ? '#c9a24a' : 'rgba(255,255,255,0.1)'}`,
-                                  boxShadow: isActive
+                                  border: isLegendary ? undefined : (isActive ? '2.5px solid #f6d778' : `2px solid ${earned ? (badge.color || '#c9a24a') : 'rgba(255,255,255,0.1)'}`),
+                                  boxShadow: isLegendary ? undefined : (isActive
                                     ? '0 0 16px rgba(246,215,120,0.6), 0 0 0 4px rgba(246,215,120,0.1)'
-                                    : earned ? '0 0 8px rgba(201,162,74,0.3)' : 'none',
+                                    : earned ? `0 0 8px ${badge.color || '#c9a24a'}55` : 'none'),
                                 }}>
                                   <span style={{
                                     opacity: earned ? 1 : 0.25,
@@ -10153,7 +10236,10 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                             {activeBadgeObj.sym}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontFamily: "'Cinzel', serif", fontSize: '18px', fontWeight: '700', color: '#f6d778', lineHeight: '1.15' }}>{activeBadgeObj.name}</div>
+                            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px' }}>
+                              <div style={{ fontFamily: "'Cinzel', serif", fontSize: '18px', fontWeight: '700', color: '#f6d778', lineHeight: '1.15' }}>{activeBadgeObj.name}</div>
+                              <div style={{ fontFamily: "'Cinzel', serif", fontSize: '14px', fontWeight: '700', color: activeBadgeObj.color, padding: '2px 8px', borderRadius: '10px', border: `1px solid ${activeBadgeObj.color}`, background: 'rgba(0,0,0,0.4)', flexShrink: 0, whiteSpace: 'nowrap' }}>+{activeBadgeObj.pts} pts</div>
+                            </div>
                             <div style={{ fontFamily: "'Merriweather', Georgia, serif", fontStyle: 'italic', fontSize: '12px', color: 'rgba(251,246,228,0.6)', marginTop: '5px', lineHeight: '1.5' }}>{activeBadgeObj.desc}</div>
                             {earned && earnedAt
                               ? <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '6px' }}><span style={{ fontSize: '13px', color: '#5dd084' }}>✓</span><span style={{ fontFamily: "'Inter', sans-serif", fontSize: '12px', fontWeight: '500', color: '#5dd084' }}>Earned {new Date(earnedAt).toLocaleDateString()}</span></div>
@@ -13354,6 +13440,21 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const gameSetsOn20Ref = useRef(0);
   const gameSet3InGameRef = useRef(false);
   const gameFiveCardDrawUsedRef = useRef(0);
+  // Phase 2a (v2.31.58b) — new-badge counters
+  const gameExactBidsMadeRef = useRef(0);          // razors_edge
+  const gameSuiteSelectorRef = useRef({});         // suite_selector — {♠:true, ...}
+  const gameTopTrumpHandWinsRef = useRef(0);       // trump_hoarder — won round w/ 5+J+A♥
+  const gameDeadInWaterMadeRef = useRef(0);        // dead_in_water — bidder, post-draw trump≤2, made bid
+  const gameCarryingTeamMadeRef = useRef(0);       // carrying_the_team — bid≥20, partner drew≥4, made
+  // Phase 2b (v2.31.60) — game-flag badges
+  const gameMaxDeficitRef = useRef(0);             // reverse_sweep — max (opp - me) over the game
+  const gameSurvivorFlagRef = useRef(false);       // survivor — was at ≤0 with opp ≥100
+  const gameOverbidsMadeRef = useRef(0);           // sniper — bidder, someone else had bid lower
+  const gameFinalStandRef = useRef(0);             // final_stand — set opp's game-winning bid
+  // Round-start snapshots (filled by useEffect at phase=='playing')
+  const roundMyTrumpCount = useRef(0);             // for dead_in_water
+  const roundIHaveTop3 = useRef(false);            // for trump_hoarder
+  const roundPartnerDrawCount = useRef(0);         // for carrying_the_team
 
   // Extended per-game badge tracking
   const [gameConsec30s, setGameConsec30s] = useState(0);          // current consecutive perfect-30 rounds
@@ -13388,6 +13489,16 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     gameSetsOn20Ref.current = 0;
     gameSet3InGameRef.current = false;
     gameFiveCardDrawUsedRef.current = 0;
+    // Phase 2a counters reset
+    gameExactBidsMadeRef.current = 0;
+    gameSuiteSelectorRef.current = {};
+    gameTopTrumpHandWinsRef.current = 0;
+    gameDeadInWaterMadeRef.current = 0;
+    gameCarryingTeamMadeRef.current = 0;
+    gameMaxDeficitRef.current = 0;
+    gameSurvivorFlagRef.current = false;
+    gameOverbidsMadeRef.current = 0;
+    gameFinalStandRef.current = 0;
     setGameTimesSet(0);
     setGamePerfect30s(0);
     setGameBid30Made(0);
@@ -13479,6 +13590,20 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 if (gameFiveCardDrawUsed) stats.wonAfter5Draw = (stats.wonAfter5Draw || 0) + 1;
                 if (myFinalScore === 120) stats.centurionGames = (stats.centurionGames || 0) + 1;
                 if (bothTeams120) stats.photoFinishGames = (stats.photoFinishGames || 0) + 1;
+                // Phase 2a game-end: demolition (opp finished at -30 or below)
+                if (typeof oppFinalScore === 'number' && oppFinalScore <= -30) {
+                  stats.demolitionWins = (stats.demolitionWins || 0) + 1;
+                }
+                // Phase 2b game-end checks
+                if (roundsPlayed >= 12) {
+                  stats.slowBurnWins = (stats.slowBurnWins || 0) + 1;
+                }
+                if (gameMaxDeficitRef.current >= 80) {
+                  stats.reverseSweepWins = (stats.reverseSweepWins || 0) + 1;
+                }
+                if (gameSurvivorFlagRef.current) {
+                  stats.survivorWins = (stats.survivorWins || 0) + 1;
+                }
                 // Card Shark: consecutive wins without being set
                 if (!wasSetThisGame.current) {
                   stats.cardSharkStreak = (stats.cardSharkStreak || 0) + 1;
@@ -13513,6 +13638,20 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               if (gameSetsOn20Ref.current > 0) stats.setsOn20 = (stats.setsOn20 || 0) + gameSetsOn20Ref.current;
               if (gameSet3InGameRef.current) stats.set3InGame = (stats.set3InGame || 0) + 1;
               if (gameFiveCardDrawUsedRef.current > 0) stats.fiveCardDrawUsed = (stats.fiveCardDrawUsed || 0) + gameFiveCardDrawUsedRef.current;
+              // Phase 2a counter writes
+              if (gameExactBidsMadeRef.current > 0) stats.exactBidsMade = (stats.exactBidsMade || 0) + gameExactBidsMadeRef.current;
+              if (gameTopTrumpHandWinsRef.current > 0) stats.topTrumpHandWins = (stats.topTrumpHandWins || 0) + gameTopTrumpHandWinsRef.current;
+              if (gameDeadInWaterMadeRef.current > 0) stats.deadInWaterMade = (stats.deadInWaterMade || 0) + gameDeadInWaterMadeRef.current;
+              if (gameCarryingTeamMadeRef.current > 0) stats.carryingTheTeamMade = (stats.carryingTheTeamMade || 0) + gameCarryingTeamMadeRef.current;
+              // suite_selector: bidMadeBySuit is an object of booleans, accumulated across games
+              const suitsThisGame = Object.keys(gameSuiteSelectorRef.current);
+              if (suitsThisGame.length > 0) {
+                stats.bidMadeBySuit = stats.bidMadeBySuit || {};
+                for (const s of suitsThisGame) stats.bidMadeBySuit[s] = true;
+              }
+              // Phase 2b per-round writes
+              if (gameOverbidsMadeRef.current > 0) stats.overbidsMade = (stats.overbidsMade || 0) + gameOverbidsMadeRef.current;
+              if (gameFinalStandRef.current > 0) stats.finalStandSets = (stats.finalStandSets || 0) + gameFinalStandRef.current;
             }
 
             return stats;
@@ -13869,6 +14008,22 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       });
       bidderHadTopTrump.current = hasTop;
       console.log(`🗡️ Trump Slayer check: bidder P${bidWinner+1} hasTop=${hasTop}`);
+      // Phase 2a round-start snapshots for badge counters (my own POV).
+      if (mySeatIndex !== undefined && mySeatIndex !== null && gameState.hands[mySeatIndex]) {
+        const myHand = gameState.hands[mySeatIndex] || [];
+        roundMyTrumpCount.current = myHand.filter(c => {
+          if (!c) return false;
+          if (c.rank === 'A' && c.suit === '♥') return true;
+          return c.suit === trumpSuit;
+        }).length;
+        const has5 = myHand.some(c => c && c.rank === '5' && c.suit === trumpSuit);
+        const hasJ = myHand.some(c => c && c.rank === 'J' && c.suit === trumpSuit);
+        const hasAH = myHand.some(c => c && c.rank === 'A' && c.suit === '♥');
+        roundIHaveTop3.current = has5 && hasJ && hasAH;
+        const partnerSeat = (mySeatIndex + 2) % 4;
+        const drawn = gameState.drawn || gameState.cardsDrawn || [];
+        roundPartnerDrawCount.current = Array.isArray(drawn) ? (drawn[partnerSeat] || 0) : 0;
+      }
     }
   }, [phase]);
   
@@ -14959,6 +15114,14 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         const bidderSeat = SEAT_NAMES[bidWinner];
         const bidderIsMe = bidWinner === mySeatIndex;
         const myTeam = mySeatIndex % 2;
+        // Phase 2b: per-round deficit/survivor tracking (state-of-scores BEFORE this round)
+        {
+          const myPreScore = scores[myTeam] || 0;
+          const oppPreScore = scores[1 - myTeam] || 0;
+          const deficit = oppPreScore - myPreScore;
+          if (deficit > gameMaxDeficitRef.current) gameMaxDeficitRef.current = deficit;
+          if (myPreScore <= 0 && oppPreScore >= 100) gameSurvivorFlagRef.current = true;
+        }
         if (finalRoundPts[bidderTeam] >= highBid) {
           // Made bid - add points
           newScores[bidderTeam] += finalRoundPts[bidderTeam];
@@ -14992,6 +15155,25 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               setGamePerfect30s(p => p + 1);
             }
             if (!bidderHadTopTrump.current) gameTrumpSlayerRef.current += 1;
+            // Phase 2a per-round increments (bidder side)
+            if (excess === 0) gameExactBidsMadeRef.current += 1;
+            if (trumpSuit) gameSuiteSelectorRef.current[trumpSuit] = true;
+            if (roundMyTrumpCount.current <= 2) gameDeadInWaterMadeRef.current += 1;
+            if (highBid >= 20 && roundPartnerDrawCount.current >= 4) {
+              gameCarryingTeamMadeRef.current += 1;
+            }
+            // Phase 2b: sniper — I'm bidder and at least one other player
+            // had a non-pass bid > 0 (= I overbid them).
+            if (Array.isArray(bids)
+                && bids.some((b, i) => i !== bidWinner && b > 0)) {
+              gameOverbidsMadeRef.current += 1;
+            }
+          }
+          // Phase 2a: trump_hoarder fires when MY team wins the round AND I held
+          // all top-3 trump (5+J+A♥) at round start (post-draw). Applies whether
+          // I was bidder or defender.
+          if (roundIHaveTop3.current && finalRoundPts[myTeam] > finalRoundPts[1 - myTeam]) {
+            gameTopTrumpHandWinsRef.current += 1;
           }
           // Track consecutive 30-pt rounds and dominant streak (for all players on my team)
           const myTeamPts = finalRoundPts[myTeam];
@@ -15035,6 +15217,12 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             else if (highBid === 20) gameSetsOn20Ref.current += 1;
             if (gameOppSetsRef.current >= 3 && !gameSet3InGameRef.current) {
               gameSet3InGameRef.current = true; // award once per game
+            }
+            // Phase 2b: final_stand — set opp's bid when making it would
+            // have won them the game (opp pre-round score + bid ≥ 120).
+            const oppPreScore = scores[bidderTeam] || 0;
+            if (oppPreScore + highBid >= 120) {
+              gameFinalStandRef.current += 1;
             }
           }
           // Round wins streak: defending team gets points, bidding team loses
