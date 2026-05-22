@@ -3416,7 +3416,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.62';
+const VERSION = '2.31.63';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -3518,15 +3518,15 @@ const BADGES = [
   // Skill plays
   { id:'trump_hoarder',     name:'Trump Hoarder',     desc:'Win a round holding 5+J+A♥ all in hand (post-draw)',                         pts:10, sym:'🃏',  color:'#1565c0' },
   { id:'trump_drainer',     name:'Trump Drainer',     desc:'As bidder, lead trump on 3+ tricks in one round and win them all',           pts:5,  sym:'🌪️', color:'#909090' },
-  { id:'sniper',            name:'Sniper',            desc:'Overbid an opponent\'s bid AND make it (10 lifetime instances)',             pts:5,  sym:'🎯',  color:'#909090' },
+  { id:'sniper',            name:'Sniper',            desc:'Overbid an opponent\'s bid AND make it (10 lifetime instances)',             pts:5,  sym:'🎯',  color:'#909090', progressStat:'overbidsMade', threshold:10 },
   { id:'dead_in_water',     name:'Dead in the Water', desc:'Win a round as bidder with 2 or fewer trump in post-draw hand',              pts:5,  sym:'💀',  color:'#909090' },
   { id:'setters_touch',     name:"Setter's Touch",    desc:'Personally take the trick that mathematically locks the set on a 25+ bid',  pts:10, sym:'🥷',  color:'#1565c0' },
   { id:'carrying_the_team', name:'Carrying the Team', desc:'Make a 20+ bid when partner drew 4 or 5 replacement cards',                  pts:10, sym:'💪',  color:'#1565c0' },
   // Bidding extensions
   { id:'razors_edge',       name:"Razor's Edge",      desc:'Make a bid by EXACTLY the bid amount (no excess)',                           pts:3,  sym:'⚔️', color:'#cd7f32' },
-  { id:'bidding_sage',      name:'Bidding Sage',      desc:'Make 100 successful bids in your career (any level)',                        pts:5,  sym:'🦉',  color:'#909090' },
-  { id:'suite_selector',    name:'Suite Selector',    desc:'Win and make a bid in all 4 trump suits (lifetime)',                         pts:5,  sym:'🎴',  color:'#909090' },
-  { id:'bid_boss',          name:'Bid Boss',          desc:'Make 10 separate 30-bids in your career',                                    pts:100,sym:'👑',  color:'#e5e4e2', tier:'legendary' },
+  { id:'bidding_sage',      name:'Bidding Sage',      desc:'Make 100 successful bids in your career (any level)',                        pts:5,  sym:'🦉',  color:'#909090', progressFn:(s)=>(s.bid15Made||0)+(s.bid20Made||0)+(s.bid25Made||0)+(s.bid30Made||0)+(s.baggedBidMade||0), threshold:100 },
+  { id:'suite_selector',    name:'Suite Selector',    desc:'Win and make a bid in all 4 trump suits (lifetime)',                         pts:5,  sym:'🎴',  color:'#909090', progressFn:(s)=>Object.values(s.bidMadeBySuit||{}).filter(Boolean).length, threshold:4 },
+  { id:'bid_boss',          name:'Bid Boss',          desc:'Make 10 separate 30-bids in your career',                                    pts:100,sym:'👑',  color:'#e5e4e2', tier:'legendary', progressStat:'bid30Made', threshold:10 },
   // Drama / score edges
   { id:'reverse_sweep',     name:'Reverse Sweep',     desc:'Win a game after being behind by 80+ points at any moment',                  pts:10, sym:'🔄',  color:'#1565c0' },
   { id:'demolition',        name:'Demolition',        desc:'Win a game where opponent finishes at -30 or below',                         pts:10, sym:'💥',  color:'#1565c0' },
@@ -3535,7 +3535,7 @@ const BADGES = [
   // Defense extension
   { id:'final_stand',       name:'Final Stand',       desc:"Set the opp's bid when making it would have won them the game",             pts:10, sym:'🛡️', color:'#1565c0' },
   // Streaks / volume extensions
-  { id:'untouchable_streak',name:'Untouchable Streak',desc:'Win 10 games in a row without being set in any',                             pts:20, sym:'👑',  color:'#d4af37' },
+  { id:'untouchable_streak',name:'Untouchable Streak',desc:'Win 10 games in a row without being set in any',                             pts:20, sym:'👑',  color:'#d4af37', progressStat:'cardSharkStreak', threshold:10 },
   { id:'grandmaster',       name:'Grandmaster',       desc:'Win 100 games',                                                              pts:15, sym:'🏛️', color:'#d4af37', progressStat:'gamesWon', threshold:100 },
   { id:'the_untouchable',   name:'The Untouchable',   desc:'50 clean game wins lifetime',                                                pts:15, sym:'✨',  color:'#d4af37', progressStat:'cleanGameWins', threshold:50 },
 ];
@@ -6576,6 +6576,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.63', date: 'May 2026', changes: ['Badges: progress bars now show on five more countable badges in the detail card — Bid Boss (career 30-bids made), Sniper (overbids that made), Bidding Sage (career successful bids of any level), Suite Selector (distinct trump suits you have made a bid in, x/4), and Untouchable Streak (current streak of consecutive wins without being set). The existing milestone and streak badges already had bars; this just extends the same treatment to the new May-2026 badges that are countable.'] },
     { version: '2.31.62', date: 'May 2026', changes: ['AI play: when the AI is the bidder leading a trick with only ONE trump card left and that trump is a low-number trump (anything in the 2-10 band, not Q/K/A/J/5), it now leads its highest offsuit instead of leading the dead trump. The low trump can\'t beat any opponent\'s remaining higher trump anyway, so leading it guaranteed a lost trick; the high offsuit at least has a chance of stealing one. User-reported case: trick-3 bidder lead the 2♥ on a 20-bid round, opponents over-trumped, bid was set. Leading the J♠ offsuit would have likely won the trick and made the bid. Head-to-head simulation: +0.50pt z=2.00 primary 20k / +0.38pt z=1.85 disjoint 30k held-out (replicated). A broader version of this rule (any time my best trump was below the highest unaccounted-for trump) tested at -2.54pt; the narrow gate is essential.'] },
     { version: '2.31.61', date: 'May 2026', changes: ['Badges Phase 3: the final two badges are now wired into per-trick gameplay. Trump Drainer fires when, as bidder, you lead trump on at least 3 tricks in a single round and win all of those leads. Setter\'s Touch fires when, as a defender, you take the specific trick that mathematically locks the set on an opponent\'s 25+ bid (their team\'s round score plus the maximum points still available is less than their bid). All 19 new badges from the May 2026 spec are now fully live.'] },
     { version: '2.31.60', date: 'May 2026', changes: ['Badges Phase 2b: the remaining 6 locked badges from the v2.31.58 spec are now wired into gameplay — Sniper (overbid an opponent\'s bid and made it), Reverse Sweep (win after being behind 80+ points), Survivor (win after team was at 0 or below while opponent was at 100+), Slow Burn (win a game that ran 12+ rounds), Final Stand (set the opponent\'s bid when making it would have won them the game), and Untouchable Streak (10 consecutive clean wins, reuses the existing Card Shark streak counter). All 19 new badges from the May 2026 spec are now live; the 4 retroactive earners (tdr26, robr, vodkaice, jack2112) should see their badges award on the next game.'] },
@@ -10001,8 +10002,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   {activeBadgeObj && (() => {
                     const earned = earnedIds.includes(activeBadgeObj.id);
                     const earnedAt = statsPlayerBadges[activeBadgeObj.id]?.earnedAt;
-                    const progressStat = activeBadgeObj.progressStat;
-                    const progressVal = progressStat && statsData ? (statsData[progressStat] || 0) : 0;
+                    const progressVal = activeBadgeObj.progressFn
+                      ? activeBadgeObj.progressFn(statsData || {})
+                      : (activeBadgeObj.progressStat && statsData ? (statsData[activeBadgeObj.progressStat] || 0) : 0);
                     const goal = activeBadgeObj.threshold || activeBadgeObj.progressOf || 0;
                     const pct = goal > 0 ? Math.min((progressVal / goal) * 100, 100) : 0;
                     return (
@@ -10236,8 +10238,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                 {activeBadgeObj && (() => {
                   const earned = earnedIds.includes(activeBadgeObj.id);
                   const earnedAt = statsPlayerBadges[activeBadgeObj.id]?.earnedAt;
-                  const progressStat = activeBadgeObj.progressStat;
-                  const progressVal = progressStat && statsData ? (statsData[progressStat] || 0) : 0;
+                  const progressVal = activeBadgeObj.progressFn
+                    ? activeBadgeObj.progressFn(statsData || {})
+                    : (activeBadgeObj.progressStat && statsData ? (statsData[activeBadgeObj.progressStat] || 0) : 0);
                   const goal = activeBadgeObj.threshold || activeBadgeObj.progressOf || 0;
                   const pct = goal > 0 ? Math.min((progressVal / goal) * 100, 100) : 0;
                   return (
