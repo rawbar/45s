@@ -120,18 +120,6 @@ CARD_RULES = [
                            # visually-shameful "led low into known
                            # void → opp made bid" lose. Rig-neutral so
                            # no win-rate cost.
-                           # FAILED VARIANTS (do not re-propose):
-                           # - Partner-aware lead (lead LOW when
-                           #   partner not trump-void): tested 50.11%
-                           #   z=+0.44 OFF, rule slightly NEGATIVE.
-                           #   "Partner has trump" isn't a strong enough
-                           #   gate — partner might have low trump that
-                           #   can't help.
-                           # - Follow extension (cheapest-winner instead
-                           #   of 2nd-man-low in desperation): tested
-                           #   50.14% z=+0.56 OFF, rule slightly NEG.
-                           #   Over-fires — playing top-3 trump 2nd-man
-                           #   to take a non-bonus trick burns capital.
     "bidder_lowtrump_dump",    # SHIPPED v2.31.62, champion default-ON.
                            # User-reported round: bidder N held only 2♥ as
                            # last trump on trick 3 of a 20-bid round, opps
