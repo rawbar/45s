@@ -3416,7 +3416,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.64';
+const VERSION = '2.31.65';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6576,6 +6576,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.65', date: 'May 2026', changes: ['Fix: Suite Selector chips now light up correctly. The chip render was keying off "H/D/C/S" but the per-game stat is stored under the actual suit symbols ♥/♦/♣/♠, so the suits you had already made showed unlit. Now matches the stored keys.'] },
     { version: '2.31.64', date: 'May 2026', changes: ['Badges: the Suite Selector progress indicator now shows the four suit symbols (♥ ♦ ♣ ♠) as circular chips that light up gold when you have made a bid in that suit, instead of an x/4 bar. Easier to see at a glance which suit you are still missing.'] },
     { version: '2.31.63', date: 'May 2026', changes: ['Badges: progress bars now show on five more countable badges in the detail card — Bid Boss (career 30-bids made), Sniper (overbids that made), Bidding Sage (career successful bids of any level), Suite Selector (distinct trump suits you have made a bid in, x/4), and Untouchable Streak (current streak of consecutive wins without being set). The existing milestone and streak badges already had bars; this just extends the same treatment to the new May-2026 badges that are countable.'] },
     { version: '2.31.62', date: 'May 2026', changes: ['AI play: when the AI is the bidder leading a trick with only ONE trump card left and that trump is a low-number trump (anything in the 2-10 band, not Q/K/A/J/5), it now leads its highest offsuit instead of leading the dead trump. The low trump can\'t beat any opponent\'s remaining higher trump anyway, so leading it guaranteed a lost trick; the high offsuit at least has a chance of stealing one. User-reported case: trick-3 bidder lead the 2♥ on a 20-bid round, opponents over-trumped, bid was set. Leading the J♠ offsuit would have likely won the trick and made the bid. Head-to-head simulation: +0.50pt z=2.00 primary 20k / +0.38pt z=1.85 disjoint 30k held-out (replicated). A broader version of this rule (any time my best trump was below the highest unaccounted-for trump) tested at -2.54pt; the narrow gate is essential.'] },
@@ -10034,10 +10035,10 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                                 <div style={{ fontFamily: "'Cinzel',serif", fontSize: '11px', color: '#c9a227' }}>{progressVal} / 4</div>
                               </div>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                                {[['H','♥','#e84545'],['D','♦','#e84545'],['C','♣','#f5eedc'],['S','♠','#f5eedc']].map(([k, sym, c]) => {
-                                  const got = !!(statsData?.bidMadeBySuit?.[k]);
+                                {[['♥','#e84545'],['♦','#e84545'],['♣','#f5eedc'],['♠','#f5eedc']].map(([sym, c]) => {
+                                  const got = !!(statsData?.bidMadeBySuit?.[sym]);
                                   return (
-                                    <div key={k} style={{ width:'34px', height:'34px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', background: got ? 'rgba(201,162,39,0.18)' : 'rgba(255,255,255,0.04)', border: `1px solid ${got ? '#c9a227' : 'rgba(255,255,255,0.12)'}`, color: got ? c : 'rgba(255,255,255,0.2)', boxShadow: got ? '0 0 8px rgba(201,162,39,0.25)' : 'none', transition:'all 0.2s ease' }}>{sym}</div>
+                                    <div key={sym} style={{ width:'34px', height:'34px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', background: got ? 'rgba(201,162,39,0.18)' : 'rgba(255,255,255,0.04)', border: `1px solid ${got ? '#c9a227' : 'rgba(255,255,255,0.12)'}`, color: got ? c : 'rgba(255,255,255,0.2)', boxShadow: got ? '0 0 8px rgba(201,162,39,0.25)' : 'none', transition:'all 0.2s ease' }}>{sym}</div>
                                   );
                                 })}
                               </div>
@@ -10300,10 +10301,10 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                               <span style={{ fontFamily: "'Inter', sans-serif", fontSize: '11px', fontWeight: '500', color: 'rgba(201,162,74,0.7)' }}>{progressVal} / 4</span>
                             </div>
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                              {[['H','♥','#e84545'],['D','♦','#e84545'],['C','♣','#f5eedc'],['S','♠','#f5eedc']].map(([k, sym, c]) => {
-                                const got = !!(statsData?.bidMadeBySuit?.[k]);
+                              {[['♥','#e84545'],['♦','#e84545'],['♣','#f5eedc'],['♠','#f5eedc']].map(([sym, c]) => {
+                                const got = !!(statsData?.bidMadeBySuit?.[sym]);
                                 return (
-                                  <div key={k} style={{ width:'34px', height:'34px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', background: got ? 'rgba(201,162,74,0.18)' : 'rgba(255,255,255,0.04)', border: `1px solid ${got ? '#c9a24a' : 'rgba(255,255,255,0.12)'}`, color: got ? c : 'rgba(255,255,255,0.2)', boxShadow: got ? '0 0 8px rgba(201,162,74,0.25)' : 'none', transition:'all 0.2s ease' }}>{sym}</div>
+                                  <div key={sym} style={{ width:'34px', height:'34px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', background: got ? 'rgba(201,162,74,0.18)' : 'rgba(255,255,255,0.04)', border: `1px solid ${got ? '#c9a24a' : 'rgba(255,255,255,0.12)'}`, color: got ? c : 'rgba(255,255,255,0.2)', boxShadow: got ? '0 0 8px rgba(201,162,74,0.25)' : 'none', transition:'all 0.2s ease' }}>{sym}</div>
                                 );
                               })}
                             </div>
