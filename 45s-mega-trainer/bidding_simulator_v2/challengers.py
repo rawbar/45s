@@ -289,6 +289,23 @@ class NoUpBid15(Policy):
 REGISTRY["bid:no-upbid15"] = NoUpBid15()
 
 
+# ENDGAME_DENY (opt-in challenger; dormant rule already in improved_ai.py).
+# Bidder side, opp at 110+ (one bid from winning):
+#   Leading  → max trump (or max playable if no trump)
+#   Following→ if opp currently winning AND I have a winning card,
+#              play the MIN-sufficient winner. Else play_lowest
+#              (preserve strength).
+# Tested 2026-05-22 rig-NEUTRAL (50.04% z=0.18 primary 20k / 50.02%
+# z=0.11 held-out 30k) — kept here for future re-test when more
+# expert data accumulates, since the rule fires rarely.
+def _endgame_deny():
+    p = Policy()
+    p.name = "egd:on"
+    p.ai_flags = {'endgame_deny': True}
+    return p
+
+
+REGISTRY["egd:on"] = _endgame_deny()
 # BIDDER-LOWTRUMP-DUMP #38 (opt-in; champion default off). User-reported
 # round: bidder N held only the lowest remaining trump (2♥) on trick 3
 # of a 20-bid round, opps had A♥ available, leading 2♥ was a guaranteed
