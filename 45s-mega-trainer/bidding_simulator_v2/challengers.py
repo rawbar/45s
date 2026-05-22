@@ -105,6 +105,39 @@ CARD_RULES = [
                            # suit. Primary 20k +0.39pt z=1.56 / held-out 30k
                            # +0.38pt z=1.85 (replicated, comeback +0.18/+0.22
                            # n.s.). off: reverts to the buggy 2♣ dummy.
+    "bidder_lowtrump_dump",    # SHIPPED v2.31.62, champion default-ON.
+                           # User-reported round: bidder N held only 2♥ as
+                           # last trump on trick 3 of a 20-bid round, opps
+                           # had A♥ available; leading 2♥ guaranteed-lost
+                           # the trick and the bid. Rule (NARROW): if I'm
+                           # bidder leading, have EXACTLY 1 trump left, and
+                           # it is rank ≤ 87 (low-number trump, not Q/K/A/J/5),
+                           # AND there's an unaccounted-for higher trump,
+                           # lead my highest OFFSUIT instead. Rig: primary
+                           # 20k +0.50pt z=+2.00 / held-out 30k +0.38pt
+                           # z=+1.85 (replicated, comeback +0.65/+0.10).
+                           # Earlier broad variant (any my_max_trump <
+                           # highest_remaining) was -2.54pt z=-10.16 — gate
+                           # MUST stay narrow.
+    "take_t4_2nd",             # SHIPPED v2.31.57, champion default-ON.
+                           # On trick 4+, 2nd-man plays the CHEAPEST card
+                           # that wins the partial-trick state — regardless
+                           # of trump vs offsuit, renege capability, or
+                           # role. The general principle: at trick 4 the
+                           # winner of this trick leads the final trick
+                           # with all other players holding only ONE card
+                           # each — positional advantage worth taking
+                           # higher cards for. Strict 2nd-man-low used to
+                           # "save" for later but at trick 4 there is
+                           # nothing later to save for. User-derived
+                           # 2026-05-21 from a round-T4 screenshot where
+                           # West reneged J♥ on the bidder's 2♥ lead,
+                           # bid made; broader rule generalizes to all
+                           # roles ("take trick 4 by any means"). Rig:
+                           # primary 20k +0.60pt z=2.42, held-out 30k
+                           # +0.70pt z=3.41 (replicated, comeback +0.54
+                           # directional). off: reverts to strict 2nd-
+                           # man-low at trick 4+.
     "partner_winning_renege_prune",  # FIX v2.31.39, champion default-ON:
                            # partner-winning block treats a reneging opp as
                            # trump-void if every possibly-reneged trump is
@@ -189,6 +222,99 @@ REGISTRY["el:est"]    = _el("el:est", {'endgame_lead_boss_est': True})
 # primary 20k / +0.38pt z=1.85 held-out 30k, replicated). The meaningful
 # test now = off:safe_pad4 (auto from CARD_RULES, reverts to the buggy
 # 2♣ dummy). The legacy dummy was logically wrong in clubs-trump games.
+
+
+# follow_trump_floor canBeat refinement — tested 2026-05-20, rig-NEUTRAL
+# (49.99% z=-0.02 unconditional, 0.00 comeback @ 20k). Backed out.
+# The data layer (min_trump_rank tracking in round_runner._update_known_voids)
+# is kept always-on as scaffolding for further iteration.
+
+
+# BURN-FORCE 3RD #35b (opt-in; champion default off — TESTED rig-NEUTRAL).
+# Defender 3rd-man with trump on a trick currently won by an opponent:
+# play the LOWEST non-top-3 trump for which every remaining over-trump
+# is a top-3 (5/J/A♥). Idea: either I win cheaply OR 4th-man burns a
+# top-3 to win. RESULT 2026-05-20: 50.01% z=+0.02 / comeback +0.02 @ 20k
+# — fires too rarely (late-round, requires K/Q/A_trump accounted-for)
+# and when it does, picks the same card max-trump would pick anyway in
+# most cases. Kept opt-in for future refinement; do NOT ship default-ON.
+def _burnforce_3rd():
+    p = Policy()
+    p.name = "bf:3rd"
+    p.ai_flags = {'burnforce_3rd': True}
+    return p
+
+
+REGISTRY["bf:3rd"] = _burnforce_3rd()
+
+
+# BIDDER-PARTNER-FLOOR-LEAD #35c (opt-in; champion default off — TESTED
+# rig-NEUTRAL). Bidder leading with ≥2 trumps, partner_floor ≥98, and all
+# over-trumps for partner's floor card accounted for (mine or played).
+# Lead lowest trump so partner cashes their high trump here, I save mine.
+# RESULTS 2026-05-20 @ 20k: loose gate (floor ≥98, no safety) 49.75% z=-0.99
+# (mildly negative — partner with K loses to opp's A♥). Tight gate (all
+# over-trumps accounted-for) 49.98% z=-0.07 / comeback +0.06 z=+0.14 — dead
+# neutral, fires too rarely. Three consecutive rig-neutrals on min_trump_rank
+# heuristic rules (ftf:floor 49.99, bf:3rd 50.01, bf:partnerlead 49.98)
+# suggest the floor data is sound but hard to leverage via simple
+# position-based rules. Future work: monte-carlo rollouts that use the
+# floor as a constraint, not a heuristic flag.
+def _bidder_partner_floor_lead():
+    p = Policy()
+    p.name = "bf:partnerlead"
+    p.ai_flags = {'bidder_partner_floor_lead': True}
+    return p
+
+
+REGISTRY["bf:partnerlead"] = _bidder_partner_floor_lead()
+
+
+# UPBID15 promoted to champion v2.31.56 (default-ON; rig +5.42pt z=21.68
+# primary 20k / +5.30pt z=25.96 held-out 30k, replicated, comeback n.s.).
+# Jack2112-derived from the bidLog (5 of 13 logged divergences match the
+# exact pattern). When auction stands at 15 and hand computes as a 15-bid
+# (which the old champion would pass on), overbid to 20. Excludes dealer
+# and partner-bid-15. The pre-2.18.1 5M-sim calibration that dropped this
+# from the 20-bid threshold ran against a much weaker champion — current
+# card-play (safe:pad4 + pso:guard + dca:jlate + pob:save + dre:bidace_eg)
+# converts the borderline 15-strength hands well enough to make 20.
+class NoUpBid15(Policy):
+    name = "bid:no-upbid15"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_upbid15=False)
+
+
+REGISTRY["bid:no-upbid15"] = NoUpBid15()
+
+
+# BIDDER-LOWTRUMP-DUMP #38 (opt-in; champion default off). User-reported
+# round: bidder N held only the lowest remaining trump (2♥) on trick 3
+# of a 20-bid round, opps had A♥ available, leading 2♥ was a guaranteed
+# loss. Rule: when bidder is leading and my best trump is BELOW the
+# highest unplayed trump (= an opp could over-trump), lead my highest
+# offsuit instead. Saves my dead trump for forced-follow later AND
+# gives the offsuit a real chance to steal a trick.
+# bidder_lowtrump_dump promoted to champion v2.31.62 (default-ON; rig
+# +0.50pt z=+2.00 primary 20k / +0.38pt z=+1.85 held-out 30k). The
+# meaningful test now = off:bidder_lowtrump_dump (auto from CARD_RULES).
+
+
+# DEFENDER-TAKE-JAH-LATE #37 (opt-in; champion default off — TESTED
+# rig-NEUTRAL 2026-05-21: 50.08% z=+0.33 unconditional, comeback
+# +0.05 z=+0.13 @ 20k). Defender 2nd-man on a late trick (>=4) when
+# the bidder led TRUMP at a rank a top-3 (5/J/A♥) can renege: TAKE
+# the trick with the lowest top-3 trump instead of reneging. Idea
+# was sound (user-derived from a real round-T4 screenshot where
+# reneging J♥ cost a 40pt swing), but the conjunction of conditions
+# is too narrow — fires rarely, and when it does, +EV and -EV cases
+# roughly cancel (saving J♥ is +EV when 5♥ is in opp's hand, -EV when
+# 5♥ is in kitty/already-played). Kept opt-in for forward reference;
+# do NOT ship.
+# take_t4_2nd promoted to champion v2.31.57 (default-ON). Meaningful
+# test now = off:take_t4_2nd (auto from CARD_RULES, reverts to strict
+# 2nd-man-low at trick 4+).
 
 
 # pso:guard removed — it IS the champion now (SHIPPED v2.31.51, default-ON;

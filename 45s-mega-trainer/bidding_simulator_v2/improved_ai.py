@@ -57,6 +57,55 @@ def trick_winner(cards: List[Card], trump: Suit, leader: int) -> int:
     return (leader + win_idx) % 4
 
 
+_BLACK_LOW_ORDER = ['10', '9', '8', '7', '6', '4', '3', '2']  # index 0-7 → ranks 80-87
+_RED_LOW_ORDER   = ['2', '3', '4', '6', '7', '8', '9', '10']  # index 0-7 → ranks 80-87
+
+
+def _card_at_rank(rank: int, trump: Suit) -> Optional[Card]:
+    """Reverse get_trump_rank: a real Card whose trump rank == `rank`.
+    Used by the worst-case pad to materialise an opponent's known
+    minimum-rank trump for trick_winner probes."""
+    if rank == 102: return Card('5', trump)
+    if rank == 101: return Card('J', trump)
+    if rank == 100: return Card('A', HEARTS)
+    if rank == 99 and trump != HEARTS: return Card('A', trump)
+    if rank == 98:  return Card('K', trump)
+    if rank == 97:  return Card('Q', trump)
+    if 80 <= rank <= 87:
+        order = _RED_LOW_ORDER if trump in (HEARTS, Suit.DIAMONDS) else _BLACK_LOW_ORDER
+        return Card(order[rank - 80], trump)
+    return None
+
+
+def _worst_case_pad(cards: List[Card],
+                    trump: Suit,
+                    leader: int,
+                    known_voids: List[dict]) -> List[Card]:
+    """Pad partial trick to 4 cards assuming each after-me opponent plays
+    the worst (for me) card they could plausibly hold.
+
+    Uses follow_trump_floor: if seat S has known min_trump_rank R and is
+    not provably trump-void, pad seat S with a real trump card at rank R
+    (so trick_winner sees them over-trumping us if our candidate is below
+    their floor). Else falls back to the safe non-trump dummy.
+
+    Caller decides when to apply (via the strategic flag).
+    """
+    out = list(cards)
+    for pos in range(len(cards), 4):
+        seat = (leader + pos) % 4
+        ov = known_voids[seat] if seat < len(known_voids) else {}
+        is_void = ov.get('trump') is True
+        floor = ov.get('min_trump_rank', 0)
+        if (not is_void) and floor > 0:
+            c = _card_at_rank(floor, trump)
+            if c is not None:
+                out.append(c)
+                continue
+        out.append(Card('2', HEARTS if trump != HEARTS else Suit.CLUBS))
+    return out
+
+
 def _pad4(cards: List[Card], trump: Optional[Suit] = None) -> List[Card]:
     """Pad partial trick to 4 cards for trick_winner() probes.
 
@@ -579,6 +628,49 @@ class ImprovedAI:
                              all(known_oot[i] for i in range(4) if i != player))
             if F('bidder_after_void_lead') and trumps and (all_known_out or opps_est_out):
                 return min(trumps, key=lambda c: _tr(c, trump))
+            # BIDDER_PARTNER_FLOOR_LEAD (opt-in): bidder leading with
+            # multiple trumps, partner's known min_trump_rank floor is
+            # high enough that partner's floor card is GUARANTEED to win
+            # the trick (every higher trump is accounted for — mine or
+            # already played). Lead my LOWEST trump instead of my
+            # highest so partner cashes their known high trump here
+            # while I conserve mine for a future lead. User-derived
+            # expert play 2026-05-20: I led 5, partner played Q →
+            # floor ≥98. With J in my hand AND 5 played, partner's K is
+            # still beatable by A♥ (might be in opp), but partner's
+            # A♥-floor with J+5 accounted for IS unbeatable. So gate on
+            # "all over-trumps for partner_floor are accounted for".
+            partner_idx = (player + 2) % 4
+            partner_floor = known_voids[partner_idx].get('min_trump_rank', 0)
+            if (Fon('bidder_partner_floor_lead')
+                    and trumps and len(trumps) >= 2
+                    and partner_floor >= 98):
+                my_ids = {cid(c) for c in hand}
+                played_ids = {cid(c) for c in cards_played}
+                tv = trump.value
+                # Cards that could over-trump partner's floor card.
+                over_cards = []
+                if partner_floor < 102: over_cards.append(f"5{tv}")
+                if partner_floor < 101: over_cards.append(f"J{tv}")
+                if partner_floor < 100: over_cards.append("A♥")
+                if partner_floor < 99 and trump != HEARTS:
+                    over_cards.append(f"A{tv}")
+                if partner_floor < 98: over_cards.append(f"K{tv}")
+                floor_safe = all(c in my_ids or c in played_ids for c in over_cards)
+                if floor_safe:
+                    return min(trumps, key=lambda c: _tr(c, trump))
+            # BIDDER_LOWTRUMP_DUMP (opt-in; user-derived 2026-05-22). NARROW:
+            # I have EXACTLY 1 trump left AND it is a low-number trump
+            # (rank ≤ 87 — anything in the 2-10 band, not Q/K/A/J/5)
+            # AND there's at least one unaccounted-for higher trump.
+            # Leading this trump is a near-guaranteed loss; lead my
+            # highest offsuit instead to try to steal a trick.
+            if (F('bidder_lowtrump_dump') and len(trumps) == 1 and non_trumps):
+                my_trump_rank = _tr(trumps[0], trump)
+                if my_trump_rank <= 87:
+                    highest_remaining = get_highest_remaining_trump(cards_played, trump)
+                    if my_trump_rank < highest_remaining:
+                        return max(non_trumps, key=get_offsuit_rank)
             if (F('bidder_endgame_trump_timing')
                     and trick_num >= 4 and len(trumps) == 1 and len(non_trumps) == 1):
                 opp_idx = [i for i in range(4)
@@ -833,6 +925,58 @@ class ImprovedAI:
                                else get_offsuit_rank(c))
 
             if my_position == 2:
+                # BURNFORCE_3RD (opt-in challenger; champion: flag absent →
+                # falls through to the unconditional max-trump rule below).
+                # Defender 3rd-man with trump on a trick currently won by an
+                # opponent: instead of burning my own max-trump (which is
+                # often a top-3 — 5/J/A♥), play the LOWEST non-top-3 trump
+                # for which every remaining unplayed over-trump is a top-3.
+                # Result: 4th-man either has no over-trump (I win the trick
+                # cheaply) OR is forced to burn a top-3 to win — net team
+                # economy improves because their top-3 is gone and mine is
+                # preserved. The min_trump_rank floor data layer is what
+                # makes the safety check on "any over-trumps remaining are
+                # in 4th-man's hand-band" sound.
+                is_defender = (player % 2) != (bid_winner % 2)
+                if Fon('burnforce_3rd') and is_defender and my_trumps:
+                    fourth_seat = (leader + 3) % 4
+                    fourth_void = (known_voids[fourth_seat].get('trump') is True)
+                    if not fourth_void:
+                        played_ids = {cid(c) for c in cards_played}
+                        my_ids = {cid(c) for c in hand}
+                        tv = trump.value
+                        # Build full universe of trump cards (rank, id).
+                        ranked = [(102, f"5{tv}"), (101, f"J{tv}"),
+                                  (100, "A♥")]
+                        if trump != HEARTS:
+                            ranked.append((99, f"A{tv}"))
+                        ranked.append((98, f"K{tv}"))
+                        ranked.append((97, f"Q{tv}"))
+                        low_order = (['2', '3', '4', '6', '7', '8', '9', '10']
+                                     if trump in (HEARTS, Suit.DIAMONDS)
+                                     else ['10', '9', '8', '7', '6', '4', '3', '2'])
+                        for i, r in enumerate(low_order):
+                            ranked.append((80 + i, f"{r}{tv}"))
+                        # Ranks of trump cards that are still in play AND
+                        # not in my hand — i.e. could be in some opponent's
+                        # hand (and specifically might be in 4th-man's).
+                        in_play_ranks = {r for (r, cid_) in ranked
+                                         if cid_ not in played_ids
+                                         and cid_ not in my_ids}
+                        burn_candidates = []
+                        for t in my_trumps:
+                            t_rank = _tr(t, trump)
+                            if t_rank >= 100:
+                                continue  # don't burn my own top-3
+                            over = {r for r in in_play_ranks if r > t_rank}
+                            # No over-trumps remain → my T wins outright;
+                            # AND every remaining over-trump is a top-3 →
+                            # 4th-man either can't over-trump or must burn
+                            # a top-3 to do so. Both are wins for our team.
+                            if not over or all(r >= 100 for r in over):
+                                burn_candidates.append((t, t_rank))
+                        if burn_candidates:
+                            return min(burn_candidates, key=lambda x: x[1])[0]
                 # FORCE-EXTRACT (opt-in challenger; champion: flag absent →
                 # falls straight through to the unconditional 3rd-man-high
                 # below, i.e. unchanged). Hypothesis: the existing
@@ -885,6 +1029,28 @@ class ImprovedAI:
                         and not _is_trump(trick[0], trump)
                         and trick[0].rank == 'A'):
                     return min(my_trumps, key=lambda c: _tr(c, trump))
+                # take_t4_2nd (opt-in; user-derived 2026-05-21). On trick
+                # 4 or 5, 2nd-man plays the cheapest CARD that wins the
+                # current partial-trick state — regardless of trump vs
+                # offsuit, renege capability, or role. The general
+                # principle: at trick 4 the winner of this trick leads
+                # the final trick with all other players holding only
+                # ONE card each (positional advantage). Strict 2nd-man-
+                # low conserves cards for "later" but at trick 4 there
+                # IS no later worth conserving for. Over-trump risk from
+                # 3rd/4th men remains — rig measures whether the bet
+                # pays out on average.
+                if (F('take_t4_2nd') and trick_num >= 4 and trick):
+                    winners = [c for c in playable
+                               if trick_winner(
+                                   _pad4(trick + [c],
+                                         trump if F('safe_pad4') else None),
+                                   trump, leader) == player]
+                    if winners:
+                        return min(winners,
+                                   key=lambda c: _tr(c, trump)
+                                   if _is_trump(c, trump)
+                                   else get_offsuit_rank(c))
                 # v2.31.25/26: AFTER-VOID + RUFF-CHEAP + trick-3 partner-shed
                 # exception all removed (audit proved each net-negative).
                 # 2nd man = pure strict 2nd-man-low.
