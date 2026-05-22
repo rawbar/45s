@@ -17,7 +17,6 @@ decideBid today — desperation requires theyNeed<=30 AND weNeed>30, which the
 left out of this faithful port so the baseline matches the shipped game.
 """
 
-import hashlib
 from typing import List, Tuple, Optional
 from game_engine import Card, Suit, get_trump_rank, is_trump
 
@@ -87,12 +86,7 @@ def decide_bid(hand: List[Card],
                 enable_cruise: bool = True,
                 desp_they_need: int = 15,
                 desp_we_need_floor: int = 0,
-                enable_spoiler: bool = False,
-                enable_loose_open: bool = True,
-                loose_open_pass_prob: float = 0.0,
-                desp_overbid25_pass_prob: float = 0.0,
-                enable_upbid15: bool = True,
-                enable_open_5_at_20: bool = True) -> Tuple[int, Optional[Suit]]:
+                enable_spoiler: bool = False) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
     DATA-DERIVED, held-out-validated trigger (commit d19be47: 12k deals/cell
@@ -134,24 +128,6 @@ def decide_bid(hand: List[Card],
         if opp_bid_15 and they_can_win_15:
             return 20, suit
         if opp_bid_20 and they_can_win_20 and player_index == dealer:
-            # RANDOMIZED 25-SACRIFICE (v2.31.44): this hand-blind overbid to
-            # 25 (deny their game-point 20) is exploitable — a human bids 20
-            # on air knowing the AI always sacrifices into a doomed 25. The
-            # 20-overbids stay always-on (cheap/makeable). Here, ONLY when
-            # the hand is crap for 25 (cannot even make 20 → pure sacrifice)
-            # pass with probability desp_overbid25_pass_prob (mixed strategy:
-            # "you might be bluffing — try to make your 20"). Deterministic
-            # per decision-state (stable md5, paired-deal-safe) in the rig;
-            # shipped JS uses true Math.random(). prob 0.0 = champion
-            # bit-identical. A real (can20_60) hand still always sacrifices.
-            if desp_overbid25_pass_prob > 0.0 and not can20_60:
-                _k = repr((tuple(sorted((c.rank, c.suit.value)
-                                        for c in hand)),
-                           current_high_bid, player_index, dealer,
-                           team_scores, opp_scores, partner_bid, 'd25'))
-                _hh = int(hashlib.md5(_k.encode()).hexdigest()[:8], 16)
-                if (_hh % 100000) / 100000.0 < desp_overbid25_pass_prob:
-                    return 0, None
             return 25, suit
         if opp_bid_25:
             return 0, None
@@ -309,29 +285,6 @@ def decide_bid(hand: List[Card],
             elif hasAT and hasKT and hasQT:
                 bid = 15
 
-    # UPBID-15 (opt-in flag override; jack2112-derived 2026-05-20).
-    # When the auction stands at 15 and the AI calculated this hand as a
-    # 15-bid (which would otherwise pass since you can't equal the bid),
-    # overbid to 20 instead. Jack2112 (expert, +7.1pt vs champion baseline)
-    # did this on 5/13 of his logged divergences — every one of those
-    # hands the AI would have bid 15 on but couldn't because the auction
-    # was already at 15. Exclude the dealer (their bagged-15 path is
-    # different) and any partner-bid-15 case (don't overbid your own
-    # partner). Opt-in flag controlled by the rig harness.
-    if (enable_upbid15 and bid == 15 and current_high_bid == 15
-            and player_index != dealer and partner_bid != 15):
-        bid = 20
-
-    # OPEN_5_AT_20 (opt-in; jack2112-derived 2026-05-22). Twin of
-    # upbid15 for the OPEN case: when no one has bid yet and the AI
-    # would open 15 on a 5-of-trump-anchor hand (the `has5` path,
-    # which is hit by 5+T2 / 5+T3 hands without J/A♥/A-of-trump
-    # support), open at 20 instead. Jack's logged "open 20 where AI
-    # opens 15" cluster (5x) is uniformly this pattern.
-    if (enable_open_5_at_20 and bid == 15 and current_high_bid == 0
-            and player_index != dealer and has5):
-        bid = 20
-
     # Dealer clamp (only bid the minimum needed)
     if bid > current_high_bid and player_index == dealer and current_high_bid > 0:
         bid = min(bid, current_high_bid + 5)
@@ -339,35 +292,6 @@ def decide_bid(hand: List[Card],
     if bid <= current_high_bid:
         # Dealer bagged: all passed → forced 15
         if player_index == dealer and current_high_bid == 0:
-            return 15, suit
-        # OPEN 15 (SHIPPED v2.31.37 = open:nd, champion default-ON).
-        # v2.31.36 looser open (+3.52pt held-out z=17.2) made UNCONDITIONAL
-        # in a clean open, plus a desperation guard: when desperation is
-        # active (they_need<=15 & we_need>0 == opp at game point & we
-        # behind) the open DEFERS to the desperation/deny logic instead of
-        # throwing a junk 15 (that fall-through was the -1.84pt comeback
-        # leak; user-diagnosed). Held-out +1.19pt overall (z=5.85), drag
-        # neutralized to -0.66 NS. Mutually exclusive with the spoiler
-        # (spoiler needs chb!=0). Ablate whole rule via enable_loose_open=False.
-        if (enable_loose_open and current_high_bid == 0 and partner_bid <= 0
-                and not (we_need <= 15 and opp_scores <= 85)
-                and not (they_need <= 15 and we_need > 0)):
-            # RANDOMIZED PASS (v2.31.44): the auto-15 on these residual
-            # (5M-oracle-pass) hands is +EV but DETERMINISTIC → predictable,
-            # exploitable, and frustrating to humans. With probability
-            # loose_open_pass_prob, pass instead — a less-readable mixed
-            # strategy. Deterministic per decision-state here (stable md5,
-            # so paired mirrored deals still cancel); the shipped JS uses
-            # true Math.random(). prob 0.0 = champion bit-identical. Only
-            # the residual is randomized; genuine bids returned earlier.
-            if loose_open_pass_prob > 0.0:
-                _key = repr((tuple(sorted((c.rank, c.suit.value)
-                                          for c in hand)),
-                             current_high_bid, player_index, dealer,
-                             team_scores, opp_scores, partner_bid))
-                _h = int(hashlib.md5(_key.encode()).hexdigest()[:8], 16)
-                if (_h % 100000) / 100000.0 < loose_open_pass_prob:
-                    return 0, None
             return 15, suit
         return 0, None
     return bid, suit

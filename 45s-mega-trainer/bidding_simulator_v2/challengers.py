@@ -289,22 +289,6 @@ class NoUpBid15(Policy):
 REGISTRY["bid:no-upbid15"] = NoUpBid15()
 
 
-# OPEN_5_AT_20 promoted to champion v2.31.63 (default-ON; jack2112-derived
-# 2026-05-22). At hb=0, when the AI's `has5` path computes bid=15 (a 5+T2
-# or 5+T3 hand without J/A♥/A-of-trump support), open at 20 instead.
-# Twin of upbid15 for the OPEN case. Rig: primary 20k +0.72pt z=+2.89,
-# held-out 30k +1.05pt z=+5.17 (replicated, comeback +0.62 directional).
-# Mined from 5/5 logged jack2112 divergences in the open-20 cluster.
-class NoOpen5At20(Policy):
-    name = "bid:no-open5_20"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_open_5_at_20=False)
-
-
-REGISTRY["bid:no-open5_20"] = NoOpen5At20()
-
-
 # BIDDER-LOWTRUMP-DUMP #38 (opt-in; champion default off). User-reported
 # round: bidder N held only the lowest remaining trump (2♥) on trick 3
 # of a 20-bid round, opps had A♥ available, leading 2♥ was a guaranteed
