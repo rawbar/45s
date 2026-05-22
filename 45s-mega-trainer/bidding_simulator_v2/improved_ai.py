@@ -730,12 +730,10 @@ class ImprovedAI:
             partner_trump_est = est(partner_idx)
             opps_have_trump = est(opp1) > 0 or est(opp2) > 0
             # DEFENDER_DESPERATION_LEAD (opt-in; user-derived 2026-05-22).
-            # When the bidding team's pre-round score + their bid would
-            # win them the game, defenders MUST set the bid. Tightened:
-            # lead a guaranteed-boss trump if I hold one (rank ≥ highest
-            # remaining unplayed trump). Else lead my highest offsuit
-            # (high offsuit forces opp to commit a trump to win it).
-            # Else fall back to highest trump.
+            # Bidding team would win the game by making this bid.
+            # Boss-first lead order (PARTNER-AWARE variant tested
+            # 2026-05-22 negative — partner-has-trump is wrong gate
+            # because partner-might-have-LOW-trump still loses).
             if (F('defender_desperation_lead') and state.team_scores is not None):
                 bidder_pre = state.team_scores[bid_winner % 2]
                 if bidder_pre + state.high_bid >= state.winning_total:
@@ -771,6 +769,13 @@ class ImprovedAI:
                     cw = (leader + i) % 4
             winning_card = wc
             my_team = player % 2
+
+            # DEFENDER_DESPERATION_FOLLOW (tested 2026-05-22 net-NEGATIVE
+            # in the head-to-head ablation: off:rule won 50.14% z=0.56.
+            # The "take cheapest winner in desperation" change over-fires
+            # at 2nd man — playing top-3 trump to take a low-bonus trick
+            # often costs us a more valuable later trick. Backed out;
+            # the lead-side rule alone is the rig-neutral trust fix.)
             partner_winning = (cw % 2) == my_team
 
             bidder_led = leader == bid_winner
