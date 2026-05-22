@@ -729,25 +729,6 @@ class ImprovedAI:
             opp2 = (player + 3) % 4
             partner_trump_est = est(partner_idx)
             opps_have_trump = est(opp1) > 0 or est(opp2) > 0
-            # DEFENDER_DESPERATION_LEAD (opt-in; user-derived 2026-05-22).
-            # When the bidding team's pre-round score + their bid would
-            # win them the game, defenders MUST set the bid. Tightened:
-            # lead a guaranteed-boss trump if I hold one (rank ≥ highest
-            # remaining unplayed trump). Else lead my highest offsuit
-            # (high offsuit forces opp to commit a trump to win it).
-            # Else fall back to highest trump.
-            if (F('defender_desperation_lead') and state.team_scores is not None):
-                bidder_pre = state.team_scores[bid_winner % 2]
-                if bidder_pre + state.high_bid >= state.winning_total:
-                    highest_remaining = get_highest_remaining_trump(cards_played, trump)
-                    boss_trumps = [c for c in trumps
-                                   if _tr(c, trump) >= highest_remaining]
-                    if boss_trumps:
-                        return max(boss_trumps, key=lambda c: _tr(c, trump))
-                    if non_trumps:
-                        return max(non_trumps, key=get_offsuit_rank)
-                    if trumps:
-                        return max(trumps, key=lambda c: _tr(c, trump))
             if (F('defender_partner_trump_load')
                     and partner_trump_est >= 3 and trumps and non_trumps and opps_have_trump):
                 return min(trumps, key=lambda c: _tr(c, trump))
