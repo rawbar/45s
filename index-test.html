@@ -3416,7 +3416,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.62';
+const VERSION = '2.31.63';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5493,7 +5493,7 @@ function getDefaultDiscardSelection(hand, trumpSuit) {
   return hand.map((c, i) => isTrump(c, trumpSuit) ? -1 : i).filter(i => i >= 0);
 }
 
-function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, highBid, cardsDrawn, knownOutOfTrump, trickNum, bidderHasLostTrick, cardsPlayed, playHistory, knownVoids) {
+function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, highBid, cardsDrawn, knownOutOfTrump, trickNum, bidderHasLostTrick, cardsPlayed, playHistory, knownVoids, scores) {
   const led = trick[0] || null;
   const ledSuit = led?.suit;
   const playable = getPlayableCards(hand, trumpSuit, led, ledSuit);
@@ -5882,6 +5882,39 @@ if (isDefender && isLeading) {
   const isTrump = (c) => getTrumpRank(c, trumpSuit) >= 0;
   const trumps = playable.filter(c => isTrump(c));
   const nonTrumps = playable.filter(c => !isTrump(c));
+
+  // DEFENDER_DESPERATION_LEAD (v2.31.63, user-derived 2026-05-22). When
+  // the bidding team's pre-round score + their bid would WIN the game,
+  // defenders MUST set the bid. Conservative low-card leads concede.
+  // Order: (1) guaranteed-boss trump if I have one, (2) highest offsuit
+  // (forces opp to spend a trump to win it), (3) highest trump.
+  // Rig-neutral trust fix (50.07% z=0.28) — per v2.31.30 precedent,
+  // ship for AI-correctness perception at zero win-rate cost.
+  if (Array.isArray(scores)) {
+    const bidderTeam_ = bidWinner % 2;
+    const bidderPre = scores[bidderTeam_] || 0;
+    if (bidderPre + highBid >= 120) {
+      const highestRemaining = getHighestRemainingTrump(cardsPlayed || [], trumpSuit);
+      const bossTrumps = trumps.filter(c => getTrumpRank(c, trumpSuit) >= highestRemaining);
+      if (bossTrumps.length > 0) {
+        const best = bossTrumps.reduce((a, b) =>
+          getTrumpRank(a, trumpSuit) > getTrumpRank(b, trumpSuit) ? a : b);
+        console.log(`🚨 DESPERATION LEAD: P${player + 1} leads boss ${best.id} (opp at ${bidderPre} + bid ${highBid})`);
+        return best;
+      }
+      if (nonTrumps.length > 0) {
+        const best = nonTrumps.reduce((a, b) =>
+          getOffSuitRank(a) > getOffSuitRank(b) ? a : b);
+        console.log(`🚨 DESPERATION LEAD: P${player + 1} no boss trump, leads high offsuit ${best.id}`);
+        return best;
+      }
+      if (trumps.length > 0) {
+        const best = trumps.reduce((a, b) =>
+          getTrumpRank(a, trumpSuit) > getTrumpRank(b, trumpSuit) ? a : b);
+        return best;
+      }
+    }
+  }
 
   // PARTNER TRUMP-LOADED: if partner has 3+ estimated trump remaining and opponents
   // still have trump, lead our lowest trump to pull opponents' trump now — otherwise
@@ -6576,6 +6609,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.63', date: 'May 2026', changes: ['AI play: when the AI is a defender and the bidding team would WIN the game by making this bid (their score plus the bid total 120 or more), the defender now leads aggressively instead of conservatively. Priority: lead a guaranteed-boss trump (one that no remaining opponent trump can beat) first; otherwise lead the highest offsuit (forces the opponents to commit a trump to win); otherwise lead the highest trump. Previously the AI would lead its lowest offsuit even in this desperate spot, which often handed the opponent the trick they needed to win the game. User-reported: bidder team at 105 had bid 15, scored 10 on trick 1, defender N took trick 2, then led a low card into the partner\'s known void on trick 3 — opponent trumped and won the game. Head-to-head simulation is rig-neutral on this (~50.07%) because the scenario is rare and outcomes are bidirectional, but the change eliminates the visible "AI threw the game away" pattern at zero win-rate cost.'] },
     { version: '2.31.62', date: 'May 2026', changes: ['AI play: when the AI is the bidder leading a trick with only ONE trump card left and that trump is a low-number trump (anything in the 2-10 band, not Q/K/A/J/5), it now leads its highest offsuit instead of leading the dead trump. The low trump can\'t beat any opponent\'s remaining higher trump anyway, so leading it guaranteed a lost trick; the high offsuit at least has a chance of stealing one. User-reported case: trick-3 bidder lead the 2♥ on a 20-bid round, opponents over-trumped, bid was set. Leading the J♠ offsuit would have likely won the trick and made the bid. Head-to-head simulation: +0.50pt z=2.00 primary 20k / +0.38pt z=1.85 disjoint 30k held-out (replicated). A broader version of this rule (any time my best trump was below the highest unaccounted-for trump) tested at -2.54pt; the narrow gate is essential.'] },
     { version: '2.31.61', date: 'May 2026', changes: ['Badges Phase 3: the final two badges are now wired into per-trick gameplay. Trump Drainer fires when, as bidder, you lead trump on at least 3 tricks in a single round and win all of those leads. Setter\'s Touch fires when, as a defender, you take the specific trick that mathematically locks the set on an opponent\'s 25+ bid (their team\'s round score plus the maximum points still available is less than their bid). All 19 new badges from the May 2026 spec are now fully live.'] },
     { version: '2.31.60', date: 'May 2026', changes: ['Badges Phase 2b: the remaining 6 locked badges from the v2.31.58 spec are now wired into gameplay — Sniper (overbid an opponent\'s bid and made it), Reverse Sweep (win after being behind 80+ points), Survivor (win after team was at 0 or below while opponent was at 100+), Slow Burn (win a game that ran 12+ rounds), Final Stand (set the opponent\'s bid when making it would have won them the game), and Untouchable Streak (10 consecutive clean wins, reuses the existing Card Shark streak counter). All 19 new badges from the May 2026 spec are now live; the 4 retroactive earners (tdr26, robr, vodkaice, jack2112) should see their badges award on the next game.'] },
@@ -15661,7 +15695,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         bidderLostTrick,
         cardsPlayed,
         playHistory,
-        knownVoids
+        knownVoids,
+        scores
       );
       
       const cardIndex = hand.findIndex(c => c.id === card.id);

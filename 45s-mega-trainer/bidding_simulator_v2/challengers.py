@@ -105,6 +105,21 @@ CARD_RULES = [
                            # suit. Primary 20k +0.39pt z=1.56 / held-out 30k
                            # +0.38pt z=1.85 (replicated, comeback +0.18/+0.22
                            # n.s.). off: reverts to the buggy 2♣ dummy.
+    "defender_desperation_lead",  # SHIPPED v2.31.63, champion default-ON
+                           # (rig-NEUTRAL trust fix per v2.31.30 precedent;
+                           # primary 20k 50.07% z=+0.28). User-derived
+                           # 2026-05-22 from a round where defender N
+                           # led a low offsuit on trick 3 with opp at
+                           # 105 (bid 15, +10 trick-1) — opp trumped,
+                           # game over. Rule: when opp's pre-round
+                           # score + bid ≥ 120, defender leading prefers
+                           # (1) a guaranteed-boss trump (mine ≥ highest
+                           # remaining unplayed), (2) else highest
+                           # offsuit (forces opp to commit a trump),
+                           # (3) else highest trump. Eliminates the
+                           # visually-shameful "led low into known
+                           # void → opp made bid" lose. Rig-neutral so
+                           # no win-rate cost.
     "bidder_lowtrump_dump",    # SHIPPED v2.31.62, champion default-ON.
                            # User-reported round: bidder N held only 2♥ as
                            # last trump on trick 3 of a 20-bid round, opps
@@ -299,6 +314,17 @@ REGISTRY["bid:no-upbid15"] = NoUpBid15()
 # bidder_lowtrump_dump promoted to champion v2.31.62 (default-ON; rig
 # +0.50pt z=+2.00 primary 20k / +0.38pt z=+1.85 held-out 30k). The
 # meaningful test now = off:bidder_lowtrump_dump (auto from CARD_RULES).
+
+
+# DEFENDER-DESPERATION-LEAD #39 (opt-in; champion default off). User-
+# derived 2026-05-22: when the bidding team's pre-round score + their
+# bid would win the game, defenders MUST set the bid. Conservative
+# pulls (lead lowest trump / lead lowest offsuit) concede the game.
+# Lead the HIGHEST trump (or highest offsuit if void in trump) to
+# maximise trick-taking probability.
+# defender_desperation_lead promoted to champion v2.31.63 (default-ON,
+# rig-neutral trust fix). Meaningful test = off:defender_desperation_lead
+# (auto from CARD_RULES, reverts to conservative low offsuit lead).
 
 
 # DEFENDER-TAKE-JAH-LATE #37 (opt-in; champion default off — TESTED
