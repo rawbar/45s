@@ -3416,7 +3416,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.67';
+const VERSION = '2.31.68';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6600,6 +6600,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.68', date: 'May 2026', changes: ['Fix: when you play the last card of trick 5 (i.e., you are the 4th to play on the final trick of a round), your card no longer remains visible in your hand after moving to the table. Root cause: when every hand becomes empty, Firebase strips the whole hands key from the game-state snapshot, and the listener\'s `if (gameState.hands)` truthiness guard then skipped the local hand clear, so your just-played card stayed in your hand state even though Firebase had it removed. Now: when the listener sees the hands key missing AND the phase is round-end or game-over, it explicitly clears the local hands to four empty arrays.'] },
     { version: '2.31.67', date: 'May 2026', changes: ['Spectator mode: tapping an in-progress game in the lobby lets you watch the table, but as a spectator you no longer see — or can press — any of the action buttons. The Next Round button, the New Game (rematch) button, the bid buttons, the trump-select buttons, the discard button, and the card-play tap targets are now all hidden / no-ops if the player Firebase says is sitting at your seat is not you (which is how you can end up in someone else\'s game). Previously a spectator tapping Next Round wrote to Firebase and advanced the round for everyone, interrupting the real players. The spectator client also no longer races real clients to drive the AI moves.'] },
     { version: '2.31.66', date: 'May 2026', changes: ['AI play: 2nd-man defender following a BIDDER offsuit lead now beats the lead with the cheapest higher card of the led suit, instead of always playing the lowest card. The "second-hand low" mantra is actually a TRUMP heuristic — on offsuit you want to beat the lead so that 3rd-man (the bidder\'s partner) either has to over-beat with an even higher offsuit, commit trump to win, or concede the trick. Either way your partner (4th-man) avoids having to ruff in. User-derived from a screenshot where North led 5♠ offsuit and East played a low spade instead of beating it. Head-to-head simulation: 20,000 paired deals = +0.01pt z=+0.05 (rig-NEUTRAL). Shipped as a trust fix per the v2.31.30 precedent — sound textbook 45s principle, plays visibly correct in the screenshot case, zero measured win-rate cost.'] },
     { version: '2.31.65', date: 'May 2026', changes: ['Fix: Suite Selector chips now light up correctly. The chip render was keying off "H/D/C/S" but the per-game stat is stored under the actual suit symbols ♥/♦/♣/♠, so the suits you had already made showed unlit. Now matches the stored keys.'] },
@@ -13951,15 +13952,23 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       if (gameState.trumpSuit) setTrumpSuit(gameState.trumpSuit);
       if (gameState.wasBagged !== undefined) setWasBagged(gameState.wasBagged);
       
-      // CRITICAL: Sync hands! Firebase quirk: arrays can become objects
+      // CRITICAL: Sync hands! Firebase quirk: arrays can become objects.
+      // Also: Firebase strips entirely-empty arrays. When the 4th player plays
+      // the last card of trick 5, every hand becomes [] and the whole `hands`
+      // key gets stripped from the snapshot — gameState.hands arrives as
+      // undefined. The old `if (gameState.hands)` guard then skipped setHands
+      // and the just-played card stayed visible in the local hand (v2.31.68
+      // user-reported "card in two locations"). Fix: when hands is missing
+      // but phase is round-end/game-over, the source of truth IS empty hands,
+      // so explicitly clear them locally.
       if (gameState.hands) {
         // Normalize: Firebase converts arrays to objects with numeric keys
         const rawHands = gameState.hands;
         let normalizedHands;
-        
+
         if (Array.isArray(rawHands)) {
           // Already an array - normalize each hand
-          normalizedHands = rawHands.map(hand => 
+          normalizedHands = rawHands.map(hand =>
             Array.isArray(hand) ? hand : (hand ? Object.values(hand).filter(c => c) : [])
           );
         } else {
@@ -13968,9 +13977,12 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             Array.isArray(hand) ? hand : (hand ? Object.values(hand).filter(c => c) : [])
           );
         }
-        
+
         console.log('📊 Syncing hands - Raw:', rawHands, '→ Normalized:', normalizedHands);
         setHands(normalizedHands);
+      } else if (gameState.phase === 'round-end' || gameState.phase === 'game-over') {
+        console.log('📊 Syncing hands: Firebase stripped (all empty) at', gameState.phase, '→ [[], [], [], []]');
+        setHands([[], [], [], []]);
       }
       
       // Sync bids and normalize to ensure 4 elements
