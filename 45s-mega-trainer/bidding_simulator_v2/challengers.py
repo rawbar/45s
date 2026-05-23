@@ -119,6 +119,19 @@ CARD_RULES = [
                            # Earlier broad variant (any my_max_trump <
                            # highest_remaining) was -2.54pt z=-10.16 — gate
                            # MUST stay narrow.
+    "off2_beat_off_bidlead",   # SHIPPED v2.31.66, champion default-ON
+                           # (rig-NEUTRAL: +0.01pt z=+0.05 primary 20k,
+                           # comeback -0.01 z=-0.03 — v2.31.30 trust-fix
+                           # precedent). The "2nd-man-low" mantra is a
+                           # TRUMP heuristic; on OFFSUIT, 2nd-man defender
+                           # following a BIDDER offsuit lead should beat
+                           # with the cheapest higher led-suit card.
+                           # Forces 3rd-man (bidder's partner) to over-
+                           # beat with higher offsuit, commit trump, or
+                           # concede — and saves 4th-man (my partner)
+                           # from having to ruff in. User-derived from a
+                           # screenshot where the AI played strict-low.
+                           # off: reverts to strict 2nd-man-low.
     "take_t4_2nd",             # SHIPPED v2.31.57, champion default-ON.
                            # On trick 4+, 2nd-man plays the CHEAPEST card
                            # that wins the partial-trick state — regardless
@@ -306,6 +319,24 @@ def _endgame_deny():
 
 
 REGISTRY["egd:on"] = _endgame_deny()
+
+
+# off2:beat_bidlead promoted to champion v2.31.66 (default-ON; rig-NEUTRAL
+# +0.01pt z=+0.05 primary 20k, v2.31.30 trust-fix precedent). Meaningful
+# test now = off:off2_beat_off_bidlead (auto from CARD_RULES, reverts to
+# strict 2nd-man-low). The broader off2:beat_anyopp (any-opp lead, not just
+# bidder) also tested rig-NEUTRAL (+0.01pt z=+0.03) and is kept as a
+# forward-variant opt-in challenger.
+def _off2_beat_anyopp():
+    p = Policy()
+    p.name = "off2:beat_anyopp"
+    p.ai_flags = {'off2_beat_off_anyopp': True}
+    return p
+
+
+REGISTRY["off2:beat_anyopp"]  = _off2_beat_anyopp()
+
+
 # BIDDER-LOWTRUMP-DUMP #38 (opt-in; champion default off). User-reported
 # round: bidder N held only the lowest remaining trump (2♥) on trick 3
 # of a 20-bid round, opps had A♥ available, leading 2♥ was a guaranteed

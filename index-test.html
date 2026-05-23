@@ -3416,7 +3416,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.65';
+const VERSION = '2.31.66';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6275,6 +6275,30 @@ if (trick.length > 0) {
       }
     }
 
+    // off2_beat_off_bidlead (v2.31.66, user-derived 2026-05-23). The
+    // "2nd-man-low" mantra is a TRUMP heuristic. On OFFSUIT leads, 2nd-man
+    // defender following a BIDDER offsuit lead beats with the cheapest
+    // higher led-suit card instead of dribbling low. Forces 3rd-man
+    // (bidder's partner) to over-beat with higher offsuit, commit trump,
+    // or concede — and saves 4th-man (my partner) from having to ruff in.
+    // Rig: +0.01pt z=+0.05 primary 20k (rig-NEUTRAL); shipped as a trust
+    // fix per the v2.31.30 precedent — sound textbook principle, fires
+    // visibly in screenshots, zero measured win-rate cost.
+    if (trick && trick.length > 0 && !isTrump(trick[0]) &&
+        (player % 2) !== (bidWinner % 2) &&
+        leader === bidWinner) {
+      const ledSuit = trick[0].suit;
+      const winningRank = getOffSuitRank(trick[0]);
+      const beaters = playable.filter(c =>
+        c.suit === ledSuit && !isTrump(c) && getOffSuitRank(c) > winningRank);
+      if (beaters.length > 0) {
+        const cheapestBeater = beaters.reduce((lo, c) =>
+          getOffSuitRank(c) < getOffSuitRank(lo) ? c : lo);
+        console.log(`🧠 OFF2-BEAT: P${player + 1} (defender) beats bidder's ${trick[0].id} offsuit lead with ${cheapestBeater.id}`);
+        return cheapestBeater;
+      }
+    }
+
     // Otherwise play low (2nd man low principle)
     return playable.reduce((lowest, card) => {
       const r1 = isTrump(lowest) ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
@@ -6576,6 +6600,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.66', date: 'May 2026', changes: ['AI play: 2nd-man defender following a BIDDER offsuit lead now beats the lead with the cheapest higher card of the led suit, instead of always playing the lowest card. The "second-hand low" mantra is actually a TRUMP heuristic — on offsuit you want to beat the lead so that 3rd-man (the bidder\'s partner) either has to over-beat with an even higher offsuit, commit trump to win, or concede the trick. Either way your partner (4th-man) avoids having to ruff in. User-derived from a screenshot where North led 5♠ offsuit and East played a low spade instead of beating it. Head-to-head simulation: 20,000 paired deals = +0.01pt z=+0.05 (rig-NEUTRAL). Shipped as a trust fix per the v2.31.30 precedent — sound textbook 45s principle, plays visibly correct in the screenshot case, zero measured win-rate cost.'] },
     { version: '2.31.65', date: 'May 2026', changes: ['Fix: Suite Selector chips now light up correctly. The chip render was keying off "H/D/C/S" but the per-game stat is stored under the actual suit symbols ♥/♦/♣/♠, so the suits you had already made showed unlit. Now matches the stored keys.'] },
     { version: '2.31.64', date: 'May 2026', changes: ['Badges: the Suite Selector progress indicator now shows the four suit symbols (♥ ♦ ♣ ♠) as circular chips that light up gold when you have made a bid in that suit, instead of an x/4 bar. Easier to see at a glance which suit you are still missing.'] },
     { version: '2.31.63', date: 'May 2026', changes: ['Badges: progress bars now show on five more countable badges in the detail card — Bid Boss (career 30-bids made), Sniper (overbids that made), Bidding Sage (career successful bids of any level), Suite Selector (distinct trump suits you have made a bid in, x/4), and Untouchable Streak (current streak of consecutive wins without being set). The existing milestone and streak badges already had bars; this just extends the same treatment to the new May-2026 badges that are countable.'] },

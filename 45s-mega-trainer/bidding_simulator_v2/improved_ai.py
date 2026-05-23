@@ -1029,6 +1029,50 @@ class ImprovedAI:
                         and not _is_trump(trick[0], trump)
                         and trick[0].rank == 'A'):
                     return min(my_trumps, key=lambda c: _tr(c, trump))
+                # off2_beat_off_bidlead (opt-in challenger; user-derived
+                # 2026-05-23). The "2nd-man low" mantra is TRUMP-specific.
+                # On offsuit: 2nd-man defender following an OFFSUIT lead
+                # BY THE BIDDER should beat the lead with the LOWEST
+                # higher led-suit card instead of dribbling low. This
+                # forces 3rd-man (bidder's partner) to either over-beat
+                # with higher offsuit, commit trump, or concede — and
+                # saves 4th-man (my partner) from having to ruff in to
+                # win the trick. User-derived from a real-game screenshot
+                # where N (defender bidder?) led 5♠ offsuit and E (2nd,
+                # defender) played low spade instead of beating it.
+                if (F('off2_beat_off_bidlead')
+                        and my_position == 1
+                        and trick
+                        and not _is_trump(trick[0], trump)
+                        and (player % 2) != (bid_winner % 2)
+                        and leader == bid_winner):
+                    _ls = trick[0].suit
+                    _wr = get_offsuit_rank(trick[0])
+                    _beaters = [c for c in playable
+                                if c.suit == _ls
+                                and not _is_trump(c, trump)
+                                and get_offsuit_rank(c) > _wr]
+                    if _beaters:
+                        return min(_beaters, key=get_offsuit_rank)
+                # off2_beat_off_anyopp (opt-in; broader variant — fires
+                # whenever ANY opponent leads offsuit, not just the
+                # bidder. Risks wasting a high offsuit when the leader
+                # is bidder's partner (3rd is then the bidder who will
+                # over-beat / cash). Memory rule: try broader formulation
+                # before declaring no signal.
+                if (Fon('off2_beat_off_anyopp')
+                        and my_position == 1
+                        and trick
+                        and not _is_trump(trick[0], trump)
+                        and (player % 2) != (bid_winner % 2)):
+                    _ls = trick[0].suit
+                    _wr = get_offsuit_rank(trick[0])
+                    _beaters = [c for c in playable
+                                if c.suit == _ls
+                                and not _is_trump(c, trump)
+                                and get_offsuit_rank(c) > _wr]
+                    if _beaters:
+                        return min(_beaters, key=get_offsuit_rank)
                 # take_t4_2nd (opt-in; user-derived 2026-05-21). On trick
                 # 4 or 5, 2nd-man plays the cheapest CARD that wins the
                 # current partial-trick state — regardless of trump vs
