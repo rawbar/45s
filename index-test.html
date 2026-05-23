@@ -3416,7 +3416,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.66';
+const VERSION = '2.31.67';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6600,6 +6600,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.67', date: 'May 2026', changes: ['Spectator mode: tapping an in-progress game in the lobby lets you watch the table, but as a spectator you no longer see — or can press — any of the action buttons. The Next Round button, the New Game (rematch) button, the bid buttons, the trump-select buttons, the discard button, and the card-play tap targets are now all hidden / no-ops if the player Firebase says is sitting at your seat is not you (which is how you can end up in someone else\'s game). Previously a spectator tapping Next Round wrote to Firebase and advanced the round for everyone, interrupting the real players. The spectator client also no longer races real clients to drive the AI moves.'] },
     { version: '2.31.66', date: 'May 2026', changes: ['AI play: 2nd-man defender following a BIDDER offsuit lead now beats the lead with the cheapest higher card of the led suit, instead of always playing the lowest card. The "second-hand low" mantra is actually a TRUMP heuristic — on offsuit you want to beat the lead so that 3rd-man (the bidder\'s partner) either has to over-beat with an even higher offsuit, commit trump to win, or concede the trick. Either way your partner (4th-man) avoids having to ruff in. User-derived from a screenshot where North led 5♠ offsuit and East played a low spade instead of beating it. Head-to-head simulation: 20,000 paired deals = +0.01pt z=+0.05 (rig-NEUTRAL). Shipped as a trust fix per the v2.31.30 precedent — sound textbook 45s principle, plays visibly correct in the screenshot case, zero measured win-rate cost.'] },
     { version: '2.31.65', date: 'May 2026', changes: ['Fix: Suite Selector chips now light up correctly. The chip render was keying off "H/D/C/S" but the per-game stat is stored under the actual suit symbols ♥/♦/♣/♠, so the suits you had already made showed unlit. Now matches the stored keys.'] },
     { version: '2.31.64', date: 'May 2026', changes: ['Badges: the Suite Selector progress indicator now shows the four suit symbols (♥ ♦ ♣ ♠) as circular chips that light up gold when you have made a bid in that suit, instead of an x/4 bar. Easier to see at a glance which suit you are still missing.'] },
@@ -13403,6 +13404,13 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
 // ============================================================================
 
 function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex, gameState, players, gameOptions = {}, onLeaveGame, onRematch }) {
+  // SPECTATOR DETECTION (v2.31.67): you're a spectator if the player Firebase
+  // says is sitting at "your" seat isn't actually you. This happens when the
+  // lobby tap-handler routes non-players into an in-progress game using a
+  // fallback seat of 'North' — they get to watch but must not be able to
+  // press action buttons (Next Round, Rematch, bid, discard, play card)
+  // because that would write to Firebase and interrupt the real players.
+  const isSpectator = !!players && !!mySeat && !!players[mySeat] && players[mySeat].userId !== userId;
   // All the game state from the original App component
   const [phase, setPhase] = useState('start');
   const [hands, setHands] = useState([[], [], [], []]);
@@ -14333,6 +14341,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
   // Human player makes a bid
   const handleBid = useCallback(async (bidAmount, isAutoBag = false, isThirtyFor60 = false) => {
+    if (isSpectator) return;
     console.log('🎲 handleBid called:', { bidAmount, currentPlayer, mySeatIndex, isMyTurn: currentPlayer === mySeatIndex, isAutoBag, isThirtyFor60 });
     
     if (currentPlayer !== mySeatIndex) {
@@ -14436,7 +14445,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         ...(bidAmount === 30 ? { thirtyWasBid: true } : {})
       });
     }
-  }, [bids, highBid, bidWinner, bidType, thirtyWasBid, currentPlayer, mySeatIndex, dealer, updateGameState, scores, hands, playerName, gameId]);
+  }, [bids, highBid, bidWinner, bidType, thirtyWasBid, currentPlayer, mySeatIndex, dealer, updateGameState, scores, hands, playerName, gameId, isSpectator]);
 
 
   // DEBUG: Log state changes (minimal dependencies to avoid loop)
@@ -14521,11 +14530,12 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     }
     if (phase !== 'bidding') return;
     if (currentPlayer === mySeatIndex) return; // Human player
-    
+    if (isSpectator) return; // spectators must not race real clients to drive the AI
+
     // Check if current player is AI
     const currentSeat = SEAT_NAMES[currentPlayer];
     const currentPlayerData = players[currentSeat];
-    
+
     if (!currentPlayerData || !currentPlayerData.isAI) return;
     
     // AI needs to bid
@@ -14633,7 +14643,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       console.log(`🧹 AI BIDDING CLEANUP: clearing timer for P${currentPlayer + 1} (${currentSeat})`);
       clearTimeout(timer);
     };
-  }, [resettingRound, phase, currentPlayer, mySeatIndex, players, hands, bids, highBid, bidWinner, dealer, updateGameState, handleBid]);
+  }, [resettingRound, phase, currentPlayer, mySeatIndex, players, hands, bids, highBid, bidWinner, dealer, updateGameState, handleBid, isSpectator]);
 
   // AUTOBAG for HUMAN players: If dealer and all 3 others passed, automatically bid 15
   useEffect(() => {
@@ -14662,6 +14672,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
   // Handle trump selection
   const handleSelectTrump = useCallback(async (suit) => {
+    if (isSpectator) return;
     if (bidWinner !== mySeatIndex) {
       console.log('Not the bid winner!');
       return;
@@ -14687,10 +14698,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       phase: 'discarding',
       currentPlayer: (dealer + 1) % 4 // First player to discard
     });
-  }, [bidWinner, mySeatIndex, hands, kitty, dealer, updateGameState, getPlayerName]);
+  }, [bidWinner, mySeatIndex, hands, kitty, dealer, updateGameState, getPlayerName, isSpectator]);
 
   // Handle discarding cards
   const handleDiscard = useCallback(async () => {
+    if (isSpectator) return;
     if (currentPlayer !== mySeatIndex) {
       console.log('Not your turn to discard!');
       return;
@@ -14789,12 +14801,13 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     }
 
     setSelected([]);
-  }, [currentPlayer, mySeatIndex, hands, selected, deck, drawn, dealer, bidWinner, gameOptions, updateGameState, getPlayerName]);
+  }, [currentPlayer, mySeatIndex, hands, selected, deck, drawn, dealer, bidWinner, gameOptions, updateGameState, getPlayerName, isSpectator]);
 
   // Handle starting next round
   const handleNextRound = useCallback(async () => {
+    if (isSpectator) return;
     console.log('🔄 Starting next round...');
-    
+
     // CRITICAL: Block all AI actions during reset
     setResettingRound(true);
     
@@ -14901,11 +14914,12 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       console.log('✓ Round reset complete, unlocking AI');
       setResettingRound(false);
     }, 1000);
-  }, [dealer, gameId, database, scores]);
+  }, [dealer, gameId, database, scores, isSpectator]);
 
 
   // Handle playing a card
   const handlePlayCard = useCallback(async (cardIndex) => {
+    if (isSpectator) return;
     if (phase !== 'playing') return;
     if (currentPlayer !== mySeatIndex) {
       console.log('Not your turn to play!');
@@ -15496,7 +15510,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         currentPlayer: nextPlayer
       });
     }
-  }, [phase, currentPlayer, mySeatIndex, hands, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, playerTricks, roundPts, updateGameState, getPlayerName]);
+  }, [phase, currentPlayer, mySeatIndex, hands, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, playerTricks, roundPts, updateGameState, getPlayerName, isSpectator]);
 
 
   // AI players select trump automatically
@@ -15543,7 +15557,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     }, 1000);
     
     return () => clearTimeout(timer);
-  }, [resettingRound, phase, bidWinner, mySeatIndex, players, hands, kitty, dealer, updateGameState]);
+  }, [resettingRound, phase, bidWinner, mySeatIndex, players, hands, kitty, dealer, updateGameState, isSpectator]);
 
   // AI players discard automatically  
   useEffect(() => {
@@ -15553,10 +15567,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     }
     if (phase !== 'discarding') return;
     if (currentPlayer === mySeatIndex) return; // Human player
-    
+    if (isSpectator) return; // spectators must not race real clients to drive the AI
+
     const currentSeat = SEAT_NAMES[currentPlayer];
     const currentPlayerData = players[currentSeat];
-    
+
     if (!currentPlayerData || !currentPlayerData.isAI) return;
     
     console.log(`AI P${currentPlayer + 1} discarding...`);
@@ -15654,7 +15669,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     }
     if (phase !== 'playing') return;
     if (currentPlayer === mySeatIndex) return;
-    
+    if (isSpectator) return; // spectators must not race real clients to drive the AI
+
     const currentSeat = SEAT_NAMES[currentPlayer];
     const currentPlayerData = players[currentSeat];
     
@@ -16047,12 +16063,13 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       }
     })(); // Close async IIFE - executes immediately
     
-  }, [resettingRound, phase, currentPlayer, mySeatIndex, players, hands, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, playerTricks, roundPts, updateGameState, trickComplete]);
+  }, [resettingRound, phase, currentPlayer, mySeatIndex, players, hands, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, playerTricks, roundPts, updateGameState, trickComplete, isSpectator]);
 
 
 
   // Start game function - DEALER DEALS CARDS
   const startGame = useCallback(() => {
+    if (isSpectator) return;
     console.log('Starting game - dealing cards...');
     
     // Reset AI tracking state for new game
@@ -16112,7 +16129,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       playHistory: [],      // ✅ Initialize play history
       drawn: [0, 0, 0, 0]
     });
-  }, [updateGameState]);
+  }, [updateGameState, isSpectator]);
 
   // Auto-trigger startGame when phase is 'start' — skip the Deal Cards screen.
   // Only the game creator deals to avoid race conditions.
@@ -16151,6 +16168,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
   // Handle rematch - create new game with same players
   const handleRematch = useCallback(async () => {
+    if (isSpectator) return;
     console.log('Creating rematch game...');
     try {
       const newGameId = await FirebaseAPI.createRematchGame(gameId, players, userId, gameOptions);
@@ -16159,7 +16177,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     } catch (error) {
       console.error('Failed to create rematch:', error);
     }
-  }, [gameId, players, userId, gameOptions]);
+  }, [gameId, players, userId, gameOptions, isSpectator]);
 
   // Render based on phase
   if (phase === 'start') {
@@ -17187,7 +17205,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               </div>
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                 <button onClick={() => setShowHandsOpen(true)} style={{ padding: '8px 16px', fontSize: '11px', fontFamily: "'Cinzel',serif", fontWeight: 700, background: 'rgba(8,5,1,0.8)', color: '#c9a227', border: '1px solid rgba(201,162,39,0.45)', borderRadius: '4px', cursor: 'pointer', letterSpacing: '0.5px' }}>View Round</button>
-                <button onClick={handleNextRound} style={{ padding: '8px 20px', fontSize: '12px', fontFamily: "'Cinzel',serif", fontWeight: 700, background: 'linear-gradient(135deg,#5a3f06,#c9a227 50%,#5a3f06)', color: '#0d0a04', border: 'none', borderRadius: '4px', cursor: 'pointer', letterSpacing: '0.5px' }}>Next Round</button>
+                {!isSpectator && <button onClick={handleNextRound} style={{ padding: '8px 20px', fontSize: '12px', fontFamily: "'Cinzel',serif", fontWeight: 700, background: 'linear-gradient(135deg,#5a3f06,#c9a227 50%,#5a3f06)', color: '#0d0a04', border: 'none', borderRadius: '4px', cursor: 'pointer', letterSpacing: '0.5px' }}>Next Round</button>}
               </div>
             </div>
           );
@@ -17213,7 +17231,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   </div>
                   <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                     <button onClick={() => setShowHandsOpen(true)} className="cp-modal-btn-ghost">View Round</button>
-                    <button onClick={handleNextRound} className="cp-modal-btn-primary">Next Round</button>
+                    {!isSpectator && <button onClick={handleNextRound} className="cp-modal-btn-primary">Next Round</button>}
                   </div>
                 </div>
               </div>
@@ -17255,7 +17273,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               </div>
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                 <button onClick={() => setShowHandsOpen(true)} style={{ padding: '8px 16px', fontSize: '11px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'rgba(10,40,20,0.8)', color: '#c9a24a', border: '1px solid rgba(201,162,74,0.45)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px' }}>View Round</button>
-                <button onClick={handleNextRound} style={{ padding: '8px 20px', fontSize: '12px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'linear-gradient(180deg, #f6d778 0%, #c9a24a 50%, #9a7630 100%)', color: '#1a0e03', border: '1px solid rgba(0,0,0,0.5)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px', boxShadow: '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)' }}>Next Round</button>
+                {!isSpectator && <button onClick={handleNextRound} style={{ padding: '8px 20px', fontSize: '12px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'linear-gradient(180deg, #f6d778 0%, #c9a24a 50%, #9a7630 100%)', color: '#1a0e03', border: '1px solid rgba(0,0,0,0.5)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px', boxShadow: '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)' }}>Next Round</button>}
               </div>
             </div>
           );
@@ -17339,7 +17357,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <button onClick={() => setShowHandsOpen(true)} style={{ padding: '8px 14px', fontSize: '11px', fontFamily: "'Cinzel',serif", fontWeight: 700, background: 'rgba(8,5,1,0.8)', color: '#c9a227', border: '1px solid rgba(201,162,39,0.45)', borderRadius: '4px', cursor: 'pointer', letterSpacing: '0.5px' }}>View Round</button>
                 <button onClick={onLeaveGame} style={{ padding: '8px 14px', fontSize: '11px', fontFamily: "'Cinzel',serif", fontWeight: 700, background: 'rgba(8,5,1,0.8)', color: 'rgba(232,228,217,0.7)', border: '1px solid rgba(201,162,39,0.25)', borderRadius: '4px', cursor: 'pointer', letterSpacing: '0.5px' }}>Lobby</button>
-                <button onClick={handleRematch} style={{ padding: '8px 16px', fontSize: '12px', fontFamily: "'Cinzel',serif", fontWeight: 700, background: 'linear-gradient(135deg,#5a3f06,#c9a227 50%,#5a3f06)', color: '#0d0a04', border: 'none', borderRadius: '4px', cursor: 'pointer', letterSpacing: '0.5px' }}>New Game</button>
+                {!isSpectator && <button onClick={handleRematch} style={{ padding: '8px 16px', fontSize: '12px', fontFamily: "'Cinzel',serif", fontWeight: 700, background: 'linear-gradient(135deg,#5a3f06,#c9a227 50%,#5a3f06)', color: '#0d0a04', border: 'none', borderRadius: '4px', cursor: 'pointer', letterSpacing: '0.5px' }}>New Game</button>}
               </div>
             </div>
           );
@@ -17408,7 +17426,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
                     <button onClick={() => setShowHandsOpen(true)} className="cp-modal-btn-ghost">View Round</button>
                     <button onClick={onLeaveGame} className="cp-modal-btn-ghost">Lobby</button>
-                    <button onClick={handleRematch} className="cp-modal-btn-primary" style={{ width: '100%', marginTop: '4px' }}>New Game</button>
+                    {!isSpectator && <button onClick={handleRematch} className="cp-modal-btn-primary" style={{ width: '100%', marginTop: '4px' }}>New Game</button>}
                   </div>
                 </div>
               </div>
@@ -17501,7 +17519,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <button onClick={() => setShowHandsOpen(true)} style={{ padding: '8px 14px', fontSize: '11px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'rgba(10,40,20,0.8)', color: '#c9a24a', border: '1px solid rgba(201,162,74,0.45)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px' }}>View Round</button>
                 <button onClick={onLeaveGame} style={{ padding: '8px 14px', fontSize: '11px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'rgba(20,10,4,0.8)', color: 'rgba(232,228,217,0.7)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px' }}>Lobby</button>
-                <button onClick={handleRematch} style={{ padding: '8px 16px', fontSize: '12px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'linear-gradient(180deg, #f6d778 0%, #c9a24a 50%, #9a7630 100%)', color: '#1a0e03', border: '1px solid rgba(0,0,0,0.5)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px', boxShadow: '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)' }}>New Game</button>
+                {!isSpectator && <button onClick={handleRematch} style={{ padding: '8px 16px', fontSize: '12px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'linear-gradient(180deg, #f6d778 0%, #c9a24a 50%, #9a7630 100%)', color: '#1a0e03', border: '1px solid rgba(0,0,0,0.5)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px', boxShadow: '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)' }}>New Game</button>}
               </div>
             </div>
           );
