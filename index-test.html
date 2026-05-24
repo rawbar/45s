@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.71';
+const VERSION = '2.31.72';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6505,11 +6505,89 @@ function Card({ card, onClick, disabled, selected, small, mid, faceDown, playabl
   );
 }
 
-function ScoreTable({ roundHistory, mySeatIndex }) {
+function ScoreTable({ roundHistory, mySeatIndex, gameOptions, players, playerScores }) {
   if (roundHistory.length === 0) return null;
   const isIrish = currentThemeId === 'irish';
   const myTeam = mySeatIndex % 2;
   const swapColumns = myTeam === 1;
+  const isCutthroat = !!(gameOptions && gameOptions.cutthroat);
+
+  // v2.31.72: cutthroat — 4 per-player columns instead of US/THEM. Column
+  // labels: AI seats use first letter of seat name (N/E/S/W); humans use
+  // first 3 chars of username, uppercased. Mirrors the top-of-game plaque
+  // label logic so the bottom score-history reads consistently.
+  if (isCutthroat) {
+    const seatNames = ['North', 'East', 'South', 'West'];
+    const orderedSeats = [mySeatIndex, (mySeatIndex + 1) % 4, (mySeatIndex + 2) % 4, (mySeatIndex + 3) % 4];
+    const colorPalette = isIrish
+      ? ['#5dd084', '#f6d778', '#c9a24a', '#e8e4d9']
+      : ['#00ff88', '#00e5ff', '#ff8c00', '#ff00cc'];
+    const seatColor = {};
+    orderedSeats.forEach((s, i) => { seatColor[s] = colorPalette[i]; });
+    const headerLabels = orderedSeats.map(s => {
+      const pl = players ? players[seatNames[s]] : null;
+      if (pl && pl.isAI) return seatNames[s][0];
+      if (pl && pl.username) return pl.username.slice(0, 3).toUpperCase();
+      return seatNames[s][0];
+    });
+    const [expanded, setExpanded] = React.useState(false);
+    const maxVis = 2;
+    const needsExpand = roundHistory.length > maxVis;
+    const visible = (!needsExpand || expanded) ? roundHistory : roundHistory.slice(-maxVis);
+    const startIdx = roundHistory.length - visible.length;
+    const containerBg = isIrish ? 'rgba(12,6,2,0.82)' : 'rgba(2,5,10,0.85)';
+    const borderTop = isIrish ? '1px solid #c9a24a' : '1px solid rgba(0,229,255,0.2)';
+    const expandColor = isIrish ? 'rgba(201,162,74,0.55)' : 'rgba(0,229,255,0.4)';
+    const expandFont = isIrish ? "'Cinzel', serif" : "'Share Tech Mono', monospace";
+    const headerFont = isIrish ? "'Inter', sans-serif" : "'Share Tech Mono', monospace";
+    const totalFont = isIrish ? "'Cinzel', serif" : "'Orbitron', sans-serif";
+    const rnColor = isIrish ? 'rgba(201,162,74,0.5)' : 'rgba(0,229,255,0.4)';
+    // Fallback for old (partner-mode-shaped) entries before v2.31.72 cutthroat games:
+    // synthesize a zero row delta and reuse `playerScores` for the last row's totals.
+    return (
+      <div style={{ width: '100%', background: containerBg, borderTop: borderTop, borderRadius: '0 0 4px 4px', padding: '4px 10px', boxSizing: 'border-box', flexShrink: 0 }}>
+        {needsExpand && (
+          <div
+            onClick={() => setExpanded(!expanded)}
+            style={{ textAlign: 'center', color: expandColor, cursor: 'pointer', fontSize: '9px', fontFamily: expandFont, letterSpacing: '0.5px', paddingBottom: '2px' }}
+          >{expanded ? '▾ less' : `▴ +${roundHistory.length - maxVis} rounds`}</div>
+        )}
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
+          <thead>
+            <tr>
+              <th style={{ padding: '1px 3px', fontSize: '9px', color: rnColor, fontFamily: headerFont, fontWeight: 400, letterSpacing: '0.5px', width: '18px' }}>R</th>
+              {orderedSeats.map((s, i) => (
+                <th key={`h-${s}`} style={{ padding: '1px 3px', fontSize: '9px', color: seatColor[s], fontFamily: headerFont, fontWeight: 600, letterSpacing: '0.5px' }}>{headerLabels[i]}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((r, i) => {
+              const rn = startIdx + i + 1;
+              const deltas = r.playerRoundScores || [0, 0, 0, 0];
+              const totals = r.playerTotals || (i === visible.length - 1 ? (playerScores || [0, 0, 0, 0]) : [0, 0, 0, 0]);
+              return (
+                <tr key={i}>
+                  <td style={{ padding: '1px 3px', fontSize: '9px', color: rnColor, fontFamily: totalFont }}>{rn}</td>
+                  {orderedSeats.map(s => {
+                    const d = deltas[s] || 0;
+                    const t = totals[s] || 0;
+                    const deltaStr = d < 0 ? `(${Math.abs(d)})` : `+${d}`;
+                    return (
+                      <td key={`c-${s}`} style={{ padding: '1px 3px', fontSize: '10px', color: seatColor[s], fontFamily: totalFont, fontWeight: 700 }}>
+                        <span style={{ fontSize: '8px', opacity: 0.6, marginRight: '2px' }}>{deltaStr}</span>
+                        {t}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
   if (isIrish) {
     const [expanded, setExpanded] = React.useState(false);
@@ -6616,6 +6694,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.72', date: 'May 2026', changes: ['Cutthroat polish: (1) The four score plaques at the top of the table now show seat-letter labels (N/E/S/W) for AI players and the first three characters of the username for humans, instead of slicing "AI Player N" down to a useless trailing "AI " on every AI seat. (2) The same fix is applied to the cutthroat round-end and game-over modals: AI rows now read "North" / "East" / "South" / "West" (full seat name in the wider modal layout) and human rows keep their full username. (3) The bottom-of-table score-history strip (ScoreTable) now renders four per-player columns in cutthroat games instead of US/THEM, with per-round deltas + running totals stamped under each seat. Round-end history entries written by the bidder-completes-trick-5 and AI-completes-trick-5 paths now include cutthroat-only `playerRoundScores` and `playerTotals` arrays alongside the existing partner-mode fields, so partner-mode entries stay byte-identical and only cutthroat rounds carry the extra payload. (4) The redundant duplicate copy of the Partners-vs-Cutthroat variant selector that v2.31.71 still had inside each Create Game modal (cyberpunk, two Arabian variants, Irish) has been removed — the lobby-level selector right above the Create Game button is now the single source of truth.'] },
     { version: '2.31.71', date: 'May 2026', changes: ['Cutthroat promoted out of the Options menu and into a top-level Partners-vs-Cutthroat segmented selector on the Create Game screen (and in Preferences as your default for new games). Cutthroat is labeled ALPHA because the scoring works but the AI does not yet know cutthroat-specific strategy — it will sometimes fail to coordinate to set the leader and may underplay free-five-point grabs. The first time you start a cutthroat game in a session you now see a one-shot disclaimer modal explaining the alpha state; dismiss with OK. Two leftover stat writes (the Follow-A♥ per-card increment and the server-side disconnect counter) are now also gated off in cutthroat so the variant stays zero-write to partner-mode counters. Existing prefs that had Cutthroat set as a house rule (from v2.31.69 / v2.31.70 sessions) migrate forward to the new gameVariant pref on prefs load.'] },
     { version: '2.31.70', date: 'May 2026', changes: ['Cutthroat isolation: cutthroat games no longer write to the partner-mode stats / badges / leaderboard, and their bid log and play decision log are forked to dedicated `bidLogCutthroat` / `decisionLogCutthroat` Firebase nodes. This means we can now play cutthroat without contaminating the partner-mode AI training corpus or skewing partner-mode badge / leaderboard counters. Stats / badges / leaderboard will stay off in cutthroat until the variant matures and gets its own dedicated counters.'] },
     { version: '2.31.69', date: 'May 2026', changes: ['Cutthroat variant (beta, test only): when the new Cutthroat house rule is enabled at game creation, scoring switches from teams to four solo players. The top-of-game header shows four small score plaques (one per seat, abbreviated by name, your own tinted gold) instead of US/THEM. The round-end modal shows a row per player with each individual\'s round points (bidder shown red in parentheses if set, e.g. (15)). The game-over modal shows a 2x2 score grid with the winning player\'s tile gold-bordered. First player to 120 wins (no partner totals counted). Caveat: the AI still uses partner-mode play logic in cutthroat — it does NOT yet know that everyone else is its opponent, so it will not always set the leader and may underplay nickel-grabs. Cutthroat-specific AI policy is Phase 2.'] },
@@ -9602,13 +9681,39 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           {/* Create Game button — pinned at bottom, only on games tab */}
           {lobbyTab === 'games' && (
             <div className="irlb-create-wrap">
+              {/* v2.31.72: lobby variant selector — sits ABOVE Create Game button.
+                  Cutthroat is a variant (different game), not a house rule, so it
+                  belongs at the lobby level not inside the modal. */}
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
+                  const selected = gameVariant === val;
+                  if (isCyberpunk) {
+                    return (
+                      <div key={val} onClick={() => { SoundManager.play('buttonClick'); setGameVariant(val); }} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '3px', border: selected ? '1px solid #ff8c00' : '1px solid rgba(0,229,255,0.25)', background: selected ? 'rgba(255,140,0,0.12)' : 'rgba(0,229,255,0.04)', boxShadow: selected ? '0 0 12px rgba(255,140,0,0.18)' : 'none', transition: 'all 0.15s' }}>
+                        <span style={{ fontFamily: "'Orbitron',sans-serif", fontWeight: 700, fontSize: '12px', letterSpacing: '1.5px', color: selected ? '#ff8c00' : 'rgba(0,229,255,0.7)', textShadow: selected ? '0 0 8px rgba(255,140,0,0.6)' : 'none' }}>{label}</span>
+                        {isAlpha && (
+                          <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '2px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                        )}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={val} onClick={() => { SoundManager.play('buttonClick'); setGameVariant(val); }} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '8px', border: selected ? '1px solid #c9a24a' : '1px solid rgba(201,162,74,0.25)', background: selected ? 'linear-gradient(180deg, rgba(246,215,120,0.18) 0%, rgba(201,162,74,0.12) 100%)' : 'rgba(0,0,0,0.35)', boxShadow: selected ? '0 0 10px rgba(201,162,74,0.25), inset 0 1px 0 rgba(255,245,200,0.18)' : 'none', transition: 'all 0.15s' }}>
+                      <span style={{ fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: '13px', letterSpacing: '1.5px', color: selected ? '#f6d778' : 'rgba(201,162,74,0.65)' }}>{label}</span>
+                      {isAlpha && (
+                        <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '3px', background: 'rgba(255,140,0,0.2)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Cinzel',serif", fontWeight: 700, letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
               <button
                 className={isCyberpunk ? 'cp-lobby-btn-create' : 'irlb-create-btn'}
                 disabled={loading}
                 onClick={() => { SoundManager.play('buttonClick'); setShowCreateGame(true); }}
               >
                 <span style={{ fontSize: '18px' }}>＋</span>
-                Create Game
+                Create {gameVariant === 'cutthroat' ? 'Cutthroat ' : ''}Game
               </button>
             </div>
           )}
@@ -9626,21 +9731,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
             >
               <div style={{ fontFamily: "'Orbitron',sans-serif", fontWeight: 700, fontSize: '16px', color: '#00e5ff', textShadow: '0 0 10px rgba(0,229,255,0.5)', letterSpacing: '2px', marginBottom: '4px' }}>Create Game</div>
               <div style={{ height: '1px', background: 'linear-gradient(90deg, #00e5ff 0%, #ff00cc 50%, transparent 100%)', margin: '8px 0 16px' }} />
-              {/* v2.31.71: Variant selector (Partners vs Cutthroat alpha) */}
-              <label style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '10px', color: 'rgba(0,229,255,0.5)', letterSpacing: '1.5px', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Variant</label>
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
-                {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
-                  const selected = gameVariant === val;
-                  return (
-                    <div key={val} onClick={() => setGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '3px', border: selected ? '1px solid #ff8c00' : '1px solid rgba(0,229,255,0.2)', background: selected ? 'rgba(255,140,0,0.1)' : 'rgba(0,229,255,0.03)', boxShadow: selected ? '0 0 12px rgba(255,140,0,0.18)' : 'none', position: 'relative', transition: 'all 0.15s' }}>
-                      <span style={{ fontFamily: "'Orbitron',sans-serif", fontWeight: 700, fontSize: '12px', letterSpacing: '1.5px', color: selected ? '#ff8c00' : 'rgba(0,229,255,0.6)', textShadow: selected ? '0 0 8px rgba(255,140,0,0.6)' : 'none' }}>{label}</span>
-                      {isAlpha && (
-                        <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '2px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
               <label style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '10px', color: 'rgba(0,229,255,0.5)', letterSpacing: '1.5px', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Game Name</label>
               <input
                 type="text"
@@ -9697,21 +9787,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
             >
               <div style={{ fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: '16px', color: '#f6d778', marginBottom: '4px', letterSpacing: '1px' }}>✦ Create Game ✦</div>
               <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,#c9a227 30%,#f6d778 50%,#c9a227 70%,transparent)', margin: '8px 0 16px' }} />
-              {/* v2.31.71: Variant selector (Partners vs Cutthroat alpha) */}
-              <div style={{ fontFamily: "'Cinzel',serif", fontSize: '11px', letterSpacing: '1px', color: 'rgba(201,162,39,0.6)', textTransform: 'uppercase', marginBottom: '6px' }}>Variant</div>
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
-                {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
-                  const selected = gameVariant === val;
-                  return (
-                    <div key={val} onClick={() => setGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '10px', border: selected ? '1px solid #f6d778' : '1px solid rgba(201,162,39,0.35)', background: selected ? 'linear-gradient(135deg,#7a5c10,#c9a227 50%,#7a5c10)' : 'rgba(201,162,39,0.05)', boxShadow: selected ? '0 0 12px rgba(201,162,39,0.35)' : 'none' }}>
-                      <span style={{ fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: '13px', letterSpacing: '1px', color: selected ? '#0d0a04' : '#c9a227' }}>{label}</span>
-                      {isAlpha && (
-                        <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '3px', background: selected ? 'rgba(13,10,4,0.25)' : 'rgba(201,162,39,0.2)', border: selected ? '1px solid rgba(13,10,4,0.4)' : '1px solid rgba(201,162,39,0.5)', color: selected ? '#0d0a04' : '#f6d778', fontFamily: "'Cinzel',serif", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
               <input
                 type="text"
                 value={newGameName}
@@ -9766,21 +9841,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               style={{ background: 'linear-gradient(180deg, #2a1608 0%, #180b03 100%)', border: '1px solid rgba(201,162,74,0.35)', borderRadius: '16px 16px 0 0', padding: '24px 20px 32px', width: '100%', maxWidth: '500px', animation: 'slideUp 0.25s ease-out' }}
             >
               <div style={{ fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '16px', color: '#f6d778', marginBottom: '12px', letterSpacing: '1px' }}>Create Game</div>
-              {/* v2.31.71: Variant selector (Partners vs Cutthroat alpha) */}
-              <div style={{ fontFamily: 'Cinzel, serif', fontSize: '11px', letterSpacing: '1px', color: 'rgba(201,162,74,0.6)', textTransform: 'uppercase', marginBottom: '6px' }}>Variant</div>
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
-                {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
-                  const selected = gameVariant === val;
-                  return (
-                    <div key={val} onClick={() => setGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '10px', border: selected ? '1px solid #f6d778' : '1px solid rgba(201,162,74,0.3)', background: selected ? 'linear-gradient(180deg, #f6d778 0%, #c9a24a 45%, #9a7630 100%)' : 'rgba(255,255,255,0.04)', boxShadow: selected ? '0 0 12px rgba(201,162,74,0.35)' : 'none' }}>
-                      <span style={{ fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '13px', letterSpacing: '1px', color: selected ? '#1a0e03' : '#c9a24a' }}>{label}</span>
-                      {isAlpha && (
-                        <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '3px', background: selected ? 'rgba(26,14,3,0.25)' : 'rgba(201,162,74,0.2)', border: selected ? '1px solid rgba(26,14,3,0.4)' : '1px solid rgba(201,162,74,0.5)', color: selected ? '#1a0e03' : '#f6d778', fontFamily: 'Cinzel, serif', letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
               <input
                 type="text"
                 value={newGameName}
@@ -11067,21 +11127,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
             boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
           }}>
             <h2 style={{ marginBottom: '12px', color: '#1a5f3f' }}>Create New Game</h2>
-            {/* v2.31.71: Variant selector (Partners vs Cutthroat alpha) */}
-            <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>Variant</div>
-            <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
-              {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
-                const selected = gameVariant === val;
-                return (
-                  <div key={val} onClick={() => setGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '6px', border: selected ? '2px solid #1a5f3f' : '2px solid #ddd', background: selected ? '#e8f5e9' : '#fafafa', transition: 'all 0.15s' }}>
-                    <span style={{ fontWeight: 'bold', fontSize: '14px', color: selected ? '#1a5f3f' : '#333' }}>{label}</span>
-                    {isAlpha && (
-                      <sup style={{ marginLeft: '4px', fontSize: '9px', padding: '1px 4px', borderRadius: '3px', background: '#fff3cd', border: '1px solid #c9a24a', color: '#7a5c10', fontWeight: 'bold', letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
             <input
               type="text"
               value={newGameName}
@@ -14695,6 +14740,16 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     return player ? player.username : `P${playerIndex + 1}`;
   }, [players]);
 
+  // v2.31.72: Cutthroat-friendly label. AI seats show seat name ("North");
+  // human seats show their username. Used in cutthroat round-end + game-over
+  // modals to avoid stacking three identical "AI Player N" rows.
+  const getCutthroatLabel = useCallback((playerIndex) => {
+    const seat = SEAT_NAMES[playerIndex];
+    const player = players[seat];
+    if (player && player.isAI) return seat;
+    return (player && player.username) || seat;
+  }, [players]);
+
   const getPlayerUserId = useCallback((playerIndex) => {
     const seat = SEAT_NAMES[playerIndex];
     return players[seat]?.userId || null;
@@ -15636,20 +15691,15 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           themRoundScore = finalRoundPts[1] >= highBid ? finalRoundPts[1] : -setPenalty;
         }
         
-        // Build new history array (will sync to Firebase, then to local state)
-        const newHistory = [...history, {
-          usRoundScore,
-          themRoundScore,
-          usTotal: newScores[0],
-          themTotal: newScores[1]
-        }];
-        
         // CUTTHROAT (v2.31.69): per-player game scores computed alongside the
         // team scores. In cutthroat the bidder is solo (made/set against their
         // OWN trick points + high-trump bonus, no partner contribution); every
         // other player banks their own trick points. Team scoring still runs
         // above as dead computation; only the per-player path matters when
         // gameOptions.cutthroat is on.
+        // v2.31.72: hoisted above newHistory so we can stamp per-player round
+        // pts + per-player totals into the history entry for the 4-column
+        // score table.
         const playerRoundPts = [0, 0, 0, 0];
         for (let p = 0; p < 4; p++) {
           playerRoundPts[p] = (newPlayerTricks[p] || 0) * 5;
@@ -15657,19 +15707,37 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         if (newHighTrumpInfo.rank >= 0 && newHighTrumpInfo.player >= 0) {
           playerRoundPts[newHighTrumpInfo.player] += 5;
         }
+        // Per-player game-score deltas for THIS round (signed; bidder may be set).
+        const playerScoreDeltas = [0, 0, 0, 0];
         const newPlayerScores = [...playerScores];
         if (gameOptions.cutthroat) {
           const ctPenalty = bidType === '30for60' ? 60 : highBid;
           for (let p = 0; p < 4; p++) {
             if (p === bidWinner) {
-              newPlayerScores[p] += playerRoundPts[p] >= highBid ? playerRoundPts[p] : -ctPenalty;
+              playerScoreDeltas[p] = playerRoundPts[p] >= highBid ? playerRoundPts[p] : -ctPenalty;
             } else {
-              newPlayerScores[p] += playerRoundPts[p];
+              playerScoreDeltas[p] = playerRoundPts[p];
             }
+            newPlayerScores[p] += playerScoreDeltas[p];
           }
           console.log('🗡 CUTTHROAT scores after round:', newPlayerScores,
             'roundPts:', playerRoundPts, 'bidder:', bidWinner, 'made:', playerRoundPts[bidWinner] >= highBid);
         }
+
+        // Build new history array (will sync to Firebase, then to local state).
+        // v2.31.72: in cutthroat, ALSO stamp per-player round scores + totals so
+        // the ScoreTable can render a 4-column per-player layout. Partner-mode
+        // entries stay bit-identical (no extra fields written).
+        const newHistory = [...history, {
+          usRoundScore,
+          themRoundScore,
+          usTotal: newScores[0],
+          themTotal: newScores[1],
+          ...(gameOptions.cutthroat ? {
+            playerRoundScores: playerScoreDeltas,
+            playerTotals: [...newPlayerScores],
+          } : {}),
+        }];
 
         // Check for game winner. Cutthroat: first PLAYER to 120; on simultaneous
         // tie, bidder wins. Partner mode: first TEAM to 120; on tie, bidding
@@ -16253,17 +16321,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             themRoundScore = finalRoundPts[1] >= highBid ? finalRoundPts[1] : -highBid;
           }
           
-          // Build new history array (will sync to Firebase, then to local state)
-          const newHistory = [...history, {
-            usRoundScore,
-            themRoundScore,
-            usTotal: newScores[0],
-            themTotal: newScores[1]
-          }];
-          
           // CUTTHROAT (v2.31.69): same per-player accounting as the human-played
           // last-card path. Bidder solo against their own playerRoundPts; other
           // players bank theirs. Team scoring above runs as dead computation.
+          // v2.31.72: hoisted above newHistory; per-player deltas stamped into
+          // the history entry for the 4-column score table.
           const playerRoundPts = [0, 0, 0, 0];
           for (let p = 0; p < 4; p++) {
             playerRoundPts[p] = (newPlayerTricks[p] || 0) * 5;
@@ -16271,17 +16333,33 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           if (newHighTrumpInfo.rank >= 0 && newHighTrumpInfo.player >= 0) {
             playerRoundPts[newHighTrumpInfo.player] += 5;
           }
+          const playerScoreDeltas = [0, 0, 0, 0];
           const newPlayerScores = [...playerScores];
           if (gameOptions.cutthroat) {
             const ctPenalty = bidType === '30for60' ? 60 : highBid;
             for (let p = 0; p < 4; p++) {
               if (p === bidWinner) {
-                newPlayerScores[p] += playerRoundPts[p] >= highBid ? playerRoundPts[p] : -ctPenalty;
+                playerScoreDeltas[p] = playerRoundPts[p] >= highBid ? playerRoundPts[p] : -ctPenalty;
               } else {
-                newPlayerScores[p] += playerRoundPts[p];
+                playerScoreDeltas[p] = playerRoundPts[p];
               }
+              newPlayerScores[p] += playerScoreDeltas[p];
             }
           }
+
+          // Build new history array (will sync to Firebase, then to local state).
+          // v2.31.72: cutthroat-only per-player fields appended; partner mode
+          // entries stay bit-identical.
+          const newHistory = [...history, {
+            usRoundScore,
+            themRoundScore,
+            usTotal: newScores[0],
+            themTotal: newScores[1],
+            ...(gameOptions.cutthroat ? {
+              playerRoundScores: playerScoreDeltas,
+              playerTotals: [...newPlayerScores],
+            } : {}),
+          }];
 
           // Check for game winner. Cutthroat: first PLAYER to 120, bidder wins ties.
           let gameWinner = null;
@@ -16665,18 +16743,26 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         <div className={`v3-scores${gameOptions.cutthroat ? ' cutthroat' : ''}`}>
           {(() => {
             if (gameOptions.cutthroat) {
-              // CUTTHROAT (v2.31.69+): 4 plaques, one per seat, abbreviated by
-              // first 2 chars of the seat occupant's display name. Local
-              // player's plaque is `me` (gold tint); others are `opp` (neutral).
+              // CUTTHROAT (v2.31.69+): 4 plaques, one per seat. AI seats labeled
+              // with seat letter (N/E/S/W); human seats use first 3 chars of
+              // username. v2.31.72 fix: previous slice(0,3) on "AI Player 1"
+              // gave all AI seats label "AI ".
               const orderedSeats = [mySeatIndex, (mySeatIndex + 1) % 4, (mySeatIndex + 2) % 4, (mySeatIndex + 3) % 4];
               return (<>
                 {orderedSeats.map(seat => {
-                  const nm = getPlayerName(seat) || SEAT_NAMES[seat];
-                  const label = nm.length <= 3 ? nm : nm.slice(0, 3);
+                  const player = players[SEAT_NAMES[seat]];
+                  let label;
+                  if (player && player.isAI) {
+                    label = SEAT_NAMES[seat][0];
+                  } else if (player && player.username) {
+                    label = player.username.slice(0, 3).toUpperCase();
+                  } else {
+                    label = SEAT_NAMES[seat][0];
+                  }
                   const isMe = seat === mySeatIndex;
                   return (
                     <div key={seat} className={`v3-plaque ${isMe ? 'me' : 'opp'}`}>
-                      <span className="v3-plaque-label">{label.toUpperCase()}</span>
+                      <span className="v3-plaque-label">{label}</span>
                       <span className="v3-plaque-num">{playerScores[seat] || 0}</span>
                     </div>
                   );
@@ -17639,7 +17725,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   const displayPts = isSet ? `(${ctPenalty})` : `+${pts}`;
                   return (
                     <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                      <span style={{ color: labelColor, fontWeight: 600 }}>{getPlayerName(p)}{isBidder ? ' (bidder)' : ''}</span>
+                      <span style={{ color: labelColor, fontWeight: 600 }}>{getCutthroatLabel(p)}{isBidder ? ' (bidder)' : ''}</span>
                       <span style={{ fontFamily: "'Cinzel',serif", color: numColor, fontSize: '14px', fontWeight: 700 }}>{displayPts}</span>
                     </div>
                   );
@@ -17693,7 +17779,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                       const labelClass = isMe ? 'cp-score-us' : 'cp-score-them';
                       return (
                         <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                          <span className={labelClass} style={{ fontWeight: 600 }}>{getPlayerName(p)}{isBidder ? ' (bidder)' : ''}</span>
+                          <span className={labelClass} style={{ fontWeight: 600 }}>{getCutthroatLabel(p)}{isBidder ? ' (bidder)' : ''}</span>
                           <span className={isSet ? 'cp-round-end-set' : 'cp-round-end-made'} style={{ fontSize: '14px', fontWeight: 700, fontFamily: "'Orbitron', sans-serif" }}>{isSet ? `(${ctPenalty})` : `+${pts}`}</span>
                         </div>
                       );
@@ -17769,7 +17855,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   const numColor = isSet ? '#ef7c74' : (isMe ? '#5dd084' : '#f6d778');
                   return (
                     <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                      <span style={{ color: labelColor, fontWeight: 600 }}>{getPlayerName(p)}{isBidder ? ' (bidder)' : ''}</span>
+                      <span style={{ color: labelColor, fontWeight: 600 }}>{getCutthroatLabel(p)}{isBidder ? ' (bidder)' : ''}</span>
                       <span style={{ fontFamily: "'Cinzel', serif", color: numColor, fontSize: '14px', fontWeight: 700 }}>{isSet ? `(${ctPenalty})` : `+${pts}`}</span>
                     </div>
                   );
@@ -17864,7 +17950,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     const color = isWinner ? '#f6d778' : (isMe ? '#5dd084' : 'rgba(232,228,217,0.85)');
                     return (
                       <div key={p} style={{ textAlign: 'center', padding: '6px 4px', border: `1px solid ${isWinner ? 'rgba(201,162,39,0.5)' : 'rgba(201,162,39,0.18)'}`, borderRadius: '6px', background: isWinner ? 'rgba(201,162,39,0.08)' : 'transparent' }}>
-                        <div style={{ fontSize: '9px', color, fontFamily: "'Inter',sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>{getPlayerName(p)}{isMe ? ' (you)' : ''}</div>
+                        <div style={{ fontSize: '9px', color, fontFamily: "'Inter',sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>{getCutthroatLabel(p)}{isMe ? ' (you)' : ''}</div>
                         <div style={{ fontSize: '24px', fontFamily: "'Cinzel',serif", fontWeight: 700, color, lineHeight: 1 }}>{playerScores[p] || 0}</div>
                       </div>
                     );
@@ -17943,7 +18029,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                         const labelClass = isWinner ? 'cp-score-us' : (isMe ? 'cp-score-us' : 'cp-score-them');
                         return (
                           <div key={p} style={{ textAlign: 'center', padding: '6px 4px', border: `1px solid ${isWinner ? 'rgba(0,255,136,0.55)' : 'rgba(0,229,255,0.2)'}`, borderRadius: '6px', background: isWinner ? 'rgba(0,255,136,0.06)' : 'transparent' }}>
-                            <div className={labelClass} style={{ fontSize: '9px', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', marginBottom: '2px' }}>{getPlayerName(p)}{isMe ? ' (you)' : ''}</div>
+                            <div className={labelClass} style={{ fontSize: '9px', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', marginBottom: '2px' }}>{getCutthroatLabel(p)}{isMe ? ' (you)' : ''}</div>
                             <div className={labelClass} style={{ fontSize: '24px', fontFamily: "'Orbitron', sans-serif", fontWeight: 700, lineHeight: 1 }}>{playerScores[p] || 0}</div>
                           </div>
                         );
@@ -18052,7 +18138,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     const color = isWinner ? '#f6d778' : (isMe ? '#5dd084' : '#e8e4d9');
                     return (
                       <div key={p} style={{ textAlign: 'center', padding: '6px 4px', border: `1px solid ${isWinner ? '#c9a24a' : 'rgba(201,162,74,0.2)'}`, borderRadius: '6px', background: isWinner ? 'rgba(201,162,74,0.08)' : 'transparent' }}>
-                        <div style={{ fontSize: '9px', color, fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>{getPlayerName(p)}{isMe ? ' (you)' : ''}</div>
+                        <div style={{ fontSize: '9px', color, fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>{getCutthroatLabel(p)}{isMe ? ' (you)' : ''}</div>
                         <div style={{ fontSize: '24px', fontFamily: "'Cinzel', serif", fontWeight: 700, color, lineHeight: 1 }}>{playerScores[p] || 0}</div>
                       </div>
                     );
@@ -18226,7 +18312,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           </div>
         )}
         {/* Score table */}
-        <ScoreTable roundHistory={history} mySeatIndex={mySeatIndex} />
+        <ScoreTable roundHistory={history} mySeatIndex={mySeatIndex} gameOptions={gameOptions} players={players} playerScores={playerScores} />
       </div>
 
       {/* Modals */}
