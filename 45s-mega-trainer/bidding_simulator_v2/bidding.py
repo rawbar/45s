@@ -91,7 +91,10 @@ def decide_bid(hand: List[Card],
                 enable_loose_open: bool = True,
                 loose_open_pass_prob: float = 0.0,
                 desp_overbid25_pass_prob: float = 0.0,
-                cutthroat: bool = False) -> Tuple[int, Optional[Suit]]:
+                cutthroat: bool = False,
+                cutthroat_tight_20: bool = False,
+                cutthroat_tight_25: bool = False,
+                cutthroat_kill_30: bool = False) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
     DATA-DERIVED, held-out-validated trigger (commit d19be47: 12k deals/cell
@@ -137,6 +140,14 @@ def decide_bid(hand: List[Card],
         # they ARE ported, cutthroat is correct out of the box.)
         enable_upbid15 = False
         enable_loose_open = False
+    else:
+        # Safety: the cutthroat_tight_* kwargs are CUTTHROAT-MODE tightening
+        # only. Force off in partner mode so a misconfigured caller can never
+        # mutate the validated partner-mode bidding. Partner-mode bit-identity
+        # depends on this.
+        cutthroat_tight_20 = False
+        cutthroat_tight_25 = False
+        cutthroat_kill_30 = False
 
     opp_bid_15 = current_high_bid == 15 and partner_bid != 15
     opp_bid_20 = current_high_bid == 20 and partner_bid != 20
@@ -217,6 +228,15 @@ def decide_bid(hand: List[Card],
     # ── GUARANTEED HAND ──────────────────────────────────────────────────────
     if is_guaranteed_hand(hand, suit):
         natural = 30 if (has5 and hasJ and hasAH and hasAT) else 25
+        # H3 (cutthroat_kill_30): 30 requires 5+J+AH+AT+T1 — i.e. the four
+        # top anchors AND >=5 trump. is_guaranteed_hand grants 30 whenever
+        # all four anchors are present, even with exactly 4 trump. Knock
+        # such hands back to 25 (still guaranteed, but no "free trick" left).
+        if cutthroat_kill_30 and natural == 30 and trump_count < 5:
+            natural = 25
+        # H2 (cutthroat_tight_25): the OTHER guaranteed branch is
+        # has5 ∧ hasJ ∧ hasAH ∧ trump_count>=4 (no AT) → natural=25. That
+        # IS 5+J+AH which the tight-25 rule keeps. Nothing to demote here.
         if player_index == dealer and current_high_bid > 0:
             natural = min(natural, current_high_bid + 5)
         return natural, suit
@@ -284,6 +304,12 @@ def decide_bid(hand: List[Card],
                 bid = 30
             elif has5 and hasJ and trump_count >= 5:
                 bid = 30
+            # H3 (cutthroat_kill_30): 30 requires 5+J+AH+AT+T1 (=5+ trump
+            # incl. the four top anchors). Knock partner-era 30s that miss
+            # AT or AH back to 25 (still strong, but solo-realistic).
+            if cutthroat_kill_30 and bid == 30 and not (
+                    has5 and hasJ and hasAH and hasAT and trump_count >= 5):
+                bid = 25
         if bid == 0:
             if has5 and hasJ and hasAH:
                 bid = 25
@@ -291,6 +317,14 @@ def decide_bid(hand: List[Card],
                 bid = 25
             elif has5 and hasAH and trump_count >= 5:
                 bid = 25
+            # H2 (cutthroat_tight_25): keep only 5+J+AH OR 5+J+T3 (the
+            # latter = has5 ∧ hasJ ∧ trump_count>=5 in this codebase's
+            # notation: 5,J + 3 lower trump = 5 trump total). Drop the
+            # 5+AH+T3 branch (no J → solo can't extract the J safely).
+            if cutthroat_tight_25 and bid == 25 and not (
+                    (has5 and hasJ and hasAH)
+                    or (has5 and hasJ and trump_count >= 5)):
+                bid = 0
         if bid == 0:
             if has5 and hasJ:
                 bid = 20
@@ -300,6 +334,12 @@ def decide_bid(hand: List[Card],
                 bid = 20
             elif hasJ and hasAH and trump_count >= 5:
                 bid = 20
+            # H1 (cutthroat_tight_20): 20 requires >=4 trump. Drops the
+            # has5∧hasJ-with-only-2/3-trump pattern and the has5∧hasAH-
+            # with-only-3-trump pattern. Solo cannot extract 4 tricks
+            # from 2-3 trump even with two top cards.
+            if cutthroat_tight_20 and bid == 20 and trump_count < 4:
+                bid = 0
         if bid == 0:
             hasKT = has_card(hand, 'K', suit)
             hasQT = has_card(hand, 'Q', suit)

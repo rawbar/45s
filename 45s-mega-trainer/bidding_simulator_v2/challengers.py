@@ -198,6 +198,57 @@ for _r in CARD_RULES:
     REGISTRY[f"off:{_r}"] = _card_off(_r)
 
 
+# CUTTHROAT BIDDING PHASE 2A — three tightening variants on top of
+# champion-cutthroat (Chunk A baseline). Each isolates one threshold class
+# so the rig attributes win-rate delta to that single change.
+#
+#   cutthroat-tight-20: 20-bid requires >=4 trump (drops 5+J@2-3 trump,
+#                       5+AH@3 trump). Partner-era patterns assumed partner
+#                       could cover one trick; solo can't.
+#   cutthroat-tight-25: 25-bid requires 5+J+AH OR 5+J+T3 (i.e. the J anchor
+#                       AND either AH or 5-trump depth). Drops 5+AH+T3
+#                       (no J → solo can't extract J safely) AND the
+#                       opp_bid25→30 demotion routes through H3.
+#   cutthroat-kill-30:  30-bid requires 5+J+AH+AT+T1 (=>5 trump incl. all
+#                       four top anchors). Drops 5+J+AH@T4 (no AT) and
+#                       5+J@T5 (no AH) — both 30-bid suicide solo.
+#
+# All three set cutthroat=True so the cutthroat normalization (partner_bid=0,
+# spoiler off, partner-mode tightening flags FORCED off) fires correctly.
+# Partner-mode bit-identity is preserved by the `else: cutthroat_tight_*=False`
+# guard inside bidding.decide_bid.
+class CutthroatTight20(Policy):
+    name = "cutthroat-tight-20"
+    def __init__(self):
+        super().__init__(cutthroat=True)
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True, cutthroat_tight_20=True)
+
+
+class CutthroatTight25(Policy):
+    name = "cutthroat-tight-25"
+    def __init__(self):
+        super().__init__(cutthroat=True)
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True, cutthroat_tight_25=True)
+
+
+class CutthroatKill30(Policy):
+    name = "cutthroat-kill-30"
+    def __init__(self):
+        super().__init__(cutthroat=True)
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True, cutthroat_kill_30=True)
+
+
+REGISTRY["cutthroat-tight-20"] = CutthroatTight20()
+REGISTRY["cutthroat-tight-25"] = CutthroatTight25()
+REGISTRY["cutthroat-kill-30"]  = CutthroatKill30()
+
+
 # FORCE-EXTRACT challenger variants (opt-in rule, default absent in champion).
 # Each enables the rule + one partner-trump-rich proxy; data picks the proxy.
 def _fx(proxy: str):
