@@ -263,6 +263,21 @@
   }
   .v3-plaque.us .v3-plaque-num   { color: var(--team-us); text-shadow: 0 0 6px rgba(93, 208, 132, 0.4); }
   .v3-plaque.them .v3-plaque-num { color: var(--team-them); text-shadow: 0 0 6px rgba(239, 124, 116, 0.35); }
+  /* CUTTHROAT (v2.31.69+): 4 plaques in the header instead of 2. Shrink to fit. */
+  .v3-scores.cutthroat { gap: 3px; }
+  .v3-scores.cutthroat .v3-plaque { min-width: 34px; padding: 2px 6px 3px; }
+  .v3-scores.cutthroat .v3-plaque-label { font-size: 7px; letter-spacing: 1px; }
+  .v3-scores.cutthroat .v3-plaque-num { font-size: 14px; }
+  .v3-scores.cutthroat .v3-plaque.me .v3-plaque-num { color: var(--team-us); text-shadow: 0 0 6px rgba(93, 208, 132, 0.4); }
+  .v3-scores.cutthroat .v3-plaque.opp .v3-plaque-num { color: rgba(232,228,217,0.85); }
+  .theme-cyberpunk .v3-scores.cutthroat .v3-plaque.me  { border: 1px solid rgba(0,255,136,0.45); box-shadow: 0 0 10px rgba(0,255,136,0.1), inset 0 0 6px rgba(0,255,136,0.04); }
+  .theme-cyberpunk .v3-scores.cutthroat .v3-plaque.opp { border: 1px solid rgba(0,229,255,0.3); }
+  .theme-cyberpunk .v3-scores.cutthroat .v3-plaque.me  .v3-plaque-num { color: #00ff88; text-shadow: 0 0 10px rgba(0,255,136,0.7); }
+  .theme-cyberpunk .v3-scores.cutthroat .v3-plaque.opp .v3-plaque-num { color: #00e5ff; text-shadow: 0 0 8px rgba(0,229,255,0.4); }
+  .theme-arabian .v3-scores.cutthroat .v3-plaque.me  { border-color: rgba(93,208,132,0.4); }
+  .theme-arabian .v3-scores.cutthroat .v3-plaque.opp { border-color: rgba(201,162,39,0.35); }
+  .theme-arabian .v3-scores.cutthroat .v3-plaque.me  .v3-plaque-num { color: #5dd084; text-shadow: 0 0 8px rgba(93,208,132,0.4); }
+  .theme-arabian .v3-scores.cutthroat .v3-plaque.opp .v3-plaque-num { color: #f6d778; text-shadow: 0 0 6px rgba(246,215,120,0.3); }
 
   /* ═══════════════════════════════════════════════════════════════
      Game surface
@@ -3416,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.68';
+const VERSION = '2.31.69';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4475,6 +4490,7 @@ const FirebaseAPI = {
           dealer: initialDealer,
           currentPlayer: (initialDealer + 1) % 4,
           scores: [0, 0],
+          playerScores: [0, 0, 0, 0],
           history: [],
           hands: hands,
           kitty: kitty,
@@ -6600,6 +6616,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.69', date: 'May 2026', changes: ['Cutthroat variant (beta, test only): when the new Cutthroat house rule is enabled at game creation, scoring switches from teams to four solo players. The top-of-game header shows four small score plaques (one per seat, abbreviated by name, your own tinted gold) instead of US/THEM. The round-end modal shows a row per player with each individual\'s round points (bidder shown red in parentheses if set, e.g. (15)). The game-over modal shows a 2x2 score grid with the winning player\'s tile gold-bordered. First player to 120 wins (no partner totals counted). Caveat: the AI still uses partner-mode play logic in cutthroat — it does NOT yet know that everyone else is its opponent, so it will not always set the leader and may underplay nickel-grabs. Cutthroat-specific AI policy is Phase 2.'] },
     { version: '2.31.68', date: 'May 2026', changes: ['Fix: when you play the last card of trick 5 (i.e., you are the 4th to play on the final trick of a round), your card no longer remains visible in your hand after moving to the table. Root cause: when every hand becomes empty, Firebase strips the whole hands key from the game-state snapshot, and the listener\'s `if (gameState.hands)` truthiness guard then skipped the local hand clear, so your just-played card stayed in your hand state even though Firebase had it removed. Now: when the listener sees the hands key missing AND the phase is round-end or game-over, it explicitly clears the local hands to four empty arrays.'] },
     { version: '2.31.67', date: 'May 2026', changes: ['Spectator mode: tapping an in-progress game in the lobby lets you watch the table, but as a spectator you no longer see — or can press — any of the action buttons. The Next Round button, the New Game (rematch) button, the bid buttons, the trump-select buttons, the discard button, and the card-play tap targets are now all hidden / no-ops if the player Firebase says is sitting at your seat is not you (which is how you can end up in someone else\'s game). Previously a spectator tapping Next Round wrote to Firebase and advanced the round for everyone, interrupting the real players. The spectator client also no longer races real clients to drive the AI moves.'] },
     { version: '2.31.66', date: 'May 2026', changes: ['AI play: 2nd-man defender following a BIDDER offsuit lead now beats the lead with the cheapest higher card of the led suit, instead of always playing the lowest card. The "second-hand low" mantra is actually a TRUMP heuristic — on offsuit you want to beat the lead so that 3rd-man (the bidder\'s partner) either has to over-beat with an even higher offsuit, commit trump to win, or concede the trick. Either way your partner (4th-man) avoids having to ruff in. User-derived from a screenshot where North led 5♠ offsuit and East played a low spade instead of beating it. Head-to-head simulation: 20,000 paired deals = +0.01pt z=+0.05 (rig-NEUTRAL). Shipped as a trust fix per the v2.31.30 precedent — sound textbook 45s principle, plays visibly correct in the screenshot case, zero measured win-rate cost.'] },
@@ -8647,6 +8664,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
   const [optFiveCardDraw, setOptFiveCardDraw] = useState(false);
   const [optFollowAHearts, setOptFollowAHearts] = useState(false);
   const [optThirtyFor60, setOptThirtyFor60] = useState(false);
+  const [optCutthroat, setOptCutthroat] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
@@ -8683,9 +8701,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
   // Preferences state (persistent per-user: trick speed + house rules)
   const [showPreferences, setShowPreferences] = useState(false);
   const [prefTrickSpeed, setPrefTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'medium');
-  const [prefHouseRules, setPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false });
+  const [prefHouseRules, setPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false, cutthroat: false });
   const [editTrickSpeed, setEditTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'medium');
-  const [editPrefHouseRules, setEditPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false });
+  const [editPrefHouseRules, setEditPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false, cutthroat: false });
 
   // Irish lobby tab state ('games' | 'leaderboard')
   const [lobbyTab, setLobbyTab] = useState('games');
@@ -8925,7 +8943,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       const prefs = snap.val() || {};
       const speed = prefs.trickSpeed || 'medium';
       const hr = prefs.houseRules || {};
-      const rules = { fiveCardDraw: !!hr.fiveCardDraw, followAHearts: !!hr.followAHearts, thirtyFor60: !!hr.thirtyFor60 };
+      const rules = { fiveCardDraw: !!hr.fiveCardDraw, followAHearts: !!hr.followAHearts, thirtyFor60: !!hr.thirtyFor60, cutthroat: !!hr.cutthroat };
       setPrefTrickSpeed(speed);
       setPrefHouseRules(rules);
       setEditTrickSpeed(speed);
@@ -8940,6 +8958,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       setOptFiveCardDraw(prefHouseRules.fiveCardDraw);
       setOptFollowAHearts(prefHouseRules.followAHearts);
       setOptThirtyFor60(prefHouseRules.thirtyFor60);
+      setOptCutthroat(prefHouseRules.cutthroat);
     }
   }, [showCreateGame]);
 
@@ -9107,7 +9126,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
         creatorId: userId,
         createdAt: now,
         lastActivity: now,
-        options: { fiveCardDraw: optFiveCardDraw, followAHearts: optFollowAHearts, thirtyFor60: optThirtyFor60 },
+        options: { fiveCardDraw: optFiveCardDraw, followAHearts: optFollowAHearts, thirtyFor60: optThirtyFor60, cutthroat: optCutthroat },
         players: {}
       });
 
@@ -9177,7 +9196,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
     try {
       await database.ref(`users/${userId}/prefs`).set({
         trickSpeed: editTrickSpeed,
-        houseRules: { fiveCardDraw: editPrefHouseRules.fiveCardDraw, followAHearts: editPrefHouseRules.followAHearts, thirtyFor60: editPrefHouseRules.thirtyFor60 }
+        houseRules: { fiveCardDraw: editPrefHouseRules.fiveCardDraw, followAHearts: editPrefHouseRules.followAHearts, thirtyFor60: editPrefHouseRules.thirtyFor60, cutthroat: editPrefHouseRules.cutthroat }
       });
       localStorage.setItem('45s_trickSpeed', editTrickSpeed);
       setPrefTrickSpeed(editTrickSpeed);
@@ -9612,6 +9631,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     { key: 'optFiveCardDraw', val: optFiveCardDraw, setter: setOptFiveCardDraw, label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' },
                     { key: 'optFollowAHearts', val: optFollowAHearts, setter: setOptFollowAHearts, label: 'Follow A♥', desc: 'When A♥ is led, void in trump must play a heart if holding one.' },
                     { key: 'optThirtyFor60', val: optThirtyFor60, setter: setOptThirtyFor60, label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' },
+                    { key: 'optCutthroat', val: optCutthroat, setter: setOptCutthroat, label: 'Cutthroat', desc: 'Every player for themselves — 4 individual scores, no partners. First to 120 wins.' },
                   ].map(({ key, val, setter, label, desc }) => (
                     <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '13px', marginBottom: '10px', color: '#c0ddf0' }}>
                       <input type="checkbox" checked={val} onChange={e => setter(e.target.checked)} style={{ marginTop: '3px', width: '16px', height: '16px', cursor: 'pointer', accentColor: '#ff8c00' }} />
@@ -9630,9 +9650,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   onClick={() => setShowGameOptions(v => !v)}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(0,229,255,0.3)', borderRadius: '3px', background: showGameOptions ? 'rgba(0,229,255,0.1)' : 'rgba(0,229,255,0.05)', color: '#00e5ff', fontFamily: "'Share Tech Mono',monospace", fontSize: '11px', letterSpacing: '1px', cursor: 'pointer' }}
-                >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}</button>
+                >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60 || optCutthroat) ? 'Options ✓' : 'Options'}</button>
                 <button
-                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); }}
+                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setOptCutthroat(prefHouseRules.cutthroat); }}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(0,229,255,0.2)', borderRadius: '3px', background: 'rgba(0,229,255,0.05)', color: 'rgba(0,229,255,0.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '11px', cursor: 'pointer' }}
                 >Cancel</button>
@@ -9667,6 +9687,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     { key: 'optFiveCardDraw', val: optFiveCardDraw, setter: setOptFiveCardDraw, label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' },
                     { key: 'optFollowAHearts', val: optFollowAHearts, setter: setOptFollowAHearts, label: 'Follow A♥', desc: 'When A♥ is led, void in trump must play a heart if holding one.' },
                     { key: 'optThirtyFor60', val: optThirtyFor60, setter: setOptThirtyFor60, label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' },
+                    { key: 'optCutthroat', val: optCutthroat, setter: setOptCutthroat, label: 'Cutthroat', desc: 'Every player for themselves — 4 individual scores, no partners. First to 120 wins.' },
                   ].map(({ key, val, setter, label, desc }) => (
                     <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '13px', marginBottom: '10px', color: '#f5eedc' }}>
                       <input type="checkbox" checked={val} onChange={e => setter(e.target.checked)} style={{ marginTop: '3px', width: '16px', height: '16px', cursor: 'pointer', accentColor: '#c9a227' }} />
@@ -9685,9 +9706,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   onClick={() => setShowGameOptions(v => !v)}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,39,0.4)', borderRadius: '10px', background: showGameOptions ? 'rgba(201,162,39,0.15)' : 'transparent', color: '#c9a227', fontFamily: "'Cinzel',serif", fontSize: '11px', letterSpacing: '1px', cursor: 'pointer' }}
-                >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}</button>
+                >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60 || optCutthroat) ? 'Options ✓' : 'Options'}</button>
                 <button
-                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); }}
+                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setOptCutthroat(prefHouseRules.cutthroat); }}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,39,0.2)', borderRadius: '10px', background: 'transparent', color: 'rgba(245,238,220,0.5)', fontFamily: "'Cinzel',serif", fontSize: '11px', cursor: 'pointer' }}
                 >Cancel</button>
@@ -9721,6 +9742,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     { key: 'optFiveCardDraw', val: optFiveCardDraw, setter: setOptFiveCardDraw, label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' },
                     { key: 'optFollowAHearts', val: optFollowAHearts, setter: setOptFollowAHearts, label: 'Follow A♥', desc: 'When A♥ is led, void in trump must play a heart if holding one.' },
                     { key: 'optThirtyFor60', val: optThirtyFor60, setter: setOptThirtyFor60, label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' },
+                    { key: 'optCutthroat', val: optCutthroat, setter: setOptCutthroat, label: 'Cutthroat', desc: 'Every player for themselves — 4 individual scores, no partners. First to 120 wins.' },
                   ].map(({ key, val, setter, label, desc }) => (
                     <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '13px', marginBottom: '10px', color: '#e8e4d9' }}>
                       <input type="checkbox" checked={val} onChange={e => setter(e.target.checked)} style={{ marginTop: '3px', width: '16px', height: '16px', cursor: 'pointer', accentColor: '#c9a24a' }} />
@@ -9740,9 +9762,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   onClick={() => setShowGameOptions(v => !v)}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,74,0.4)', borderRadius: '10px', background: showGameOptions ? 'rgba(201,162,74,0.15)' : 'transparent', color: '#c9a24a', fontFamily: 'Cinzel, serif', fontSize: '11px', letterSpacing: '1px', cursor: 'pointer' }}
-                >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}</button>
+                >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60 || optCutthroat) ? 'Options ✓' : 'Options'}</button>
                 <button
-                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); }}
+                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setOptCutthroat(prefHouseRules.cutthroat); }}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,74,0.2)', borderRadius: '10px', background: 'transparent', color: 'rgba(232,228,217,0.5)', fontFamily: 'Cinzel, serif', fontSize: '11px', cursor: 'pointer' }}
                 >Cancel</button>
@@ -10446,7 +10468,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                 <div style={{ marginBottom: '20px' }}>
                   <div className="cp-pref-section-title">House Rules</div>
                   <div style={{ fontSize: '11px', color: '#3a5f78', fontFamily: "'Share Tech Mono', monospace", marginBottom: '12px' }}>Default for new games you create</div>
-                  {[{ key: 'fiveCardDraw', label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' }, { key: 'followAHearts', label: 'Follow A♥', desc: "When A♥ is led, void in trump must play a heart if holding one." }, { key: 'thirtyFor60', label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' }].map(({ key, label, desc }) => (
+                  {[{ key: 'fiveCardDraw', label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' }, { key: 'followAHearts', label: 'Follow A♥', desc: "When A♥ is led, void in trump must play a heart if holding one." }, { key: 'thirtyFor60', label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' }, { key: 'cutthroat', label: 'Cutthroat', desc: 'Every player for themselves — 4 individual scores, no partners. First to 120 wins.' }].map(({ key, label, desc }) => (
                     <div key={key} className="cp-checkbox-row" onClick={() => setEditPrefHouseRules(prev => ({ ...prev, [key]: !prev[key] }))}>
                       <div style={{ width: '18px', height: '18px', borderRadius: '3px', border: editPrefHouseRules[key] ? '2px solid #ff8c00' : '2px solid rgba(0,229,255,0.25)', background: editPrefHouseRules[key] ? 'rgba(255,140,0,0.15)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                         {editPrefHouseRules[key] && <span style={{ color: '#ff8c00', fontSize: '12px', fontWeight: 700, lineHeight: 1 }}>✓</span>}
@@ -10520,7 +10542,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               <div style={{ marginBottom: '20px' }}>
                 <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1.5px', color: 'rgba(201,162,74,0.6)', textTransform: 'uppercase', marginBottom: '10px', fontFamily: "'Cinzel', serif" }}>House Rules</div>
                 <div style={{ fontSize: '11px', color: 'rgba(232,228,217,0.4)', fontFamily: "'Merriweather', serif", fontStyle: 'italic', marginBottom: '12px' }}>Default for new games you create</div>
-                {[{ key: 'fiveCardDraw', label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' }, { key: 'followAHearts', label: 'Follow A♥', desc: "When A♥ is led, void in trump must play a heart if holding one." }, { key: 'thirtyFor60', label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' }].map(({ key, label, desc }) => (
+                {[{ key: 'fiveCardDraw', label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' }, { key: 'followAHearts', label: 'Follow A♥', desc: "When A♥ is led, void in trump must play a heart if holding one." }, { key: 'thirtyFor60', label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' }, { key: 'cutthroat', label: 'Cutthroat', desc: 'Every player for themselves — 4 individual scores, no partners. First to 120 wins.' }].map(({ key, label, desc }) => (
                   <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', marginBottom: '14px' }}>
                     <div onClick={() => setEditPrefHouseRules(prev => ({ ...prev, [key]: !prev[key] }))} style={{ marginTop: '2px', width: '18px', height: '18px', borderRadius: '3px', border: editPrefHouseRules[key] ? '2px solid #c9a24a' : '2px solid rgba(201,162,74,0.35)', background: editPrefHouseRules[key] ? 'rgba(201,162,74,0.2)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                       {editPrefHouseRules[key] && <span style={{ color: '#f6d778', fontSize: '12px', fontWeight: 'bold', lineHeight: 1 }}>✓</span>}
@@ -11015,6 +11037,20 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     </span>
                   </span>
                 </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px' }}>
+                  <input
+                    type="checkbox"
+                    checked={optCutthroat}
+                    onChange={e => setOptCutthroat(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <span>
+                    <strong>Cutthroat</strong>
+                    <span style={{ fontSize: '12px', color: '#666', display: 'block' }}>
+                      Every player for themselves — 4 individual scores, no partners. First to 120 wins.
+                    </span>
+                  </span>
+                </label>
               </div>
             )}
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -11041,7 +11077,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 'bold'
                 }}
               >
-                {(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}
+                {(optFiveCardDraw || optFollowAHearts || optThirtyFor60 || optCutthroat) ? 'Options ✓' : 'Options'}
               </button>
               <button
                 onClick={() => {
@@ -11051,6 +11087,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   setOptFiveCardDraw(prefHouseRules.fiveCardDraw);
                   setOptFollowAHearts(prefHouseRules.followAHearts);
                   setOptThirtyFor60(prefHouseRules.thirtyFor60);
+                  setOptCutthroat(prefHouseRules.cutthroat);
                 }}
                 disabled={loading}
                 style={{
@@ -11720,7 +11757,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                 </div>
                 <div style={{ marginBottom: '20px' }}>
                   <div className="cp-pref-section-title">House Rules</div>
-                  {[['fiveCardDraw', '5-Card Draw', 'Players may discard all 5 cards.'], ['followAHearts', 'Follow A♥', 'Void in trump must play a heart when A♥ led.'], ['thirtyFor60', '30 for 60', 'After a 30 bid, next may bid "30 for 60".']].map(([key, label, desc]) => (
+                  {[['fiveCardDraw', '5-Card Draw', 'Players may discard all 5 cards.'], ['followAHearts', 'Follow A♥', 'Void in trump must play a heart when A♥ led.'], ['thirtyFor60', '30 for 60', 'After a 30 bid, next may bid "30 for 60".'], ['cutthroat', 'Cutthroat', 'Every player for themselves — 4 individual scores, first to 120 wins.']].map(([key, label, desc]) => (
                     <div key={key} className="cp-checkbox-row" onClick={() => setEditPrefHouseRules(prev => ({ ...prev, [key]: !prev[key] }))}>
                       <div style={{ width: '18px', height: '18px', borderRadius: '3px', border: editPrefHouseRules[key] ? '2px solid #ff8c00' : '2px solid rgba(0,229,255,0.25)', background: editPrefHouseRules[key] ? 'rgba(255,140,0,0.15)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                         {editPrefHouseRules[key] && <span style={{ color: '#ff8c00', fontSize: '12px', fontWeight: 700, lineHeight: 1 }}>✓</span>}
@@ -11791,7 +11828,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                 {[
                   ['fiveCardDraw', '5-Card Draw', 'Players may discard all 5 cards. 5th drawn card dealt face-up.'],
                   ['followAHearts', 'Follow A♥', 'When A♥ is led, void in trump must play a heart if holding one.'],
-                  ['thirtyFor60', '30 for 60', 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.']
+                  ['thirtyFor60', '30 for 60', 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.'],
+                  ['cutthroat', 'Cutthroat', 'Every player for themselves — 4 individual scores, no partners. First to 120 wins.']
                 ].map(([key, label, desc]) => (
                   <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px', marginBottom: '10px' }}>
                     <input
@@ -13449,6 +13487,14 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [playerTricks, setPlayerTricks] = useState([0, 0, 0, 0]);
   const [roundPts, setRoundPts] = useState([0, 0]);
   const [scores, setScores] = useState([0, 0]);
+  // CUTTHROAT (v2.31.69+): per-player game scores accumulated alongside the
+  // team scores. Only used / displayed when gameOptions.cutthroat is on; the
+  // team `scores` array still accumulates in cutthroat mode but is ignored.
+  const [playerScores, setPlayerScores] = useState([0, 0, 0, 0]);
+  // CUTTHROAT (v2.31.69+): per-player round points (current round only).
+  // Synced from Firebase at round-end so all clients render the same numbers
+  // in the round-end modal. Reset implicitly each round on next round-end write.
+  const [playerRoundPts, setPlayerRoundPts] = useState([0, 0, 0, 0]);
   const [trickNum, setTrickNum] = useState(0);
   const [selected, setSelected] = useState([]);
   const [trickComplete, setTrickComplete] = useState(false);
@@ -13946,6 +13992,17 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       if (gameState.dealer !== undefined) setDealer(gameState.dealer);
       if (gameState.currentPlayer !== undefined) setCurrentPlayer(gameState.currentPlayer);
       if (gameState.scores) setScores(gameState.scores);
+      if (gameState.playerScores) {
+        const raw = gameState.playerScores;
+        const arr = Array.isArray(raw) ? raw : Object.values(raw);
+        const norm = [0,0,0,0].map((_, i) => typeof arr[i] === 'number' ? arr[i] : 0);
+        setPlayerScores(norm);
+      }
+      if (gameState.playerRoundPts) {
+        const raw = gameState.playerRoundPts;
+        const arr = Array.isArray(raw) ? raw : Object.values(raw);
+        setPlayerRoundPts([0,0,0,0].map((_, i) => typeof arr[i] === 'number' ? arr[i] : 0));
+      }
       if (gameState.bids) setBids(gameState.bids);
       if (gameState.highBid !== undefined) setHighBid(gameState.highBid);
       if (gameState.bidWinner !== undefined) setBidWinner(gameState.bidWinner);
@@ -15424,22 +15481,66 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           themTotal: newScores[1]
         }];
         
-        // Check for game winner (first to 120, bidding team wins ties)
+        // CUTTHROAT (v2.31.69): per-player game scores computed alongside the
+        // team scores. In cutthroat the bidder is solo (made/set against their
+        // OWN trick points + high-trump bonus, no partner contribution); every
+        // other player banks their own trick points. Team scoring still runs
+        // above as dead computation; only the per-player path matters when
+        // gameOptions.cutthroat is on.
+        const playerRoundPts = [0, 0, 0, 0];
+        for (let p = 0; p < 4; p++) {
+          playerRoundPts[p] = (newPlayerTricks[p] || 0) * 5;
+        }
+        if (newHighTrumpInfo.rank >= 0 && newHighTrumpInfo.player >= 0) {
+          playerRoundPts[newHighTrumpInfo.player] += 5;
+        }
+        const newPlayerScores = [...playerScores];
+        if (gameOptions.cutthroat) {
+          const ctPenalty = bidType === '30for60' ? 60 : highBid;
+          for (let p = 0; p < 4; p++) {
+            if (p === bidWinner) {
+              newPlayerScores[p] += playerRoundPts[p] >= highBid ? playerRoundPts[p] : -ctPenalty;
+            } else {
+              newPlayerScores[p] += playerRoundPts[p];
+            }
+          }
+          console.log('🗡 CUTTHROAT scores after round:', newPlayerScores,
+            'roundPts:', playerRoundPts, 'bidder:', bidWinner, 'made:', playerRoundPts[bidWinner] >= highBid);
+        }
+
+        // Check for game winner. Cutthroat: first PLAYER to 120; on simultaneous
+        // tie, bidder wins. Partner mode: first TEAM to 120; on tie, bidding
+        // team wins.
         let gameWinner = null;
-        const team0Reached120 = newScores[0] >= 120;
-        const team1Reached120 = newScores[1] >= 120;
-        if (team0Reached120 || team1Reached120) {
-          if (team0Reached120 && team1Reached120) {
-            // Both teams reached 120 on same hand - bidding team wins
-            gameWinner = bidWinner % 2;
-            console.log('Both teams reached 120! Bidding team (Team ' + gameWinner + ') wins!');
-          } else {
-            gameWinner = team0Reached120 ? 0 : 1;
+        if (gameOptions.cutthroat) {
+          let bestScore = -Infinity;
+          for (let p = 0; p < 4; p++) {
+            if (newPlayerScores[p] >= 120 && newPlayerScores[p] > bestScore) {
+              bestScore = newPlayerScores[p];
+              gameWinner = p;
+            }
+          }
+          // Tie-break: if bidder is tied with the lead, bidder wins
+          if (gameWinner !== null && newPlayerScores[bidWinner] === bestScore
+              && bidWinner !== gameWinner && newPlayerScores[bidWinner] >= 120) {
+            gameWinner = bidWinner;
+          }
+        } else {
+          const team0Reached120 = newScores[0] >= 120;
+          const team1Reached120 = newScores[1] >= 120;
+          if (team0Reached120 || team1Reached120) {
+            if (team0Reached120 && team1Reached120) {
+              // Both teams reached 120 on same hand - bidding team wins
+              gameWinner = bidWinner % 2;
+              console.log('Both teams reached 120! Bidding team (Team ' + gameWinner + ') wins!');
+            } else {
+              gameWinner = team0Reached120 ? 0 : 1;
+            }
           }
         }
         
         if (gameWinner !== null) {
-          console.log(`🏆 GAME OVER! Team ${gameWinner} wins with ${newScores[gameWinner]} points!`);
+          console.log(`🏆 GAME OVER! ${gameOptions.cutthroat ? 'Player ' + (gameWinner + 1) : 'Team ' + gameWinner} wins with ${gameOptions.cutthroat ? newPlayerScores[gameWinner] : newScores[gameWinner]} points!`);
           await updateGameState({
             hands: cleanHands(newHands),
             trickCards: [],
@@ -15447,7 +15548,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             tricksWon: newTricksWon,
             playerTricks: newPlayerTricks,
             roundPts: finalRoundPts,
+            playerRoundPts: playerRoundPts,
             scores: newScores,
+            playerScores: newPlayerScores,
             history: newHistory,        // ✅ Batched - no extra call
             highTrumpInfo: newHighTrumpInfo,  // ✅ Save for display
             phase: 'game-over',
@@ -15466,7 +15569,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             tricksWon: newTricksWon,
             playerTricks: newPlayerTricks,
             roundPts: finalRoundPts,
+            playerRoundPts: playerRoundPts,
             scores: newScores,
+            playerScores: newPlayerScores,
             history: newHistory,        // ✅ Batched - no extra call
             highTrumpInfo: newHighTrumpInfo,  // ✅ Save for display
             phase: 'round-end',
@@ -15522,7 +15627,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         currentPlayer: nextPlayer
       });
     }
-  }, [phase, currentPlayer, mySeatIndex, hands, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, playerTricks, roundPts, updateGameState, getPlayerName, isSpectator]);
+  }, [phase, currentPlayer, mySeatIndex, hands, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, playerTricks, roundPts, updateGameState, getPlayerName, isSpectator, gameOptions, playerScores]);
 
 
   // AI players select trump automatically
@@ -15993,22 +16098,58 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             themTotal: newScores[1]
           }];
           
-          // Check for game winner (first to 120, bidding team wins ties)
-          let gameWinner = null;
-          const team0Reached120 = newScores[0] >= 120;
-          const team1Reached120 = newScores[1] >= 120;
-          if (team0Reached120 || team1Reached120) {
-            if (team0Reached120 && team1Reached120) {
-              // Both teams reached 120 on same hand - bidding team wins
-              gameWinner = bidWinner % 2;
-              console.log('Both teams reached 120! Bidding team (Team ' + gameWinner + ') wins!');
-            } else {
-              gameWinner = team0Reached120 ? 0 : 1;
+          // CUTTHROAT (v2.31.69): same per-player accounting as the human-played
+          // last-card path. Bidder solo against their own playerRoundPts; other
+          // players bank theirs. Team scoring above runs as dead computation.
+          const playerRoundPts = [0, 0, 0, 0];
+          for (let p = 0; p < 4; p++) {
+            playerRoundPts[p] = (newPlayerTricks[p] || 0) * 5;
+          }
+          if (newHighTrumpInfo.rank >= 0 && newHighTrumpInfo.player >= 0) {
+            playerRoundPts[newHighTrumpInfo.player] += 5;
+          }
+          const newPlayerScores = [...playerScores];
+          if (gameOptions.cutthroat) {
+            const ctPenalty = bidType === '30for60' ? 60 : highBid;
+            for (let p = 0; p < 4; p++) {
+              if (p === bidWinner) {
+                newPlayerScores[p] += playerRoundPts[p] >= highBid ? playerRoundPts[p] : -ctPenalty;
+              } else {
+                newPlayerScores[p] += playerRoundPts[p];
+              }
             }
           }
-          
+
+          // Check for game winner. Cutthroat: first PLAYER to 120, bidder wins ties.
+          let gameWinner = null;
+          if (gameOptions.cutthroat) {
+            let bestScore = -Infinity;
+            for (let p = 0; p < 4; p++) {
+              if (newPlayerScores[p] >= 120 && newPlayerScores[p] > bestScore) {
+                bestScore = newPlayerScores[p];
+                gameWinner = p;
+              }
+            }
+            if (gameWinner !== null && newPlayerScores[bidWinner] === bestScore
+                && bidWinner !== gameWinner && newPlayerScores[bidWinner] >= 120) {
+              gameWinner = bidWinner;
+            }
+          } else {
+            const team0Reached120 = newScores[0] >= 120;
+            const team1Reached120 = newScores[1] >= 120;
+            if (team0Reached120 || team1Reached120) {
+              if (team0Reached120 && team1Reached120) {
+                // Both teams reached 120 on same hand - bidding team wins
+                gameWinner = bidWinner % 2;
+                console.log('Both teams reached 120! Bidding team (Team ' + gameWinner + ') wins!');
+              } else {
+                gameWinner = team0Reached120 ? 0 : 1;
+              }
+            }
+          }
+
           if (gameWinner !== null) {
-            console.log(`🏆 GAME OVER! Team ${gameWinner} wins with ${newScores[gameWinner]} points!`);
+            console.log(`🏆 GAME OVER! ${gameOptions.cutthroat ? 'Player ' + (gameWinner + 1) : 'Team ' + gameWinner} wins with ${gameOptions.cutthroat ? newPlayerScores[gameWinner] : newScores[gameWinner]} points!`);
             await updateGameState({
               hands: cleanHands(newHands),
               trickCards: [],
@@ -16016,7 +16157,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               tricksWon: newTricksWon,
               playerTricks: newPlayerTricks,
               roundPts: finalRoundPts,
+              playerRoundPts: playerRoundPts,
               scores: newScores,
+              playerScores: newPlayerScores,
               history: newHistory,        // ✅ Batched - no extra call
               highTrumpInfo: newHighTrumpInfo,  // ✅ Save for display
               phase: 'game-over',
@@ -16035,7 +16178,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               tricksWon: newTricksWon,
               playerTricks: newPlayerTricks,
               roundPts: finalRoundPts,
+              playerRoundPts: playerRoundPts,
               scores: newScores,
+              playerScores: newPlayerScores,
               history: newHistory,        // ✅ Batched - no extra call
               highTrumpInfo: newHighTrumpInfo,  // ✅ Save for display
               phase: 'round-end',
@@ -16075,7 +16220,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       }
     })(); // Close async IIFE - executes immediately
     
-  }, [resettingRound, phase, currentPlayer, mySeatIndex, players, hands, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, playerTricks, roundPts, updateGameState, trickComplete, isSpectator]);
+  }, [resettingRound, phase, currentPlayer, mySeatIndex, players, hands, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, playerTricks, roundPts, updateGameState, trickComplete, isSpectator, gameOptions, playerScores]);
 
 
 
@@ -16123,6 +16268,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       dealer: firstDealer,
       currentPlayer: (firstDealer + 1) % 4, // Player to left of dealer starts bidding
       scores: [0, 0],
+      playerScores: [0, 0, 0, 0],
       history: [],
       hands: hands, // All hands (we'll add privacy later)
       kitty: kitty,
@@ -16171,7 +16317,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   useEffect(() => {
     if (phase !== 'bidding') return;
     if (houseRulesShown.current) return;
-    if (!gameOptions || (!gameOptions.fiveCardDraw && !gameOptions.followAHearts && !gameOptions.thirtyFor60)) return;
+    if (!gameOptions || (!gameOptions.fiveCardDraw && !gameOptions.followAHearts && !gameOptions.thirtyFor60 && !gameOptions.cutthroat)) return;
     houseRulesShown.current = true;
     setShowHouseRules(true);
     const t = setTimeout(() => setShowHouseRules(false), 4000);
@@ -16343,8 +16489,27 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           >🚪</button>
         </div>
 
-        <div className="v3-scores">
+        <div className={`v3-scores${gameOptions.cutthroat ? ' cutthroat' : ''}`}>
           {(() => {
+            if (gameOptions.cutthroat) {
+              // CUTTHROAT (v2.31.69+): 4 plaques, one per seat, abbreviated by
+              // first 2 chars of the seat occupant's display name. Local
+              // player's plaque is `me` (gold tint); others are `opp` (neutral).
+              const orderedSeats = [mySeatIndex, (mySeatIndex + 1) % 4, (mySeatIndex + 2) % 4, (mySeatIndex + 3) % 4];
+              return (<>
+                {orderedSeats.map(seat => {
+                  const nm = getPlayerName(seat) || SEAT_NAMES[seat];
+                  const label = nm.length <= 3 ? nm : nm.slice(0, 3);
+                  const isMe = seat === mySeatIndex;
+                  return (
+                    <div key={seat} className={`v3-plaque ${isMe ? 'me' : 'opp'}`}>
+                      <span className="v3-plaque-label">{label.toUpperCase()}</span>
+                      <span className="v3-plaque-num">{playerScores[seat] || 0}</span>
+                    </div>
+                  );
+                })}
+              </>);
+            }
             const myTeam = mySeatIndex % 2;
             const usScore = myTeam === 0 ? scores[0] : scores[1];
             const themScore = myTeam === 0 ? scores[1] : scores[0];
@@ -16991,7 +17156,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 <div style={{ fontSize: '13px', color: 'rgba(251,246,228,0.85)', marginBottom: '4px' }}>Follow A♥</div>
               )}
               {gameOptions.thirtyFor60 && (
-                <div style={{ fontSize: '13px', color: 'rgba(251,246,228,0.85)' }}>30 for 60</div>
+                <div style={{ fontSize: '13px', color: 'rgba(251,246,228,0.85)', marginBottom: '4px' }}>30 for 60</div>
+              )}
+              {gameOptions.cutthroat && (
+                <div style={{ fontSize: '13px', color: '#ef7c74', fontWeight: 700 }}>Cutthroat</div>
               )}
               <div style={{ fontSize: '10px', color: 'rgba(201,162,74,0.4)', marginTop: '10px' }}>tap to dismiss</div>
             </div>
@@ -17198,6 +17366,49 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           const bidderName = bidWinner >= 0 ? getPlayerName(bidWinner) : '—';
           const suitColor = trumpSuit && (trumpSuit === '♥' || trumpSuit === '♦') ? '#e07070' : '#f6d778';
           const anSuitColor = trumpSuit && (trumpSuit === '♥' || trumpSuit === '♦') ? '#e03050' : '#f6d778';
+          // CUTTHROAT (v2.31.69+): per-player row data. Fallback to computing
+          // from playerTricks + highTrumpInfo if Firebase didn't sync yet.
+          const isCutthroat = !!gameOptions.cutthroat;
+          const ctPenalty = setPenalty; // same penalty as partner mode
+          const ctRoundPts = (() => {
+            const haveSynced = playerRoundPts.some(v => v > 0);
+            if (haveSynced) return playerRoundPts;
+            const arr = [0, 0, 0, 0];
+            for (let p = 0; p < 4; p++) arr[p] = (playerTricks[p] || 0) * 5;
+            if (highTrumpInfo && highTrumpInfo.player >= 0) arr[highTrumpInfo.player] += 5;
+            return arr;
+          })();
+          const ctBidderMade = bidWinner >= 0 && ctRoundPts[bidWinner] >= highBid;
+          if (currentThemeId === 'arabian' && isCutthroat) return (
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(8,5,1,0.97)', padding: '24px 28px', borderRadius: '10px', border: '1px solid rgba(201,162,39,0.5)', boxShadow: '0 0 36px rgba(201,162,39,0.2),0 8px 32px rgba(0,0,0,0.9)', zIndex: 100, minWidth: '280px', maxWidth: '340px', animation: 'slideUp 0.3s ease-out', textAlign: 'center' }}>
+              <div style={{ fontFamily: "'Cinzel',serif", fontSize: '18px', fontWeight: 700, color: '#f6d778', letterSpacing: '1px', marginBottom: '16px' }}>Round Complete</div>
+              <div style={{ marginBottom: '16px', fontSize: '12px', color: 'rgba(232,228,217,0.8)', fontFamily: "'Inter',sans-serif" }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '4px 0', borderBottom: '1px solid rgba(201,162,39,0.2)' }}>
+                  <span style={{ color: 'rgba(201,162,39,0.7)' }}>Bid</span>
+                  <span style={{ fontFamily: "'Cinzel',serif", color: '#f6d778' }}>{highBid}<span style={{ color: anSuitColor, marginLeft: '3px' }}>{trumpSuit || ''}</span> <span style={{ color: 'rgba(232,228,217,0.6)', fontSize: '10px' }}>· {bidderName}</span></span>
+                </div>
+                {[0,1,2,3].map(p => {
+                  const isBidder = p === bidWinner;
+                  const pts = ctRoundPts[p];
+                  const isSet = isBidder && !ctBidderMade;
+                  const isMe = p === mySeatIndex;
+                  const labelColor = isMe ? '#5dd084' : 'rgba(232,228,217,0.85)';
+                  const numColor = isSet ? '#ef7c74' : (isMe ? '#5dd084' : '#f6d778');
+                  const displayPts = isSet ? `(${ctPenalty})` : `+${pts}`;
+                  return (
+                    <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                      <span style={{ color: labelColor, fontWeight: 600 }}>{getPlayerName(p)}{isBidder ? ' (bidder)' : ''}</span>
+                      <span style={{ fontFamily: "'Cinzel',serif", color: numColor, fontSize: '14px', fontWeight: 700 }}>{displayPts}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                <button onClick={() => setShowHandsOpen(true)} style={{ padding: '8px 16px', fontSize: '11px', fontFamily: "'Cinzel',serif", fontWeight: 700, background: 'rgba(8,5,1,0.8)', color: '#c9a227', border: '1px solid rgba(201,162,39,0.45)', borderRadius: '4px', cursor: 'pointer', letterSpacing: '0.5px' }}>View Round</button>
+                {!isSpectator && <button onClick={handleNextRound} style={{ padding: '8px 20px', fontSize: '12px', fontFamily: "'Cinzel',serif", fontWeight: 700, background: 'linear-gradient(135deg,#5a3f06,#c9a227 50%,#5a3f06)', color: '#0d0a04', border: 'none', borderRadius: '4px', cursor: 'pointer', letterSpacing: '0.5px' }}>Next Round</button>}
+              </div>
+            </div>
+          );
           if (currentThemeId === 'arabian') return (
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(8,5,1,0.97)', padding: '24px 28px', borderRadius: '10px', border: '1px solid rgba(201,162,39,0.5)', boxShadow: '0 0 36px rgba(201,162,39,0.2),0 8px 32px rgba(0,0,0,0.9)', zIndex: 100, minWidth: '280px', maxWidth: '340px', animation: 'slideUp 0.3s ease-out', textAlign: 'center' }}>
               <div style={{ fontFamily: "'Cinzel',serif", fontSize: '18px', fontWeight: 700, color: '#f6d778', letterSpacing: '1px', marginBottom: '16px' }}>Round Complete</div>
@@ -17218,6 +17429,39 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                 <button onClick={() => setShowHandsOpen(true)} style={{ padding: '8px 16px', fontSize: '11px', fontFamily: "'Cinzel',serif", fontWeight: 700, background: 'rgba(8,5,1,0.8)', color: '#c9a227', border: '1px solid rgba(201,162,39,0.45)', borderRadius: '4px', cursor: 'pointer', letterSpacing: '0.5px' }}>View Round</button>
                 {!isSpectator && <button onClick={handleNextRound} style={{ padding: '8px 20px', fontSize: '12px', fontFamily: "'Cinzel',serif", fontWeight: 700, background: 'linear-gradient(135deg,#5a3f06,#c9a227 50%,#5a3f06)', color: '#0d0a04', border: 'none', borderRadius: '4px', cursor: 'pointer', letterSpacing: '0.5px' }}>Next Round</button>}
+              </div>
+            </div>
+          );
+          if (!isIrish && isCutthroat) return (
+            <div className="cp-modal-overlay" style={{ position: 'absolute', inset: 0, animation: 'fadeIn 0.2s ease-out' }}>
+              <div className="cp-modal" style={{ minWidth: '280px', maxWidth: '340px', textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Orbitron', sans-serif", fontSize: '18px', fontWeight: 700, color: '#00e5ff', textShadow: '0 0 10px rgba(0,229,255,0.5)', marginBottom: '0', letterSpacing: '2px' }} className="cp-modal-title">ROUND COMPLETE</div>
+                <div className="cp-modal-hairline" />
+                <div className="cp-modal-body">
+                  <div className={`cp-round-end-result`} style={{ marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '4px 0', borderBottom: '1px solid rgba(0,229,255,0.15)' }}>
+                      <span style={{ color: '#3a5f78', fontFamily: "'Share Tech Mono', monospace", fontSize: '11px' }}>Bid</span>
+                      <span style={{ fontFamily: "'Orbitron', sans-serif", color: '#00e5ff', fontSize: '12px' }}>{highBid}<span style={{ color: suitColor, marginLeft: '3px' }}>{trumpSuit || ''}</span> <span style={{ color: 'rgba(0,229,255,0.5)', fontSize: '10px' }}>· {bidderName}</span></span>
+                    </div>
+                    {[0,1,2,3].map(p => {
+                      const isBidder = p === bidWinner;
+                      const pts = ctRoundPts[p];
+                      const isSet = isBidder && !ctBidderMade;
+                      const isMe = p === mySeatIndex;
+                      const labelClass = isMe ? 'cp-score-us' : 'cp-score-them';
+                      return (
+                        <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                          <span className={labelClass} style={{ fontWeight: 600 }}>{getPlayerName(p)}{isBidder ? ' (bidder)' : ''}</span>
+                          <span className={isSet ? 'cp-round-end-set' : 'cp-round-end-made'} style={{ fontSize: '14px', fontWeight: 700, fontFamily: "'Orbitron', sans-serif" }}>{isSet ? `(${ctPenalty})` : `+${pts}`}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <button onClick={() => setShowHandsOpen(true)} className="cp-modal-btn-ghost">View Round</button>
+                    {!isSpectator && <button onClick={handleNextRound} className="cp-modal-btn-primary">Next Round</button>}
+                  </div>
+                </div>
               </div>
             </div>
           );
@@ -17246,6 +17490,52 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     {!isSpectator && <button onClick={handleNextRound} className="cp-modal-btn-primary">Next Round</button>}
                   </div>
                 </div>
+              </div>
+            </div>
+          );
+          if (isIrish && isCutthroat) return (
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'rgba(12,6,2,0.96)',
+              padding: '24px 28px',
+              borderRadius: '10px',
+              border: '1px solid #c9a24a',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(201,162,74,0.15)',
+              zIndex: 100,
+              minWidth: '280px',
+              maxWidth: '340px',
+              animation: 'slideUp 0.3s ease-out',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: '18px', fontWeight: 700, background: 'linear-gradient(135deg, #f6d778 0%, #c9a24a 60%, #f6d778 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', marginBottom: '16px', letterSpacing: '1px' }}>
+                Round Complete
+              </div>
+              <div style={{ marginBottom: '16px', fontSize: '12px', color: 'rgba(232,228,217,0.8)', fontFamily: "'Inter', sans-serif" }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '4px 0', borderBottom: '1px solid rgba(201,162,74,0.2)' }}>
+                  <span style={{ color: 'rgba(201,162,74,0.7)' }}>Bid</span>
+                  <span style={{ fontFamily: "'Cinzel', serif", color: '#f6d778' }}>{highBid}<span style={{ color: suitColor, marginLeft: '3px' }}>{trumpSuit || ''}</span> <span style={{ color: 'rgba(232,228,217,0.6)', fontSize: '10px' }}>· {bidderName}</span></span>
+                </div>
+                {[0,1,2,3].map(p => {
+                  const isBidder = p === bidWinner;
+                  const pts = ctRoundPts[p];
+                  const isSet = isBidder && !ctBidderMade;
+                  const isMe = p === mySeatIndex;
+                  const labelColor = isMe ? '#5dd084' : '#e8e4d9';
+                  const numColor = isSet ? '#ef7c74' : (isMe ? '#5dd084' : '#f6d778');
+                  return (
+                    <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                      <span style={{ color: labelColor, fontWeight: 600 }}>{getPlayerName(p)}{isBidder ? ' (bidder)' : ''}</span>
+                      <span style={{ fontFamily: "'Cinzel', serif", color: numColor, fontSize: '14px', fontWeight: 700 }}>{isSet ? `(${ctPenalty})` : `+${pts}`}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                <button onClick={() => setShowHandsOpen(true)} style={{ padding: '8px 16px', fontSize: '11px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'rgba(10,40,20,0.8)', color: '#c9a24a', border: '1px solid rgba(201,162,74,0.45)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px' }}>View Round</button>
+                {!isSpectator && <button onClick={handleNextRound} style={{ padding: '8px 20px', fontSize: '12px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'linear-gradient(180deg, #f6d778 0%, #c9a24a 50%, #9a7630 100%)', color: '#1a0e03', border: '1px solid rgba(0,0,0,0.5)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px', boxShadow: '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)' }}>Next Round</button>}
               </div>
             </div>
           );
@@ -17295,7 +17585,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         {phase === 'game-over' && (() => {
           const winner = gameState && gameState.winner !== undefined ? gameState.winner : null;
           const myTeam = mySeatIndex % 2;
-          const isWin = winner === myTeam;
+          // CUTTHROAT (v2.31.69+): `winner` is a SEAT index 0-3 in cutthroat
+          // mode, vs a TEAM index 0-1 in partner mode. Disambiguate via flag.
+          const isCutthroat = !!gameOptions.cutthroat;
+          const isWin = isCutthroat ? (winner === mySeatIndex) : (winner === myTeam);
           const isIrish = currentThemeId === 'irish';
 
           // Achievement items (shared)
@@ -17321,17 +17614,33 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               <div style={{ fontFamily: "'Cinzel',serif", fontSize: isWin ? '26px' : '22px', fontWeight: 700, marginBottom: '6px', color: isWin ? '#f6d778' : '#ef7c74', letterSpacing: '2px' }}>{isWin ? 'VICTORY' : 'DEFEATED'}</div>
               {isWin && <div style={{ fontSize: '20px', marginBottom: '12px', letterSpacing: '4px', color: 'rgba(201,162,39,0.4)' }}>· · ·</div>}
               {!isWin && <div style={{ marginBottom: '12px' }}></div>}
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '16px' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '9px', color: '#5dd084', fontFamily: "'Inter',sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>US</div>
-                  <div style={{ fontSize: '32px', fontFamily: "'Cinzel',serif", fontWeight: 700, color: '#5dd084', lineHeight: 1 }}>{scores[myTeam]}</div>
+              {isCutthroat ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px', padding: '0 8px' }}>
+                  {[0,1,2,3].map(p => {
+                    const isWinner = p === winner;
+                    const isMe = p === mySeatIndex;
+                    const color = isWinner ? '#f6d778' : (isMe ? '#5dd084' : 'rgba(232,228,217,0.85)');
+                    return (
+                      <div key={p} style={{ textAlign: 'center', padding: '6px 4px', border: `1px solid ${isWinner ? 'rgba(201,162,39,0.5)' : 'rgba(201,162,39,0.18)'}`, borderRadius: '6px', background: isWinner ? 'rgba(201,162,39,0.08)' : 'transparent' }}>
+                        <div style={{ fontSize: '9px', color, fontFamily: "'Inter',sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>{getPlayerName(p)}{isMe ? ' (you)' : ''}</div>
+                        <div style={{ fontSize: '24px', fontFamily: "'Cinzel',serif", fontWeight: 700, color, lineHeight: 1 }}>{playerScores[p] || 0}</div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div style={{ width: '1px', background: 'rgba(201,162,39,0.25)', margin: '4px 0' }}></div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '9px', color: '#ef7c74', fontFamily: "'Inter',sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>THEM</div>
-                  <div style={{ fontSize: '32px', fontFamily: "'Cinzel',serif", fontWeight: 700, color: '#ef7c74', lineHeight: 1 }}>{scores[1 - myTeam]}</div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '16px' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '9px', color: '#5dd084', fontFamily: "'Inter',sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>US</div>
+                    <div style={{ fontSize: '32px', fontFamily: "'Cinzel',serif", fontWeight: 700, color: '#5dd084', lineHeight: 1 }}>{scores[myTeam]}</div>
+                  </div>
+                  <div style={{ width: '1px', background: 'rgba(201,162,39,0.25)', margin: '4px 0' }}></div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '9px', color: '#ef7c74', fontFamily: "'Inter',sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>THEM</div>
+                    <div style={{ fontSize: '32px', fontFamily: "'Cinzel',serif", fontWeight: 700, color: '#ef7c74', lineHeight: 1 }}>{scores[1 - myTeam]}</div>
+                  </div>
                 </div>
-              </div>
+              )}
               {achieveItems.length > 0 && (
                 <div style={{ background: 'rgba(201,162,39,0.06)', border: '1px solid rgba(201,162,39,0.2)', borderRadius: '6px', padding: '10px 12px', marginBottom: '14px', fontSize: '11px', textAlign: 'left' }}>
                   <div style={{ color: 'rgba(201,162,39,0.6)', marginBottom: '6px', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1.5px', fontFamily: "'Inter',sans-serif" }}>This Game</div>
@@ -17384,17 +17693,33 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   </div>
 
                   {/* Scores */}
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginBottom: '16px' }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '9px', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', marginBottom: '2px' }} className="cp-score-us">US</div>
-                      <div style={{ fontSize: '32px', fontFamily: "'Orbitron', sans-serif", fontWeight: 700, lineHeight: 1 }} className="cp-score-us">{scores[myTeam]}</div>
+                  {isCutthroat ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px', padding: '0 8px' }}>
+                      {[0,1,2,3].map(p => {
+                        const isWinner = p === winner;
+                        const isMe = p === mySeatIndex;
+                        const labelClass = isWinner ? 'cp-score-us' : (isMe ? 'cp-score-us' : 'cp-score-them');
+                        return (
+                          <div key={p} style={{ textAlign: 'center', padding: '6px 4px', border: `1px solid ${isWinner ? 'rgba(0,255,136,0.55)' : 'rgba(0,229,255,0.2)'}`, borderRadius: '6px', background: isWinner ? 'rgba(0,255,136,0.06)' : 'transparent' }}>
+                            <div className={labelClass} style={{ fontSize: '9px', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', marginBottom: '2px' }}>{getPlayerName(p)}{isMe ? ' (you)' : ''}</div>
+                            <div className={labelClass} style={{ fontSize: '24px', fontFamily: "'Orbitron', sans-serif", fontWeight: 700, lineHeight: 1 }}>{playerScores[p] || 0}</div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div style={{ width: '1px', background: 'rgba(0,229,255,0.2)', margin: '4px 0' }}></div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '9px', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', marginBottom: '2px' }} className="cp-score-them">THEM</div>
-                      <div style={{ fontSize: '32px', fontFamily: "'Orbitron', sans-serif", fontWeight: 700, lineHeight: 1 }} className="cp-score-them">{scores[1 - myTeam]}</div>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginBottom: '16px' }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '9px', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', marginBottom: '2px' }} className="cp-score-us">US</div>
+                        <div style={{ fontSize: '32px', fontFamily: "'Orbitron', sans-serif", fontWeight: 700, lineHeight: 1 }} className="cp-score-us">{scores[myTeam]}</div>
+                      </div>
+                      <div style={{ width: '1px', background: 'rgba(0,229,255,0.2)', margin: '4px 0' }}></div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '9px', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', marginBottom: '2px' }} className="cp-score-them">THEM</div>
+                        <div style={{ fontSize: '32px', fontFamily: "'Orbitron', sans-serif", fontWeight: 700, lineHeight: 1 }} className="cp-score-them">{scores[1 - myTeam]}</div>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Achievement summary */}
                   {achieveItems.length > 0 && (
@@ -17477,17 +17802,33 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               {!isWin && <div style={{ marginBottom: '12px' }}></div>}
 
               {/* Scores */}
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '16px' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '9px', color: '#5dd084', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>US</div>
-                  <div style={{ fontSize: '32px', fontFamily: "'Cinzel', serif", fontWeight: 700, color: '#5dd084', lineHeight: 1 }}>{scores[myTeam]}</div>
+              {isCutthroat ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px', padding: '0 8px' }}>
+                  {[0,1,2,3].map(p => {
+                    const isWinner = p === winner;
+                    const isMe = p === mySeatIndex;
+                    const color = isWinner ? '#f6d778' : (isMe ? '#5dd084' : '#e8e4d9');
+                    return (
+                      <div key={p} style={{ textAlign: 'center', padding: '6px 4px', border: `1px solid ${isWinner ? '#c9a24a' : 'rgba(201,162,74,0.2)'}`, borderRadius: '6px', background: isWinner ? 'rgba(201,162,74,0.08)' : 'transparent' }}>
+                        <div style={{ fontSize: '9px', color, fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>{getPlayerName(p)}{isMe ? ' (you)' : ''}</div>
+                        <div style={{ fontSize: '24px', fontFamily: "'Cinzel', serif", fontWeight: 700, color, lineHeight: 1 }}>{playerScores[p] || 0}</div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div style={{ width: '1px', background: 'rgba(201,162,74,0.25)', margin: '4px 0' }}></div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '9px', color: '#ef7c74', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>THEM</div>
-                  <div style={{ fontSize: '32px', fontFamily: "'Cinzel', serif", fontWeight: 700, color: '#ef7c74', lineHeight: 1 }}>{scores[1 - myTeam]}</div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '16px' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '9px', color: '#5dd084', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>US</div>
+                    <div style={{ fontSize: '32px', fontFamily: "'Cinzel', serif", fontWeight: 700, color: '#5dd084', lineHeight: 1 }}>{scores[myTeam]}</div>
+                  </div>
+                  <div style={{ width: '1px', background: 'rgba(201,162,74,0.25)', margin: '4px 0' }}></div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '9px', color: '#ef7c74', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>THEM</div>
+                    <div style={{ fontSize: '32px', fontFamily: "'Cinzel', serif", fontWeight: 700, color: '#ef7c74', lineHeight: 1 }}>{scores[1 - myTeam]}</div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Achievement summary */}
               {achieveItems.length > 0 && (
