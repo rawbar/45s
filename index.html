@@ -263,6 +263,21 @@
   }
   .v3-plaque.us .v3-plaque-num   { color: var(--team-us); text-shadow: 0 0 6px rgba(93, 208, 132, 0.4); }
   .v3-plaque.them .v3-plaque-num { color: var(--team-them); text-shadow: 0 0 6px rgba(239, 124, 116, 0.35); }
+  /* CUTTHROAT (v2.31.69+): 4 plaques in the header instead of 2. Shrink to fit. */
+  .v3-scores.cutthroat { gap: 3px; }
+  .v3-scores.cutthroat .v3-plaque { min-width: 34px; padding: 2px 6px 3px; }
+  .v3-scores.cutthroat .v3-plaque-label { font-size: 7px; letter-spacing: 1px; }
+  .v3-scores.cutthroat .v3-plaque-num { font-size: 14px; }
+  .v3-scores.cutthroat .v3-plaque.me .v3-plaque-num { color: var(--team-us); text-shadow: 0 0 6px rgba(93, 208, 132, 0.4); }
+  .v3-scores.cutthroat .v3-plaque.opp .v3-plaque-num { color: rgba(232,228,217,0.85); }
+  .theme-cyberpunk .v3-scores.cutthroat .v3-plaque.me  { border: 1px solid rgba(0,255,136,0.45); box-shadow: 0 0 10px rgba(0,255,136,0.1), inset 0 0 6px rgba(0,255,136,0.04); }
+  .theme-cyberpunk .v3-scores.cutthroat .v3-plaque.opp { border: 1px solid rgba(0,229,255,0.3); }
+  .theme-cyberpunk .v3-scores.cutthroat .v3-plaque.me  .v3-plaque-num { color: #00ff88; text-shadow: 0 0 10px rgba(0,255,136,0.7); }
+  .theme-cyberpunk .v3-scores.cutthroat .v3-plaque.opp .v3-plaque-num { color: #00e5ff; text-shadow: 0 0 8px rgba(0,229,255,0.4); }
+  .theme-arabian .v3-scores.cutthroat .v3-plaque.me  { border-color: rgba(93,208,132,0.4); }
+  .theme-arabian .v3-scores.cutthroat .v3-plaque.opp { border-color: rgba(201,162,39,0.35); }
+  .theme-arabian .v3-scores.cutthroat .v3-plaque.me  .v3-plaque-num { color: #5dd084; text-shadow: 0 0 8px rgba(93,208,132,0.4); }
+  .theme-arabian .v3-scores.cutthroat .v3-plaque.opp .v3-plaque-num { color: #f6d778; text-shadow: 0 0 6px rgba(246,215,120,0.3); }
 
   /* ═══════════════════════════════════════════════════════════════
      Game surface
@@ -3416,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.68';
+const VERSION = '2.31.73';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4475,6 +4490,7 @@ const FirebaseAPI = {
           dealer: initialDealer,
           currentPlayer: (initialDealer + 1) % 4,
           scores: [0, 0],
+          playerScores: [0, 0, 0, 0],
           history: [],
           hands: hands,
           kitty: kitty,
@@ -6489,11 +6505,89 @@ function Card({ card, onClick, disabled, selected, small, mid, faceDown, playabl
   );
 }
 
-function ScoreTable({ roundHistory, mySeatIndex }) {
+function ScoreTable({ roundHistory, mySeatIndex, gameOptions, players, playerScores }) {
   if (roundHistory.length === 0) return null;
   const isIrish = currentThemeId === 'irish';
   const myTeam = mySeatIndex % 2;
   const swapColumns = myTeam === 1;
+  const isCutthroat = !!(gameOptions && gameOptions.cutthroat);
+
+  // v2.31.72: cutthroat — 4 per-player columns instead of US/THEM. Column
+  // labels: AI seats use first letter of seat name (N/E/S/W); humans use
+  // first 3 chars of username, uppercased. Mirrors the top-of-game plaque
+  // label logic so the bottom score-history reads consistently.
+  if (isCutthroat) {
+    const seatNames = ['North', 'East', 'South', 'West'];
+    const orderedSeats = [mySeatIndex, (mySeatIndex + 1) % 4, (mySeatIndex + 2) % 4, (mySeatIndex + 3) % 4];
+    const colorPalette = isIrish
+      ? ['#5dd084', '#f6d778', '#c9a24a', '#e8e4d9']
+      : ['#00ff88', '#00e5ff', '#ff8c00', '#ff00cc'];
+    const seatColor = {};
+    orderedSeats.forEach((s, i) => { seatColor[s] = colorPalette[i]; });
+    const headerLabels = orderedSeats.map(s => {
+      const pl = players ? players[seatNames[s]] : null;
+      if (pl && pl.isAI) return seatNames[s][0];
+      if (pl && pl.username) return pl.username.slice(0, 3).toUpperCase();
+      return seatNames[s][0];
+    });
+    const [expanded, setExpanded] = React.useState(false);
+    const maxVis = 2;
+    const needsExpand = roundHistory.length > maxVis;
+    const visible = (!needsExpand || expanded) ? roundHistory : roundHistory.slice(-maxVis);
+    const startIdx = roundHistory.length - visible.length;
+    const containerBg = isIrish ? 'rgba(12,6,2,0.82)' : 'rgba(2,5,10,0.85)';
+    const borderTop = isIrish ? '1px solid #c9a24a' : '1px solid rgba(0,229,255,0.2)';
+    const expandColor = isIrish ? 'rgba(201,162,74,0.55)' : 'rgba(0,229,255,0.4)';
+    const expandFont = isIrish ? "'Cinzel', serif" : "'Share Tech Mono', monospace";
+    const headerFont = isIrish ? "'Inter', sans-serif" : "'Share Tech Mono', monospace";
+    const totalFont = isIrish ? "'Cinzel', serif" : "'Orbitron', sans-serif";
+    const rnColor = isIrish ? 'rgba(201,162,74,0.5)' : 'rgba(0,229,255,0.4)';
+    // Fallback for old (partner-mode-shaped) entries before v2.31.72 cutthroat games:
+    // synthesize a zero row delta and reuse `playerScores` for the last row's totals.
+    return (
+      <div style={{ width: '100%', background: containerBg, borderTop: borderTop, borderRadius: '0 0 4px 4px', padding: '4px 10px', boxSizing: 'border-box', flexShrink: 0 }}>
+        {needsExpand && (
+          <div
+            onClick={() => setExpanded(!expanded)}
+            style={{ textAlign: 'center', color: expandColor, cursor: 'pointer', fontSize: '9px', fontFamily: expandFont, letterSpacing: '0.5px', paddingBottom: '2px' }}
+          >{expanded ? '▾ less' : `▴ +${roundHistory.length - maxVis} rounds`}</div>
+        )}
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
+          <thead>
+            <tr>
+              <th style={{ padding: '1px 3px', fontSize: '9px', color: rnColor, fontFamily: headerFont, fontWeight: 400, letterSpacing: '0.5px', width: '18px' }}>R</th>
+              {orderedSeats.map((s, i) => (
+                <th key={`h-${s}`} style={{ padding: '1px 3px', fontSize: '9px', color: seatColor[s], fontFamily: headerFont, fontWeight: 600, letterSpacing: '0.5px' }}>{headerLabels[i]}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((r, i) => {
+              const rn = startIdx + i + 1;
+              const deltas = r.playerRoundScores || [0, 0, 0, 0];
+              const totals = r.playerTotals || (i === visible.length - 1 ? (playerScores || [0, 0, 0, 0]) : [0, 0, 0, 0]);
+              return (
+                <tr key={i}>
+                  <td style={{ padding: '1px 3px', fontSize: '9px', color: rnColor, fontFamily: totalFont }}>{rn}</td>
+                  {orderedSeats.map(s => {
+                    const d = deltas[s] || 0;
+                    const t = totals[s] || 0;
+                    const deltaStr = d < 0 ? `(${Math.abs(d)})` : `+${d}`;
+                    return (
+                      <td key={`c-${s}`} style={{ padding: '1px 3px', fontSize: '10px', color: seatColor[s], fontFamily: totalFont, fontWeight: 700 }}>
+                        <span style={{ fontSize: '8px', opacity: 0.6, marginRight: '2px' }}>{deltaStr}</span>
+                        {t}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
   if (isIrish) {
     const [expanded, setExpanded] = React.useState(false);
@@ -6600,6 +6694,11 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.73', date: 'May 2026', changes: ['Lobby game list now shows 4 individual player scores for cutthroat games in progress (e.g., "N 25 · E 30 · S 45 · W 20") instead of the team-mode "0 · 0" that was previously displayed. The current leader is highlighted in brass-gold. Finished cutthroat games show the winning PLAYER (not team) prominently in the lobby card — "Winner: alice (120)" — with a compact 4-seat scoreboard underneath, and the winning seat tile gets a green border. AI seats label as a single seat letter (N/E/S/W); human seats use the first 2 chars of their username (lobby row) or first 3 chars (game-over card). Partner-mode rendering is byte-identical — only a cutthroat branch was added.'] },
+    { version: '2.31.72', date: 'May 2026', changes: ['Cutthroat polish: (1) The four score plaques at the top of the table now show seat-letter labels (N/E/S/W) for AI players and the first three characters of the username for humans, instead of slicing "AI Player N" down to a useless trailing "AI " on every AI seat. (2) The same fix is applied to the cutthroat round-end and game-over modals: AI rows now read "North" / "East" / "South" / "West" (full seat name in the wider modal layout) and human rows keep their full username. (3) The bottom-of-table score-history strip (ScoreTable) now renders four per-player columns in cutthroat games instead of US/THEM, with per-round deltas + running totals stamped under each seat. Round-end history entries written by the bidder-completes-trick-5 and AI-completes-trick-5 paths now include cutthroat-only `playerRoundScores` and `playerTotals` arrays alongside the existing partner-mode fields, so partner-mode entries stay byte-identical and only cutthroat rounds carry the extra payload. (4) The redundant duplicate copy of the Partners-vs-Cutthroat variant selector that v2.31.71 still had inside each Create Game modal (cyberpunk, two Arabian variants, Irish) has been removed — the lobby-level selector right above the Create Game button is now the single source of truth.'] },
+    { version: '2.31.71', date: 'May 2026', changes: ['Cutthroat promoted out of the Options menu and into a top-level Partners-vs-Cutthroat segmented selector on the Create Game screen (and in Preferences as your default for new games). Cutthroat is labeled ALPHA because the scoring works but the AI does not yet know cutthroat-specific strategy — it will sometimes fail to coordinate to set the leader and may underplay free-five-point grabs. The first time you start a cutthroat game in a session you now see a one-shot disclaimer modal explaining the alpha state; dismiss with OK. Two leftover stat writes (the Follow-A♥ per-card increment and the server-side disconnect counter) are now also gated off in cutthroat so the variant stays zero-write to partner-mode counters. Existing prefs that had Cutthroat set as a house rule (from v2.31.69 / v2.31.70 sessions) migrate forward to the new gameVariant pref on prefs load.'] },
+    { version: '2.31.70', date: 'May 2026', changes: ['Cutthroat isolation: cutthroat games no longer write to the partner-mode stats / badges / leaderboard, and their bid log and play decision log are forked to dedicated `bidLogCutthroat` / `decisionLogCutthroat` Firebase nodes. This means we can now play cutthroat without contaminating the partner-mode AI training corpus or skewing partner-mode badge / leaderboard counters. Stats / badges / leaderboard will stay off in cutthroat until the variant matures and gets its own dedicated counters.'] },
+    { version: '2.31.69', date: 'May 2026', changes: ['Cutthroat variant (beta, test only): when the new Cutthroat house rule is enabled at game creation, scoring switches from teams to four solo players. The top-of-game header shows four small score plaques (one per seat, abbreviated by name, your own tinted gold) instead of US/THEM. The round-end modal shows a row per player with each individual\'s round points (bidder shown red in parentheses if set, e.g. (15)). The game-over modal shows a 2x2 score grid with the winning player\'s tile gold-bordered. First player to 120 wins (no partner totals counted). Caveat: the AI still uses partner-mode play logic in cutthroat — it does NOT yet know that everyone else is its opponent, so it will not always set the leader and may underplay nickel-grabs. Cutthroat-specific AI policy is Phase 2.'] },
     { version: '2.31.68', date: 'May 2026', changes: ['Fix: when you play the last card of trick 5 (i.e., you are the 4th to play on the final trick of a round), your card no longer remains visible in your hand after moving to the table. Root cause: when every hand becomes empty, Firebase strips the whole hands key from the game-state snapshot, and the listener\'s `if (gameState.hands)` truthiness guard then skipped the local hand clear, so your just-played card stayed in your hand state even though Firebase had it removed. Now: when the listener sees the hands key missing AND the phase is round-end or game-over, it explicitly clears the local hands to four empty arrays.'] },
     { version: '2.31.67', date: 'May 2026', changes: ['Spectator mode: tapping an in-progress game in the lobby lets you watch the table, but as a spectator you no longer see — or can press — any of the action buttons. The Next Round button, the New Game (rematch) button, the bid buttons, the trump-select buttons, the discard button, and the card-play tap targets are now all hidden / no-ops if the player Firebase says is sitting at your seat is not you (which is how you can end up in someone else\'s game). Previously a spectator tapping Next Round wrote to Firebase and advanced the round for everyone, interrupting the real players. The spectator client also no longer races real clients to drive the AI moves.'] },
     { version: '2.31.66', date: 'May 2026', changes: ['AI play: 2nd-man defender following a BIDDER offsuit lead now beats the lead with the cheapest higher card of the led suit, instead of always playing the lowest card. The "second-hand low" mantra is actually a TRUMP heuristic — on offsuit you want to beat the lead so that 3rd-man (the bidder\'s partner) either has to over-beat with an even higher offsuit, commit trump to win, or concede the trick. Either way your partner (4th-man) avoids having to ruff in. User-derived from a screenshot where North led 5♠ offsuit and East played a low spade instead of beating it. Head-to-head simulation: 20,000 paired deals = +0.01pt z=+0.05 (rig-NEUTRAL). Shipped as a trust fix per the v2.31.30 precedent — sound textbook 45s principle, plays visibly correct in the screenshot case, zero measured win-rate cost.'] },
@@ -8647,6 +8746,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
   const [optFiveCardDraw, setOptFiveCardDraw] = useState(false);
   const [optFollowAHearts, setOptFollowAHearts] = useState(false);
   const [optThirtyFor60, setOptThirtyFor60] = useState(false);
+  // v2.31.71: cutthroat promoted out of Options and into a top-level variant selector
+  const [gameVariant, setGameVariant] = useState('partners'); // 'partners' | 'cutthroat'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
@@ -8684,8 +8785,10 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
   const [showPreferences, setShowPreferences] = useState(false);
   const [prefTrickSpeed, setPrefTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'medium');
   const [prefHouseRules, setPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false });
+  const [prefGameVariant, setPrefGameVariant] = useState('partners');
   const [editTrickSpeed, setEditTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'medium');
   const [editPrefHouseRules, setEditPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false });
+  const [editPrefGameVariant, setEditPrefGameVariant] = useState('partners');
 
   // Irish lobby tab state ('games' | 'leaderboard')
   const [lobbyTab, setLobbyTab] = useState('games');
@@ -8926,10 +9029,16 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       const speed = prefs.trickSpeed || 'medium';
       const hr = prefs.houseRules || {};
       const rules = { fiveCardDraw: !!hr.fiveCardDraw, followAHearts: !!hr.followAHearts, thirtyFor60: !!hr.thirtyFor60 };
+      // v2.31.71: migrate legacy `houseRules.cutthroat: true` (from v2.31.69/70) → gameVariant pref.
+      // Top-level `gameVariant` wins if explicitly set; otherwise fall back to the legacy flag.
+      let variant = prefs.gameVariant;
+      if (!variant) variant = hr.cutthroat ? 'cutthroat' : 'partners';
       setPrefTrickSpeed(speed);
       setPrefHouseRules(rules);
+      setPrefGameVariant(variant);
       setEditTrickSpeed(speed);
       setEditPrefHouseRules(rules);
+      setEditPrefGameVariant(variant);
       localStorage.setItem('45s_trickSpeed', speed);
     });
   }, [userId]);
@@ -8940,6 +9049,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       setOptFiveCardDraw(prefHouseRules.fiveCardDraw);
       setOptFollowAHearts(prefHouseRules.followAHearts);
       setOptThirtyFor60(prefHouseRules.thirtyFor60);
+      setGameVariant(prefGameVariant);
     }
   }, [showCreateGame]);
 
@@ -9107,7 +9217,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
         creatorId: userId,
         createdAt: now,
         lastActivity: now,
-        options: { fiveCardDraw: optFiveCardDraw, followAHearts: optFollowAHearts, thirtyFor60: optThirtyFor60 },
+        options: { fiveCardDraw: optFiveCardDraw, followAHearts: optFollowAHearts, thirtyFor60: optThirtyFor60, cutthroat: gameVariant === 'cutthroat' },
         players: {}
       });
 
@@ -9177,11 +9287,13 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
     try {
       await database.ref(`users/${userId}/prefs`).set({
         trickSpeed: editTrickSpeed,
+        gameVariant: editPrefGameVariant,
         houseRules: { fiveCardDraw: editPrefHouseRules.fiveCardDraw, followAHearts: editPrefHouseRules.followAHearts, thirtyFor60: editPrefHouseRules.thirtyFor60 }
       });
       localStorage.setItem('45s_trickSpeed', editTrickSpeed);
       setPrefTrickSpeed(editTrickSpeed);
       setPrefHouseRules({ ...editPrefHouseRules });
+      setPrefGameVariant(editPrefGameVariant);
       setShowPreferences(false);
     } catch (err) {
       alert('Failed to save preferences: ' + err.message);
@@ -9304,7 +9416,32 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px', marginRight: '6px' }}>
-            {(isPlaying || isFinished) && scores && (
+            {(isPlaying || isFinished) && game.options?.cutthroat && (() => {
+              // v2.31.73: cutthroat — show 4 per-player scores instead of US/THEM team scores.
+              // Position order matches engine: 0=N, 1=E, 2=S, 3=W. AI seats use seat letter,
+              // human seats use first 2 chars of username uppercased (kept tight so row width
+              // does not break). Leader tinted brass-gold, others neutral.
+              const pScores = game.gameState?.playerScores || [0, 0, 0, 0];
+              const posNames = ['North', 'East', 'South', 'West'];
+              const maxScore = Math.max(...pScores);
+              return (
+                <div style={{ fontSize: '11px', fontFamily: "'Cinzel', serif", color: 'rgba(201,162,74,0.85)', whiteSpace: 'nowrap' }}>
+                  {posNames.map((seat, i) => {
+                    const pl = players[seat];
+                    const label = (pl && !pl.isAI && pl.username) ? pl.username.slice(0, 2).toUpperCase() : seat[0];
+                    const isLeader = pScores[i] === maxScore && maxScore > 0;
+                    const color = isLeader ? '#f6d778' : 'rgba(201,162,74,0.7)';
+                    return (
+                      <React.Fragment key={seat}>
+                        {i > 0 && <span style={{ color: 'rgba(201,162,74,0.5)', margin: '0 3px' }}>·</span>}
+                        <span style={{ color, fontWeight: isLeader ? 700 : 400 }}>{label}<span style={{ fontSize: '8px', opacity: 0.6, marginLeft: '2px' }}>{pScores[i]}</span></span>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+            {(isPlaying || isFinished) && !game.options?.cutthroat && scores && (
               <div style={{ fontSize: '11px', fontFamily: "'Cinzel', serif", color: 'rgba(201,162,74,0.85)', whiteSpace: 'nowrap' }}>
                 <span style={{ color: '#5dd084' }}>{scores[0]}</span>
                 <span style={{ color: 'rgba(201,162,74,0.5)', margin: '0 3px' }}>·</span>
@@ -9429,7 +9566,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           <button
             className={isCyberpunk ? 'cp-gear-btn' : 'irlb-gear-btn'}
             title="Preferences"
-            onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
+            onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setEditPrefGameVariant(prefGameVariant); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
           >⚙</button>
         </div>
 
@@ -9570,13 +9707,39 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           {/* Create Game button — pinned at bottom, only on games tab */}
           {lobbyTab === 'games' && (
             <div className="irlb-create-wrap">
+              {/* v2.31.72: lobby variant selector — sits ABOVE Create Game button.
+                  Cutthroat is a variant (different game), not a house rule, so it
+                  belongs at the lobby level not inside the modal. */}
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
+                  const selected = gameVariant === val;
+                  if (isCyberpunk) {
+                    return (
+                      <div key={val} onClick={() => { SoundManager.play('buttonClick'); setGameVariant(val); }} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '3px', border: selected ? '1px solid #ff8c00' : '1px solid rgba(0,229,255,0.25)', background: selected ? 'rgba(255,140,0,0.12)' : 'rgba(0,229,255,0.04)', boxShadow: selected ? '0 0 12px rgba(255,140,0,0.18)' : 'none', transition: 'all 0.15s' }}>
+                        <span style={{ fontFamily: "'Orbitron',sans-serif", fontWeight: 700, fontSize: '12px', letterSpacing: '1.5px', color: selected ? '#ff8c00' : 'rgba(0,229,255,0.7)', textShadow: selected ? '0 0 8px rgba(255,140,0,0.6)' : 'none' }}>{label}</span>
+                        {isAlpha && (
+                          <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '2px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                        )}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={val} onClick={() => { SoundManager.play('buttonClick'); setGameVariant(val); }} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '8px', border: selected ? '1px solid #c9a24a' : '1px solid rgba(201,162,74,0.25)', background: selected ? 'linear-gradient(180deg, rgba(246,215,120,0.18) 0%, rgba(201,162,74,0.12) 100%)' : 'rgba(0,0,0,0.35)', boxShadow: selected ? '0 0 10px rgba(201,162,74,0.25), inset 0 1px 0 rgba(255,245,200,0.18)' : 'none', transition: 'all 0.15s' }}>
+                      <span style={{ fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: '13px', letterSpacing: '1.5px', color: selected ? '#f6d778' : 'rgba(201,162,74,0.65)' }}>{label}</span>
+                      {isAlpha && (
+                        <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '3px', background: 'rgba(255,140,0,0.2)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Cinzel',serif", fontWeight: 700, letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
               <button
                 className={isCyberpunk ? 'cp-lobby-btn-create' : 'irlb-create-btn'}
                 disabled={loading}
                 onClick={() => { SoundManager.play('buttonClick'); setShowCreateGame(true); }}
               >
                 <span style={{ fontSize: '18px' }}>＋</span>
-                Create Game
+                Create {gameVariant === 'cutthroat' ? 'Cutthroat ' : ''}Game
               </button>
             </div>
           )}
@@ -9632,7 +9795,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(0,229,255,0.3)', borderRadius: '3px', background: showGameOptions ? 'rgba(0,229,255,0.1)' : 'rgba(0,229,255,0.05)', color: '#00e5ff', fontFamily: "'Share Tech Mono',monospace", fontSize: '11px', letterSpacing: '1px', cursor: 'pointer' }}
                 >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}</button>
                 <button
-                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); }}
+                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setGameVariant(prefGameVariant); }}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(0,229,255,0.2)', borderRadius: '3px', background: 'rgba(0,229,255,0.05)', color: 'rgba(0,229,255,0.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '11px', cursor: 'pointer' }}
                 >Cancel</button>
@@ -9687,7 +9850,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,39,0.4)', borderRadius: '10px', background: showGameOptions ? 'rgba(201,162,39,0.15)' : 'transparent', color: '#c9a227', fontFamily: "'Cinzel',serif", fontSize: '11px', letterSpacing: '1px', cursor: 'pointer' }}
                 >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}</button>
                 <button
-                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); }}
+                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setGameVariant(prefGameVariant); }}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,39,0.2)', borderRadius: '10px', background: 'transparent', color: 'rgba(245,238,220,0.5)', fontFamily: "'Cinzel',serif", fontSize: '11px', cursor: 'pointer' }}
                 >Cancel</button>
@@ -9703,7 +9866,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               onClick={e => e.stopPropagation()}
               style={{ background: 'linear-gradient(180deg, #2a1608 0%, #180b03 100%)', border: '1px solid rgba(201,162,74,0.35)', borderRadius: '16px 16px 0 0', padding: '24px 20px 32px', width: '100%', maxWidth: '500px', animation: 'slideUp 0.25s ease-out' }}
             >
-              <div style={{ fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '16px', color: '#f6d778', marginBottom: '16px', letterSpacing: '1px' }}>Create Game</div>
+              <div style={{ fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '16px', color: '#f6d778', marginBottom: '12px', letterSpacing: '1px' }}>Create Game</div>
               <input
                 type="text"
                 value={newGameName}
@@ -9742,7 +9905,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,74,0.4)', borderRadius: '10px', background: showGameOptions ? 'rgba(201,162,74,0.15)' : 'transparent', color: '#c9a24a', fontFamily: 'Cinzel, serif', fontSize: '11px', letterSpacing: '1px', cursor: 'pointer' }}
                 >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}</button>
                 <button
-                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); }}
+                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setGameVariant(prefGameVariant); }}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,74,0.2)', borderRadius: '10px', background: 'transparent', color: 'rgba(232,228,217,0.5)', fontFamily: 'Cinzel, serif', fontSize: '11px', cursor: 'pointer' }}
                 >Cancel</button>
@@ -10442,6 +10605,24 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     ))}
                   </div>
                 </div>
+                {/* v2.31.71: Default Variant */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div className="cp-pref-section-title">Default Variant</div>
+                  <div style={{ fontSize: '11px', color: '#3a5f78', fontFamily: "'Share Tech Mono', monospace", marginBottom: '12px' }}>Pre-selected when you create a new game</div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
+                      const selected = editPrefGameVariant === val;
+                      return (
+                        <div key={val} onClick={() => setEditPrefGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '6px', border: selected ? '2px solid #ff8c00' : '1px solid rgba(0,229,255,0.2)', background: selected ? 'rgba(255,140,0,0.1)' : 'rgba(0,229,255,0.03)' }}>
+                          <span style={{ fontFamily: "'Share Tech Mono', monospace", fontWeight: 700, fontSize: '13px', color: selected ? '#ff8c00' : '#3a5f78' }}>{label}</span>
+                          {isAlpha && (
+                            <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '2px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
                 {/* House Rules */}
                 <div style={{ marginBottom: '20px' }}>
                   <div className="cp-pref-section-title">House Rules</div>
@@ -10513,6 +10694,25 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   {['fast', 'medium', 'slow'].map(speed => (
                     <button key={speed} onClick={() => setEditTrickSpeed(speed)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: editTrickSpeed === speed ? '2px solid #c9a24a' : '1px solid rgba(201,162,74,0.25)', background: editTrickSpeed === speed ? 'rgba(201,162,74,0.15)' : 'rgba(255,255,255,0.04)', color: editTrickSpeed === speed ? '#f6d778' : 'rgba(232,228,217,0.6)', fontWeight: editTrickSpeed === speed ? 'bold' : 'normal', cursor: 'pointer', fontSize: '13px', textTransform: 'capitalize', fontFamily: "'Cinzel', serif" }}>{speed}</button>
                   ))}
+                </div>
+              </div>
+
+              {/* v2.31.71: Default Variant */}
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1.5px', color: 'rgba(201,162,74,0.6)', textTransform: 'uppercase', marginBottom: '10px', fontFamily: "'Cinzel', serif" }}>Default Variant</div>
+                <div style={{ fontSize: '11px', color: 'rgba(232,228,217,0.4)', fontFamily: "'Merriweather', serif", fontStyle: 'italic', marginBottom: '10px' }}>Pre-selected when you create a new game</div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
+                    const selected = editPrefGameVariant === val;
+                    return (
+                      <div key={val} onClick={() => setEditPrefGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '6px', border: selected ? '2px solid #c9a24a' : '1px solid rgba(201,162,74,0.25)', background: selected ? 'rgba(201,162,74,0.15)' : 'rgba(255,255,255,0.04)' }}>
+                        <span style={{ fontFamily: "'Cinzel', serif", fontWeight: 700, fontSize: '13px', color: selected ? '#f6d778' : 'rgba(232,228,217,0.6)' }}>{label}</span>
+                        {isAlpha && (
+                          <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '3px', background: 'rgba(201,162,74,0.2)', border: '1px solid rgba(201,162,74,0.5)', color: '#f6d778', fontFamily: "'Cinzel', serif", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -10799,7 +10999,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
                 <span
-                  onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
+                  onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setEditPrefGameVariant(prefGameVariant); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
                   style={{ fontSize: '13px', cursor: 'pointer', opacity: 0.6, userSelect: 'none' }}
                   title="Preferences"
                 >⚙️</span>
@@ -10952,7 +11152,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
             marginBottom: '20px',
             boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
           }}>
-            <h2 style={{ marginBottom: '16px', color: '#1a5f3f' }}>Create New Game</h2>
+            <h2 style={{ marginBottom: '12px', color: '#1a5f3f' }}>Create New Game</h2>
             <input
               type="text"
               value={newGameName}
@@ -11051,6 +11251,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   setOptFiveCardDraw(prefHouseRules.fiveCardDraw);
                   setOptFollowAHearts(prefHouseRules.followAHearts);
                   setOptThirtyFor60(prefHouseRules.thirtyFor60);
+                  setGameVariant(prefGameVariant);
                 }}
                 disabled={loading}
                 style={{
@@ -11718,6 +11919,23 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     ))}
                   </div>
                 </div>
+                {/* v2.31.71: Default Variant */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div className="cp-pref-section-title">Default Variant</div>
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                    {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
+                      const selected = editPrefGameVariant === val;
+                      return (
+                        <div key={val} onClick={() => setEditPrefGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '8px', border: selected ? '2px solid #ff8c00' : '2px solid rgba(0,229,255,0.15)', background: selected ? 'rgba(255,140,0,0.1)' : 'rgba(0,229,255,0.03)' }}>
+                          <span style={{ fontFamily: "'Share Tech Mono', monospace", fontWeight: 700, fontSize: '13px', color: selected ? '#ff8c00' : '#3a5f78' }}>{label}</span>
+                          {isAlpha && (
+                            <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '2px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
                 <div style={{ marginBottom: '20px' }}>
                   <div className="cp-pref-section-title">House Rules</div>
                   {[['fiveCardDraw', '5-Card Draw', 'Players may discard all 5 cards.'], ['followAHearts', 'Follow A♥', 'Void in trump must play a heart when A♥ led.'], ['thirtyFor60', '30 for 60', 'After a 30 bid, next may bid "30 for 60".']].map(([key, label, desc]) => (
@@ -11777,6 +11995,29 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                       <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>{sub}</div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* v2.31.71: Default Variant */}
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333', marginBottom: '4px' }}>
+                  Default Variant
+                </div>
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
+                  Pre-selected when you create a new game.
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
+                    const selected = editPrefGameVariant === val;
+                    return (
+                      <div key={val} onClick={() => setEditPrefGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '8px', border: selected ? '2px solid #1a5f3f' : '2px solid #ddd', background: selected ? '#e8f5e9' : '#fafafa' }}>
+                        <span style={{ fontWeight: 'bold', fontSize: '14px', color: selected ? '#1a5f3f' : '#333' }}>{label}</span>
+                        {isAlpha && (
+                          <sup style={{ marginLeft: '4px', fontSize: '9px', padding: '1px 4px', borderRadius: '3px', background: '#fff3cd', border: '1px solid #c9a24a', color: '#7a5c10', fontWeight: 'bold', letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -11925,6 +12166,56 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
           <h3 style={{ color: '#1a5f3f' }}>{game.name}</h3>
           {game.gameState?.phase === 'game-over' ? (() => {
+            // v2.31.73: cutthroat game-over — winner is a seat index 0-3 (not a team),
+            // and the relevant scores live in playerScores (length 4) not scores (length 2).
+            if (game.options?.cutthroat) {
+              const pScores = game.gameState.playerScores || [0, 0, 0, 0];
+              const winner = game.gameState.winner;
+              const posNames = ['North', 'East', 'South', 'West'];
+              const winnerSeat = (typeof winner === 'number' && winner >= 0 && winner <= 3) ? posNames[winner] : null;
+              const winnerPl = winnerSeat ? players[winnerSeat] : null;
+              const winnerLabel = winnerPl
+                ? (winnerPl.isAI ? winnerSeat : (winnerPl.username || winnerSeat))
+                : (winnerSeat || '?');
+              const winnerScore = (typeof winner === 'number') ? (pScores[winner] || 0) : 0;
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '14px' }}>✅</span>
+                    <span style={{
+                      padding: '4px 10px',
+                      background: '#2e7d32',
+                      color: 'white',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      fontWeight: 'bold'
+                    }}>
+                      Winner: {winnerLabel} ({winnerScore})
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {posNames.map((seat, i) => {
+                      const pl = players[seat];
+                      const label = pl ? (pl.isAI ? seat[0] : (pl.username || seat).slice(0, 3).toUpperCase()) : seat[0];
+                      const isWinner = i === winner;
+                      return (
+                        <span key={seat} style={{
+                          padding: '2px 6px',
+                          background: isWinner ? '#c8e6c9' : '#f5f5f5',
+                          color: isWinner ? '#1b5e20' : '#666',
+                          border: isWinner ? '1px solid #2e7d32' : '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: isWinner ? 'bold' : 'normal'
+                        }}>
+                          {label}: {pScores[i] || 0}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
             const scores = game.gameState.scores || [0, 0];
             const winner = game.gameState.winner;
             const team0Won = winner === 0;
@@ -13175,6 +13466,8 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
   const [gameOptions, setGameOptions] = useState({ fiveCardDraw: false });
   const [disconnectTimer, setDisconnectTimer] = useState(null);
   const gameStateRef = useRef(null);
+  // v2.31.71: mirror gameOptions for setInterval closures (disconnect detection runs in interval and stale closures would miss cutthroat flag)
+  const gameOptionsRef = useRef(null);
   const mySeatIndex = SEAT_TO_INDEX[mySeat];
 
   // Voice: rejoin if player had voice enabled before (handles reconnects)
@@ -13211,7 +13504,18 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
     // Load game options once
     database.ref(`lobby/games/${gameId}/options`).once('value', snap => {
       const opts = snap.val();
-      if (opts) setGameOptions(opts);
+      if (opts) {
+        setGameOptions(opts);
+        gameOptionsRef.current = opts; // v2.31.71: keep ref in sync for setInterval closures
+      }
+      // v2.31.71: register server-side disconnect counter ONLY for partner-mode games.
+      // Registered here (inside options-load) so we know the cutthroat flag before arming the handler.
+      // Cleanup .cancel() runs unconditionally in the effect's return; cancel is a no-op if never set.
+      if (!opts?.cutthroat) {
+        database.ref(`users/${userId}/stats`).onDisconnect().update({
+          disconnects: firebase.database.ServerValue.increment(1)
+        });
+      }
     });
 
     const playersListener = playersRef.on('value', (snapshot) => {
@@ -13257,7 +13561,9 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
                   disconnected: true
                 });
                 // Track if they disconnected while their team was losing
-                if (player.userId) {
+                // v2.31.71: gate off cutthroat — variant skips all partner-mode stat writes
+                // Read via ref because gameOptions state isn't a dep of this setInterval's effect (stale closure)
+                if (player.userId && !gameOptionsRef.current?.cutthroat) {
                   const seatIdx = SEAT_TO_INDEX[seat];
                   if (seatIdx !== undefined) {
                     database.ref(`lobby/games/${gameId}/gameState/scores`).once('value', (scoresSnap) => {
@@ -13291,11 +13597,9 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
       });
     }, 5000); // Check every 5 seconds
 
-    // Set up server-side disconnect handler for this player
+    // v2.31.71: server-side disconnect handler is now registered inside the options-load
+    // callback above so we can gate it off in cutthroat. Keep myStatsRef defined here for cleanup parity.
     const myStatsRef = database.ref(`users/${userId}/stats`);
-    myStatsRef.onDisconnect().update({
-      disconnects: firebase.database.ServerValue.increment(1)
-    });
 
     // Keep lobby presence alive while in a game so player shows in online list
     const myPresenceRef = database.ref(`lobby/online/${userId}`);
@@ -13449,6 +13753,14 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [playerTricks, setPlayerTricks] = useState([0, 0, 0, 0]);
   const [roundPts, setRoundPts] = useState([0, 0]);
   const [scores, setScores] = useState([0, 0]);
+  // CUTTHROAT (v2.31.69+): per-player game scores accumulated alongside the
+  // team scores. Only used / displayed when gameOptions.cutthroat is on; the
+  // team `scores` array still accumulates in cutthroat mode but is ignored.
+  const [playerScores, setPlayerScores] = useState([0, 0, 0, 0]);
+  // CUTTHROAT (v2.31.69+): per-player round points (current round only).
+  // Synced from Firebase at round-end so all clients render the same numbers
+  // in the round-end modal. Reset implicitly each round on next round-end write.
+  const [playerRoundPts, setPlayerRoundPts] = useState([0, 0, 0, 0]);
   const [trickNum, setTrickNum] = useState(0);
   const [selected, setSelected] = useState([]);
   const [trickComplete, setTrickComplete] = useState(false);
@@ -13507,6 +13819,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   // House Rules overlay — shown once at game start if any options are active
   const [showHouseRules, setShowHouseRules] = useState(false);
   const houseRulesShown = useRef(false);
+
+  // v2.31.71: Cutthroat alpha disclaimer — one-shot modal at first bidding phase
+  const [showCutthroatAlpha, setShowCutthroatAlpha] = useState(false);
+  const cutthroatAlphaShown = useRef(false);
 
   // Per-game achievement tracking (reset each new game)
   const [gameTimesSet, setGameTimesSet] = useState(0);
@@ -13622,6 +13938,15 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   useEffect(() => {
     if (phase === 'game-over' && gameState?.winner !== undefined && !statsUpdated.current) {
       statsUpdated.current = true;
+      // CUTTHROAT (v2.31.70): skip ALL partner-mode stats / badges / leaderboard
+      // writes when this is a cutthroat game. The variant has its own scoring
+      // semantics and its writes would contaminate partner-mode counters.
+      // Game-state writes (phase=game-over, hands cleared, etc.) happen
+      // elsewhere — only this stats transaction block is gated.
+      if (gameOptions?.cutthroat) {
+        console.log('🗡 CUTTHROAT — skipping stats / badges / leaderboard writes');
+        return;
+      }
       const winningTeam = gameState.winner;
       const finalScores = gameState.scores || [0, 0];
       const hist = gameState.history || [];
@@ -13946,6 +14271,17 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       if (gameState.dealer !== undefined) setDealer(gameState.dealer);
       if (gameState.currentPlayer !== undefined) setCurrentPlayer(gameState.currentPlayer);
       if (gameState.scores) setScores(gameState.scores);
+      if (gameState.playerScores) {
+        const raw = gameState.playerScores;
+        const arr = Array.isArray(raw) ? raw : Object.values(raw);
+        const norm = [0,0,0,0].map((_, i) => typeof arr[i] === 'number' ? arr[i] : 0);
+        setPlayerScores(norm);
+      }
+      if (gameState.playerRoundPts) {
+        const raw = gameState.playerRoundPts;
+        const arr = Array.isArray(raw) ? raw : Object.values(raw);
+        setPlayerRoundPts([0,0,0,0].map((_, i) => typeof arr[i] === 'number' ? arr[i] : 0));
+      }
       if (gameState.bids) setBids(gameState.bids);
       if (gameState.highBid !== undefined) setHighBid(gameState.highBid);
       if (gameState.bidWinner !== undefined) setBidWinner(gameState.bidWinner);
@@ -14390,7 +14726,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           version: VERSION,
           ts: Date.now(),
         };
-        database.ref(`bidLog/${_uname}/${gameId}`).push(_bidRec).catch(() => {});
+        const _bidLogPath = gameOptions?.cutthroat ? `bidLogCutthroat/${_uname}/${gameId}` : `bidLog/${_uname}/${gameId}`;
+        database.ref(_bidLogPath).push(_bidRec).catch(() => {});
       } catch (_e) { /* logging must never break bidding */ }
     }
 
@@ -14477,6 +14814,16 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     const seat = SEAT_NAMES[playerIndex];
     const player = players[seat];
     return player ? player.username : `P${playerIndex + 1}`;
+  }, [players]);
+
+  // v2.31.72: Cutthroat-friendly label. AI seats show seat name ("North");
+  // human seats show their username. Used in cutthroat round-end + game-over
+  // modals to avoid stacking three identical "AI Player N" rows.
+  const getCutthroatLabel = useCallback((playerIndex) => {
+    const seat = SEAT_NAMES[playerIndex];
+    const player = players[seat];
+    if (player && player.isAI) return seat;
+    return (player && player.username) || seat;
   }, [players]);
 
   const getPlayerUserId = useCallback((playerIndex) => {
@@ -14969,7 +15316,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       if (ledCrd && ledCrd.rank === 'A' && ledCrd.suit === '\u2665') {
         const hasTrump = hand.some(c => isTrump(c, trumpSuit));
         if (!hasTrump && card.suit === '\u2665') {
-          database.ref(`users/${userId}/stats`).update({ followAHeartsPlayed: firebase.database.ServerValue.increment(1) });
+          // v2.31.71: gate off cutthroat \u2014 variant skips all partner-mode stat writes
+          if (!gameOptions?.cutthroat) {
+            database.ref(`users/${userId}/stats`).update({ followAHeartsPlayed: firebase.database.ServerValue.increment(1) });
+          }
         }
       }
     }
@@ -15036,7 +15386,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           version: VERSION,
           ts: Date.now(),
         };
-        database.ref(`decisionLog/${_uname}/${gameId}`).push(_rec).catch(() => {});
+        const _decLogPath = gameOptions?.cutthroat ? `decisionLogCutthroat/${_uname}/${gameId}` : `decisionLog/${_uname}/${gameId}`;
+        database.ref(_decLogPath).push(_rec).catch(() => {});
       } catch (_e) { /* logging must never break play */ }
     }
 
@@ -15416,30 +15767,87 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           themRoundScore = finalRoundPts[1] >= highBid ? finalRoundPts[1] : -setPenalty;
         }
         
-        // Build new history array (will sync to Firebase, then to local state)
+        // CUTTHROAT (v2.31.69): per-player game scores computed alongside the
+        // team scores. In cutthroat the bidder is solo (made/set against their
+        // OWN trick points + high-trump bonus, no partner contribution); every
+        // other player banks their own trick points. Team scoring still runs
+        // above as dead computation; only the per-player path matters when
+        // gameOptions.cutthroat is on.
+        // v2.31.72: hoisted above newHistory so we can stamp per-player round
+        // pts + per-player totals into the history entry for the 4-column
+        // score table.
+        const playerRoundPts = [0, 0, 0, 0];
+        for (let p = 0; p < 4; p++) {
+          playerRoundPts[p] = (newPlayerTricks[p] || 0) * 5;
+        }
+        if (newHighTrumpInfo.rank >= 0 && newHighTrumpInfo.player >= 0) {
+          playerRoundPts[newHighTrumpInfo.player] += 5;
+        }
+        // Per-player game-score deltas for THIS round (signed; bidder may be set).
+        const playerScoreDeltas = [0, 0, 0, 0];
+        const newPlayerScores = [...playerScores];
+        if (gameOptions.cutthroat) {
+          const ctPenalty = bidType === '30for60' ? 60 : highBid;
+          for (let p = 0; p < 4; p++) {
+            if (p === bidWinner) {
+              playerScoreDeltas[p] = playerRoundPts[p] >= highBid ? playerRoundPts[p] : -ctPenalty;
+            } else {
+              playerScoreDeltas[p] = playerRoundPts[p];
+            }
+            newPlayerScores[p] += playerScoreDeltas[p];
+          }
+          console.log('🗡 CUTTHROAT scores after round:', newPlayerScores,
+            'roundPts:', playerRoundPts, 'bidder:', bidWinner, 'made:', playerRoundPts[bidWinner] >= highBid);
+        }
+
+        // Build new history array (will sync to Firebase, then to local state).
+        // v2.31.72: in cutthroat, ALSO stamp per-player round scores + totals so
+        // the ScoreTable can render a 4-column per-player layout. Partner-mode
+        // entries stay bit-identical (no extra fields written).
         const newHistory = [...history, {
           usRoundScore,
           themRoundScore,
           usTotal: newScores[0],
-          themTotal: newScores[1]
+          themTotal: newScores[1],
+          ...(gameOptions.cutthroat ? {
+            playerRoundScores: playerScoreDeltas,
+            playerTotals: [...newPlayerScores],
+          } : {}),
         }];
-        
-        // Check for game winner (first to 120, bidding team wins ties)
+
+        // Check for game winner. Cutthroat: first PLAYER to 120; on simultaneous
+        // tie, bidder wins. Partner mode: first TEAM to 120; on tie, bidding
+        // team wins.
         let gameWinner = null;
-        const team0Reached120 = newScores[0] >= 120;
-        const team1Reached120 = newScores[1] >= 120;
-        if (team0Reached120 || team1Reached120) {
-          if (team0Reached120 && team1Reached120) {
-            // Both teams reached 120 on same hand - bidding team wins
-            gameWinner = bidWinner % 2;
-            console.log('Both teams reached 120! Bidding team (Team ' + gameWinner + ') wins!');
-          } else {
-            gameWinner = team0Reached120 ? 0 : 1;
+        if (gameOptions.cutthroat) {
+          let bestScore = -Infinity;
+          for (let p = 0; p < 4; p++) {
+            if (newPlayerScores[p] >= 120 && newPlayerScores[p] > bestScore) {
+              bestScore = newPlayerScores[p];
+              gameWinner = p;
+            }
+          }
+          // Tie-break: if bidder is tied with the lead, bidder wins
+          if (gameWinner !== null && newPlayerScores[bidWinner] === bestScore
+              && bidWinner !== gameWinner && newPlayerScores[bidWinner] >= 120) {
+            gameWinner = bidWinner;
+          }
+        } else {
+          const team0Reached120 = newScores[0] >= 120;
+          const team1Reached120 = newScores[1] >= 120;
+          if (team0Reached120 || team1Reached120) {
+            if (team0Reached120 && team1Reached120) {
+              // Both teams reached 120 on same hand - bidding team wins
+              gameWinner = bidWinner % 2;
+              console.log('Both teams reached 120! Bidding team (Team ' + gameWinner + ') wins!');
+            } else {
+              gameWinner = team0Reached120 ? 0 : 1;
+            }
           }
         }
         
         if (gameWinner !== null) {
-          console.log(`🏆 GAME OVER! Team ${gameWinner} wins with ${newScores[gameWinner]} points!`);
+          console.log(`🏆 GAME OVER! ${gameOptions.cutthroat ? 'Player ' + (gameWinner + 1) : 'Team ' + gameWinner} wins with ${gameOptions.cutthroat ? newPlayerScores[gameWinner] : newScores[gameWinner]} points!`);
           await updateGameState({
             hands: cleanHands(newHands),
             trickCards: [],
@@ -15447,7 +15855,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             tricksWon: newTricksWon,
             playerTricks: newPlayerTricks,
             roundPts: finalRoundPts,
+            playerRoundPts: playerRoundPts,
             scores: newScores,
+            playerScores: newPlayerScores,
             history: newHistory,        // ✅ Batched - no extra call
             highTrumpInfo: newHighTrumpInfo,  // ✅ Save for display
             phase: 'game-over',
@@ -15466,7 +15876,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             tricksWon: newTricksWon,
             playerTricks: newPlayerTricks,
             roundPts: finalRoundPts,
+            playerRoundPts: playerRoundPts,
             scores: newScores,
+            playerScores: newPlayerScores,
             history: newHistory,        // ✅ Batched - no extra call
             highTrumpInfo: newHighTrumpInfo,  // ✅ Save for display
             phase: 'round-end',
@@ -15522,7 +15934,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         currentPlayer: nextPlayer
       });
     }
-  }, [phase, currentPlayer, mySeatIndex, hands, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, playerTricks, roundPts, updateGameState, getPlayerName, isSpectator]);
+  }, [phase, currentPlayer, mySeatIndex, hands, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, playerTricks, roundPts, updateGameState, getPlayerName, isSpectator, gameOptions, playerScores]);
 
 
   // AI players select trump automatically
@@ -15985,30 +16397,76 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             themRoundScore = finalRoundPts[1] >= highBid ? finalRoundPts[1] : -highBid;
           }
           
-          // Build new history array (will sync to Firebase, then to local state)
+          // CUTTHROAT (v2.31.69): same per-player accounting as the human-played
+          // last-card path. Bidder solo against their own playerRoundPts; other
+          // players bank theirs. Team scoring above runs as dead computation.
+          // v2.31.72: hoisted above newHistory; per-player deltas stamped into
+          // the history entry for the 4-column score table.
+          const playerRoundPts = [0, 0, 0, 0];
+          for (let p = 0; p < 4; p++) {
+            playerRoundPts[p] = (newPlayerTricks[p] || 0) * 5;
+          }
+          if (newHighTrumpInfo.rank >= 0 && newHighTrumpInfo.player >= 0) {
+            playerRoundPts[newHighTrumpInfo.player] += 5;
+          }
+          const playerScoreDeltas = [0, 0, 0, 0];
+          const newPlayerScores = [...playerScores];
+          if (gameOptions.cutthroat) {
+            const ctPenalty = bidType === '30for60' ? 60 : highBid;
+            for (let p = 0; p < 4; p++) {
+              if (p === bidWinner) {
+                playerScoreDeltas[p] = playerRoundPts[p] >= highBid ? playerRoundPts[p] : -ctPenalty;
+              } else {
+                playerScoreDeltas[p] = playerRoundPts[p];
+              }
+              newPlayerScores[p] += playerScoreDeltas[p];
+            }
+          }
+
+          // Build new history array (will sync to Firebase, then to local state).
+          // v2.31.72: cutthroat-only per-player fields appended; partner mode
+          // entries stay bit-identical.
           const newHistory = [...history, {
             usRoundScore,
             themRoundScore,
             usTotal: newScores[0],
-            themTotal: newScores[1]
+            themTotal: newScores[1],
+            ...(gameOptions.cutthroat ? {
+              playerRoundScores: playerScoreDeltas,
+              playerTotals: [...newPlayerScores],
+            } : {}),
           }];
-          
-          // Check for game winner (first to 120, bidding team wins ties)
+
+          // Check for game winner. Cutthroat: first PLAYER to 120, bidder wins ties.
           let gameWinner = null;
-          const team0Reached120 = newScores[0] >= 120;
-          const team1Reached120 = newScores[1] >= 120;
-          if (team0Reached120 || team1Reached120) {
-            if (team0Reached120 && team1Reached120) {
-              // Both teams reached 120 on same hand - bidding team wins
-              gameWinner = bidWinner % 2;
-              console.log('Both teams reached 120! Bidding team (Team ' + gameWinner + ') wins!');
-            } else {
-              gameWinner = team0Reached120 ? 0 : 1;
+          if (gameOptions.cutthroat) {
+            let bestScore = -Infinity;
+            for (let p = 0; p < 4; p++) {
+              if (newPlayerScores[p] >= 120 && newPlayerScores[p] > bestScore) {
+                bestScore = newPlayerScores[p];
+                gameWinner = p;
+              }
+            }
+            if (gameWinner !== null && newPlayerScores[bidWinner] === bestScore
+                && bidWinner !== gameWinner && newPlayerScores[bidWinner] >= 120) {
+              gameWinner = bidWinner;
+            }
+          } else {
+            const team0Reached120 = newScores[0] >= 120;
+            const team1Reached120 = newScores[1] >= 120;
+            if (team0Reached120 || team1Reached120) {
+              if (team0Reached120 && team1Reached120) {
+                // Both teams reached 120 on same hand - bidding team wins
+                gameWinner = bidWinner % 2;
+                console.log('Both teams reached 120! Bidding team (Team ' + gameWinner + ') wins!');
+              } else {
+                gameWinner = team0Reached120 ? 0 : 1;
+              }
             }
           }
-          
+
           if (gameWinner !== null) {
-            console.log(`🏆 GAME OVER! Team ${gameWinner} wins with ${newScores[gameWinner]} points!`);
+            console.log(`🏆 GAME OVER! ${gameOptions.cutthroat ? 'Player ' + (gameWinner + 1) : 'Team ' + gameWinner} wins with ${gameOptions.cutthroat ? newPlayerScores[gameWinner] : newScores[gameWinner]} points!`);
             await updateGameState({
               hands: cleanHands(newHands),
               trickCards: [],
@@ -16016,7 +16474,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               tricksWon: newTricksWon,
               playerTricks: newPlayerTricks,
               roundPts: finalRoundPts,
+              playerRoundPts: playerRoundPts,
               scores: newScores,
+              playerScores: newPlayerScores,
               history: newHistory,        // ✅ Batched - no extra call
               highTrumpInfo: newHighTrumpInfo,  // ✅ Save for display
               phase: 'game-over',
@@ -16035,7 +16495,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               tricksWon: newTricksWon,
               playerTricks: newPlayerTricks,
               roundPts: finalRoundPts,
+              playerRoundPts: playerRoundPts,
               scores: newScores,
+              playerScores: newPlayerScores,
               history: newHistory,        // ✅ Batched - no extra call
               highTrumpInfo: newHighTrumpInfo,  // ✅ Save for display
               phase: 'round-end',
@@ -16075,7 +16537,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       }
     })(); // Close async IIFE - executes immediately
     
-  }, [resettingRound, phase, currentPlayer, mySeatIndex, players, hands, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, playerTricks, roundPts, updateGameState, trickComplete, isSpectator]);
+  }, [resettingRound, phase, currentPlayer, mySeatIndex, players, hands, trickCards, trumpSuit, trickLeader, trickNum, tricksWon, playerTricks, roundPts, updateGameState, trickComplete, isSpectator, gameOptions, playerScores]);
 
 
 
@@ -16123,6 +16585,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       dealer: firstDealer,
       currentPlayer: (firstDealer + 1) % 4, // Player to left of dealer starts bidding
       scores: [0, 0],
+      playerScores: [0, 0, 0, 0],
       history: [],
       hands: hands, // All hands (we'll add privacy later)
       kitty: kitty,
@@ -16171,11 +16634,21 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   useEffect(() => {
     if (phase !== 'bidding') return;
     if (houseRulesShown.current) return;
-    if (!gameOptions || (!gameOptions.fiveCardDraw && !gameOptions.followAHearts && !gameOptions.thirtyFor60)) return;
+    if (!gameOptions || (!gameOptions.fiveCardDraw && !gameOptions.followAHearts && !gameOptions.thirtyFor60 && !gameOptions.cutthroat)) return;
     houseRulesShown.current = true;
     setShowHouseRules(true);
     const t = setTimeout(() => setShowHouseRules(false), 4000);
     return () => clearTimeout(t);
+  }, [phase, gameOptions]);
+
+  // v2.31.71: Cutthroat alpha disclaimer — show once at first bidding phase of a cutthroat game.
+  // No timeout — user must dismiss explicitly because they're acknowledging an alpha caveat.
+  useEffect(() => {
+    if (phase !== 'bidding') return;
+    if (!gameOptions?.cutthroat) return;
+    if (cutthroatAlphaShown.current) return;
+    cutthroatAlphaShown.current = true;
+    setShowCutthroatAlpha(true);
   }, [phase, gameOptions]);
 
   // Handle rematch - create new game with same players
@@ -16343,8 +16816,35 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           >🚪</button>
         </div>
 
-        <div className="v3-scores">
+        <div className={`v3-scores${gameOptions.cutthroat ? ' cutthroat' : ''}`}>
           {(() => {
+            if (gameOptions.cutthroat) {
+              // CUTTHROAT (v2.31.69+): 4 plaques, one per seat. AI seats labeled
+              // with seat letter (N/E/S/W); human seats use first 3 chars of
+              // username. v2.31.72 fix: previous slice(0,3) on "AI Player 1"
+              // gave all AI seats label "AI ".
+              const orderedSeats = [mySeatIndex, (mySeatIndex + 1) % 4, (mySeatIndex + 2) % 4, (mySeatIndex + 3) % 4];
+              return (<>
+                {orderedSeats.map(seat => {
+                  const player = players[SEAT_NAMES[seat]];
+                  let label;
+                  if (player && player.isAI) {
+                    label = SEAT_NAMES[seat][0];
+                  } else if (player && player.username) {
+                    label = player.username.slice(0, 3).toUpperCase();
+                  } else {
+                    label = SEAT_NAMES[seat][0];
+                  }
+                  const isMe = seat === mySeatIndex;
+                  return (
+                    <div key={seat} className={`v3-plaque ${isMe ? 'me' : 'opp'}`}>
+                      <span className="v3-plaque-label">{label}</span>
+                      <span className="v3-plaque-num">{playerScores[seat] || 0}</span>
+                    </div>
+                  );
+                })}
+              </>);
+            }
             const myTeam = mySeatIndex % 2;
             const usScore = myTeam === 0 ? scores[0] : scores[1];
             const themScore = myTeam === 0 ? scores[1] : scores[0];
@@ -16991,12 +17491,84 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 <div style={{ fontSize: '13px', color: 'rgba(251,246,228,0.85)', marginBottom: '4px' }}>Follow A♥</div>
               )}
               {gameOptions.thirtyFor60 && (
-                <div style={{ fontSize: '13px', color: 'rgba(251,246,228,0.85)' }}>30 for 60</div>
+                <div style={{ fontSize: '13px', color: 'rgba(251,246,228,0.85)', marginBottom: '4px' }}>30 for 60</div>
+              )}
+              {gameOptions.cutthroat && (
+                <div style={{ fontSize: '13px', color: '#ef7c74', fontWeight: 700 }}>Cutthroat</div>
               )}
               <div style={{ fontSize: '10px', color: 'rgba(201,162,74,0.4)', marginTop: '10px' }}>tap to dismiss</div>
             </div>
           </div>
         )}
+
+        {/* v2.31.71: Cutthroat alpha disclaimer — first-bidding-phase one-shot */}
+        {showCutthroatAlpha && (() => {
+          const isCp = currentThemeId === 'cyberpunk';
+          const isArab = currentThemeId === 'arabian';
+          const accentColor = isCp ? '#00e5ff' : '#f6d778';
+          const titleFont = isCp ? "'Orbitron', sans-serif" : "'Cinzel', serif";
+          const bodyFont = isCp ? "'Share Tech Mono', monospace" : "'Merriweather', serif";
+          const okBg = isCp
+            ? 'rgba(255,140,0,0.1)'
+            : 'linear-gradient(180deg, #f6d778 0%, #c9a24a 45%, #9a7630 100%)';
+          const okColor = isCp ? '#ff8c00' : '#1a0e03';
+          const okBorder = isCp ? '1px solid #ff8c00' : '1px solid rgba(0,0,0,0.6)';
+          const okShadow = isCp ? '0 0 12px rgba(255,140,0,0.4)' : '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)';
+          return (
+            <div
+              onClick={() => setShowCutthroatAlpha(false)}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 600, pointerEvents: 'auto', padding: '16px' }}
+            >
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                  background: isCp ? 'rgba(2,5,10,0.97)' : isArab ? 'rgba(8,5,1,0.97)' : 'rgba(12,6,2,0.95)',
+                  border: isCp ? '1px solid rgba(0,229,255,0.4)' : '1px solid #c9a24a',
+                  borderRadius: isCp ? '4px' : '12px',
+                  padding: '20px 22px',
+                  maxWidth: '340px',
+                  width: '100%',
+                  textAlign: 'center',
+                  color: '#e8e4d9',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.7)'
+                }}
+              >
+                <div style={{ fontSize: '15px', fontFamily: titleFont, color: accentColor, fontWeight: 700, letterSpacing: isCp ? '2px' : '1px', marginBottom: '4px' }}>
+                  Cutthroat
+                  <sup style={{ marginLeft: '6px', fontSize: '9px', padding: '2px 5px', borderRadius: '3px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: bodyFont, letterSpacing: '1.5px', verticalAlign: 'super', fontWeight: 700 }}>ALPHA</sup>
+                </div>
+                <div style={{ height: '1px', background: isCp ? 'linear-gradient(90deg, #00e5ff 0%, #ff00cc 50%, transparent 100%)' : 'linear-gradient(90deg,transparent,#c9a24a 50%,transparent)', margin: '10px 0 14px' }} />
+                <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'rgba(232,228,217,0.88)', fontFamily: bodyFont, textAlign: 'left' }}>
+                  Scoring works. The AI does not know cutthroat-specific strategy yet and will sometimes play sub-optimally — it will not always coordinate to set the leader, and will not always grab a free 5 points instead of cooperating.
+                  <div style={{ marginTop: '8px' }}>
+                    Stats, badges, and the leaderboard are not tracked for cutthroat games.
+                  </div>
+                  <div style={{ marginTop: '8px', color: accentColor }}>
+                    Real cutthroat AI is coming.
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCutthroatAlpha(false)}
+                  style={{
+                    marginTop: '16px',
+                    padding: '10px 28px',
+                    fontSize: '12px',
+                    letterSpacing: '1.5px',
+                    fontWeight: 700,
+                    fontFamily: titleFont,
+                    background: okBg,
+                    color: okColor,
+                    border: okBorder,
+                    borderRadius: isCp ? '3px' : '8px',
+                    cursor: 'pointer',
+                    boxShadow: okShadow,
+                    textShadow: isCp ? '0 0 8px rgba(255,140,0,0.6)' : 'none'
+                  }}
+                >OK</button>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Button Area */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: phase === 'trump-select' ? '20px' : (phase === 'bidding' ? '12px' : '4px'), flexWrap: 'wrap', padding: '4px 0', minHeight: '36px' }}>
@@ -17198,6 +17770,49 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           const bidderName = bidWinner >= 0 ? getPlayerName(bidWinner) : '—';
           const suitColor = trumpSuit && (trumpSuit === '♥' || trumpSuit === '♦') ? '#e07070' : '#f6d778';
           const anSuitColor = trumpSuit && (trumpSuit === '♥' || trumpSuit === '♦') ? '#e03050' : '#f6d778';
+          // CUTTHROAT (v2.31.69+): per-player row data. Fallback to computing
+          // from playerTricks + highTrumpInfo if Firebase didn't sync yet.
+          const isCutthroat = !!gameOptions.cutthroat;
+          const ctPenalty = setPenalty; // same penalty as partner mode
+          const ctRoundPts = (() => {
+            const haveSynced = playerRoundPts.some(v => v > 0);
+            if (haveSynced) return playerRoundPts;
+            const arr = [0, 0, 0, 0];
+            for (let p = 0; p < 4; p++) arr[p] = (playerTricks[p] || 0) * 5;
+            if (highTrumpInfo && highTrumpInfo.player >= 0) arr[highTrumpInfo.player] += 5;
+            return arr;
+          })();
+          const ctBidderMade = bidWinner >= 0 && ctRoundPts[bidWinner] >= highBid;
+          if (currentThemeId === 'arabian' && isCutthroat) return (
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(8,5,1,0.97)', padding: '24px 28px', borderRadius: '10px', border: '1px solid rgba(201,162,39,0.5)', boxShadow: '0 0 36px rgba(201,162,39,0.2),0 8px 32px rgba(0,0,0,0.9)', zIndex: 100, minWidth: '280px', maxWidth: '340px', animation: 'slideUp 0.3s ease-out', textAlign: 'center' }}>
+              <div style={{ fontFamily: "'Cinzel',serif", fontSize: '18px', fontWeight: 700, color: '#f6d778', letterSpacing: '1px', marginBottom: '16px' }}>Round Complete</div>
+              <div style={{ marginBottom: '16px', fontSize: '12px', color: 'rgba(232,228,217,0.8)', fontFamily: "'Inter',sans-serif" }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '4px 0', borderBottom: '1px solid rgba(201,162,39,0.2)' }}>
+                  <span style={{ color: 'rgba(201,162,39,0.7)' }}>Bid</span>
+                  <span style={{ fontFamily: "'Cinzel',serif", color: '#f6d778' }}>{highBid}<span style={{ color: anSuitColor, marginLeft: '3px' }}>{trumpSuit || ''}</span> <span style={{ color: 'rgba(232,228,217,0.6)', fontSize: '10px' }}>· {bidderName}</span></span>
+                </div>
+                {[0,1,2,3].map(p => {
+                  const isBidder = p === bidWinner;
+                  const pts = ctRoundPts[p];
+                  const isSet = isBidder && !ctBidderMade;
+                  const isMe = p === mySeatIndex;
+                  const labelColor = isMe ? '#5dd084' : 'rgba(232,228,217,0.85)';
+                  const numColor = isSet ? '#ef7c74' : (isMe ? '#5dd084' : '#f6d778');
+                  const displayPts = isSet ? `(${ctPenalty})` : `+${pts}`;
+                  return (
+                    <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                      <span style={{ color: labelColor, fontWeight: 600 }}>{getCutthroatLabel(p)}{isBidder ? ' (bidder)' : ''}</span>
+                      <span style={{ fontFamily: "'Cinzel',serif", color: numColor, fontSize: '14px', fontWeight: 700 }}>{displayPts}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                <button onClick={() => setShowHandsOpen(true)} style={{ padding: '8px 16px', fontSize: '11px', fontFamily: "'Cinzel',serif", fontWeight: 700, background: 'rgba(8,5,1,0.8)', color: '#c9a227', border: '1px solid rgba(201,162,39,0.45)', borderRadius: '4px', cursor: 'pointer', letterSpacing: '0.5px' }}>View Round</button>
+                {!isSpectator && <button onClick={handleNextRound} style={{ padding: '8px 20px', fontSize: '12px', fontFamily: "'Cinzel',serif", fontWeight: 700, background: 'linear-gradient(135deg,#5a3f06,#c9a227 50%,#5a3f06)', color: '#0d0a04', border: 'none', borderRadius: '4px', cursor: 'pointer', letterSpacing: '0.5px' }}>Next Round</button>}
+              </div>
+            </div>
+          );
           if (currentThemeId === 'arabian') return (
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(8,5,1,0.97)', padding: '24px 28px', borderRadius: '10px', border: '1px solid rgba(201,162,39,0.5)', boxShadow: '0 0 36px rgba(201,162,39,0.2),0 8px 32px rgba(0,0,0,0.9)', zIndex: 100, minWidth: '280px', maxWidth: '340px', animation: 'slideUp 0.3s ease-out', textAlign: 'center' }}>
               <div style={{ fontFamily: "'Cinzel',serif", fontSize: '18px', fontWeight: 700, color: '#f6d778', letterSpacing: '1px', marginBottom: '16px' }}>Round Complete</div>
@@ -17218,6 +17833,39 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                 <button onClick={() => setShowHandsOpen(true)} style={{ padding: '8px 16px', fontSize: '11px', fontFamily: "'Cinzel',serif", fontWeight: 700, background: 'rgba(8,5,1,0.8)', color: '#c9a227', border: '1px solid rgba(201,162,39,0.45)', borderRadius: '4px', cursor: 'pointer', letterSpacing: '0.5px' }}>View Round</button>
                 {!isSpectator && <button onClick={handleNextRound} style={{ padding: '8px 20px', fontSize: '12px', fontFamily: "'Cinzel',serif", fontWeight: 700, background: 'linear-gradient(135deg,#5a3f06,#c9a227 50%,#5a3f06)', color: '#0d0a04', border: 'none', borderRadius: '4px', cursor: 'pointer', letterSpacing: '0.5px' }}>Next Round</button>}
+              </div>
+            </div>
+          );
+          if (!isIrish && isCutthroat) return (
+            <div className="cp-modal-overlay" style={{ position: 'absolute', inset: 0, animation: 'fadeIn 0.2s ease-out' }}>
+              <div className="cp-modal" style={{ minWidth: '280px', maxWidth: '340px', textAlign: 'center' }}>
+                <div style={{ fontFamily: "'Orbitron', sans-serif", fontSize: '18px', fontWeight: 700, color: '#00e5ff', textShadow: '0 0 10px rgba(0,229,255,0.5)', marginBottom: '0', letterSpacing: '2px' }} className="cp-modal-title">ROUND COMPLETE</div>
+                <div className="cp-modal-hairline" />
+                <div className="cp-modal-body">
+                  <div className={`cp-round-end-result`} style={{ marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '4px 0', borderBottom: '1px solid rgba(0,229,255,0.15)' }}>
+                      <span style={{ color: '#3a5f78', fontFamily: "'Share Tech Mono', monospace", fontSize: '11px' }}>Bid</span>
+                      <span style={{ fontFamily: "'Orbitron', sans-serif", color: '#00e5ff', fontSize: '12px' }}>{highBid}<span style={{ color: suitColor, marginLeft: '3px' }}>{trumpSuit || ''}</span> <span style={{ color: 'rgba(0,229,255,0.5)', fontSize: '10px' }}>· {bidderName}</span></span>
+                    </div>
+                    {[0,1,2,3].map(p => {
+                      const isBidder = p === bidWinner;
+                      const pts = ctRoundPts[p];
+                      const isSet = isBidder && !ctBidderMade;
+                      const isMe = p === mySeatIndex;
+                      const labelClass = isMe ? 'cp-score-us' : 'cp-score-them';
+                      return (
+                        <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                          <span className={labelClass} style={{ fontWeight: 600 }}>{getCutthroatLabel(p)}{isBidder ? ' (bidder)' : ''}</span>
+                          <span className={isSet ? 'cp-round-end-set' : 'cp-round-end-made'} style={{ fontSize: '14px', fontWeight: 700, fontFamily: "'Orbitron', sans-serif" }}>{isSet ? `(${ctPenalty})` : `+${pts}`}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <button onClick={() => setShowHandsOpen(true)} className="cp-modal-btn-ghost">View Round</button>
+                    {!isSpectator && <button onClick={handleNextRound} className="cp-modal-btn-primary">Next Round</button>}
+                  </div>
+                </div>
               </div>
             </div>
           );
@@ -17246,6 +17894,52 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                     {!isSpectator && <button onClick={handleNextRound} className="cp-modal-btn-primary">Next Round</button>}
                   </div>
                 </div>
+              </div>
+            </div>
+          );
+          if (isIrish && isCutthroat) return (
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'rgba(12,6,2,0.96)',
+              padding: '24px 28px',
+              borderRadius: '10px',
+              border: '1px solid #c9a24a',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.8), 0 0 0 1px rgba(201,162,74,0.15)',
+              zIndex: 100,
+              minWidth: '280px',
+              maxWidth: '340px',
+              animation: 'slideUp 0.3s ease-out',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontFamily: "'Cinzel', serif", fontSize: '18px', fontWeight: 700, background: 'linear-gradient(135deg, #f6d778 0%, #c9a24a 60%, #f6d778 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', marginBottom: '16px', letterSpacing: '1px' }}>
+                Round Complete
+              </div>
+              <div style={{ marginBottom: '16px', fontSize: '12px', color: 'rgba(232,228,217,0.8)', fontFamily: "'Inter', sans-serif" }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', padding: '4px 0', borderBottom: '1px solid rgba(201,162,74,0.2)' }}>
+                  <span style={{ color: 'rgba(201,162,74,0.7)' }}>Bid</span>
+                  <span style={{ fontFamily: "'Cinzel', serif", color: '#f6d778' }}>{highBid}<span style={{ color: suitColor, marginLeft: '3px' }}>{trumpSuit || ''}</span> <span style={{ color: 'rgba(232,228,217,0.6)', fontSize: '10px' }}>· {bidderName}</span></span>
+                </div>
+                {[0,1,2,3].map(p => {
+                  const isBidder = p === bidWinner;
+                  const pts = ctRoundPts[p];
+                  const isSet = isBidder && !ctBidderMade;
+                  const isMe = p === mySeatIndex;
+                  const labelColor = isMe ? '#5dd084' : '#e8e4d9';
+                  const numColor = isSet ? '#ef7c74' : (isMe ? '#5dd084' : '#f6d778');
+                  return (
+                    <div key={p} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                      <span style={{ color: labelColor, fontWeight: 600 }}>{getCutthroatLabel(p)}{isBidder ? ' (bidder)' : ''}</span>
+                      <span style={{ fontFamily: "'Cinzel', serif", color: numColor, fontSize: '14px', fontWeight: 700 }}>{isSet ? `(${ctPenalty})` : `+${pts}`}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                <button onClick={() => setShowHandsOpen(true)} style={{ padding: '8px 16px', fontSize: '11px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'rgba(10,40,20,0.8)', color: '#c9a24a', border: '1px solid rgba(201,162,74,0.45)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px' }}>View Round</button>
+                {!isSpectator && <button onClick={handleNextRound} style={{ padding: '8px 20px', fontSize: '12px', fontFamily: "'Cinzel', serif", fontWeight: 700, background: 'linear-gradient(180deg, #f6d778 0%, #c9a24a 50%, #9a7630 100%)', color: '#1a0e03', border: '1px solid rgba(0,0,0,0.5)', borderRadius: '5px', cursor: 'pointer', letterSpacing: '0.5px', boxShadow: '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)' }}>Next Round</button>}
               </div>
             </div>
           );
@@ -17295,7 +17989,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         {phase === 'game-over' && (() => {
           const winner = gameState && gameState.winner !== undefined ? gameState.winner : null;
           const myTeam = mySeatIndex % 2;
-          const isWin = winner === myTeam;
+          // CUTTHROAT (v2.31.69+): `winner` is a SEAT index 0-3 in cutthroat
+          // mode, vs a TEAM index 0-1 in partner mode. Disambiguate via flag.
+          const isCutthroat = !!gameOptions.cutthroat;
+          const isWin = isCutthroat ? (winner === mySeatIndex) : (winner === myTeam);
           const isIrish = currentThemeId === 'irish';
 
           // Achievement items (shared)
@@ -17321,17 +18018,33 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               <div style={{ fontFamily: "'Cinzel',serif", fontSize: isWin ? '26px' : '22px', fontWeight: 700, marginBottom: '6px', color: isWin ? '#f6d778' : '#ef7c74', letterSpacing: '2px' }}>{isWin ? 'VICTORY' : 'DEFEATED'}</div>
               {isWin && <div style={{ fontSize: '20px', marginBottom: '12px', letterSpacing: '4px', color: 'rgba(201,162,39,0.4)' }}>· · ·</div>}
               {!isWin && <div style={{ marginBottom: '12px' }}></div>}
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '16px' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '9px', color: '#5dd084', fontFamily: "'Inter',sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>US</div>
-                  <div style={{ fontSize: '32px', fontFamily: "'Cinzel',serif", fontWeight: 700, color: '#5dd084', lineHeight: 1 }}>{scores[myTeam]}</div>
+              {isCutthroat ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px', padding: '0 8px' }}>
+                  {[0,1,2,3].map(p => {
+                    const isWinner = p === winner;
+                    const isMe = p === mySeatIndex;
+                    const color = isWinner ? '#f6d778' : (isMe ? '#5dd084' : 'rgba(232,228,217,0.85)');
+                    return (
+                      <div key={p} style={{ textAlign: 'center', padding: '6px 4px', border: `1px solid ${isWinner ? 'rgba(201,162,39,0.5)' : 'rgba(201,162,39,0.18)'}`, borderRadius: '6px', background: isWinner ? 'rgba(201,162,39,0.08)' : 'transparent' }}>
+                        <div style={{ fontSize: '9px', color, fontFamily: "'Inter',sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>{getCutthroatLabel(p)}{isMe ? ' (you)' : ''}</div>
+                        <div style={{ fontSize: '24px', fontFamily: "'Cinzel',serif", fontWeight: 700, color, lineHeight: 1 }}>{playerScores[p] || 0}</div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div style={{ width: '1px', background: 'rgba(201,162,39,0.25)', margin: '4px 0' }}></div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '9px', color: '#ef7c74', fontFamily: "'Inter',sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>THEM</div>
-                  <div style={{ fontSize: '32px', fontFamily: "'Cinzel',serif", fontWeight: 700, color: '#ef7c74', lineHeight: 1 }}>{scores[1 - myTeam]}</div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '16px' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '9px', color: '#5dd084', fontFamily: "'Inter',sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>US</div>
+                    <div style={{ fontSize: '32px', fontFamily: "'Cinzel',serif", fontWeight: 700, color: '#5dd084', lineHeight: 1 }}>{scores[myTeam]}</div>
+                  </div>
+                  <div style={{ width: '1px', background: 'rgba(201,162,39,0.25)', margin: '4px 0' }}></div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '9px', color: '#ef7c74', fontFamily: "'Inter',sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>THEM</div>
+                    <div style={{ fontSize: '32px', fontFamily: "'Cinzel',serif", fontWeight: 700, color: '#ef7c74', lineHeight: 1 }}>{scores[1 - myTeam]}</div>
+                  </div>
                 </div>
-              </div>
+              )}
               {achieveItems.length > 0 && (
                 <div style={{ background: 'rgba(201,162,39,0.06)', border: '1px solid rgba(201,162,39,0.2)', borderRadius: '6px', padding: '10px 12px', marginBottom: '14px', fontSize: '11px', textAlign: 'left' }}>
                   <div style={{ color: 'rgba(201,162,39,0.6)', marginBottom: '6px', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1.5px', fontFamily: "'Inter',sans-serif" }}>This Game</div>
@@ -17384,17 +18097,33 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   </div>
 
                   {/* Scores */}
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginBottom: '16px' }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '9px', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', marginBottom: '2px' }} className="cp-score-us">US</div>
-                      <div style={{ fontSize: '32px', fontFamily: "'Orbitron', sans-serif", fontWeight: 700, lineHeight: 1 }} className="cp-score-us">{scores[myTeam]}</div>
+                  {isCutthroat ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px', padding: '0 8px' }}>
+                      {[0,1,2,3].map(p => {
+                        const isWinner = p === winner;
+                        const isMe = p === mySeatIndex;
+                        const labelClass = isWinner ? 'cp-score-us' : (isMe ? 'cp-score-us' : 'cp-score-them');
+                        return (
+                          <div key={p} style={{ textAlign: 'center', padding: '6px 4px', border: `1px solid ${isWinner ? 'rgba(0,255,136,0.55)' : 'rgba(0,229,255,0.2)'}`, borderRadius: '6px', background: isWinner ? 'rgba(0,255,136,0.06)' : 'transparent' }}>
+                            <div className={labelClass} style={{ fontSize: '9px', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', marginBottom: '2px' }}>{getCutthroatLabel(p)}{isMe ? ' (you)' : ''}</div>
+                            <div className={labelClass} style={{ fontSize: '24px', fontFamily: "'Orbitron', sans-serif", fontWeight: 700, lineHeight: 1 }}>{playerScores[p] || 0}</div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div style={{ width: '1px', background: 'rgba(0,229,255,0.2)', margin: '4px 0' }}></div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '9px', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', marginBottom: '2px' }} className="cp-score-them">THEM</div>
-                      <div style={{ fontSize: '32px', fontFamily: "'Orbitron', sans-serif", fontWeight: 700, lineHeight: 1 }} className="cp-score-them">{scores[1 - myTeam]}</div>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginBottom: '16px' }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '9px', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', marginBottom: '2px' }} className="cp-score-us">US</div>
+                        <div style={{ fontSize: '32px', fontFamily: "'Orbitron', sans-serif", fontWeight: 700, lineHeight: 1 }} className="cp-score-us">{scores[myTeam]}</div>
+                      </div>
+                      <div style={{ width: '1px', background: 'rgba(0,229,255,0.2)', margin: '4px 0' }}></div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '9px', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', marginBottom: '2px' }} className="cp-score-them">THEM</div>
+                        <div style={{ fontSize: '32px', fontFamily: "'Orbitron', sans-serif", fontWeight: 700, lineHeight: 1 }} className="cp-score-them">{scores[1 - myTeam]}</div>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Achievement summary */}
                   {achieveItems.length > 0 && (
@@ -17477,17 +18206,33 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               {!isWin && <div style={{ marginBottom: '12px' }}></div>}
 
               {/* Scores */}
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '16px' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '9px', color: '#5dd084', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>US</div>
-                  <div style={{ fontSize: '32px', fontFamily: "'Cinzel', serif", fontWeight: 700, color: '#5dd084', lineHeight: 1 }}>{scores[myTeam]}</div>
+              {isCutthroat ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px', padding: '0 8px' }}>
+                  {[0,1,2,3].map(p => {
+                    const isWinner = p === winner;
+                    const isMe = p === mySeatIndex;
+                    const color = isWinner ? '#f6d778' : (isMe ? '#5dd084' : '#e8e4d9');
+                    return (
+                      <div key={p} style={{ textAlign: 'center', padding: '6px 4px', border: `1px solid ${isWinner ? '#c9a24a' : 'rgba(201,162,74,0.2)'}`, borderRadius: '6px', background: isWinner ? 'rgba(201,162,74,0.08)' : 'transparent' }}>
+                        <div style={{ fontSize: '9px', color, fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>{getCutthroatLabel(p)}{isMe ? ' (you)' : ''}</div>
+                        <div style={{ fontSize: '24px', fontFamily: "'Cinzel', serif", fontWeight: 700, color, lineHeight: 1 }}>{playerScores[p] || 0}</div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div style={{ width: '1px', background: 'rgba(201,162,74,0.25)', margin: '4px 0' }}></div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '9px', color: '#ef7c74', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>THEM</div>
-                  <div style={{ fontSize: '32px', fontFamily: "'Cinzel', serif", fontWeight: 700, color: '#ef7c74', lineHeight: 1 }}>{scores[1 - myTeam]}</div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '16px' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '9px', color: '#5dd084', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>US</div>
+                    <div style={{ fontSize: '32px', fontFamily: "'Cinzel', serif", fontWeight: 700, color: '#5dd084', lineHeight: 1 }}>{scores[myTeam]}</div>
+                  </div>
+                  <div style={{ width: '1px', background: 'rgba(201,162,74,0.25)', margin: '4px 0' }}></div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '9px', color: '#ef7c74', fontFamily: "'Inter', sans-serif", fontWeight: 600, letterSpacing: '1px', marginBottom: '2px' }}>THEM</div>
+                    <div style={{ fontSize: '32px', fontFamily: "'Cinzel', serif", fontWeight: 700, color: '#ef7c74', lineHeight: 1 }}>{scores[1 - myTeam]}</div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Achievement summary */}
               {achieveItems.length > 0 && (
@@ -17643,7 +18388,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           </div>
         )}
         {/* Score table */}
-        <ScoreTable roundHistory={history} mySeatIndex={mySeatIndex} />
+        <ScoreTable roundHistory={history} mySeatIndex={mySeatIndex} gameOptions={gameOptions} players={players} playerScores={playerScores} />
       </div>
 
       {/* Modals */}
