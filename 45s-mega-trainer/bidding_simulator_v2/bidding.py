@@ -86,7 +86,8 @@ def decide_bid(hand: List[Card],
                 enable_cruise: bool = True,
                 desp_they_need: int = 15,
                 desp_we_need_floor: int = 0,
-                enable_spoiler: bool = False) -> Tuple[int, Optional[Suit]]:
+                enable_spoiler: bool = False,
+                cutthroat: bool = False) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
     DATA-DERIVED, held-out-validated trigger (commit d19be47: 12k deals/cell
@@ -112,6 +113,17 @@ def decide_bid(hand: List[Card],
     desperation = they_need <= desp_they_need and we_need > desp_we_need_floor
     they_can_win_15 = they_need <= 15
     they_can_win_20 = they_need <= 20
+
+    # ── CUTTHROAT NORMALIZATION ──────────────────────────────────────────────
+    # Cutthroat is every-man-for-himself: there is no partner concept. Any
+    # partner-aware branch must be neutralized. We do this by zeroing out
+    # partner_bid and disabling spoiler (spoiler is a partner-team-aware
+    # sacrifice). Threshold values (15/20/25/30) remain identical to partner
+    # mode for v1 — Phase 2 will tighten 20/25/30 since cutthroat needs every
+    # trick yourself with no partner help.
+    if cutthroat:
+        partner_bid = 0
+        enable_spoiler = False
 
     opp_bid_15 = current_high_bid == 15 and partner_bid != 15
     opp_bid_20 = current_high_bid == 20 and partner_bid != 20

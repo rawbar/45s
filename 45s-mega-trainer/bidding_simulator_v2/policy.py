@@ -1,0 +1,68 @@
+"""
+policy.py — AI policy seam for the head-to-head evaluator.
+
+A Policy bundles the three decisions an AI makes: bid, discard, card-play.
+Policies are assigned PER TEAM (seats 0,2 vs 1,3) — never split within a team,
+because signaling is a shared convention between partners.
+
+ChampionPolicy = the current shipped AI (faithful v2.31.23 port).
+Challenger variants subclass and override exactly one method, so a measured
+win-rate delta is attributable to that one change.
+"""
+
+from typing import List, Tuple, Optional
+from game_engine import Card, Suit, GameState
+from bidding_simulator_v2.improved_ai import ImprovedAI
+from bidding_simulator_v2 import bidding
+
+
+class Policy:
+    """Base = champion behaviour. Override one method to make a challenger.
+    `ai_flags` (dict) ablates one card-play rule; unset keys stay enabled so
+    the base Policy is bit-identical to the validated faithful port.
+
+    `cutthroat` (bool, default False) switches the bidding side to
+    every-man-for-himself mode (no partner concept). Card-play is NOT yet
+    gated for cutthroat — that ships in chunk B. The flag is threaded into
+    ai_flags so improved_ai.py can read it later without further plumbing."""
+    name = "champion"
+    ai_flags: dict = None
+    cutthroat: bool = False
+
+    def __init__(self, cutthroat: bool = False, ai_flags: dict = None,
+                 name: str = None):
+        # All args default-None/False so existing zero-arg `Policy()` callers
+        # stay bit-identical. Subclasses that don't call super still work
+        # because the class attrs above provide the defaults.
+        self.cutthroat = cutthroat
+        if ai_flags is not None:
+            self.ai_flags = dict(ai_flags)
+        if name is not None:
+            self.name = name
+
+    def _effective_ai_flags(self) -> dict:
+        """ai_flags merged with the cutthroat bit so improved_ai.py can
+        branch on `flags.get('cutthroat')` once chunk B wires that up."""
+        f = dict(self.ai_flags) if self.ai_flags else {}
+        if self.cutthroat:
+            f['cutthroat'] = True
+        return f or None
+
+    def decide_bid(self, hand: List[Card], current_high_bid: int, player_index: int,
+                    dealer: int, team_scores: int, opp_scores: int,
+                    partner_bid: int) -> Tuple[int, Optional[Suit]]:
+        return bidding.decide_bid(hand, current_high_bid, player_index, dealer,
+                                  team_scores, opp_scores, partner_bid,
+                                  cutthroat=self.cutthroat)
+
+    def choose_discards(self, hand: List[Card], trump: Suit, is_bid_winner: bool,
+                        bid_amount: int) -> List[Card]:
+        return ImprovedAI(0).choose_discards(hand, trump, is_bid_winner,
+                                             bid_amount, False)
+
+    def choose_card(self, seat: int, state: GameState,
+                    play_history: List[Tuple[int, Card]]) -> Card:
+        return ImprovedAI(seat, self._effective_ai_flags()).choose_card(state, play_history)
+
+
+CHAMPION = Policy()

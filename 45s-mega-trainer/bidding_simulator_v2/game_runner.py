@@ -40,10 +40,19 @@ def _play_round(bidder: int, bid: int, trump: Suit,
                 hands: List[List[Card]], kitty: List[Card],
                 deck_for_draw: List[Card],
                 seat_policy: List[Policy],
-                pre_scores: Optional[List[int]] = None) -> Tuple[int, int]:
+                pre_scores: Optional[List[int]] = None,
+                return_per_player: bool = False):
     """Play one round; return (team0_round_points, team1_round_points).
     pre_scores = game-level [team0, team1] BEFORE this round (for score-
-    conditioned endgame play rules); None in round-only callers."""
+    conditioned endgame play rules); None in round-only callers.
+
+    When `return_per_player=True` (cutthroat runner), also returns a third
+    element: per_player_pts[4] = each seat's own raw round points before
+    bidder-make/set adjustment (= 5*tricks_won_by_seat + 5 if that seat
+    won the high-trump trick). The bidder-make/set rule is per-mode
+    (partner sums team, cutthroat tests bidder's own pts) so applying it
+    is left to the caller. partner_mode path (return_per_player=False)
+    is BIT-IDENTICAL to the prior 2-tuple return."""
     hands = [h[:] for h in hands]
     hands[bidder].extend(kitty)
     deck = deck_for_draw[:]
@@ -61,6 +70,10 @@ def _play_round(bidder: int, bid: int, trump: Suit,
                 hands[i].append(deck.pop())
 
     tricks_won = [0, 0]
+    # Per-seat trick count for cutthroat scoring. Always tracked (cheap, 4
+    # ints) so the only divergence between modes is the return shape — keeps
+    # the trick loop bit-identical to before.
+    player_tricks = [0, 0, 0, 0]
     trick_leader = bidder
     cards_played_all: List[Card] = []
     play_history: List[Tuple[int, Card]] = []
@@ -105,6 +118,7 @@ def _play_round(bidder: int, bid: int, trump: Suit,
                             known_voids, known_oot)
         winner = evaluate_trick(trick, trump, trick_leader)
         tricks_won[winner % 2] += 1
+        player_tricks[winner] += 1
         if winner % 2 != bidder % 2:
             bidder_lost = True
         trick_leader = winner
@@ -122,6 +136,15 @@ def _play_round(bidder: int, bid: int, trump: Suit,
     else:
         out[bteam] = -bid          # set
     out[dteam] = pts[dteam]
+
+    if return_per_player:
+        # Raw per-seat round pts: 5*tricks + 5 high-trump bonus to that seat.
+        # Bidder-make/set is per-mode — cutthroat caller applies it (banks
+        # -bid if bidder's OWN pts < bid; defenders always bank their pts).
+        per_player = [player_tricks[p] * 5 for p in range(4)]
+        if high_trump_player >= 0:
+            per_player[high_trump_player] += 5
+        return out[0], out[1], per_player
     return out[0], out[1]
 
 

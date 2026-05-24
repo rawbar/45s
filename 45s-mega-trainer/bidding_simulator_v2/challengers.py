@@ -175,7 +175,13 @@ REGISTRY = {
     "no-desperation":     NoDesperation(),
     "no-cruise":          NoCruise(),
     "no-desp-no-cruise":  NoDespNoCruise(),
+    # CUTTHROAT baseline (chunk A): bidding side gated for FFA (no partner
+    # concept — partner_bid forced to 0, spoiler off). Card play not yet
+    # cutthroat-gated; that ships chunk B. Self-test = 4 of these against
+    # each other should win ~25% each.
+    "champion-cutthroat": Policy(cutthroat=True),
 }
+CHAMPION_CUTTHROAT = REGISTRY["champion-cutthroat"]
 for _r in CARD_RULES:
     REGISTRY[f"off:{_r}"] = _card_off(_r)
 
