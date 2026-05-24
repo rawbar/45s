@@ -182,6 +182,18 @@ REGISTRY = {
     "champion-cutthroat": Policy(cutthroat=True),
 }
 CHAMPION_CUTTHROAT = REGISTRY["champion-cutthroat"]
+
+# BASELINE-PARTNER-IN-CUTTHROAT (chunk B measurement policy): partner-mode
+# champion (cutthroat=False — partner rules ON, partner_bid honored, spoiler
+# default off) placed in 1 cutthroat seat vs 3x champion-cutthroat (stripped).
+# This is THE delta measurement: does stripping the partner rules from the
+# cutthroat AI help, hurt, or wash? Baseline win% < 25% → stripping is an
+# improvement (the stripped version beats partner-AI in cutthroat).
+# Baseline win% > 25% → stripping HURT and we need to investigate.
+BASELINE_PARTNER_IN_CUTTHROAT = Policy(cutthroat=False)
+BASELINE_PARTNER_IN_CUTTHROAT.name = "baseline-partner-in-cutthroat"
+REGISTRY["baseline-partner-in-cutthroat"] = BASELINE_PARTNER_IN_CUTTHROAT
+
 for _r in CARD_RULES:
     REGISTRY[f"off:{_r}"] = _card_off(_r)
 

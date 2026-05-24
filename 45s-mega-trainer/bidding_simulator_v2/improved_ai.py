@@ -444,6 +444,8 @@ class ImprovedAI:
                     wc = trick[i]
                     cw = (leader + i) % 4
             partner_winning_now = (cw % 2) == (player % 2)
+            if self.flags.get('cutthroat'):
+                partner_winning_now = False  # no partner concept
 
         # ── DEFENDER CASH PROVABLY-BOSS A♥ (FIX v2.31.43) ────────────────────
         # is_card_boss only proves boss when EVERY higher trump is in
@@ -462,9 +464,11 @@ class ImprovedAI:
         # the only change is cashing it EARLY (tempo + a real shot at a
         # second defensive trick via the lead) instead of wasting it T5.
         # Flag-gated, default-ON; off:defender_cash_boss_ah reverts.
+        _is_defender_now = ((player != bid_winner) if self.flags.get('cutthroat')
+                            else (player % 2) != (bid_winner % 2))
         if (F('defender_cash_boss_ah') and not is_leading
                 and not partner_winning_now
-                and (player % 2) != (bid_winner % 2)):
+                and _is_defender_now):
             _ah = next((c for c in playable
                         if c.rank == 'A' and c.suit == HEARTS), None)
             if _ah is not None and trick_winner(
@@ -514,11 +518,17 @@ class ImprovedAI:
                     # the BIDDING TEAM is already trump-void, draining is
                     # moot — lead the boss to win now AND keep the lead for
                     # the next trick (shot at +1 trick via lead control).
+                    _eg_is_def = ((player != bid_winner)
+                                  if self.flags.get('cutthroat')
+                                  else (player % 2) != (bid_winner % 2))
                     if (F('endgame_lead_boss')   # SHIPPED v2.31.30 (strict): default-ON
-                            and (player % 2) != (bid_winner % 2)
+                            and _eg_is_def
                             and trick_num >= 4):
-                        _bteam = bid_winner % 2
-                        _opps = [s for s in range(4) if s % 2 == _bteam]
+                        if self.flags.get('cutthroat'):
+                            _opps = [s for s in range(4) if s != player]
+                        else:
+                            _bteam = bid_winner % 2
+                            _opps = [s for s in range(4) if s % 2 == _bteam]
                         # champion = STRICT (deduction-only); est is opt-in variant
                         _strict = not self.flags.get('endgame_lead_boss_est', False)
                         def _elv(s):
@@ -528,7 +538,7 @@ class ImprovedAI:
                         if all(_elv(s) for s in _opps):
                             return card   # lead the boss now (endgame)
                     # defender → don't lead boss, fall to defender-leading
-                    if (player % 2) != (bid_winner % 2):
+                    if _eg_is_def:
                         break
                     # partner-of-bidder boss-save (bidder has trump, opps out)
                     p_opp1 = (bid_winner + 1) % 4
@@ -538,7 +548,8 @@ class ImprovedAI:
                     bidder_void = known_voids[bid_winner].get('trump') is True
                     opps_out = est(p_opp1) == 0 and est(p_opp2) == 0
                     offs = [c for c in playable if _tr(c, trump) < 0]
-                    if (F('bidder_boss_partner_save')
+                    if (not self.flags.get('cutthroat')
+                            and F('bidder_boss_partner_save')
                             and is_partner_of_bidder and not bidder_void
                             and bidder_trump_est > 0 and opps_out and offs):
                         return min(offs, key=get_offsuit_rank)
@@ -547,7 +558,8 @@ class ImprovedAI:
                     opp1 = (bid_winner + 1) % 4
                     opp2 = (bid_winner + 3) % 4
                     my_tc = len([c for c in playable if _tr(c, trump) >= 0])
-                    if (F('bidder_boss_weak_partner_save')
+                    if (not self.flags.get('cutthroat')
+                            and F('bidder_boss_weak_partner_save')
                             and cards_drawn and my_tc <= 2 and cards_drawn[partner_idx] >= 4
                             and cards_drawn[opp1] <= 3 and cards_drawn[opp2] <= 3):
                         offs2 = [c for c in playable if _tr(c, trump) < 0]
@@ -559,7 +571,9 @@ class ImprovedAI:
                     if trick_winner(test, trump, leader) == player:
                         # PARTNER BOSS-SAVE (bidder's partner, enemy trump low)
                         is_partner = player == (bid_winner + 2) % 4
-                        if F('following_partner_boss_save') and is_partner and trick_num < 5:
+                        if (not self.flags.get('cutthroat')
+                                and F('following_partner_boss_save')
+                                and is_partner and trick_num < 5):
                             o1 = (bid_winner + 1) % 4
                             o2 = (bid_winner + 3) % 4
                             if est(o1) + est(o2) <= 1:
@@ -585,9 +599,12 @@ class ImprovedAI:
                         # side must overspend trump to take it (or the
                         # offsuit follow wins anyway). Extends the ≥2-trump
                         # offsuit-boss-save to the only/all-high-trump case.
+                        _hd_is_def = ((player != bid_winner)
+                                      if self.flags.get('cutthroat')
+                                      else (player % 2) != (bid_winner % 2))
                         if (F('holdup_2nd_def')   # SHIPPED v2.31.28 (hd:hi98): default-ON
                                 and len(trick) == 1 and led_offsuit
-                                and (player % 2) != (bid_winner % 2)):
+                                and _hd_is_def):
                             _hd = self.flags.get
                             _trk = [_tr(c, trump) for c in playable
                                     if _tr(c, trump) >= 0]
@@ -598,13 +615,18 @@ class ImprovedAI:
                             if _hd('holdup_force'):
                                 _aft = [(leader + p) % 4
                                         for p in range(len(trick) + 1, 4)]
-                                _force = any((s % 2) == (bid_winner % 2)
-                                             and est(s) > 0 for s in _aft)
+                                if self.flags.get('cutthroat'):
+                                    _force = any(s == bid_winner and est(s) > 0
+                                                 for s in _aft)
+                                else:
+                                    _force = any((s % 2) == (bid_winner % 2)
+                                                 and est(s) > 0 for s in _aft)
                             if _nt and _allhi and _force:
                                 break
                         # 2nd-man boss renege on low trump lead
                         led_rank_chk = _tr(trick[0], trump)
-                        if (F('following_2nd_man_low_trump_renege')
+                        if (not self.flags.get('cutthroat')
+                                and F('following_2nd_man_low_trump_renege')
                                 and len(trick) == 1 and 0 <= led_rank_chk < 90):
                             third_idx = (leader + 2) % 4
                             partner_idx = (player + 2) % 4
@@ -642,7 +664,8 @@ class ImprovedAI:
             # "all over-trumps for partner_floor are accounted for".
             partner_idx = (player + 2) % 4
             partner_floor = known_voids[partner_idx].get('min_trump_rank', 0)
-            if (Fon('bidder_partner_floor_lead')
+            if (not self.flags.get('cutthroat')
+                    and Fon('bidder_partner_floor_lead')
                     and trumps and len(trumps) >= 2
                     and partner_floor >= 98):
                 my_ids = {cid(c) for c in hand}
@@ -673,8 +696,11 @@ class ImprovedAI:
                         return max(non_trumps, key=get_offsuit_rank)
             if (F('bidder_endgame_trump_timing')
                     and trick_num >= 4 and len(trumps) == 1 and len(non_trumps) == 1):
-                opp_idx = [i for i in range(4)
-                           if i != player and i != (player + 2) % 4]
+                if self.flags.get('cutthroat'):
+                    opp_idx = [i for i in range(4) if i != player]
+                else:
+                    opp_idx = [i for i in range(4)
+                               if i != player and i != (player + 2) % 4]
                 opp_likely = False
                 for oi in opp_idx:
                     oi_trump_played = len([c for (pi, c) in play_history
@@ -729,7 +755,8 @@ class ImprovedAI:
             opp2 = (player + 3) % 4
             partner_trump_est = est(partner_idx)
             opps_have_trump = est(opp1) > 0 or est(opp2) > 0
-            if (F('defender_partner_trump_load')
+            if (not self.flags.get('cutthroat')
+                    and F('defender_partner_trump_load')
                     and partner_trump_est >= 3 and trumps and non_trumps and opps_have_trump):
                 return min(trumps, key=lambda c: _tr(c, trump))
             if non_trumps:
@@ -753,11 +780,15 @@ class ImprovedAI:
             winning_card = wc
             my_team = player % 2
             partner_winning = (cw % 2) == my_team
+            if self.flags.get('cutthroat'):
+                partner_winning = False  # no partner concept; fall through to opp-winning branch
 
             bidder_led = leader == bid_winner
             signal = (bidder_led and
                       is_bidder_signaling(led_card, trump, cards_played, trick_num))
-            if F('signal_3rd_man_high') and signal and my_position == 2 and my_trumps:
+            if (not self.flags.get('cutthroat')
+                    and F('signal_3rd_man_high')
+                    and signal and my_position == 2 and my_trumps):
                 high_trump = max(my_trumps, key=lambda c: _tr(c, trump))
                 if trick_winner(_pad4(trick + [high_trump], trump if F('safe_pad4') else None), trump, leader) == player:
                     return high_trump
@@ -937,7 +968,8 @@ class ImprovedAI:
                 # preserved. The min_trump_rank floor data layer is what
                 # makes the safety check on "any over-trumps remaining are
                 # in 4th-man's hand-band" sound.
-                is_defender = (player % 2) != (bid_winner % 2)
+                is_defender = ((player != bid_winner) if self.flags.get('cutthroat')
+                               else (player % 2) != (bid_winner % 2))
                 if Fon('burnforce_3rd') and is_defender and my_trumps:
                     fourth_seat = (leader + 3) % 4
                     fourth_void = (known_voids[fourth_seat].get('trump') is True)
@@ -984,7 +1016,8 @@ class ImprovedAI:
                 # is 4th and partner can't capitalize — you feed a high trump
                 # into the bidder's guaranteed overtrump for no payoff. Only
                 # sacrifice when partner is trump-rich; else play low.
-                if Fon('following_3rd_man_force_extract') and my_trumps:
+                if (not self.flags.get('cutthroat')
+                        and Fon('following_3rd_man_force_extract') and my_trumps):
                     fourth_seat = (leader + 3) % 4
                     if (fourth_seat == bid_winner
                             and (player % 2) != (bid_winner % 2)):
@@ -1022,9 +1055,12 @@ class ImprovedAI:
                 # trick and take the lead. Far tighter than v2.31.25 (which
                 # fired on ANY 2nd-man void, ANY trick, ANY led card → net-
                 # negative because early low-offsuit leads want 2nd-man-low).
+                _drbe_is_def = ((player != bid_winner)
+                                if self.flags.get('cutthroat')
+                                else (player % 2) != (bid_winner % 2))
                 if (F('def_ruff_be_eg') and my_trumps
                         and leader == bid_winner
-                        and (player % 2) != (bid_winner % 2)
+                        and _drbe_is_def
                         and trick_num >= 4
                         and not _is_trump(trick[0], trump)
                         and trick[0].rank == 'A'):
@@ -1040,11 +1076,14 @@ class ImprovedAI:
                 # win the trick. User-derived from a real-game screenshot
                 # where N (defender bidder?) led 5♠ offsuit and E (2nd,
                 # defender) played low spade instead of beating it.
+                _ob_is_def = ((player != bid_winner)
+                              if self.flags.get('cutthroat')
+                              else (player % 2) != (bid_winner % 2))
                 if (F('off2_beat_off_bidlead')
                         and my_position == 1
                         and trick
                         and not _is_trump(trick[0], trump)
-                        and (player % 2) != (bid_winner % 2)
+                        and _ob_is_def
                         and leader == bid_winner):
                     _ls = trick[0].suit
                     _wr = get_offsuit_rank(trick[0])
@@ -1060,11 +1099,14 @@ class ImprovedAI:
                 # is bidder's partner (3rd is then the bidder who will
                 # over-beat / cash). Memory rule: try broader formulation
                 # before declaring no signal.
+                _oba_is_def = ((player != bid_winner)
+                               if self.flags.get('cutthroat')
+                               else (player % 2) != (bid_winner % 2))
                 if (Fon('off2_beat_off_anyopp')
                         and my_position == 1
                         and trick
                         and not _is_trump(trick[0], trump)
-                        and (player % 2) != (bid_winner % 2)):
+                        and _oba_is_def):
                     _ls = trick[0].suit
                     _wr = get_offsuit_rank(trick[0])
                     _beaters = [c for c in playable

@@ -87,6 +87,10 @@ def decide_bid(hand: List[Card],
                 desp_they_need: int = 15,
                 desp_we_need_floor: int = 0,
                 enable_spoiler: bool = False,
+                enable_upbid15: bool = True,
+                enable_loose_open: bool = True,
+                loose_open_pass_prob: float = 0.0,
+                desp_overbid25_pass_prob: float = 0.0,
                 cutthroat: bool = False) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
@@ -124,6 +128,15 @@ def decide_bid(hand: List[Card],
     if cutthroat:
         partner_bid = 0
         enable_spoiler = False
+        # Both rules were calibrated against the partner-mode evaluator and
+        # are aggressive overbids that depend on partner-share-the-load
+        # economics. In cutthroat (no partner) they are net-negative — force
+        # off regardless of caller request. (Both kwargs are currently no-ops
+        # in this file's logic — the rules live in index.html v2.31.36 /
+        # v2.31.56 and were never back-ported — but forced-off here so when
+        # they ARE ported, cutthroat is correct out of the box.)
+        enable_upbid15 = False
+        enable_loose_open = False
 
     opp_bid_15 = current_high_bid == 15 and partner_bid != 15
     opp_bid_20 = current_high_bid == 20 and partner_bid != 20
@@ -193,7 +206,11 @@ def decide_bid(hand: List[Card],
                                     dealer, team_scores, opp_scores,
                                     partner_bid, enable_desperation,
                                     enable_cruise, desp_they_need,
-                                    desp_we_need_floor, enable_spoiler=False)
+                                    desp_we_need_floor, enable_spoiler=False,
+                                    enable_upbid15=enable_upbid15,
+                                    enable_loose_open=enable_loose_open,
+                                    loose_open_pass_prob=loose_open_pass_prob,
+                                    desp_overbid25_pass_prob=desp_overbid25_pass_prob)
             if champ_b < spoil_to:          # champion can't take it legit
                 return spoil_to, suit       # sacrifice to deny their win
 
