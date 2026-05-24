@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.70';
+const VERSION = '2.31.71';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6616,6 +6616,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.71', date: 'May 2026', changes: ['Cutthroat promoted out of the Options menu and into a top-level Partners-vs-Cutthroat segmented selector on the Create Game screen (and in Preferences as your default for new games). Cutthroat is labeled ALPHA because the scoring works but the AI does not yet know cutthroat-specific strategy — it will sometimes fail to coordinate to set the leader and may underplay free-five-point grabs. The first time you start a cutthroat game in a session you now see a one-shot disclaimer modal explaining the alpha state; dismiss with OK. Two leftover stat writes (the Follow-A♥ per-card increment and the server-side disconnect counter) are now also gated off in cutthroat so the variant stays zero-write to partner-mode counters. Existing prefs that had Cutthroat set as a house rule (from v2.31.69 / v2.31.70 sessions) migrate forward to the new gameVariant pref on prefs load.'] },
     { version: '2.31.70', date: 'May 2026', changes: ['Cutthroat isolation: cutthroat games no longer write to the partner-mode stats / badges / leaderboard, and their bid log and play decision log are forked to dedicated `bidLogCutthroat` / `decisionLogCutthroat` Firebase nodes. This means we can now play cutthroat without contaminating the partner-mode AI training corpus or skewing partner-mode badge / leaderboard counters. Stats / badges / leaderboard will stay off in cutthroat until the variant matures and gets its own dedicated counters.'] },
     { version: '2.31.69', date: 'May 2026', changes: ['Cutthroat variant (beta, test only): when the new Cutthroat house rule is enabled at game creation, scoring switches from teams to four solo players. The top-of-game header shows four small score plaques (one per seat, abbreviated by name, your own tinted gold) instead of US/THEM. The round-end modal shows a row per player with each individual\'s round points (bidder shown red in parentheses if set, e.g. (15)). The game-over modal shows a 2x2 score grid with the winning player\'s tile gold-bordered. First player to 120 wins (no partner totals counted). Caveat: the AI still uses partner-mode play logic in cutthroat — it does NOT yet know that everyone else is its opponent, so it will not always set the leader and may underplay nickel-grabs. Cutthroat-specific AI policy is Phase 2.'] },
     { version: '2.31.68', date: 'May 2026', changes: ['Fix: when you play the last card of trick 5 (i.e., you are the 4th to play on the final trick of a round), your card no longer remains visible in your hand after moving to the table. Root cause: when every hand becomes empty, Firebase strips the whole hands key from the game-state snapshot, and the listener\'s `if (gameState.hands)` truthiness guard then skipped the local hand clear, so your just-played card stayed in your hand state even though Firebase had it removed. Now: when the listener sees the hands key missing AND the phase is round-end or game-over, it explicitly clears the local hands to four empty arrays.'] },
@@ -8665,7 +8666,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
   const [optFiveCardDraw, setOptFiveCardDraw] = useState(false);
   const [optFollowAHearts, setOptFollowAHearts] = useState(false);
   const [optThirtyFor60, setOptThirtyFor60] = useState(false);
-  const [optCutthroat, setOptCutthroat] = useState(false);
+  // v2.31.71: cutthroat promoted out of Options and into a top-level variant selector
+  const [gameVariant, setGameVariant] = useState('partners'); // 'partners' | 'cutthroat'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
@@ -8702,9 +8704,11 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
   // Preferences state (persistent per-user: trick speed + house rules)
   const [showPreferences, setShowPreferences] = useState(false);
   const [prefTrickSpeed, setPrefTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'medium');
-  const [prefHouseRules, setPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false, cutthroat: false });
+  const [prefHouseRules, setPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false });
+  const [prefGameVariant, setPrefGameVariant] = useState('partners');
   const [editTrickSpeed, setEditTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'medium');
-  const [editPrefHouseRules, setEditPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false, cutthroat: false });
+  const [editPrefHouseRules, setEditPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false });
+  const [editPrefGameVariant, setEditPrefGameVariant] = useState('partners');
 
   // Irish lobby tab state ('games' | 'leaderboard')
   const [lobbyTab, setLobbyTab] = useState('games');
@@ -8944,11 +8948,17 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       const prefs = snap.val() || {};
       const speed = prefs.trickSpeed || 'medium';
       const hr = prefs.houseRules || {};
-      const rules = { fiveCardDraw: !!hr.fiveCardDraw, followAHearts: !!hr.followAHearts, thirtyFor60: !!hr.thirtyFor60, cutthroat: !!hr.cutthroat };
+      const rules = { fiveCardDraw: !!hr.fiveCardDraw, followAHearts: !!hr.followAHearts, thirtyFor60: !!hr.thirtyFor60 };
+      // v2.31.71: migrate legacy `houseRules.cutthroat: true` (from v2.31.69/70) → gameVariant pref.
+      // Top-level `gameVariant` wins if explicitly set; otherwise fall back to the legacy flag.
+      let variant = prefs.gameVariant;
+      if (!variant) variant = hr.cutthroat ? 'cutthroat' : 'partners';
       setPrefTrickSpeed(speed);
       setPrefHouseRules(rules);
+      setPrefGameVariant(variant);
       setEditTrickSpeed(speed);
       setEditPrefHouseRules(rules);
+      setEditPrefGameVariant(variant);
       localStorage.setItem('45s_trickSpeed', speed);
     });
   }, [userId]);
@@ -8959,7 +8969,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       setOptFiveCardDraw(prefHouseRules.fiveCardDraw);
       setOptFollowAHearts(prefHouseRules.followAHearts);
       setOptThirtyFor60(prefHouseRules.thirtyFor60);
-      setOptCutthroat(prefHouseRules.cutthroat);
+      setGameVariant(prefGameVariant);
     }
   }, [showCreateGame]);
 
@@ -9127,7 +9137,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
         creatorId: userId,
         createdAt: now,
         lastActivity: now,
-        options: { fiveCardDraw: optFiveCardDraw, followAHearts: optFollowAHearts, thirtyFor60: optThirtyFor60, cutthroat: optCutthroat },
+        options: { fiveCardDraw: optFiveCardDraw, followAHearts: optFollowAHearts, thirtyFor60: optThirtyFor60, cutthroat: gameVariant === 'cutthroat' },
         players: {}
       });
 
@@ -9197,11 +9207,13 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
     try {
       await database.ref(`users/${userId}/prefs`).set({
         trickSpeed: editTrickSpeed,
-        houseRules: { fiveCardDraw: editPrefHouseRules.fiveCardDraw, followAHearts: editPrefHouseRules.followAHearts, thirtyFor60: editPrefHouseRules.thirtyFor60, cutthroat: editPrefHouseRules.cutthroat }
+        gameVariant: editPrefGameVariant,
+        houseRules: { fiveCardDraw: editPrefHouseRules.fiveCardDraw, followAHearts: editPrefHouseRules.followAHearts, thirtyFor60: editPrefHouseRules.thirtyFor60 }
       });
       localStorage.setItem('45s_trickSpeed', editTrickSpeed);
       setPrefTrickSpeed(editTrickSpeed);
       setPrefHouseRules({ ...editPrefHouseRules });
+      setPrefGameVariant(editPrefGameVariant);
       setShowPreferences(false);
     } catch (err) {
       alert('Failed to save preferences: ' + err.message);
@@ -9449,7 +9461,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           <button
             className={isCyberpunk ? 'cp-gear-btn' : 'irlb-gear-btn'}
             title="Preferences"
-            onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
+            onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setEditPrefGameVariant(prefGameVariant); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
           >⚙</button>
         </div>
 
@@ -9614,6 +9626,21 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
             >
               <div style={{ fontFamily: "'Orbitron',sans-serif", fontWeight: 700, fontSize: '16px', color: '#00e5ff', textShadow: '0 0 10px rgba(0,229,255,0.5)', letterSpacing: '2px', marginBottom: '4px' }}>Create Game</div>
               <div style={{ height: '1px', background: 'linear-gradient(90deg, #00e5ff 0%, #ff00cc 50%, transparent 100%)', margin: '8px 0 16px' }} />
+              {/* v2.31.71: Variant selector (Partners vs Cutthroat alpha) */}
+              <label style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '10px', color: 'rgba(0,229,255,0.5)', letterSpacing: '1.5px', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Variant</label>
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+                {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
+                  const selected = gameVariant === val;
+                  return (
+                    <div key={val} onClick={() => setGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '3px', border: selected ? '1px solid #ff8c00' : '1px solid rgba(0,229,255,0.2)', background: selected ? 'rgba(255,140,0,0.1)' : 'rgba(0,229,255,0.03)', boxShadow: selected ? '0 0 12px rgba(255,140,0,0.18)' : 'none', position: 'relative', transition: 'all 0.15s' }}>
+                      <span style={{ fontFamily: "'Orbitron',sans-serif", fontWeight: 700, fontSize: '12px', letterSpacing: '1.5px', color: selected ? '#ff8c00' : 'rgba(0,229,255,0.6)', textShadow: selected ? '0 0 8px rgba(255,140,0,0.6)' : 'none' }}>{label}</span>
+                      {isAlpha && (
+                        <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '2px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
               <label style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '10px', color: 'rgba(0,229,255,0.5)', letterSpacing: '1.5px', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Game Name</label>
               <input
                 type="text"
@@ -9632,7 +9659,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     { key: 'optFiveCardDraw', val: optFiveCardDraw, setter: setOptFiveCardDraw, label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' },
                     { key: 'optFollowAHearts', val: optFollowAHearts, setter: setOptFollowAHearts, label: 'Follow A♥', desc: 'When A♥ is led, void in trump must play a heart if holding one.' },
                     { key: 'optThirtyFor60', val: optThirtyFor60, setter: setOptThirtyFor60, label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' },
-                    { key: 'optCutthroat', val: optCutthroat, setter: setOptCutthroat, label: 'Cutthroat', desc: 'Every player for themselves — 4 individual scores, no partners. First to 120 wins.' },
                   ].map(({ key, val, setter, label, desc }) => (
                     <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '13px', marginBottom: '10px', color: '#c0ddf0' }}>
                       <input type="checkbox" checked={val} onChange={e => setter(e.target.checked)} style={{ marginTop: '3px', width: '16px', height: '16px', cursor: 'pointer', accentColor: '#ff8c00' }} />
@@ -9651,9 +9677,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   onClick={() => setShowGameOptions(v => !v)}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(0,229,255,0.3)', borderRadius: '3px', background: showGameOptions ? 'rgba(0,229,255,0.1)' : 'rgba(0,229,255,0.05)', color: '#00e5ff', fontFamily: "'Share Tech Mono',monospace", fontSize: '11px', letterSpacing: '1px', cursor: 'pointer' }}
-                >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60 || optCutthroat) ? 'Options ✓' : 'Options'}</button>
+                >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}</button>
                 <button
-                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setOptCutthroat(prefHouseRules.cutthroat); }}
+                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setGameVariant(prefGameVariant); }}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(0,229,255,0.2)', borderRadius: '3px', background: 'rgba(0,229,255,0.05)', color: 'rgba(0,229,255,0.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '11px', cursor: 'pointer' }}
                 >Cancel</button>
@@ -9671,6 +9697,21 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
             >
               <div style={{ fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: '16px', color: '#f6d778', marginBottom: '4px', letterSpacing: '1px' }}>✦ Create Game ✦</div>
               <div style={{ height: '1px', background: 'linear-gradient(90deg,transparent,#c9a227 30%,#f6d778 50%,#c9a227 70%,transparent)', margin: '8px 0 16px' }} />
+              {/* v2.31.71: Variant selector (Partners vs Cutthroat alpha) */}
+              <div style={{ fontFamily: "'Cinzel',serif", fontSize: '11px', letterSpacing: '1px', color: 'rgba(201,162,39,0.6)', textTransform: 'uppercase', marginBottom: '6px' }}>Variant</div>
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+                {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
+                  const selected = gameVariant === val;
+                  return (
+                    <div key={val} onClick={() => setGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '10px', border: selected ? '1px solid #f6d778' : '1px solid rgba(201,162,39,0.35)', background: selected ? 'linear-gradient(135deg,#7a5c10,#c9a227 50%,#7a5c10)' : 'rgba(201,162,39,0.05)', boxShadow: selected ? '0 0 12px rgba(201,162,39,0.35)' : 'none' }}>
+                      <span style={{ fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: '13px', letterSpacing: '1px', color: selected ? '#0d0a04' : '#c9a227' }}>{label}</span>
+                      {isAlpha && (
+                        <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '3px', background: selected ? 'rgba(13,10,4,0.25)' : 'rgba(201,162,39,0.2)', border: selected ? '1px solid rgba(13,10,4,0.4)' : '1px solid rgba(201,162,39,0.5)', color: selected ? '#0d0a04' : '#f6d778', fontFamily: "'Cinzel',serif", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
               <input
                 type="text"
                 value={newGameName}
@@ -9688,7 +9729,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     { key: 'optFiveCardDraw', val: optFiveCardDraw, setter: setOptFiveCardDraw, label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' },
                     { key: 'optFollowAHearts', val: optFollowAHearts, setter: setOptFollowAHearts, label: 'Follow A♥', desc: 'When A♥ is led, void in trump must play a heart if holding one.' },
                     { key: 'optThirtyFor60', val: optThirtyFor60, setter: setOptThirtyFor60, label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' },
-                    { key: 'optCutthroat', val: optCutthroat, setter: setOptCutthroat, label: 'Cutthroat', desc: 'Every player for themselves — 4 individual scores, no partners. First to 120 wins.' },
                   ].map(({ key, val, setter, label, desc }) => (
                     <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '13px', marginBottom: '10px', color: '#f5eedc' }}>
                       <input type="checkbox" checked={val} onChange={e => setter(e.target.checked)} style={{ marginTop: '3px', width: '16px', height: '16px', cursor: 'pointer', accentColor: '#c9a227' }} />
@@ -9707,9 +9747,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   onClick={() => setShowGameOptions(v => !v)}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,39,0.4)', borderRadius: '10px', background: showGameOptions ? 'rgba(201,162,39,0.15)' : 'transparent', color: '#c9a227', fontFamily: "'Cinzel',serif", fontSize: '11px', letterSpacing: '1px', cursor: 'pointer' }}
-                >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60 || optCutthroat) ? 'Options ✓' : 'Options'}</button>
+                >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}</button>
                 <button
-                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setOptCutthroat(prefHouseRules.cutthroat); }}
+                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setGameVariant(prefGameVariant); }}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,39,0.2)', borderRadius: '10px', background: 'transparent', color: 'rgba(245,238,220,0.5)', fontFamily: "'Cinzel',serif", fontSize: '11px', cursor: 'pointer' }}
                 >Cancel</button>
@@ -9725,7 +9765,22 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               onClick={e => e.stopPropagation()}
               style={{ background: 'linear-gradient(180deg, #2a1608 0%, #180b03 100%)', border: '1px solid rgba(201,162,74,0.35)', borderRadius: '16px 16px 0 0', padding: '24px 20px 32px', width: '100%', maxWidth: '500px', animation: 'slideUp 0.25s ease-out' }}
             >
-              <div style={{ fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '16px', color: '#f6d778', marginBottom: '16px', letterSpacing: '1px' }}>Create Game</div>
+              <div style={{ fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '16px', color: '#f6d778', marginBottom: '12px', letterSpacing: '1px' }}>Create Game</div>
+              {/* v2.31.71: Variant selector (Partners vs Cutthroat alpha) */}
+              <div style={{ fontFamily: 'Cinzel, serif', fontSize: '11px', letterSpacing: '1px', color: 'rgba(201,162,74,0.6)', textTransform: 'uppercase', marginBottom: '6px' }}>Variant</div>
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+                {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
+                  const selected = gameVariant === val;
+                  return (
+                    <div key={val} onClick={() => setGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '10px', border: selected ? '1px solid #f6d778' : '1px solid rgba(201,162,74,0.3)', background: selected ? 'linear-gradient(180deg, #f6d778 0%, #c9a24a 45%, #9a7630 100%)' : 'rgba(255,255,255,0.04)', boxShadow: selected ? '0 0 12px rgba(201,162,74,0.35)' : 'none' }}>
+                      <span style={{ fontFamily: 'Cinzel, serif', fontWeight: 700, fontSize: '13px', letterSpacing: '1px', color: selected ? '#1a0e03' : '#c9a24a' }}>{label}</span>
+                      {isAlpha && (
+                        <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '3px', background: selected ? 'rgba(26,14,3,0.25)' : 'rgba(201,162,74,0.2)', border: selected ? '1px solid rgba(26,14,3,0.4)' : '1px solid rgba(201,162,74,0.5)', color: selected ? '#1a0e03' : '#f6d778', fontFamily: 'Cinzel, serif', letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
               <input
                 type="text"
                 value={newGameName}
@@ -9743,7 +9798,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     { key: 'optFiveCardDraw', val: optFiveCardDraw, setter: setOptFiveCardDraw, label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' },
                     { key: 'optFollowAHearts', val: optFollowAHearts, setter: setOptFollowAHearts, label: 'Follow A♥', desc: 'When A♥ is led, void in trump must play a heart if holding one.' },
                     { key: 'optThirtyFor60', val: optThirtyFor60, setter: setOptThirtyFor60, label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' },
-                    { key: 'optCutthroat', val: optCutthroat, setter: setOptCutthroat, label: 'Cutthroat', desc: 'Every player for themselves — 4 individual scores, no partners. First to 120 wins.' },
                   ].map(({ key, val, setter, label, desc }) => (
                     <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '13px', marginBottom: '10px', color: '#e8e4d9' }}>
                       <input type="checkbox" checked={val} onChange={e => setter(e.target.checked)} style={{ marginTop: '3px', width: '16px', height: '16px', cursor: 'pointer', accentColor: '#c9a24a' }} />
@@ -9763,9 +9817,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   onClick={() => setShowGameOptions(v => !v)}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,74,0.4)', borderRadius: '10px', background: showGameOptions ? 'rgba(201,162,74,0.15)' : 'transparent', color: '#c9a24a', fontFamily: 'Cinzel, serif', fontSize: '11px', letterSpacing: '1px', cursor: 'pointer' }}
-                >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60 || optCutthroat) ? 'Options ✓' : 'Options'}</button>
+                >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}</button>
                 <button
-                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setOptCutthroat(prefHouseRules.cutthroat); }}
+                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setGameVariant(prefGameVariant); }}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,74,0.2)', borderRadius: '10px', background: 'transparent', color: 'rgba(232,228,217,0.5)', fontFamily: 'Cinzel, serif', fontSize: '11px', cursor: 'pointer' }}
                 >Cancel</button>
@@ -10465,11 +10519,29 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     ))}
                   </div>
                 </div>
+                {/* v2.31.71: Default Variant */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div className="cp-pref-section-title">Default Variant</div>
+                  <div style={{ fontSize: '11px', color: '#3a5f78', fontFamily: "'Share Tech Mono', monospace", marginBottom: '12px' }}>Pre-selected when you create a new game</div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
+                      const selected = editPrefGameVariant === val;
+                      return (
+                        <div key={val} onClick={() => setEditPrefGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '6px', border: selected ? '2px solid #ff8c00' : '1px solid rgba(0,229,255,0.2)', background: selected ? 'rgba(255,140,0,0.1)' : 'rgba(0,229,255,0.03)' }}>
+                          <span style={{ fontFamily: "'Share Tech Mono', monospace", fontWeight: 700, fontSize: '13px', color: selected ? '#ff8c00' : '#3a5f78' }}>{label}</span>
+                          {isAlpha && (
+                            <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '2px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
                 {/* House Rules */}
                 <div style={{ marginBottom: '20px' }}>
                   <div className="cp-pref-section-title">House Rules</div>
                   <div style={{ fontSize: '11px', color: '#3a5f78', fontFamily: "'Share Tech Mono', monospace", marginBottom: '12px' }}>Default for new games you create</div>
-                  {[{ key: 'fiveCardDraw', label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' }, { key: 'followAHearts', label: 'Follow A♥', desc: "When A♥ is led, void in trump must play a heart if holding one." }, { key: 'thirtyFor60', label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' }, { key: 'cutthroat', label: 'Cutthroat', desc: 'Every player for themselves — 4 individual scores, no partners. First to 120 wins.' }].map(({ key, label, desc }) => (
+                  {[{ key: 'fiveCardDraw', label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' }, { key: 'followAHearts', label: 'Follow A♥', desc: "When A♥ is led, void in trump must play a heart if holding one." }, { key: 'thirtyFor60', label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' }].map(({ key, label, desc }) => (
                     <div key={key} className="cp-checkbox-row" onClick={() => setEditPrefHouseRules(prev => ({ ...prev, [key]: !prev[key] }))}>
                       <div style={{ width: '18px', height: '18px', borderRadius: '3px', border: editPrefHouseRules[key] ? '2px solid #ff8c00' : '2px solid rgba(0,229,255,0.25)', background: editPrefHouseRules[key] ? 'rgba(255,140,0,0.15)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                         {editPrefHouseRules[key] && <span style={{ color: '#ff8c00', fontSize: '12px', fontWeight: 700, lineHeight: 1 }}>✓</span>}
@@ -10539,11 +10611,30 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                 </div>
               </div>
 
+              {/* v2.31.71: Default Variant */}
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1.5px', color: 'rgba(201,162,74,0.6)', textTransform: 'uppercase', marginBottom: '10px', fontFamily: "'Cinzel', serif" }}>Default Variant</div>
+                <div style={{ fontSize: '11px', color: 'rgba(232,228,217,0.4)', fontFamily: "'Merriweather', serif", fontStyle: 'italic', marginBottom: '10px' }}>Pre-selected when you create a new game</div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
+                    const selected = editPrefGameVariant === val;
+                    return (
+                      <div key={val} onClick={() => setEditPrefGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '6px', border: selected ? '2px solid #c9a24a' : '1px solid rgba(201,162,74,0.25)', background: selected ? 'rgba(201,162,74,0.15)' : 'rgba(255,255,255,0.04)' }}>
+                        <span style={{ fontFamily: "'Cinzel', serif", fontWeight: 700, fontSize: '13px', color: selected ? '#f6d778' : 'rgba(232,228,217,0.6)' }}>{label}</span>
+                        {isAlpha && (
+                          <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '3px', background: 'rgba(201,162,74,0.2)', border: '1px solid rgba(201,162,74,0.5)', color: '#f6d778', fontFamily: "'Cinzel', serif", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* House Rules */}
               <div style={{ marginBottom: '20px' }}>
                 <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1.5px', color: 'rgba(201,162,74,0.6)', textTransform: 'uppercase', marginBottom: '10px', fontFamily: "'Cinzel', serif" }}>House Rules</div>
                 <div style={{ fontSize: '11px', color: 'rgba(232,228,217,0.4)', fontFamily: "'Merriweather', serif", fontStyle: 'italic', marginBottom: '12px' }}>Default for new games you create</div>
-                {[{ key: 'fiveCardDraw', label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' }, { key: 'followAHearts', label: 'Follow A♥', desc: "When A♥ is led, void in trump must play a heart if holding one." }, { key: 'thirtyFor60', label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' }, { key: 'cutthroat', label: 'Cutthroat', desc: 'Every player for themselves — 4 individual scores, no partners. First to 120 wins.' }].map(({ key, label, desc }) => (
+                {[{ key: 'fiveCardDraw', label: '5-Card Draw', desc: 'Players may discard all 5 cards. 5th drawn card dealt face-up.' }, { key: 'followAHearts', label: 'Follow A♥', desc: "When A♥ is led, void in trump must play a heart if holding one." }, { key: 'thirtyFor60', label: '30 for 60', desc: 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.' }].map(({ key, label, desc }) => (
                   <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', marginBottom: '14px' }}>
                     <div onClick={() => setEditPrefHouseRules(prev => ({ ...prev, [key]: !prev[key] }))} style={{ marginTop: '2px', width: '18px', height: '18px', borderRadius: '3px', border: editPrefHouseRules[key] ? '2px solid #c9a24a' : '2px solid rgba(201,162,74,0.35)', background: editPrefHouseRules[key] ? 'rgba(201,162,74,0.2)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                       {editPrefHouseRules[key] && <span style={{ color: '#f6d778', fontSize: '12px', fontWeight: 'bold', lineHeight: 1 }}>✓</span>}
@@ -10822,7 +10913,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
                 <span
-                  onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
+                  onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setEditPrefGameVariant(prefGameVariant); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
                   style={{ fontSize: '13px', cursor: 'pointer', opacity: 0.6, userSelect: 'none' }}
                   title="Preferences"
                 >⚙️</span>
@@ -10975,7 +11066,22 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
             marginBottom: '20px',
             boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
           }}>
-            <h2 style={{ marginBottom: '16px', color: '#1a5f3f' }}>Create New Game</h2>
+            <h2 style={{ marginBottom: '12px', color: '#1a5f3f' }}>Create New Game</h2>
+            {/* v2.31.71: Variant selector (Partners vs Cutthroat alpha) */}
+            <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>Variant</div>
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+              {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
+                const selected = gameVariant === val;
+                return (
+                  <div key={val} onClick={() => setGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '6px', border: selected ? '2px solid #1a5f3f' : '2px solid #ddd', background: selected ? '#e8f5e9' : '#fafafa', transition: 'all 0.15s' }}>
+                    <span style={{ fontWeight: 'bold', fontSize: '14px', color: selected ? '#1a5f3f' : '#333' }}>{label}</span>
+                    {isAlpha && (
+                      <sup style={{ marginLeft: '4px', fontSize: '9px', padding: '1px 4px', borderRadius: '3px', background: '#fff3cd', border: '1px solid #c9a24a', color: '#7a5c10', fontWeight: 'bold', letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
             <input
               type="text"
               value={newGameName}
@@ -11038,20 +11144,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     </span>
                   </span>
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px' }}>
-                  <input
-                    type="checkbox"
-                    checked={optCutthroat}
-                    onChange={e => setOptCutthroat(e.target.checked)}
-                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                  />
-                  <span>
-                    <strong>Cutthroat</strong>
-                    <span style={{ fontSize: '12px', color: '#666', display: 'block' }}>
-                      Every player for themselves — 4 individual scores, no partners. First to 120 wins.
-                    </span>
-                  </span>
-                </label>
               </div>
             )}
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -11078,7 +11170,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 'bold'
                 }}
               >
-                {(optFiveCardDraw || optFollowAHearts || optThirtyFor60 || optCutthroat) ? 'Options ✓' : 'Options'}
+                {(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}
               </button>
               <button
                 onClick={() => {
@@ -11088,7 +11180,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   setOptFiveCardDraw(prefHouseRules.fiveCardDraw);
                   setOptFollowAHearts(prefHouseRules.followAHearts);
                   setOptThirtyFor60(prefHouseRules.thirtyFor60);
-                  setOptCutthroat(prefHouseRules.cutthroat);
+                  setGameVariant(prefGameVariant);
                 }}
                 disabled={loading}
                 style={{
@@ -11756,9 +11848,26 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     ))}
                   </div>
                 </div>
+                {/* v2.31.71: Default Variant */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div className="cp-pref-section-title">Default Variant</div>
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                    {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
+                      const selected = editPrefGameVariant === val;
+                      return (
+                        <div key={val} onClick={() => setEditPrefGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '8px', border: selected ? '2px solid #ff8c00' : '2px solid rgba(0,229,255,0.15)', background: selected ? 'rgba(255,140,0,0.1)' : 'rgba(0,229,255,0.03)' }}>
+                          <span style={{ fontFamily: "'Share Tech Mono', monospace", fontWeight: 700, fontSize: '13px', color: selected ? '#ff8c00' : '#3a5f78' }}>{label}</span>
+                          {isAlpha && (
+                            <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '2px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
                 <div style={{ marginBottom: '20px' }}>
                   <div className="cp-pref-section-title">House Rules</div>
-                  {[['fiveCardDraw', '5-Card Draw', 'Players may discard all 5 cards.'], ['followAHearts', 'Follow A♥', 'Void in trump must play a heart when A♥ led.'], ['thirtyFor60', '30 for 60', 'After a 30 bid, next may bid "30 for 60".'], ['cutthroat', 'Cutthroat', 'Every player for themselves — 4 individual scores, first to 120 wins.']].map(([key, label, desc]) => (
+                  {[['fiveCardDraw', '5-Card Draw', 'Players may discard all 5 cards.'], ['followAHearts', 'Follow A♥', 'Void in trump must play a heart when A♥ led.'], ['thirtyFor60', '30 for 60', 'After a 30 bid, next may bid "30 for 60".']].map(([key, label, desc]) => (
                     <div key={key} className="cp-checkbox-row" onClick={() => setEditPrefHouseRules(prev => ({ ...prev, [key]: !prev[key] }))}>
                       <div style={{ width: '18px', height: '18px', borderRadius: '3px', border: editPrefHouseRules[key] ? '2px solid #ff8c00' : '2px solid rgba(0,229,255,0.25)', background: editPrefHouseRules[key] ? 'rgba(255,140,0,0.15)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                         {editPrefHouseRules[key] && <span style={{ color: '#ff8c00', fontSize: '12px', fontWeight: 700, lineHeight: 1 }}>✓</span>}
@@ -11818,6 +11927,29 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                 </div>
               </div>
 
+              {/* v2.31.71: Default Variant */}
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333', marginBottom: '4px' }}>
+                  Default Variant
+                </div>
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
+                  Pre-selected when you create a new game.
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
+                    const selected = editPrefGameVariant === val;
+                    return (
+                      <div key={val} onClick={() => setEditPrefGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '8px', border: selected ? '2px solid #1a5f3f' : '2px solid #ddd', background: selected ? '#e8f5e9' : '#fafafa' }}>
+                        <span style={{ fontWeight: 'bold', fontSize: '14px', color: selected ? '#1a5f3f' : '#333' }}>{label}</span>
+                        {isAlpha && (
+                          <sup style={{ marginLeft: '4px', fontSize: '9px', padding: '1px 4px', borderRadius: '3px', background: '#fff3cd', border: '1px solid #c9a24a', color: '#7a5c10', fontWeight: 'bold', letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* House Rules */}
               <div style={{ marginBottom: '24px' }}>
                 <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333', marginBottom: '4px' }}>
@@ -11829,8 +11961,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                 {[
                   ['fiveCardDraw', '5-Card Draw', 'Players may discard all 5 cards. 5th drawn card dealt face-up.'],
                   ['followAHearts', 'Follow A♥', 'When A♥ is led, void in trump must play a heart if holding one.'],
-                  ['thirtyFor60', '30 for 60', 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.'],
-                  ['cutthroat', 'Cutthroat', 'Every player for themselves — 4 individual scores, no partners. First to 120 wins.']
+                  ['thirtyFor60', '30 for 60', 'After a 30 bid, next bidder may bid "30 for 60". Make it: +30. Miss it: −60.']
                 ].map(([key, label, desc]) => (
                   <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '14px', marginBottom: '10px' }}>
                     <input
@@ -13214,6 +13345,8 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
   const [gameOptions, setGameOptions] = useState({ fiveCardDraw: false });
   const [disconnectTimer, setDisconnectTimer] = useState(null);
   const gameStateRef = useRef(null);
+  // v2.31.71: mirror gameOptions for setInterval closures (disconnect detection runs in interval and stale closures would miss cutthroat flag)
+  const gameOptionsRef = useRef(null);
   const mySeatIndex = SEAT_TO_INDEX[mySeat];
 
   // Voice: rejoin if player had voice enabled before (handles reconnects)
@@ -13250,7 +13383,18 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
     // Load game options once
     database.ref(`lobby/games/${gameId}/options`).once('value', snap => {
       const opts = snap.val();
-      if (opts) setGameOptions(opts);
+      if (opts) {
+        setGameOptions(opts);
+        gameOptionsRef.current = opts; // v2.31.71: keep ref in sync for setInterval closures
+      }
+      // v2.31.71: register server-side disconnect counter ONLY for partner-mode games.
+      // Registered here (inside options-load) so we know the cutthroat flag before arming the handler.
+      // Cleanup .cancel() runs unconditionally in the effect's return; cancel is a no-op if never set.
+      if (!opts?.cutthroat) {
+        database.ref(`users/${userId}/stats`).onDisconnect().update({
+          disconnects: firebase.database.ServerValue.increment(1)
+        });
+      }
     });
 
     const playersListener = playersRef.on('value', (snapshot) => {
@@ -13296,7 +13440,9 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
                   disconnected: true
                 });
                 // Track if they disconnected while their team was losing
-                if (player.userId) {
+                // v2.31.71: gate off cutthroat — variant skips all partner-mode stat writes
+                // Read via ref because gameOptions state isn't a dep of this setInterval's effect (stale closure)
+                if (player.userId && !gameOptionsRef.current?.cutthroat) {
                   const seatIdx = SEAT_TO_INDEX[seat];
                   if (seatIdx !== undefined) {
                     database.ref(`lobby/games/${gameId}/gameState/scores`).once('value', (scoresSnap) => {
@@ -13330,11 +13476,9 @@ function GameWrapper({ gameId, userId, playerName, playerAvatar, mySeat, onLeave
       });
     }, 5000); // Check every 5 seconds
 
-    // Set up server-side disconnect handler for this player
+    // v2.31.71: server-side disconnect handler is now registered inside the options-load
+    // callback above so we can gate it off in cutthroat. Keep myStatsRef defined here for cleanup parity.
     const myStatsRef = database.ref(`users/${userId}/stats`);
-    myStatsRef.onDisconnect().update({
-      disconnects: firebase.database.ServerValue.increment(1)
-    });
 
     // Keep lobby presence alive while in a game so player shows in online list
     const myPresenceRef = database.ref(`lobby/online/${userId}`);
@@ -13554,6 +13698,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   // House Rules overlay — shown once at game start if any options are active
   const [showHouseRules, setShowHouseRules] = useState(false);
   const houseRulesShown = useRef(false);
+
+  // v2.31.71: Cutthroat alpha disclaimer — one-shot modal at first bidding phase
+  const [showCutthroatAlpha, setShowCutthroatAlpha] = useState(false);
+  const cutthroatAlphaShown = useRef(false);
 
   // Per-game achievement tracking (reset each new game)
   const [gameTimesSet, setGameTimesSet] = useState(0);
@@ -15037,7 +15185,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       if (ledCrd && ledCrd.rank === 'A' && ledCrd.suit === '\u2665') {
         const hasTrump = hand.some(c => isTrump(c, trumpSuit));
         if (!hasTrump && card.suit === '\u2665') {
-          database.ref(`users/${userId}/stats`).update({ followAHeartsPlayed: firebase.database.ServerValue.increment(1) });
+          // v2.31.71: gate off cutthroat \u2014 variant skips all partner-mode stat writes
+          if (!gameOptions?.cutthroat) {
+            database.ref(`users/${userId}/stats`).update({ followAHeartsPlayed: firebase.database.ServerValue.increment(1) });
+          }
         }
       }
     }
@@ -16336,6 +16487,16 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     return () => clearTimeout(t);
   }, [phase, gameOptions]);
 
+  // v2.31.71: Cutthroat alpha disclaimer — show once at first bidding phase of a cutthroat game.
+  // No timeout — user must dismiss explicitly because they're acknowledging an alpha caveat.
+  useEffect(() => {
+    if (phase !== 'bidding') return;
+    if (!gameOptions?.cutthroat) return;
+    if (cutthroatAlphaShown.current) return;
+    cutthroatAlphaShown.current = true;
+    setShowCutthroatAlpha(true);
+  }, [phase, gameOptions]);
+
   // Handle rematch - create new game with same players
   const handleRematch = useCallback(async () => {
     if (isSpectator) return;
@@ -17177,6 +17338,75 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             </div>
           </div>
         )}
+
+        {/* v2.31.71: Cutthroat alpha disclaimer — first-bidding-phase one-shot */}
+        {showCutthroatAlpha && (() => {
+          const isCp = currentThemeId === 'cyberpunk';
+          const isArab = currentThemeId === 'arabian';
+          const accentColor = isCp ? '#00e5ff' : '#f6d778';
+          const titleFont = isCp ? "'Orbitron', sans-serif" : "'Cinzel', serif";
+          const bodyFont = isCp ? "'Share Tech Mono', monospace" : "'Merriweather', serif";
+          const okBg = isCp
+            ? 'rgba(255,140,0,0.1)'
+            : 'linear-gradient(180deg, #f6d778 0%, #c9a24a 45%, #9a7630 100%)';
+          const okColor = isCp ? '#ff8c00' : '#1a0e03';
+          const okBorder = isCp ? '1px solid #ff8c00' : '1px solid rgba(0,0,0,0.6)';
+          const okShadow = isCp ? '0 0 12px rgba(255,140,0,0.4)' : '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)';
+          return (
+            <div
+              onClick={() => setShowCutthroatAlpha(false)}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 600, pointerEvents: 'auto', padding: '16px' }}
+            >
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                  background: isCp ? 'rgba(2,5,10,0.97)' : isArab ? 'rgba(8,5,1,0.97)' : 'rgba(12,6,2,0.95)',
+                  border: isCp ? '1px solid rgba(0,229,255,0.4)' : '1px solid #c9a24a',
+                  borderRadius: isCp ? '4px' : '12px',
+                  padding: '20px 22px',
+                  maxWidth: '340px',
+                  width: '100%',
+                  textAlign: 'center',
+                  color: '#e8e4d9',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.7)'
+                }}
+              >
+                <div style={{ fontSize: '15px', fontFamily: titleFont, color: accentColor, fontWeight: 700, letterSpacing: isCp ? '2px' : '1px', marginBottom: '4px' }}>
+                  Cutthroat
+                  <sup style={{ marginLeft: '6px', fontSize: '9px', padding: '2px 5px', borderRadius: '3px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: bodyFont, letterSpacing: '1.5px', verticalAlign: 'super', fontWeight: 700 }}>ALPHA</sup>
+                </div>
+                <div style={{ height: '1px', background: isCp ? 'linear-gradient(90deg, #00e5ff 0%, #ff00cc 50%, transparent 100%)' : 'linear-gradient(90deg,transparent,#c9a24a 50%,transparent)', margin: '10px 0 14px' }} />
+                <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'rgba(232,228,217,0.88)', fontFamily: bodyFont, textAlign: 'left' }}>
+                  Scoring works. The AI does not know cutthroat-specific strategy yet and will sometimes play sub-optimally — it will not always coordinate to set the leader, and will not always grab a free 5 points instead of cooperating.
+                  <div style={{ marginTop: '8px' }}>
+                    Stats, badges, and the leaderboard are not tracked for cutthroat games.
+                  </div>
+                  <div style={{ marginTop: '8px', color: accentColor }}>
+                    Real cutthroat AI is coming.
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCutthroatAlpha(false)}
+                  style={{
+                    marginTop: '16px',
+                    padding: '10px 28px',
+                    fontSize: '12px',
+                    letterSpacing: '1.5px',
+                    fontWeight: 700,
+                    fontFamily: titleFont,
+                    background: okBg,
+                    color: okColor,
+                    border: okBorder,
+                    borderRadius: isCp ? '3px' : '8px',
+                    cursor: 'pointer',
+                    boxShadow: okShadow,
+                    textShadow: isCp ? '0 0 8px rgba(255,140,0,0.6)' : 'none'
+                  }}
+                >OK</button>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Button Area */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: phase === 'trump-select' ? '20px' : (phase === 'bidding' ? '12px' : '4px'), flexWrap: 'wrap', padding: '4px 0', minHeight: '36px' }}>
