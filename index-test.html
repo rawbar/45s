@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.69';
+const VERSION = '2.31.70';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6616,6 +6616,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.70', date: 'May 2026', changes: ['Cutthroat isolation: cutthroat games no longer write to the partner-mode stats / badges / leaderboard, and their bid log and play decision log are forked to dedicated `bidLogCutthroat` / `decisionLogCutthroat` Firebase nodes. This means we can now play cutthroat without contaminating the partner-mode AI training corpus or skewing partner-mode badge / leaderboard counters. Stats / badges / leaderboard will stay off in cutthroat until the variant matures and gets its own dedicated counters.'] },
     { version: '2.31.69', date: 'May 2026', changes: ['Cutthroat variant (beta, test only): when the new Cutthroat house rule is enabled at game creation, scoring switches from teams to four solo players. The top-of-game header shows four small score plaques (one per seat, abbreviated by name, your own tinted gold) instead of US/THEM. The round-end modal shows a row per player with each individual\'s round points (bidder shown red in parentheses if set, e.g. (15)). The game-over modal shows a 2x2 score grid with the winning player\'s tile gold-bordered. First player to 120 wins (no partner totals counted). Caveat: the AI still uses partner-mode play logic in cutthroat — it does NOT yet know that everyone else is its opponent, so it will not always set the leader and may underplay nickel-grabs. Cutthroat-specific AI policy is Phase 2.'] },
     { version: '2.31.68', date: 'May 2026', changes: ['Fix: when you play the last card of trick 5 (i.e., you are the 4th to play on the final trick of a round), your card no longer remains visible in your hand after moving to the table. Root cause: when every hand becomes empty, Firebase strips the whole hands key from the game-state snapshot, and the listener\'s `if (gameState.hands)` truthiness guard then skipped the local hand clear, so your just-played card stayed in your hand state even though Firebase had it removed. Now: when the listener sees the hands key missing AND the phase is round-end or game-over, it explicitly clears the local hands to four empty arrays.'] },
     { version: '2.31.67', date: 'May 2026', changes: ['Spectator mode: tapping an in-progress game in the lobby lets you watch the table, but as a spectator you no longer see — or can press — any of the action buttons. The Next Round button, the New Game (rematch) button, the bid buttons, the trump-select buttons, the discard button, and the card-play tap targets are now all hidden / no-ops if the player Firebase says is sitting at your seat is not you (which is how you can end up in someone else\'s game). Previously a spectator tapping Next Round wrote to Firebase and advanced the round for everyone, interrupting the real players. The spectator client also no longer races real clients to drive the AI moves.'] },
@@ -13668,6 +13669,15 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   useEffect(() => {
     if (phase === 'game-over' && gameState?.winner !== undefined && !statsUpdated.current) {
       statsUpdated.current = true;
+      // CUTTHROAT (v2.31.70): skip ALL partner-mode stats / badges / leaderboard
+      // writes when this is a cutthroat game. The variant has its own scoring
+      // semantics and its writes would contaminate partner-mode counters.
+      // Game-state writes (phase=game-over, hands cleared, etc.) happen
+      // elsewhere — only this stats transaction block is gated.
+      if (gameOptions?.cutthroat) {
+        console.log('🗡 CUTTHROAT — skipping stats / badges / leaderboard writes');
+        return;
+      }
       const winningTeam = gameState.winner;
       const finalScores = gameState.scores || [0, 0];
       const hist = gameState.history || [];
@@ -14447,7 +14457,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           version: VERSION,
           ts: Date.now(),
         };
-        database.ref(`bidLog/${_uname}/${gameId}`).push(_bidRec).catch(() => {});
+        const _bidLogPath = gameOptions?.cutthroat ? `bidLogCutthroat/${_uname}/${gameId}` : `bidLog/${_uname}/${gameId}`;
+        database.ref(_bidLogPath).push(_bidRec).catch(() => {});
       } catch (_e) { /* logging must never break bidding */ }
     }
 
@@ -15093,7 +15104,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           version: VERSION,
           ts: Date.now(),
         };
-        database.ref(`decisionLog/${_uname}/${gameId}`).push(_rec).catch(() => {});
+        const _decLogPath = gameOptions?.cutthroat ? `decisionLogCutthroat/${_uname}/${gameId}` : `decisionLog/${_uname}/${gameId}`;
+        database.ref(_decLogPath).push(_rec).catch(() => {});
       } catch (_e) { /* logging must never break play */ }
     }
 
