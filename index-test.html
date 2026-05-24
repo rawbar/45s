@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.72';
+const VERSION = '2.31.73';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6694,6 +6694,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.73', date: 'May 2026', changes: ['Lobby game list now shows 4 individual player scores for cutthroat games in progress (e.g., "N 25 · E 30 · S 45 · W 20") instead of the team-mode "0 · 0" that was previously displayed. The current leader is highlighted in brass-gold. Finished cutthroat games show the winning PLAYER (not team) prominently in the lobby card — "Winner: alice (120)" — with a compact 4-seat scoreboard underneath, and the winning seat tile gets a green border. AI seats label as a single seat letter (N/E/S/W); human seats use the first 2 chars of their username (lobby row) or first 3 chars (game-over card). Partner-mode rendering is byte-identical — only a cutthroat branch was added.'] },
     { version: '2.31.72', date: 'May 2026', changes: ['Cutthroat polish: (1) The four score plaques at the top of the table now show seat-letter labels (N/E/S/W) for AI players and the first three characters of the username for humans, instead of slicing "AI Player N" down to a useless trailing "AI " on every AI seat. (2) The same fix is applied to the cutthroat round-end and game-over modals: AI rows now read "North" / "East" / "South" / "West" (full seat name in the wider modal layout) and human rows keep their full username. (3) The bottom-of-table score-history strip (ScoreTable) now renders four per-player columns in cutthroat games instead of US/THEM, with per-round deltas + running totals stamped under each seat. Round-end history entries written by the bidder-completes-trick-5 and AI-completes-trick-5 paths now include cutthroat-only `playerRoundScores` and `playerTotals` arrays alongside the existing partner-mode fields, so partner-mode entries stay byte-identical and only cutthroat rounds carry the extra payload. (4) The redundant duplicate copy of the Partners-vs-Cutthroat variant selector that v2.31.71 still had inside each Create Game modal (cyberpunk, two Arabian variants, Irish) has been removed — the lobby-level selector right above the Create Game button is now the single source of truth.'] },
     { version: '2.31.71', date: 'May 2026', changes: ['Cutthroat promoted out of the Options menu and into a top-level Partners-vs-Cutthroat segmented selector on the Create Game screen (and in Preferences as your default for new games). Cutthroat is labeled ALPHA because the scoring works but the AI does not yet know cutthroat-specific strategy — it will sometimes fail to coordinate to set the leader and may underplay free-five-point grabs. The first time you start a cutthroat game in a session you now see a one-shot disclaimer modal explaining the alpha state; dismiss with OK. Two leftover stat writes (the Follow-A♥ per-card increment and the server-side disconnect counter) are now also gated off in cutthroat so the variant stays zero-write to partner-mode counters. Existing prefs that had Cutthroat set as a house rule (from v2.31.69 / v2.31.70 sessions) migrate forward to the new gameVariant pref on prefs load.'] },
     { version: '2.31.70', date: 'May 2026', changes: ['Cutthroat isolation: cutthroat games no longer write to the partner-mode stats / badges / leaderboard, and their bid log and play decision log are forked to dedicated `bidLogCutthroat` / `decisionLogCutthroat` Firebase nodes. This means we can now play cutthroat without contaminating the partner-mode AI training corpus or skewing partner-mode badge / leaderboard counters. Stats / badges / leaderboard will stay off in cutthroat until the variant matures and gets its own dedicated counters.'] },
@@ -9415,7 +9416,32 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px', marginRight: '6px' }}>
-            {(isPlaying || isFinished) && scores && (
+            {(isPlaying || isFinished) && game.options?.cutthroat && (() => {
+              // v2.31.73: cutthroat — show 4 per-player scores instead of US/THEM team scores.
+              // Position order matches engine: 0=N, 1=E, 2=S, 3=W. AI seats use seat letter,
+              // human seats use first 2 chars of username uppercased (kept tight so row width
+              // does not break). Leader tinted brass-gold, others neutral.
+              const pScores = game.gameState?.playerScores || [0, 0, 0, 0];
+              const posNames = ['North', 'East', 'South', 'West'];
+              const maxScore = Math.max(...pScores);
+              return (
+                <div style={{ fontSize: '11px', fontFamily: "'Cinzel', serif", color: 'rgba(201,162,74,0.85)', whiteSpace: 'nowrap' }}>
+                  {posNames.map((seat, i) => {
+                    const pl = players[seat];
+                    const label = (pl && !pl.isAI && pl.username) ? pl.username.slice(0, 2).toUpperCase() : seat[0];
+                    const isLeader = pScores[i] === maxScore && maxScore > 0;
+                    const color = isLeader ? '#f6d778' : 'rgba(201,162,74,0.7)';
+                    return (
+                      <React.Fragment key={seat}>
+                        {i > 0 && <span style={{ color: 'rgba(201,162,74,0.5)', margin: '0 3px' }}>·</span>}
+                        <span style={{ color, fontWeight: isLeader ? 700 : 400 }}>{label}<span style={{ fontSize: '8px', opacity: 0.6, marginLeft: '2px' }}>{pScores[i]}</span></span>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+            {(isPlaying || isFinished) && !game.options?.cutthroat && scores && (
               <div style={{ fontSize: '11px', fontFamily: "'Cinzel', serif", color: 'rgba(201,162,74,0.85)', whiteSpace: 'nowrap' }}>
                 <span style={{ color: '#5dd084' }}>{scores[0]}</span>
                 <span style={{ color: 'rgba(201,162,74,0.5)', margin: '0 3px' }}>·</span>
@@ -12140,6 +12166,56 @@ function GameListItem({ gameId, game, onJoinSeat, onDeleteGame, userId, disabled
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
           <h3 style={{ color: '#1a5f3f' }}>{game.name}</h3>
           {game.gameState?.phase === 'game-over' ? (() => {
+            // v2.31.73: cutthroat game-over — winner is a seat index 0-3 (not a team),
+            // and the relevant scores live in playerScores (length 4) not scores (length 2).
+            if (game.options?.cutthroat) {
+              const pScores = game.gameState.playerScores || [0, 0, 0, 0];
+              const winner = game.gameState.winner;
+              const posNames = ['North', 'East', 'South', 'West'];
+              const winnerSeat = (typeof winner === 'number' && winner >= 0 && winner <= 3) ? posNames[winner] : null;
+              const winnerPl = winnerSeat ? players[winnerSeat] : null;
+              const winnerLabel = winnerPl
+                ? (winnerPl.isAI ? winnerSeat : (winnerPl.username || winnerSeat))
+                : (winnerSeat || '?');
+              const winnerScore = (typeof winner === 'number') ? (pScores[winner] || 0) : 0;
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '14px' }}>✅</span>
+                    <span style={{
+                      padding: '4px 10px',
+                      background: '#2e7d32',
+                      color: 'white',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      fontWeight: 'bold'
+                    }}>
+                      Winner: {winnerLabel} ({winnerScore})
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {posNames.map((seat, i) => {
+                      const pl = players[seat];
+                      const label = pl ? (pl.isAI ? seat[0] : (pl.username || seat).slice(0, 3).toUpperCase()) : seat[0];
+                      const isWinner = i === winner;
+                      return (
+                        <span key={seat} style={{
+                          padding: '2px 6px',
+                          background: isWinner ? '#c8e6c9' : '#f5f5f5',
+                          color: isWinner ? '#1b5e20' : '#666',
+                          border: isWinner ? '1px solid #2e7d32' : '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: isWinner ? 'bold' : 'normal'
+                        }}>
+                          {label}: {pScores[i] || 0}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
             const scores = game.gameState.scores || [0, 0];
             const winner = game.gameState.winner;
             const team0Won = winner === 0;
