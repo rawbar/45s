@@ -214,6 +214,13 @@ class GameState:
     team_scores: Optional[List[int]] = None   # [team0, team1] PRE-round
     winning_total: int = 120
 
+    # Cutthroat per-seat trick tracking (set by _play_round; partner mode
+    # leaves these defaulted — partner AI has no need for per-player counts).
+    # Used by improved_ai cutthroat coalition rules (C1/C2) to detect
+    # set-locked / made-locked mid-round.
+    player_tricks: Optional[List[int]] = None      # [p0, p1, p2, p3] tricks won SO FAR
+    high_trump_player: int = -1                    # seat that owns the high-trump trick so far
+
     def get_team(self, player: int) -> int:
         """Get team number (0 or 1) for a player"""
         return player % 2

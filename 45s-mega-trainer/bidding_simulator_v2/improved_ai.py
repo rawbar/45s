@@ -311,6 +311,65 @@ def build_player_intelligence(play_history: List[Tuple[int, Card]],
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Cutthroat helpers — bidder mid-round point accounting + lock detection
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _ct_bidder_round_pts(bid_winner: int,
+                          player_tricks_so_far: List[int],
+                          high_trump_player_so_far: int) -> int:
+    """Bidder's round pts so far (5 per trick won + 5 bonus iff bidder
+    currently owns the high-trump trick). `high_trump_player_so_far == -1`
+    means no trump has been played yet → no bonus assigned."""
+    if not player_tricks_so_far:
+        return 0
+    pts = player_tricks_so_far[bid_winner] * 5
+    if high_trump_player_so_far == bid_winner:
+        pts += 5
+    return pts
+
+
+def _ct_set_locked(high_bid: int,
+                    bid_winner: int,
+                    player_tricks_so_far: List[int],
+                    high_trump_player_so_far: int,
+                    current_trick_num: int) -> bool:
+    """True iff the bidder mathematically cannot reach the bid even if they
+    win every remaining trick. `current_trick_num` is the trick now in
+    progress (1..5); tricks 1..current_trick_num-1 are complete.
+
+    Remaining-bonus accounting: if some trump has already been played
+    (high_trump_player_so_far != -1), the +5 bonus is already locked to a
+    seat — the bidder gets it only if THEY own that seat (already in the
+    base pts). If no trump has been played yet, a future trick could carry
+    the bonus → assume the bidder could win it (max upper bound)."""
+    if player_tricks_so_far is None:
+        return False
+    pts = _ct_bidder_round_pts(bid_winner, player_tricks_so_far,
+                                high_trump_player_so_far)
+    tricks_remaining = 5 - (current_trick_num - 1)  # incl. current trick
+    # If bonus is already with someone other than bidder, bidder CANNOT
+    # get it (it's locked to that seat). If still unassigned (no trump
+    # played yet), assume the bidder could win it (upper bound).
+    if high_trump_player_so_far == -1:
+        bonus_max = 5
+    else:
+        bonus_max = 0   # already counted in pts (or locked elsewhere)
+    max_remaining = tricks_remaining * 5 + bonus_max
+    return (pts + max_remaining) < high_bid
+
+
+def _ct_made_locked(high_bid: int,
+                     bid_winner: int,
+                     player_tricks_so_far: List[int],
+                     high_trump_player_so_far: int) -> bool:
+    """True iff the bidder has ALREADY scored enough to make the bid."""
+    if player_tricks_so_far is None:
+        return False
+    return _ct_bidder_round_pts(bid_winner, player_tricks_so_far,
+                                 high_trump_player_so_far) >= high_bid
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # ImprovedAI
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -944,6 +1003,49 @@ class ImprovedAI:
                                                leader) == player]
                     if winners:
                         return min(winners,
+                                   key=lambda c: _tr(c, trump)
+                                   if _is_trump(c, trump)
+                                   else get_offsuit_rank(c))
+
+            # ── CUTTHROAT COALITION (Phase 2 pass 1) ─────────────────────
+            # Gated on flags.cutthroat (no-op in partner mode). Each rule
+            # opts in via its OWN flag — default OFF so the stripped
+            # champion-cutthroat baseline (Chunk A) is bit-identical and
+            # the cutthroat-coalition-v1 challenger is a measurable delta.
+            #   C2 (dont_overtake): another DEFENDER currently leads the
+            #       trick → don't burn cards to overtake them; cheap-low
+            #       and let them have it. Conserve high cards for tricks
+            #       the BIDDER might win.
+            #   C1 (take_from_bidder): the BIDDER currently leads the
+            #       trick → play the CHEAPEST card that beats the current
+            #       winner. Both rules skip if set/made is mathematically
+            #       LOCKED (no upside left in the round).
+            # Order: C2 first because its "play_lowest" is the
+            # conservative default; C1 is the affirmative take.
+            if (self.flags.get('cutthroat') and not is_leading
+                    and player != bid_winner):
+                _pt = state.player_tricks
+                _hp = state.high_trump_player
+                _hb = state.high_bid
+                _bw = bid_winner
+                _set_lk = _ct_set_locked(_hb, _bw, _pt, _hp, trick_num)
+                _made_lk = _ct_made_locked(_hb, _bw, _pt, _hp)
+                # C2 — don't overtake a fellow defender (opt-in)
+                if (Fon('cutthroat_c2_dont_overtake')
+                        and cw != _bw and cw != player
+                        and not _set_lk):
+                    return play_lowest(playable)
+                # C1 — take from the bidder with the cheapest winner (opt-in)
+                if (Fon('cutthroat_c1_take_from_bidder')
+                        and cw == _bw
+                        and not _set_lk and not _made_lk):
+                    _winners = [c for c in playable
+                                if trick_winner(
+                                    _pad4(trick + [c],
+                                          trump if F('safe_pad4') else None),
+                                    trump, leader) == player]
+                    if _winners:
+                        return min(_winners,
                                    key=lambda c: _tr(c, trump)
                                    if _is_trump(c, trump)
                                    else get_offsuit_rank(c))

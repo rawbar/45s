@@ -97,6 +97,8 @@ def _play_round(bidder: int, bid: int, trump: Suit,
                 high_trump_rank=high_trump_rank, high_trump_winner=high_trump_player,
                 known_voids=[dict(v) for v in known_voids],
                 team_scores=(pre_scores[:] if pre_scores is not None else None),
+                player_tricks=player_tricks[:],
+                high_trump_player=high_trump_player,
             )
             card = seat_policy[current].choose_card(current, state, play_history[:])
             led = trick[0][1] if trick else None

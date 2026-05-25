@@ -249,6 +249,27 @@ REGISTRY["cutthroat-tight-25"] = CutthroatTight25()
 REGISTRY["cutthroat-kill-30"]  = CutthroatKill30()
 
 
+# CUTTHROAT COALITION pass 1 (opt-in challenger; champion-cutthroat default
+# OFF). Two coordinated defender rules — see improved_ai.py for the gates:
+#   C1 (cutthroat_c1_take_from_bidder): defender following, BIDDER currently
+#       winning the trick, set/made not locked → play cheapest card that
+#       beats the bidder. Captures every "take from the bidder" case across
+#       all positions and tricks (broader than def_ruff_be_eg / take_t4_2nd
+#       / off2_beat_off_bidlead, which all stay enabled as narrow specifics).
+#   C2 (cutthroat_c2_dont_overtake): defender following, ANOTHER DEFENDER
+#       currently winning, set not locked → play_lowest. Don't burn cards
+#       overtaking a teammate-of-convenience; conserve for tricks the bidder
+#       might win.
+# Together: when one defender wins the trick the others stay cheap; when
+# the bidder wins, every defender who can take cheaply does. Measures the
+# pure coordination gain vs the stripped champion-cutthroat (no coalition).
+CUTTHROAT_COALITION_V1 = Policy(cutthroat=True,
+                                ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                          'cutthroat_c2_dont_overtake': True})
+CUTTHROAT_COALITION_V1.name = "cutthroat-coalition-v1"
+REGISTRY["cutthroat-coalition-v1"] = CUTTHROAT_COALITION_V1
+
+
 # FORCE-EXTRACT challenger variants (opt-in rule, default absent in champion).
 # Each enables the rule + one partner-trump-rich proxy; data picks the proxy.
 def _fx(proxy: str):
