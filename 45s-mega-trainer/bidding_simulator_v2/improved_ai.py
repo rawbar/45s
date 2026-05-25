@@ -1007,15 +1007,25 @@ class ImprovedAI:
                                    if _is_trump(c, trump)
                                    else get_offsuit_rank(c))
 
-            # ── CUTTHROAT COALITION (Phase 2 pass 1) ─────────────────────
+            # ── CUTTHROAT COALITION (Phase 2 pass 2) ─────────────────────
             # Gated on flags.cutthroat (no-op in partner mode). Each rule
             # opts in via its OWN flag — default OFF so the stripped
             # champion-cutthroat baseline (Chunk A) is bit-identical and
-            # the cutthroat-coalition-v1 challenger is a measurable delta.
+            # the cutthroat-coalition-* challengers are measurable deltas.
             #   C2 (dont_overtake): another DEFENDER currently leads the
-            #       trick → don't burn cards to overtake them; cheap-low
-            #       and let them have it. Conserve high cards for tricks
-            #       the BIDDER might win.
+            #       trick AND the BIDDER HAS ALREADY PLAYED → don't burn
+            #       cards to overtake the teammate-of-convenience; cheap-
+            #       low and let them have it. Conserve high cards for
+            #       tricks the BIDDER might win.
+            #       PASS-1 BUG (v1, commit 550ad35): C2 fired even when the
+            #       bidder hadn't played yet — so the next defender played
+            #       low, and the bidder then over-trumped cheaply, having
+            #       been handed a card that could have beaten them. The
+            #       symmetric A-vs-B test (commit 61ebe61) showed bidders
+            #       MORE successful (-1.36pt set-rate, z=-3.36; -2.02pt
+            #       at 15-bids specifically). PASS-2 FIX: require the
+            #       bidder to have already committed a card before C2's
+            #       conservative low-play applies.
             #   C1 (take_from_bidder): the BIDDER currently leads the
             #       trick → play the CHEAPEST card that beats the current
             #       winner. Both rules skip if set/made is mathematically
@@ -1030,9 +1040,18 @@ class ImprovedAI:
                 _bw = bid_winner
                 _set_lk = _ct_set_locked(_hb, _bw, _pt, _hp, trick_num)
                 _made_lk = _ct_made_locked(_hb, _bw, _pt, _hp)
-                # C2 — don't overtake a fellow defender (opt-in)
+                # trick[i] is the card played by seat (leader + i) % 4 —
+                # so the bidder has played iff _bw appears in that span.
+                _bidder_has_played = _bw in [(leader + i) % 4
+                                             for i in range(len(trick))]
+                # C2 — don't overtake a fellow defender (opt-in).
+                # PASS-2 GATE: only fires if the bidder has already played
+                # in this trick. Otherwise the bidder is downstream and
+                # an unchallenged defender-winner just hands the bidder a
+                # cheap over-trump.
                 if (Fon('cutthroat_c2_dont_overtake')
                         and cw != _bw and cw != player
+                        and _bidder_has_played
                         and not _set_lk):
                     return play_lowest(playable)
                 # C1 — take from the bidder with the cheapest winner (opt-in)

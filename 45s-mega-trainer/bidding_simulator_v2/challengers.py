@@ -175,11 +175,16 @@ REGISTRY = {
     "no-desperation":     NoDesperation(),
     "no-cruise":          NoCruise(),
     "no-desp-no-cruise":  NoDespNoCruise(),
-    # CUTTHROAT baseline (chunk A): bidding side gated for FFA (no partner
-    # concept — partner_bid forced to 0, spoiler off). Card play not yet
-    # cutthroat-gated; that ships chunk B. Self-test = 4 of these against
-    # each other should win ~25% each.
-    "champion-cutthroat": Policy(cutthroat=True),
+    # CUTTHROAT baseline. Bidding side gated for FFA (no partner concept —
+    # partner_bid forced to 0, spoiler off). Card-play coalition rules
+    # C1 (take_from_bidder) and C2 (don't_overtake — pass-2 gated on
+    # _bidder_has_played) default-ON since v2 (this commit). The pre-coalition
+    # baseline (both flags False) is preserved as opt-in 'cutthroat-stripped'
+    # below for ablation. Self-test = 4 of these against each other should
+    # still win ~25% each (all seats run the same policy, symmetric).
+    "champion-cutthroat": Policy(cutthroat=True,
+                                 ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                           'cutthroat_c2_dont_overtake': True}),
 }
 CHAMPION_CUTTHROAT = REGISTRY["champion-cutthroat"]
 
@@ -249,25 +254,75 @@ REGISTRY["cutthroat-tight-25"] = CutthroatTight25()
 REGISTRY["cutthroat-kill-30"]  = CutthroatKill30()
 
 
-# CUTTHROAT COALITION pass 1 (opt-in challenger; champion-cutthroat default
-# OFF). Two coordinated defender rules — see improved_ai.py for the gates:
+# CUTTHROAT COALITION (opt-in challengers; champion-cutthroat default OFF).
+# Two coordinated defender rules — see improved_ai.py for the gates:
 #   C1 (cutthroat_c1_take_from_bidder): defender following, BIDDER currently
 #       winning the trick, set/made not locked → play cheapest card that
 #       beats the bidder. Captures every "take from the bidder" case across
 #       all positions and tricks (broader than def_ruff_be_eg / take_t4_2nd
 #       / off2_beat_off_bidlead, which all stay enabled as narrow specifics).
 #   C2 (cutthroat_c2_dont_overtake): defender following, ANOTHER DEFENDER
-#       currently winning, set not locked → play_lowest. Don't burn cards
-#       overtaking a teammate-of-convenience; conserve for tricks the bidder
-#       might win.
+#       currently winning, BIDDER HAS ALREADY PLAYED, set not locked →
+#       play_lowest. Don't burn cards overtaking a teammate-of-convenience;
+#       conserve for tricks the bidder might win.
 # Together: when one defender wins the trick the others stay cheap; when
-# the bidder wins, every defender who can take cheaply does. Measures the
-# pure coordination gain vs the stripped champion-cutthroat (no coalition).
+# the bidder wins, every defender who can take cheaply does.
+#
+# pass-1 history (commit 550ad35 / 61ebe61): the FIRST cut of C2 had no
+# "bidder has played" gate. Symmetric A-vs-B set-rate test showed
+# coalition made bidders 1.36pt MORE successful (z=-3.36), concentrated
+# at 15-bids (-2.02pt). DIAGNOSIS: with C2 firing while the bidder was
+# still downstream, the next defender played low and the bidder over-
+# trumped cheaply — the coalition was handing the bidder free tricks.
+# pass-2 (current): C2 now gated on _bidder_has_played; v1 inherits the
+# fix (the buggy pre-2-pass form is preserved only in git history,
+# commits 550ad35 + 61ebe61 — no behavior preservation in code).
+#
+# cutthroat-c1-only      = C1 alone (sanity check: is C1 net-positive
+#                          without C2?). If C1 alone wins and v2 does
+#                          not beat it, ship C1, drop C2.
+# cutthroat-coalition-v2 = C1 + tightened C2 (pass-2 of the coalition).
+# cutthroat-coalition-v1 = name retained; behavior identical to v2 now
+#                          (the C2 tightening is in the rule body, both
+#                          flag combos enable it). Kept as an alias so
+#                          existing harness commands / commit refs still
+#                          work; do not test it separately from v2.
+CUTTHROAT_C1_ONLY = Policy(cutthroat=True,
+                           ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                     'cutthroat_c2_dont_overtake': False})
+CUTTHROAT_C1_ONLY.name = "cutthroat-c1-only"
+REGISTRY["cutthroat-c1-only"] = CUTTHROAT_C1_ONLY
+
 CUTTHROAT_COALITION_V1 = Policy(cutthroat=True,
                                 ai_flags={'cutthroat_c1_take_from_bidder': True,
                                           'cutthroat_c2_dont_overtake': True})
 CUTTHROAT_COALITION_V1.name = "cutthroat-coalition-v1"
 REGISTRY["cutthroat-coalition-v1"] = CUTTHROAT_COALITION_V1
+
+CUTTHROAT_COALITION_V2 = Policy(cutthroat=True,
+                                ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                          'cutthroat_c2_dont_overtake': True})
+CUTTHROAT_COALITION_V2.name = "cutthroat-coalition-v2"
+REGISTRY["cutthroat-coalition-v2"] = CUTTHROAT_COALITION_V2
+
+# SHIP: cutthroat-coalition-v2 promoted to champion-cutthroat default-ON
+# (this commit). Symmetric A-vs-B set-rate (deals=2000):
+#   primary  seed-base=0       Δ=+1.45pt z=+3.56 SIGNIFICANT
+#   held-out seed-base=5000000 Δ=+1.08pt z=+2.65 SIGNIFICANT (replicated)
+# Per-bid breakdown (primary): 15s +1.70 z=+3.54, 20s +1.12 z=+1.38,
+# 25s +0.64 z=+0.51, 30s n=3. Damage concentrated at 15-bids — same
+# regime that pass-1 BROKE (-2.02pt at 15s), now fixed and net-positive.
+# Sanity: C1-ALONE without C2 is NEGATIVE (Δ=-1.02pt z=-2.50, 15s -1.22
+# z=-2.56). C1 by itself hands defenders' beats to a non-tightened
+# downstream that the bidder then exploits / mis-takes context. The
+# combo (C1 + bidder_has_played-gated C2) is the win — both flags
+# required for the +EV signal. Opt-in 'cutthroat-stripped' below preserves
+# the pre-coalition baseline for ablation tests.
+CUTTHROAT_STRIPPED = Policy(cutthroat=True,
+                            ai_flags={'cutthroat_c1_take_from_bidder': False,
+                                      'cutthroat_c2_dont_overtake': False})
+CUTTHROAT_STRIPPED.name = "cutthroat-stripped"
+REGISTRY["cutthroat-stripped"] = CUTTHROAT_STRIPPED
 
 
 # FORCE-EXTRACT challenger variants (opt-in rule, default absent in champion).
