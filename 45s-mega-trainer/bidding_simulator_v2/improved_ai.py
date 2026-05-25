@@ -1007,11 +1007,27 @@ class ImprovedAI:
                                    if _is_trump(c, trump)
                                    else get_offsuit_rank(c))
 
-            # ── CUTTHROAT COALITION (Phase 2 pass 2) ─────────────────────
+            # ── CUTTHROAT COALITION + NICKEL-GRAB ────────────────────────
             # Gated on flags.cutthroat (no-op in partner mode). Each rule
             # opts in via its OWN flag — default OFF so the stripped
             # champion-cutthroat baseline (Chunk A) is bit-identical and
-            # the cutthroat-coalition-* challengers are measurable deltas.
+            # the cutthroat-coalition-* / cutthroat-nickel-grab challengers
+            # are measurable deltas.
+            #
+            #   N1 (n1_nickel_grab): set/made is LOCKED (bidder can no
+            #       longer be set or has already made) → switch from
+            #       coalition mode to point-greedy. Take the cheapest
+            #       winning card; if the cheapest winner is a top-3 trump
+            #       (rank >= 100: 5 of trump, J of trump, A♥ when trump
+            #       != hearts), SAVE it and play_lowest instead. Lesson
+            #       from pass-1 C1 sanity (commit 3f26177): aggressive
+            #       defender takes that burn top trump are net-negative;
+            #       nickel-grab restricts the "take" to free tricks.
+            #       When N1 fires (locked), C1 and C2's set-the-bidder
+            #       purpose is moot, so C1/C2 are gated `and not _locked`
+            #       and N1 sits FIRST so its early-return preempts them
+            #       in the locked regime.
+            #
             #   C2 (dont_overtake): another DEFENDER currently leads the
             #       trick AND the BIDDER HAS ALREADY PLAYED → don't burn
             #       cards to overtake the teammate-of-convenience; cheap-
@@ -1029,9 +1045,9 @@ class ImprovedAI:
             #   C1 (take_from_bidder): the BIDDER currently leads the
             #       trick → play the CHEAPEST card that beats the current
             #       winner. Both rules skip if set/made is mathematically
-            #       LOCKED (no upside left in the round).
-            # Order: C2 first because its "play_lowest" is the
-            # conservative default; C1 is the affirmative take.
+            #       LOCKED (no upside left in the round) — N1 owns locked.
+            # Order: N1 first (point-greedy when locked), then C2
+            # (conservative default), then C1 (affirmative take).
             if (self.flags.get('cutthroat') and not is_leading
                     and player != bid_winner):
                 _pt = state.player_tricks
@@ -1040,21 +1056,45 @@ class ImprovedAI:
                 _bw = bid_winner
                 _set_lk = _ct_set_locked(_hb, _bw, _pt, _hp, trick_num)
                 _made_lk = _ct_made_locked(_hb, _bw, _pt, _hp)
+                _locked = _set_lk or _made_lk
                 # trick[i] is the card played by seat (leader + i) % 4 —
                 # so the bidder has played iff _bw appears in that span.
                 _bidder_has_played = _bw in [(leader + i) % 4
                                              for i in range(len(trick))]
+                # N1 — nickel-grab when set/made is mathematically LOCKED.
+                # Coalition (C1+C2) is moot here: the bidder's contract is
+                # decided. Switch to point-greedy: take cheap free tricks,
+                # but NEVER burn a top-3 trump (rank >= 100) to do so.
+                # _tr(c, trump) handles the A♥-when-trump=hearts case
+                # correctly (it becomes A-of-trump at rank 99 < 100).
+                if Fon('cutthroat_n1_nickel_grab') and _locked:
+                    _winners = [c for c in playable
+                                if trick_winner(
+                                    _pad4(trick + [c],
+                                          trump if F('safe_pad4') else None),
+                                    trump, leader) == player]
+                    if not _winners:
+                        return play_lowest(playable)
+                    _lo_win = min(_winners,
+                                  key=lambda c: _tr(c, trump)
+                                  if _is_trump(c, trump)
+                                  else get_offsuit_rank(c))
+                    if _is_trump(_lo_win, trump) and _tr(_lo_win, trump) >= 100:
+                        # cheapest winner is a top-3 trump — save it.
+                        return play_lowest(playable)
+                    return _lo_win
                 # C2 — don't overtake a fellow defender (opt-in).
                 # PASS-2 GATE: only fires if the bidder has already played
                 # in this trick. Otherwise the bidder is downstream and
                 # an unchallenged defender-winner just hands the bidder a
-                # cheap over-trump.
+                # cheap over-trump. (N1 already early-returns when locked.)
                 if (Fon('cutthroat_c2_dont_overtake')
                         and cw != _bw and cw != player
                         and _bidder_has_played
                         and not _set_lk):
                     return play_lowest(playable)
-                # C1 — take from the bidder with the cheapest winner (opt-in)
+                # C1 — take from the bidder with the cheapest winner
+                # (opt-in). (N1 already early-returns when locked.)
                 if (Fon('cutthroat_c1_take_from_bidder')
                         and cw == _bw
                         and not _set_lk and not _made_lk):

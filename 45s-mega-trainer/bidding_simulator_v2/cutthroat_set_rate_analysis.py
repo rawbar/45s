@@ -62,6 +62,13 @@ def play_game_cutthroat_with_per_seat_stats(seat_policy: List[Policy],
     by_level = {b: {'bids': 0, 'made': 0, 'set': 0, 'made_pts': 0}
                 for b in (15, 20, 25, 30)}
     last_bidder = -1
+    # NICKEL-GRAB metric: sum of raw banked pts across all DEFENDERS
+    # across all rounds. Defender raw pts = per_player[p] for p != winner
+    # (defenders always bank own trick pts). defender_round_count is
+    # increments-of-3 per round (3 defenders per cutthroat round) so
+    # the per-defender-per-round average is defender_pts / defender_round_count.
+    defender_pts = 0
+    defender_round_count = 0
 
     while max(scores) < 120 and rounds < MAX_ROUNDS:
         rounds += 1
@@ -134,6 +141,12 @@ def play_game_cutthroat_with_per_seat_stats(seat_policy: List[Policy],
             if lvl_key is not None:
                 by_level[lvl_key]['set'] += 1
 
+        # Sum raw defender pts (3 defenders' per_player) for nickel-grab.
+        for p in range(4):
+            if p != winner:
+                defender_pts += per_player[p]
+                defender_round_count += 1
+
         if max(scores) >= 120:
             break
         dealer = (dealer + 1) % 4
@@ -157,6 +170,8 @@ def play_game_cutthroat_with_per_seat_stats(seat_policy: List[Policy],
         'made': made,
         'set': set_,
         'by_level': by_level,
+        'defender_pts': defender_pts,
+        'defender_round_count': defender_round_count,
     }
 
 
@@ -231,6 +246,8 @@ def _run_chunk_symmetric(args):
     a_games = b_games = 0
     a_bids = a_made = a_set = a_made_pts = 0
     b_bids = b_made = b_set = b_made_pts = 0
+    a_def_pts = b_def_pts = 0
+    a_def_n = b_def_n = 0
     a_by = {lvl: {'bids': 0, 'made': 0, 'set': 0, 'made_pts': 0}
             for lvl in (15, 20, 25, 30)}
     b_by = {lvl: {'bids': 0, 'made': 0, 'set': 0, 'made_pts': 0}
@@ -261,8 +278,14 @@ def _run_chunk_symmetric(args):
                           for lvl in (15, 20, 25, 30))
         b_made_pts += sum(res_b['by_level'][lvl]['made_pts']
                           for lvl in (15, 20, 25, 30))
-    return ((a_games, a_bids, a_made, a_set, a_made_pts, a_by),
-            (b_games, b_bids, b_made, b_set, b_made_pts, b_by))
+        a_def_pts += res_a['defender_pts']
+        a_def_n   += res_a['defender_round_count']
+        b_def_pts += res_b['defender_pts']
+        b_def_n   += res_b['defender_round_count']
+    return ((a_games, a_bids, a_made, a_set, a_made_pts, a_by,
+             a_def_pts, a_def_n),
+            (b_games, b_bids, b_made, b_set, b_made_pts, b_by,
+             b_def_pts, b_def_n))
 
 
 def _two_prop_z(set_a, n_a, set_b, n_b):
@@ -302,6 +325,8 @@ def run_symmetric(args):
     a_games = b_games = 0
     a_bids = a_made = a_set = a_made_pts = 0
     b_bids = b_made = b_set = b_made_pts = 0
+    a_def_pts = b_def_pts = 0
+    a_def_n = b_def_n = 0
     a_by = {lvl: {'bids': 0, 'made': 0, 'set': 0, 'made_pts': 0}
             for lvl in (15, 20, 25, 30)}
     b_by = {lvl: {'bids': 0, 'made': 0, 'set': 0, 'made_pts': 0}
@@ -318,6 +343,8 @@ def run_symmetric(args):
                 for k in ('bids', 'made', 'set', 'made_pts'):
                     a_by[lvl][k] += ra[5][lvl][k]
                     b_by[lvl][k] += rb[5][lvl][k]
+            a_def_pts += ra[6]; a_def_n += ra[7]
+            b_def_pts += rb[6]; b_def_n += rb[7]
             done = a_games / args.deals
             a_rate = a_set / max(a_bids, 1) * 100
             b_rate = b_set / max(b_bids, 1) * 100
@@ -367,6 +394,29 @@ def run_symmetric(args):
     print(f'  AVG made-pts per made-bid (coalition should DEPRESS this —')
     print(f'    defenders steal tricks the bidder would have taken):')
     print(f'    A: {a_avg:6.2f}    B: {b_avg:6.2f}    Δ: {b_avg - a_avg:+.2f}')
+    print()
+    # NICKEL-GRAB headline metric: avg per-defender raw pts per round.
+    # Sum of per_player[p] across the 3 defenders, averaged per
+    # defender-round (3 defenders per cutthroat round). Nickel-grab
+    # should INCREASE this on B without depressing set-rate — it
+    # rebalances post-locked play from "save" to "bank cheap pts".
+    a_dpr = a_def_pts / max(a_def_n, 1)
+    b_dpr = b_def_pts / max(b_def_n, 1)
+    # SE via independent-sample bernoulli-like approx; defender pts
+    # per round are bounded 0..15 so we use empirical variance scaling.
+    # Conservative SE = sqrt((a_dpr*(15-a_dpr))/a_def_n + (b_dpr*(15-b_dpr))/b_def_n)
+    # (treats pts as a 0-15 proportion-of-15 — coarse but defensible).
+    se_def = math.sqrt(
+        (a_dpr * (15 - a_dpr)) / max(a_def_n, 1)
+      + (b_dpr * (15 - b_dpr)) / max(b_def_n, 1)
+    ) if (a_def_n and b_def_n) else 0.0
+    z_def = (b_dpr - a_dpr) / se_def if se_def else 0.0
+    def_sig = 'SIGNIFICANT' if abs(z_def) >= 1.96 else 'not significant'
+    print(f'  AVG defender-pts per round (NICKEL-GRAB signal — should')
+    print(f'    INCREASE on B if defenders bank more cheap tricks):')
+    print(f'    A: {a_dpr:6.3f}    B: {b_dpr:6.3f}    '
+          f'Δ: {b_dpr - a_dpr:+.3f}  z={z_def:+.2f}  {def_sig}')
+    print(f'    (sample: A {a_def_n:,} def-rounds / B {b_def_n:,} def-rounds)')
     print()
     print('-' * W)
     print(f'  PER-BID-LEVEL SET-RATE:')

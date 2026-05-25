@@ -325,6 +325,29 @@ CUTTHROAT_STRIPPED.name = "cutthroat-stripped"
 REGISTRY["cutthroat-stripped"] = CUTTHROAT_STRIPPED
 
 
+# CUTTHROAT N1 NICKEL-GRAB (opt-in challenger on TOP of coalition-v2).
+# When set OR made is mathematically LOCKED, switch from coalition mode
+# (which is about influencing whether the bid is made/set — moot now)
+# to point-greedy mode: take the cheapest winning card, but NEVER burn
+# a top-3 trump (rank >= 100 — 5 of trump, J of trump, A♥ when trump
+# != hearts) to do so. N1 sits FIRST in the defender cutthroat block;
+# its early-return preempts C1 and C2 in the locked regime. C1 and C2
+# already gate on `not locked` so the not-locked regime is unchanged.
+#
+# Hypothesis: defenders banking cheap free tricks late in a decided
+# round leaves them with more raw round points (+EV) without increasing
+# the bidder's bid-quality (set-rate may be roughly flat — set is
+# decided by the time N1 fires). Lesson from pass-1 C1 sanity (commit
+# 3f26177): aggressive defender takes that burn top trump are
+# net-negative — nickel-grab restricts the take to free tricks.
+CUTTHROAT_NICKEL_GRAB = Policy(cutthroat=True,
+                               ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                         'cutthroat_c2_dont_overtake': True,
+                                         'cutthroat_n1_nickel_grab': True})
+CUTTHROAT_NICKEL_GRAB.name = "cutthroat-nickel-grab"
+REGISTRY["cutthroat-nickel-grab"] = CUTTHROAT_NICKEL_GRAB
+
+
 # FORCE-EXTRACT challenger variants (opt-in rule, default absent in champion).
 # Each enables the rule + one partner-trump-rich proxy; data picks the proxy.
 def _fx(proxy: str):
