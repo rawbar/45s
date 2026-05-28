@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.73';
+const VERSION = '2.31.74';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5509,12 +5509,55 @@ function getDefaultDiscardSelection(hand, trumpSuit) {
   return hand.map((c, i) => isTrump(c, trumpSuit) ? -1 : i).filter(i => i >= 0);
 }
 
-function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, highBid, cardsDrawn, knownOutOfTrump, trickNum, bidderHasLostTrick, cardsPlayed, playHistory, knownVoids) {
+// ─────────────────────────────────────────────────────────────────────────────
+// CUTTHROAT COALITION HELPERS (v2.31.74 — ported from Python sim
+// improved_ai.py _ct_bidder_round_pts / _ct_set_locked / _ct_made_locked).
+// Used only when gameOptions.cutthroat. Default-OFF code paths in partner
+// mode (gating callsites are all `if (cutthroat && ...)`).
+//
+// trickNum here is 0-INDEXED (JS convention): 0..4. The Python helper uses
+// 1-INDEXED current_trick_num so its `5 - (cur-1)` becomes `5 - trickNum`.
+// ─────────────────────────────────────────────────────────────────────────────
+function _ctBidderRoundPts(playerTricks, highTrumpPlayer, bidWinner) {
+  if (!Array.isArray(playerTricks)) return 0;
+  let pts = (playerTricks[bidWinner] || 0) * 5;
+  if (highTrumpPlayer === bidWinner) pts += 5;
+  return pts;
+}
+
+function _ctSetLocked(playerTricks, highTrumpPlayer, bidWinner, highBid, trickNum) {
+  if (!Array.isArray(playerTricks)) return false;
+  const pts = _ctBidderRoundPts(playerTricks, highTrumpPlayer, bidWinner);
+  const tricksRemaining = 5 - trickNum;  // includes current trick
+  // If trump bonus is already with someone other than bidder, it's locked
+  // there and bidder cannot collect it. If still unassigned (-1 / null),
+  // assume bidder could win the high-trump trick (upper bound for SET).
+  const bonusMax = (highTrumpPlayer === -1 || highTrumpPlayer === null || highTrumpPlayer === undefined) ? 5 : 0;
+  const maxRemaining = tricksRemaining * 5 + bonusMax;
+  return (pts + maxRemaining) < highBid;
+}
+
+function _ctMadeLocked(playerTricks, highTrumpPlayer, bidWinner, highBid) {
+  if (!Array.isArray(playerTricks)) return false;
+  return _ctBidderRoundPts(playerTricks, highTrumpPlayer, bidWinner) >= highBid;
+}
+
+function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, highBid, cardsDrawn, knownOutOfTrump, trickNum, bidderHasLostTrick, cardsPlayed, playHistory, knownVoids, gameOptions, playerTricks, highTrumpPlayer) {
   const led = trick[0] || null;
   const ledSuit = led?.suit;
   const playable = getPlayableCards(hand, trumpSuit, led, ledSuit);
-  
+
   if (playable.length <= 1) return playable[0] || hand[0];
+
+  // v2.31.74: cutthroat-mode AI. Partner-mode behavior is bit-identical when
+  // `cutthroat` is false (every cutthroat branch is gated). When true, the 17
+  // partner-coupled rules from the Chunk B audit are SKIPPED, the 8 team-vs-
+  // defender position rules treat `(player !== bidWinner)` as defender (no
+  // teams), and coalition C1 (take-from-bidder) + C2 (don't-overtake-defender,
+  // bidder-has-played gate) are added in the following block.
+  const cutthroat = !!(gameOptions && gameOptions.cutthroat);
+  // Default high_trump_player to -1 (unassigned) if caller did not pass it.
+  if (highTrumpPlayer === undefined || highTrumpPlayer === null) highTrumpPlayer = -1;
 
   // Build and log player intelligence
   const intel = buildPlayerIntelligence(playHistory, cardsPlayed, knownVoids, cardsDrawn, trumpSuit);
@@ -5538,6 +5581,8 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   const isLeadingTrick = trick.length === 0;
   
   // Quick check: is partner currently winning this trick?
+  // v2.31.74: cutthroat — no partner concept, force to false so the bidder
+  // is treated as "opp winning" for boss/cash branches.
   let partnerCurrentlyWinning = false;
   if (!isLeadingTrick && trick.length > 0) {
     let currentWinner = leader;
@@ -5548,7 +5593,7 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
         currentWinner = (leader + i) % 4;
       }
     }
-    partnerCurrentlyWinning = (currentWinner % 2) === (player % 2);
+    partnerCurrentlyWinning = !cutthroat && ((currentWinner % 2) === (player % 2));
   }
 
   // ========================================================================
@@ -5569,8 +5614,9 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   // only change is cashing it EARLY (tempo + a real shot at a second
   // defensive trick via the lead) instead of wasting it on trick 5.
   // Flag-gated (champion default-ON; off:defender_cash_boss_ah reverts).
-  if (!isLeadingTrick && !partnerCurrentlyWinning &&
-      (player % 2) !== (bidWinner % 2)) {
+  // v2.31.74: cutthroat — "defender" is anyone who is not the bidder.
+  const _isDefenderNow = cutthroat ? (player !== bidWinner) : ((player % 2) !== (bidWinner % 2));
+  if (!isLeadingTrick && !partnerCurrentlyWinning && _isDefenderNow) {
     const _ah = playable.find(c => c.rank === 'A' && c.suit === '♥');
     if (_ah) {
       const _testTrick = [...trick, _ah];
@@ -5623,9 +5669,16 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
           // is 0-indexed so >=3 means trick 4 or 5. Head-to-head: exactly
           // non-regressing (50.00%, z=-0.01, 120k games); shipped for
           // intuitive play / AI-logic trust at zero win-rate cost.
-          if ((player % 2) !== (bidWinner % 2) && trickNum >= 3) {
-            const _bTeam = bidWinner % 2;
-            const _bOpps = [0, 1, 2, 3].filter(s => s % 2 === _bTeam);
+          // v2.31.74: cutthroat — defender = not bidder, _opps = everyone but me.
+          const _elbIsDef = cutthroat ? (player !== bidWinner) : ((player % 2) !== (bidWinner % 2));
+          if (_elbIsDef && trickNum >= 3) {
+            let _bOpps;
+            if (cutthroat) {
+              _bOpps = [0, 1, 2, 3].filter(s => s !== player);
+            } else {
+              const _bTeam = bidWinner % 2;
+              _bOpps = [0, 1, 2, 3].filter(s => s % 2 === _bTeam);
+            }
             const _allKnownVoid = _bOpps.every(s =>
               knownVoids && knownVoids[s] && knownVoids[s].trump === true);
             if (_allKnownVoid) {
@@ -5635,7 +5688,7 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
           }
           // Defenders: don't lead boss trump - save it, prefer offsuit to drain bidder team first
           // Simulation (550k games): defender boss trump leading → offsuit = 70-85% improvement
-          if ((player % 2) !== (bidWinner % 2)) {
+          if (_elbIsDef) {
             console.log(`🎯 BOSS CARD: P${player + 1} (defender) has boss ${card.id} - saving, leads offsuit instead`);
             break; // Exit boss check, fall through to defender leading section (prefers offsuit)
           }
@@ -5644,7 +5697,8 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
           // save boss and lead offsuit — bidder can trump in for a separate trick win
           // e.g. partner has K♠ (boss), bidder has 2♠ remaining, opponents void:
           //   lead offsuit → bidder trumps in trick 4, partner wins trick 5 with K♠ = extra trick
-          {
+          // v2.31.74: skip in cutthroat — no partner concept.
+          if (!cutthroat) {
             const pOpp1Idx = (bidWinner + 1) % 4;
             const pOpp2Idx = (bidWinner + 3) % 4;
             const isPartnerOfBidder = player !== bidWinner;
@@ -5665,19 +5719,22 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
           // spend their trump, then play 5 when a trick is actually at risk.
           // Only applies when bidder has ≤2 trump — with 3+ trump they can win independently
           // and don't need partner's help (e.g. 5+J+A♥+K should still lead the 5).
-          const partnerIdx = (bidWinner + 2) % 4;
-          const opp1Idx = (bidWinner + 1) % 4;
-          const opp2Idx = (bidWinner + 3) % 4;
-          const myTrumpCount = playable.filter(c => getTrumpRank(c, trumpSuit) >= 0).length;
-          if (cardsDrawn && myTrumpCount <= 2 &&
-              cardsDrawn[partnerIdx] >= 4 &&
-              cardsDrawn[opp1Idx] <= 3 && cardsDrawn[opp2Idx] <= 3) {
-            const offsuitCards = playable.filter(c => getTrumpRank(c, trumpSuit) < 0);
-            if (offsuitCards.length > 0) {
-              const lowestOffsuit = offsuitCards.reduce((a, b) =>
-                getOffSuitRank(a) < getOffSuitRank(b) ? a : b);
-              console.log(`🧠 BOSS SAVE: P${player + 1} partner drew ${cardsDrawn[partnerIdx]}, enemies drew ${cardsDrawn[opp1Idx]}/${cardsDrawn[opp2Idx]} - saving ${card.id}, leading ${lowestOffsuit.id}`);
-              return lowestOffsuit;
+          // v2.31.74: skip in cutthroat — no partner concept.
+          if (!cutthroat) {
+            const partnerIdx = (bidWinner + 2) % 4;
+            const opp1Idx = (bidWinner + 1) % 4;
+            const opp2Idx = (bidWinner + 3) % 4;
+            const myTrumpCount = playable.filter(c => getTrumpRank(c, trumpSuit) >= 0).length;
+            if (cardsDrawn && myTrumpCount <= 2 &&
+                cardsDrawn[partnerIdx] >= 4 &&
+                cardsDrawn[opp1Idx] <= 3 && cardsDrawn[opp2Idx] <= 3) {
+              const offsuitCards = playable.filter(c => getTrumpRank(c, trumpSuit) < 0);
+              if (offsuitCards.length > 0) {
+                const lowestOffsuit = offsuitCards.reduce((a, b) =>
+                  getOffSuitRank(a) < getOffSuitRank(b) ? a : b);
+                console.log(`🧠 BOSS SAVE: P${player + 1} partner drew ${cardsDrawn[partnerIdx]}, enemies drew ${cardsDrawn[opp1Idx]}/${cardsDrawn[opp2Idx]} - saving ${card.id}, leading ${lowestOffsuit.id}`);
+                return lowestOffsuit;
+              }
             }
           }
           console.log(`🎯 BOSS CARD: P${player} leading ${card.id} (guaranteed winner)`);
@@ -5691,15 +5748,18 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
           // PARTNER BOSS-SAVE: bidder's partner following with boss trump should save it
           // when enemy trump is low — boss still wins on a later trick AND earns the high-trump bonus
           // Simulation (550k games): partner plays boss in following → offsuit = 94-96% improvement
-          const isPartner = player === (bidWinner + 2) % 4;
-          if (isPartner && trickNum < 5) {
-            const opp1 = (bidWinner + 1) % 4;
-            const opp2 = (bidWinner + 3) % 4;
-            const enemyTrump = (intel.players[opp1]?.estimatedTrumpRemaining || 0) +
-                               (intel.players[opp2]?.estimatedTrumpRemaining || 0);
-            if (enemyTrump <= 1) {
-              console.log(`🎯 BOSS SAVE: P${player + 1} (partner) saving boss ${card.id} - enemy trump ~${enemyTrump}, plays offsuit instead`);
-              break; // fall through to 2nd-man-low → plays offsuit
+          // v2.31.74: skip in cutthroat — no partner concept.
+          if (!cutthroat) {
+            const isPartner = player === (bidWinner + 2) % 4;
+            if (isPartner && trickNum < 5) {
+              const opp1 = (bidWinner + 1) % 4;
+              const opp2 = (bidWinner + 3) % 4;
+              const enemyTrump = (intel.players[opp1]?.estimatedTrumpRemaining || 0) +
+                                 (intel.players[opp2]?.estimatedTrumpRemaining || 0);
+              if (enemyTrump <= 1) {
+                console.log(`🎯 BOSS SAVE: P${player + 1} (partner) saving boss ${card.id} - enemy trump ~${enemyTrump}, plays offsuit instead`);
+                break; // fall through to 2nd-man-low → plays offsuit
+              }
             }
           }
           // If all players AFTER current player are void of trump, any trump wins this trick —
@@ -5742,7 +5802,8 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
           // disjoint games).
           {
             const ledOff = getTrumpRank(trick[0], trumpSuit) < 0;
-            const isDefender = (player % 2) !== (bidWinner % 2);
+            // v2.31.74: cutthroat — defender = not bidder.
+            const isDefender = cutthroat ? (player !== bidWinner) : ((player % 2) !== (bidWinner % 2));
             const trumpRanks = playable
               .map(c => getTrumpRank(c, trumpSuit))
               .filter(r => r >= 0);
@@ -5758,7 +5819,8 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
           // 2ND-MAN BOSS RENEGE: low trump led by opponent, 3rd (opp partner) void, 4th (my partner) has trump
           // — partner sits behind me and wins with any trump above the low lead. Save boss for a later trick.
           // Threshold: ledRank < 90 catches all number-trump leads; Q+ leads are kept (partner may not beat).
-          {
+          // v2.31.74: skip in cutthroat — no partner concept; "the player behind me" is not a teammate.
+          if (!cutthroat) {
             const ledRankCheck = getTrumpRank(trick[0], trumpSuit);
             const ledIsLowTrump = ledRankCheck >= 0 && ledRankCheck < 90;
             if (trick.length === 1 && ledIsLowTrump) {
@@ -5837,8 +5899,11 @@ if (isBidder && isLeading) {
   // ========================================================================
   if (trickNum >= 4 && trumps.length === 1 && nonTrumps.length === 1) {
     // Final 2 cards: 1 trump, 1 offsuit
-    // Analyze opponents' likely trump count
-    const opponentIndices = [0, 1, 2, 3].filter(i => i !== player && i !== (player + 2) % 4);
+    // Analyze opponents' likely trump count.
+    // v2.31.74: cutthroat — every other seat is an opponent (no partner exclusion).
+    const opponentIndices = cutthroat
+      ? [0, 1, 2, 3].filter(i => i !== player)
+      : [0, 1, 2, 3].filter(i => i !== player && i !== (player + 2) % 4);
     
     let opponentLikelyHasTrump = false;
     for (const oppIdx of opponentIndices) {
@@ -5902,17 +5967,20 @@ if (isDefender && isLeading) {
   // PARTNER TRUMP-LOADED: if partner has 3+ estimated trump remaining and opponents
   // still have trump, lead our lowest trump to pull opponents' trump now — otherwise
   // partner's heavy trump hand will clash with opponent trump in later tricks
-  const partnerIdx = (player + 2) % 4;
-  const opp1Idx = (player + 1) % 4;
-  const opp2Idx = (player + 3) % 4;
-  const partnerTrumpEst = intel.players[partnerIdx]?.estimatedTrumpRemaining || 0;
-  const oppsHaveTrump = (intel.players[opp1Idx]?.estimatedTrumpRemaining || 0) > 0 ||
-                        (intel.players[opp2Idx]?.estimatedTrumpRemaining || 0) > 0;
-  if (partnerTrumpEst >= 3 && trumps.length > 0 && nonTrumps.length > 0 && oppsHaveTrump) {
-    const lowestTrump = trumps.reduce((a, b) =>
-      getTrumpRank(a, trumpSuit) < getTrumpRank(b, trumpSuit) ? a : b);
-    console.log(`🤝 PARTNER TRUMP LOAD: P${player + 1} leading lowest trump ${lowestTrump.id} (partner est ${partnerTrumpEst} trump) to clear opponents`);
-    return lowestTrump;
+  // v2.31.74: skip in cutthroat — no partner concept.
+  if (!cutthroat) {
+    const partnerIdx = (player + 2) % 4;
+    const opp1Idx = (player + 1) % 4;
+    const opp2Idx = (player + 3) % 4;
+    const partnerTrumpEst = intel.players[partnerIdx]?.estimatedTrumpRemaining || 0;
+    const oppsHaveTrump = (intel.players[opp1Idx]?.estimatedTrumpRemaining || 0) > 0 ||
+                          (intel.players[opp2Idx]?.estimatedTrumpRemaining || 0) > 0;
+    if (partnerTrumpEst >= 3 && trumps.length > 0 && nonTrumps.length > 0 && oppsHaveTrump) {
+      const lowestTrump = trumps.reduce((a, b) =>
+        getTrumpRank(a, trumpSuit) < getTrumpRank(b, trumpSuit) ? a : b);
+      console.log(`🤝 PARTNER TRUMP LOAD: P${player + 1} leading lowest trump ${lowestTrump.id} (partner est ${partnerTrumpEst} trump) to clear opponents`);
+      return lowestTrump;
+    }
   }
 
   // Defenders should RARELY lead trump
@@ -5955,14 +6023,18 @@ if (trick.length > 0) {
   }
   const currentWinnerTeam = currentWinner % 2;
   const myTeam = player % 2;
-  const partnerWinning = currentWinnerTeam === myTeam;
-  
+  // v2.31.74: cutthroat — no partner concept; force partnerWinning false so we
+  // fall through to the opp-winning logic (no partner-save / partner-trump
+  // overtake branches). signal_3rd_man_high is also a partner-coupled rule
+  // (3rd man helps partner take the trick) → gated below.
+  const partnerWinning = !cutthroat && (currentWinnerTeam === myTeam);
+
   // ========================================================================
   // BIDDER SIGNALING DETECTION - Override partner winning if bidder signaled
   // ========================================================================
   const bidderLed = leader === bidWinner;
-  const signalDetected = bidderLed && isBidderSignaling(ledCard, trumpSuit, cardsPlayed, bidWinner, trickNum);
-  
+  const signalDetected = !cutthroat && bidderLed && isBidderSignaling(ledCard, trumpSuit, cardsPlayed, bidWinner, trickNum);
+
   // If bidder is signaling for 3rd man high, play trump aggressively even if partner "winning"
   // But only if our highest trump can actually beat the current trick winner
   if (signalDetected && myPosition === 2 && myTrumps.length > 0) {
@@ -6199,6 +6271,62 @@ if (trick.length > 0) {
     }
   }
 
+  // ========================================================================
+  // CUTTHROAT COALITION C1 + C2 (v2.31.74)
+  // ========================================================================
+  // Ported from Python sim improved_ai.py (commit 3f26177). Default-ON in
+  // champion-cutthroat. Symmetric A-vs-B test +1.45pt z=+3.56 primary,
+  // +1.08pt z=+2.65 held-out — REPLICATED. Partner mode: bit-identical
+  // (entire block is gated `if (cutthroat)`).
+  //
+  //   C2 (don't-overtake): another defender currently leads the trick AND
+  //       the BIDDER HAS ALREADY PLAYED → cheap-low; don't burn cards to
+  //       overtake the teammate-of-convenience. Skip when set is locked.
+  //
+  //   C1 (take-from-bidder): the BIDDER currently leads the trick → play
+  //       the CHEAPEST card that beats them. Skip if set/made is locked.
+  //
+  // Order matches Python: C2 first (conservative default), then C1
+  // (affirmative take). N1 nickel-grab is NOT shipped in champion — omitted.
+  if (cutthroat && player !== bidWinner && trick.length > 0) {
+    const _setLk = _ctSetLocked(playerTricks, highTrumpPlayer, bidWinner, highBid, trickNum);
+    const _madeLk = _ctMadeLocked(playerTricks, highTrumpPlayer, bidWinner, highBid);
+    // trick[i] is the card played by seat (leader + i) % 4 — so the bidder
+    // has played iff bidWinner appears in that span.
+    let _bidderHasPlayed = false;
+    for (let i = 0; i < trick.length; i++) {
+      if (bidWinner === (leader + i) % 4) { _bidderHasPlayed = true; break; }
+    }
+    // C2 — don't overtake a fellow defender (bidder must have already played).
+    if (currentWinner !== bidWinner && currentWinner !== player &&
+        _bidderHasPlayed && !_setLk) {
+      console.log(`🤝 CUTTHROAT C2: P${player + 1} (defender) not overtaking defender P${currentWinner + 1} — cheap-low`);
+      return playable.reduce((lowest, card) => {
+        const r1 = isTrump(lowest) ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
+        const r2 = isTrump(card) ? getTrumpRank(card, trumpSuit) + 200 : getOffSuitRank(card);
+        return r1 < r2 ? lowest : card;
+      });
+    }
+    // C1 — take from the bidder with the cheapest winner.
+    if (currentWinner === bidWinner && !_setLk && !_madeLk) {
+      const winners = playable.filter(c => {
+        const tt = [...trick, c];
+        while (tt.length < 4) tt.push(dummyPadCard(trumpSuit));
+        return determineTrickWinner(tt, trumpSuit, leader) === player;
+      });
+      if (winners.length > 0) {
+        const cheapest = winners.reduce((best, c) => {
+          const r1 = isTrump(c) ? getTrumpRank(c, trumpSuit) : getOffSuitRank(c);
+          const r2 = isTrump(best) ? getTrumpRank(best, trumpSuit) : getOffSuitRank(best);
+          return r1 < r2 ? c : best;
+        });
+        console.log(`🤝 CUTTHROAT C1: P${player + 1} (defender) taking from bidder with cheapest winner ${cheapest.id}`);
+        return cheapest;
+      }
+    }
+    // fall through to existing position-specific rules (take_t4_2nd etc.)
+  }
+
   // RULE 3: 4th position (last to play) - win with MINIMUM necessary card
   if (myPosition === 3) {
     // Find the cheapest card that wins
@@ -6258,13 +6386,16 @@ if (trick.length > 0) {
     // a guaranteed winner unless trumped), I am void with trump → cheap-
     // ruff to deny the bidder a free trick and take the lead. Far tighter
     // than the removed broad v2.31.25 (any 2nd-man void, any trick).
-    if (trickNum >= 3 && leader === bidWinner &&
-        (player % 2) !== (bidWinner % 2) &&
-        !isTrump(trick[0]) && trick[0].rank === 'A' && myTrumps.length > 0) {
-      const lowRuff = myTrumps.reduce((lo, c) =>
-        getTrumpRank(c, trumpSuit) < getTrumpRank(lo, trumpSuit) ? c : lo);
-      console.log(`🧠 2ND-MAN: P${player + 1} (defender) cheap-ruffs bidder's endgame Ace with ${lowRuff.id}`);
-      return lowRuff;
+    {
+      // v2.31.74: cutthroat — defender = not bidder.
+      const _drbeIsDef = cutthroat ? (player !== bidWinner) : ((player % 2) !== (bidWinner % 2));
+      if (trickNum >= 3 && leader === bidWinner && _drbeIsDef &&
+          !isTrump(trick[0]) && trick[0].rank === 'A' && myTrumps.length > 0) {
+        const lowRuff = myTrumps.reduce((lo, c) =>
+          getTrumpRank(c, trumpSuit) < getTrumpRank(lo, trumpSuit) ? c : lo);
+        console.log(`🧠 2ND-MAN: P${player + 1} (defender) cheap-ruffs bidder's endgame Ace with ${lowRuff.id}`);
+        return lowRuff;
+      }
     }
 
     // take_t4_2nd (v2.31.57, user-derived 2026-05-21): on trick 4+
@@ -6300,18 +6431,21 @@ if (trick.length > 0) {
     // Rig: +0.01pt z=+0.05 primary 20k (rig-NEUTRAL); shipped as a trust
     // fix per the v2.31.30 precedent — sound textbook principle, fires
     // visibly in screenshots, zero measured win-rate cost.
-    if (trick && trick.length > 0 && !isTrump(trick[0]) &&
-        (player % 2) !== (bidWinner % 2) &&
-        leader === bidWinner) {
-      const ledSuit = trick[0].suit;
-      const winningRank = getOffSuitRank(trick[0]);
-      const beaters = playable.filter(c =>
-        c.suit === ledSuit && !isTrump(c) && getOffSuitRank(c) > winningRank);
-      if (beaters.length > 0) {
-        const cheapestBeater = beaters.reduce((lo, c) =>
-          getOffSuitRank(c) < getOffSuitRank(lo) ? c : lo);
-        console.log(`🧠 OFF2-BEAT: P${player + 1} (defender) beats bidder's ${trick[0].id} offsuit lead with ${cheapestBeater.id}`);
-        return cheapestBeater;
+    {
+      // v2.31.74: cutthroat — defender = not bidder.
+      const _obIsDef = cutthroat ? (player !== bidWinner) : ((player % 2) !== (bidWinner % 2));
+      if (trick && trick.length > 0 && !isTrump(trick[0]) &&
+          _obIsDef && leader === bidWinner) {
+        const ledSuit = trick[0].suit;
+        const winningRank = getOffSuitRank(trick[0]);
+        const beaters = playable.filter(c =>
+          c.suit === ledSuit && !isTrump(c) && getOffSuitRank(c) > winningRank);
+        if (beaters.length > 0) {
+          const cheapestBeater = beaters.reduce((lo, c) =>
+            getOffSuitRank(c) < getOffSuitRank(lo) ? c : lo);
+          console.log(`🧠 OFF2-BEAT: P${player + 1} (defender) beats bidder's ${trick[0].id} offsuit lead with ${cheapestBeater.id}`);
+          return cheapestBeater;
+        }
       }
     }
 
@@ -6694,6 +6828,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.74', date: 'May 2026', changes: ['Cutthroat AI is now significantly stronger. The variant was previously running partner-mode AI in cutthroat seats, which is what caused the "getting set 50% of the time" problem — partner rules don\'t make sense when there is no partner. This update ports two improvements that were validated in the simulator: (1) the 17 partner-coupled rules are now skipped in cutthroat mode (worth +2.2pt win rate per the rig); (2) cutthroat defenders now coordinate via C1 take-from-bidder + C2 don\'t-overtake-defender (worth another +1.5pt win rate, replicated in held-out). Net: AI plays cutthroat MUCH more like a real cutthroat player. Bidders will be set more often. Partner mode is unaffected — every cutthroat code path is gated on the variant flag.'] },
     { version: '2.31.73', date: 'May 2026', changes: ['Lobby game list now shows 4 individual player scores for cutthroat games in progress (e.g., "N 25 · E 30 · S 45 · W 20") instead of the team-mode "0 · 0" that was previously displayed. The current leader is highlighted in brass-gold. Finished cutthroat games show the winning PLAYER (not team) prominently in the lobby card — "Winner: alice (120)" — with a compact 4-seat scoreboard underneath, and the winning seat tile gets a green border. AI seats label as a single seat letter (N/E/S/W); human seats use the first 2 chars of their username (lobby row) or first 3 chars (game-over card). Partner-mode rendering is byte-identical — only a cutthroat branch was added.'] },
     { version: '2.31.72', date: 'May 2026', changes: ['Cutthroat polish: (1) The four score plaques at the top of the table now show seat-letter labels (N/E/S/W) for AI players and the first three characters of the username for humans, instead of slicing "AI Player N" down to a useless trailing "AI " on every AI seat. (2) The same fix is applied to the cutthroat round-end and game-over modals: AI rows now read "North" / "East" / "South" / "West" (full seat name in the wider modal layout) and human rows keep their full username. (3) The bottom-of-table score-history strip (ScoreTable) now renders four per-player columns in cutthroat games instead of US/THEM, with per-round deltas + running totals stamped under each seat. Round-end history entries written by the bidder-completes-trick-5 and AI-completes-trick-5 paths now include cutthroat-only `playerRoundScores` and `playerTotals` arrays alongside the existing partner-mode fields, so partner-mode entries stay byte-identical and only cutthroat rounds carry the extra payload. (4) The redundant duplicate copy of the Partners-vs-Cutthroat variant selector that v2.31.71 still had inside each Create Game modal (cyberpunk, two Arabian variants, Irish) has been removed — the lobby-level selector right above the Create Game button is now the single source of truth.'] },
     { version: '2.31.71', date: 'May 2026', changes: ['Cutthroat promoted out of the Options menu and into a top-level Partners-vs-Cutthroat segmented selector on the Create Game screen (and in Preferences as your default for new games). Cutthroat is labeled ALPHA because the scoring works but the AI does not yet know cutthroat-specific strategy — it will sometimes fail to coordinate to set the leader and may underplay free-five-point grabs. The first time you start a cutthroat game in a session you now see a one-shot disclaimer modal explaining the alpha state; dismiss with OK. Two leftover stat writes (the Follow-A♥ per-card increment and the server-side disconnect counter) are now also gated off in cutthroat so the variant stays zero-write to partner-mode counters. Existing prefs that had Cutthroat set as a house rule (from v2.31.69 / v2.31.70 sessions) migrate forward to the new gameVariant pref on prefs load.'] },
@@ -16147,6 +16282,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       }
       
       // Use Monte Carlo AI strategy
+      // v2.31.74: pass gameOptions + per-player tricks + high-trump player so
+      // cutthroat-mode AI can compute set/made-locked and coalition rules.
       const card = chooseCardToPlay(
         hand,
         trumpSuit,
@@ -16161,7 +16298,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         bidderLostTrick,
         cardsPlayed,
         playHistory,
-        knownVoids
+        knownVoids,
+        gameOptions,
+        playerTricks,
+        (highTrumpInfo && typeof highTrumpInfo.player === 'number') ? highTrumpInfo.player : -1
       );
       
       const cardIndex = hand.findIndex(c => c.id === card.id);
