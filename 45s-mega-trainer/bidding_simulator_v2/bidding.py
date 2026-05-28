@@ -96,7 +96,8 @@ def decide_bid(hand: List[Card],
                 cutthroat_tight_25: bool = False,
                 cutthroat_kill_30: bool = False,
                 cutthroat_surgical_tight_20: bool = False,
-                cutthroat_aggressive_tight_20: bool = False) -> Tuple[int, Optional[Suit]]:
+                cutthroat_aggressive_tight_20: bool = False,
+                cutthroat_surgical_tight_15: bool = False) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
     DATA-DERIVED, held-out-validated trigger (commit d19be47: 12k deals/cell
@@ -152,6 +153,7 @@ def decide_bid(hand: List[Card],
         cutthroat_kill_30 = False
         cutthroat_surgical_tight_20 = False
         cutthroat_aggressive_tight_20 = False
+        cutthroat_surgical_tight_15 = False
 
     opp_bid_15 = current_high_bid == 15 and partner_bid != 15
     opp_bid_20 = current_high_bid == 20 and partner_bid != 20
@@ -414,6 +416,34 @@ def decide_bid(hand: List[Card],
                 bid = 15
             elif hasAT and hasKT and hasQT:
                 bid = 15
+            # SURGICAL TIGHT-15 (cutthroat_surgical_tight_15): pattern-targeted
+            # demotion of natural-15 bids derived from
+            # cutthroat_pattern_makerate.py @ 3000 deals against
+            # champion-cutthroat (post v2.31.77 surgical tight-20 ship).
+            # Drops the two highest-volume EV-negative 15-bid patterns
+            # where the bidder has a single anchor and only 1-2 trump total
+            # (insufficient depth for solo cutthroat trick extraction).
+            # Pattern definitions use this codebase's trump_count semantics
+            # (count_trumps INCLUDES the 5/J/AH/AT anchors).
+            #
+            #   make-rate  pattern (n)         condition
+            #   ---------- ------------------- --------------------------------
+            #    0.0%  J+T1     (n=185)  hasJ only, T==1 (lonely J)
+            #    3.5%  5+T1     (n=255)  has5 only, T==1 (lonely 5)
+            #   16.2%  J+T2     (n=1,167) hasJ only, T==2 (J + 1 lower trump)
+            #   32.9%  5+T2     (n=1,531) has5 only, T==2 (5 + 1 lower trump)
+            # Pre-kitty buckets shift slightly under post-draw analyzer
+            # naming (kitty adds trump) — the rule gates the pre-kitty
+            # hand the bidder ACTUALLY sees, so it targets:
+            #   hasJ AND no5/AH/AT AND tc<=2 (captures J+T1, J+T2 family)
+            #   has5 AND noJ/AH/AT AND tc<=2 (captures 5+T1, 5+T2 family)
+            if cutthroat_surgical_tight_15 and bid == 15:
+                p_J_alone_T12 = (hasJ and not has5 and not hasAH
+                                 and not hasAT and trump_count <= 2)
+                p_5_alone_T12 = (has5 and not hasJ and not hasAH
+                                 and not hasAT and trump_count <= 2)
+                if p_J_alone_T12 or p_5_alone_T12:
+                    bid = 0
 
     # Dealer clamp (only bid the minimum needed)
     if bid > current_high_bid and player_index == dealer and current_high_bid > 0:

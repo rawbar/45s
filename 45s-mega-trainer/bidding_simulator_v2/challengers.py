@@ -319,6 +319,51 @@ REGISTRY["cutthroat-tight-20-aggressive"] = CutthroatAggressiveTight20()
 REGISTRY["no-surgical-tight-20"]          = NoSurgicalTight20()
 
 
+# SURGICAL TIGHT-15 — TESTED, NO-SHIP (this commit, post-v2.31.77 baseline).
+# Pattern-targeted demotion of natural-15 bids derived from
+# cutthroat_pattern_makerate.py @ 3000 deals against champion-cutthroat
+# (the surgical tight-20 already shipped). Demotes two patterns:
+#   hasJ-alone with <=2 trump (J+T1/J+T2 family, n~1,700 bids, make-rate
+#                              0-16% at 15 — clear EV-negative population)
+#   has5-alone with <=2 trump (5+T1/5+T2 family, n~3,400 bids, make-rate
+#                              3.5-33% at 15 — clear EV-negative population)
+# Layered ON TOP of the shipped surgical tight-20.
+#
+# Symmetric set-rate (cutthroat-tight-15-surgical vs champion-cutthroat,
+# 4 seats each, deals=2000):
+#   primary  seed-base=0       Δ=-0.44pt z=-1.09 not significant
+#                              15s +1.13 z=+2.40, 20s -1.93 z=-2.19,
+#                              25s -3.39 z=-2.45
+#   held-out seed-base=5000000 Δ=-0.49pt z=-1.20 not significant (same dir)
+#                              15s +1.29 z=+2.75, 20s -2.44 z=-2.75,
+#                              25s -3.22 z=-2.31
+# 1-vs-3 win-rate (lone surgical-tight-15 vs 3 champion-cutthroat,
+# deals=2000):
+#   primary  win=24.00% z=-2.07 SIGNIFICANT NEGATIVE
+#   held-out win=22.99% z=-4.16 SIGNIFICANT NEGATIVE (replicated)
+# Place-score modestly positive (+0.047 / +0.039 z=+3.75 / +3.14) — the
+# rule trades 1st-place wins for avoiding 4th place. Symmetric headline
+# direction is mildly positive but z<2; 1-vs-3 win-rate decisively
+# negative. NO SHIP. Diagnosis: passing weak natural-15s in cutthroat is
+# a SPOILER play — when EVERY seat does it the auction-bidder pool gets
+# slightly cleaner, but when one seat does it solo, that seat surrenders
+# auctions to opps who then make them. The bidder's bag at 15 with a
+# weak hand still nets some EV (~20% of made-bid value) which the
+# surgical-tight-15 seat forfeits. Kept as opt-in challenger.
+class CutthroatSurgicalTight15(Policy):
+    name = "cutthroat-tight-15-surgical"
+    def __init__(self):
+        super().__init__(cutthroat=True)
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True,
+                                  cutthroat_surgical_tight_20=True,
+                                  cutthroat_surgical_tight_15=True)
+
+
+REGISTRY["cutthroat-tight-15-surgical"]   = CutthroatSurgicalTight15()
+
+
 # CUTTHROAT COALITION (opt-in challengers; champion-cutthroat default OFF).
 # Two coordinated defender rules — see improved_ai.py for the gates:
 #   C1 (cutthroat_c1_take_from_bidder): defender following, BIDDER currently
