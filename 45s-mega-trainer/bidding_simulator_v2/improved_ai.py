@@ -1061,6 +1061,55 @@ class ImprovedAI:
                 # so the bidder has played iff _bw appears in that span.
                 _bidder_has_played = _bw in [(leader + i) % 4
                                              for i in range(len(trick))]
+
+                # ── L1 / L2 / L3 score-aware triggers ──────────────────────
+                # Read pre_round_scores (4-vec of game totals at round start)
+                # set by cutthroat_runner / game_runner. None in round-only
+                # harnesses → all three L-rules become no-ops (safe default).
+                _prs = state.pre_round_scores
+                # L3 — bidder making this bid wins them the game (>=120):
+                # switch to max-aggression. _locked overrides L3 (if the
+                # bid is already set or made, max-aggression is moot —
+                # N1 already governs the post-decided regime).
+                _l3 = False
+                if (Fon('cutthroat_l3_bidder_winning_game')
+                        and _prs is not None and not _locked):
+                    _l3 = (_prs[_bw] + _hb) >= state.winning_total
+                # L1 — I am the runaway LEADER (game-so-far) by threshold:
+                # soften C1 — take only if cheapest winner is NOT top-3.
+                # Configurable thresholds: cutthroat_l1_min (my min score) and
+                # cutthroat_l1_gap (gap above 2nd-best). Both must hold.
+                _l1 = False
+                if (Fon('cutthroat_l1_leader_self_nickel')
+                        and _prs is not None and not _locked):
+                    _min = self.flags.get('cutthroat_l1_min', 100)
+                    _gap = self.flags.get('cutthroat_l1_gap', 40)
+                    _others = max(_prs[s] for s in range(4) if s != player)
+                    _l1 = (_prs[player] >= _min
+                           and (_prs[player] - _others) >= _gap)
+                # L2 — ANOTHER DEFENDER (not me, not bidder) is the runaway
+                # leader by threshold. Effect: when CW is that leader (a
+                # fellow defender), still TAKE (relax C2) to deny them. Also
+                # extends C1's reach to "take from leader-defender" too.
+                _l2 = False
+                _l2_leader_seat = -1
+                if (Fon('cutthroat_l2_dont_help_leader')
+                        and _prs is not None and not _locked):
+                    _min = self.flags.get('cutthroat_l2_min', 100)
+                    _gap = self.flags.get('cutthroat_l2_gap', 40)
+                    # find the highest-scoring DEFENDER (excluding me & bidder)
+                    _def_others = [s for s in range(4)
+                                   if s != player and s != _bw]
+                    if _def_others:
+                        _lead_def = max(_def_others, key=lambda s: _prs[s])
+                        # next-highest-scoring of EVERYONE else (the gap basis)
+                        _rest = [_prs[s] for s in range(4) if s != _lead_def]
+                        _2nd = max(_rest)
+                        if (_prs[_lead_def] >= _min
+                                and (_prs[_lead_def] - _2nd) >= _gap):
+                            _l2 = True
+                            _l2_leader_seat = _lead_def
+
                 # N1 — nickel-grab when set/made is mathematically LOCKED.
                 # Coalition (C1+C2) is moot here: the bidder's contract is
                 # decided. Switch to point-greedy: take cheap free tricks,
@@ -1088,15 +1137,35 @@ class ImprovedAI:
                 # in this trick. Otherwise the bidder is downstream and
                 # an unchallenged defender-winner just hands the bidder a
                 # cheap over-trump. (N1 already early-returns when locked.)
+                # L2 OVERRIDE: if the current winner IS the runaway-leader
+                # defender, DON'T suppress with C2 — fall through to C1's
+                # cheapest-winner take so we deny the leader the trick.
+                # L3 OVERRIDE: bidder is one bid away from winning the game.
+                # C2's "save for bidder-tricks" is irrelevant — every trick
+                # the bidder doesn't take helps us. Fall through to C1's
+                # cheapest-winner take regardless of who's currently winning.
+                _c2_suppress_l2 = (_l2 and cw == _l2_leader_seat)
+                _c2_suppress_l3 = _l3
                 if (Fon('cutthroat_c2_dont_overtake')
                         and cw != _bw and cw != player
                         and _bidder_has_played
-                        and not _set_lk):
+                        and not _set_lk
+                        and not _c2_suppress_l2
+                        and not _c2_suppress_l3):
                     return play_lowest(playable)
                 # C1 — take from the bidder with the cheapest winner
                 # (opt-in). (N1 already early-returns when locked.)
+                # L1 SOFTENING: if I'm the runaway leader, take only when
+                # cheapest winner is NOT a top-3 trump (conserve high cards).
+                # L2 EXTENSION: also take from the runaway-leader defender
+                # (not just bidder) when they're currently winning the trick.
+                # L3 EXTENSION: max-aggression — take whenever I can, with
+                # NO top-3 save; the bidder winning the game costs us more
+                # than burning a high card.
+                _c1_target_is_leader = (_l2 and cw == _l2_leader_seat)
+                _c1_take = (cw == _bw) or _c1_target_is_leader or _l3
                 if (Fon('cutthroat_c1_take_from_bidder')
-                        and cw == _bw
+                        and _c1_take
                         and not _set_lk and not _made_lk):
                     _winners = [c for c in playable
                                 if trick_winner(
@@ -1104,10 +1173,17 @@ class ImprovedAI:
                                           trump if F('safe_pad4') else None),
                                     trump, leader) == player]
                     if _winners:
-                        return min(_winners,
-                                   key=lambda c: _tr(c, trump)
-                                   if _is_trump(c, trump)
-                                   else get_offsuit_rank(c))
+                        _lo_win = min(_winners,
+                                      key=lambda c: _tr(c, trump)
+                                      if _is_trump(c, trump)
+                                      else get_offsuit_rank(c))
+                        # L1: don't burn a top-3 trump (rank >= 100) to take.
+                        # L3 overrides L1 — bidder-wins-game is more urgent.
+                        if (_l1 and not _l3
+                                and _is_trump(_lo_win, trump)
+                                and _tr(_lo_win, trump) >= 100):
+                            return play_lowest(playable)
+                        return _lo_win
 
             if my_position == 3:
                 winners = [c for c in playable

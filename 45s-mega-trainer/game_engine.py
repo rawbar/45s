@@ -221,6 +221,15 @@ class GameState:
     player_tricks: Optional[List[int]] = None      # [p0, p1, p2, p3] tricks won SO FAR
     high_trump_player: int = -1                    # seat that owns the high-trump trick so far
 
+    # Per-seat GAME totals at the START of the current round (NOT per-round
+    # pts). Cutthroat mode sets real per-seat totals; partner mode duplicates
+    # team totals across both seats of each team ([t0, t1, t0, t1]) so the
+    # L1/L2/L3 cutthroat score-aware rules can read pre_round_scores[seat]
+    # without branching. None in round-only callers (no game context).
+    # Used by cutthroat L1/L2/L3 (leader / runaway-leader detection, bidder-
+    # winning-game trigger).
+    pre_round_scores: Optional[List[int]] = None   # [s0, s1, s2, s3] game totals BEFORE this round
+
     def get_team(self, player: int) -> int:
         """Get team number (0 or 1) for a player"""
         return player % 2

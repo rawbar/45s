@@ -105,9 +105,17 @@ def play_game_cutthroat(seat_policy: List[Policy], seed: int,
         # ── Play the round (reuse partner-mode trick loop) ───────────────────
         # return_per_player=True gives us raw per-seat pts; we then apply the
         # cutthroat bidder-make/set rule (different from partner-team rule).
+        # pre_round_scores = real per-seat GAME totals at round start
+        # (NOT per-round pts). cutthroat L1/L2/L3 read this to detect
+        # bidder-winning-game (L3), leader self-nickel-grab (L1), and
+        # don't-help-the-leader (L2). pre_scores stays = scores[:] for
+        # the legacy team_scores=[t0,t1] partner-style API (cutthroat
+        # passes 4-vec here too, but team_scores is downstream of an
+        # is-partner-mode flag → no effect in cutthroat AI path).
         _t0, _t1, per_player = _play_round(
             winner, max_b, trump, hands, kitty, rest, seat_policy,
-            pre_scores=scores[:], return_per_player=True
+            pre_scores=scores[:], return_per_player=True,
+            pre_round_scores=scores[:],
         )
 
         bidder_pts = per_player[winner]

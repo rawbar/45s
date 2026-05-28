@@ -113,7 +113,8 @@ def play_game_cutthroat_with_per_seat_stats(seat_policy: List[Policy],
 
         _t0, _t1, per_player = _play_round(
             winner, max_b, trump, hands, kitty, rest, seat_policy,
-            pre_scores=scores[:], return_per_player=True
+            pre_scores=scores[:], return_per_player=True,
+            pre_round_scores=scores[:],
         )
 
         bidder_pts = per_player[winner]

@@ -325,6 +325,84 @@ CUTTHROAT_STRIPPED.name = "cutthroat-stripped"
 REGISTRY["cutthroat-stripped"] = CUTTHROAT_STRIPPED
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# CUTTHROAT L1 / L2 / L3 — SCORE-AWARE COALITION RULES
+# ─────────────────────────────────────────────────────────────────────────
+# Three score-aware rules layered on TOP of the C1/C2 coalition. All read
+# state.pre_round_scores (4-vec of per-seat game totals at round start)
+# threaded by cutthroat_runner. Cutthroat-only (no-op in partner mode);
+# game-context-only (no-op in round-only harnesses — pre_round_scores=None).
+#
+# L3 (cutthroat_l3_bidder_winning_game) — bidder making this bid wins them
+#     the game (pre_round_scores[bid_winner] + high_bid >= 120). Switch to
+#     MAX-AGGRESSION: C2 don't-overtake suppression OFF; C1 takes regardless
+#     of who currently winning; top-3 trump save disabled. NO THRESHOLD.
+#
+# L1 (cutthroat_l1_leader_self_nickel) — I'm the runaway leader-of-the-game-
+#     so-far (my pre_round_score >= leader_min AND ahead of next-best by
+#     >= leader_gap). Soften C1: when taking, refuse if cheapest winner is
+#     a top-3 trump (conserve high cards; bank cheap tricks only).
+#     Thresholds: (cutthroat_l1_min, cutthroat_l1_gap).
+#
+# L2 (cutthroat_l2_dont_help_leader) — ANOTHER defender is the runaway
+#     leader. When that leader is currently winning the trick (cw ==
+#     leader_seat), suppress C2's "don't overtake" so I TAKE from the leader.
+#     Extends C1 to "take from the leader-defender" too.
+#     Thresholds: (cutthroat_l2_min, cutthroat_l2_gap).
+#
+# Threshold sweep: register variants for each (min, gap) pair in the spec.
+
+def _l_rule(name: str, flags: dict):
+    p = Policy(cutthroat=True)
+    p.name = name
+    # Inherit C1+C2 coalition defaults from champion-cutthroat (default-on);
+    # callers add cutthroat_l*_* flags + thresholds on top.
+    base = {'cutthroat_c1_take_from_bidder': True,
+            'cutthroat_c2_dont_overtake': True}
+    base.update(flags)
+    p.ai_flags = base
+    return p
+
+
+# L3 — no threshold; one variant.
+REGISTRY["cutthroat-l3"] = _l_rule(
+    "cutthroat-l3",
+    {'cutthroat_l3_bidder_winning_game': True},
+)
+
+
+# L1 threshold sweep: (leader_min, leader_gap) pairs.
+for (_lmin, _lgap) in ((100, 40), (95, 30), (90, 25)):
+    _nm = f"cutthroat-l1-{_lmin}-{_lgap}"
+    REGISTRY[_nm] = _l_rule(_nm, {
+        'cutthroat_l1_leader_self_nickel': True,
+        'cutthroat_l1_min': _lmin,
+        'cutthroat_l1_gap': _lgap,
+    })
+
+
+# L2 threshold sweep: same (min, gap) pairs.
+for (_lmin, _lgap) in ((100, 40), (95, 30), (90, 25)):
+    _nm = f"cutthroat-l2-{_lmin}-{_lgap}"
+    REGISTRY[_nm] = _l_rule(_nm, {
+        'cutthroat_l2_dont_help_leader': True,
+        'cutthroat_l2_min': _lmin,
+        'cutthroat_l2_gap': _lgap,
+    })
+
+
+# L-ALL-BEST: L1+L2+L3 with TBD thresholds; pre-registered with the most
+# conservative (100,40) for both. The sweep-driven "best" combo is created
+# dynamically once the L1/L2 sweep winners are known (see below).
+REGISTRY["cutthroat-l-all-best"] = _l_rule("cutthroat-l-all-best", {
+    'cutthroat_l3_bidder_winning_game': True,
+    'cutthroat_l1_leader_self_nickel': True,
+    'cutthroat_l2_dont_help_leader': True,
+    'cutthroat_l1_min': 100, 'cutthroat_l1_gap': 40,
+    'cutthroat_l2_min': 100, 'cutthroat_l2_gap': 40,
+})
+
+
 # CUTTHROAT N1 NICKEL-GRAB (opt-in challenger on TOP of coalition-v2).
 # When set OR made is mathematically LOCKED, switch from coalition mode
 # (which is about influencing whether the bid is made/set — moot now)

@@ -41,7 +41,8 @@ def _play_round(bidder: int, bid: int, trump: Suit,
                 deck_for_draw: List[Card],
                 seat_policy: List[Policy],
                 pre_scores: Optional[List[int]] = None,
-                return_per_player: bool = False):
+                return_per_player: bool = False,
+                pre_round_scores: Optional[List[int]] = None):
     """Play one round; return (team0_round_points, team1_round_points).
     pre_scores = game-level [team0, team1] BEFORE this round (for score-
     conditioned endgame play rules); None in round-only callers.
@@ -56,6 +57,17 @@ def _play_round(bidder: int, bid: int, trump: Suit,
     hands = [h[:] for h in hands]
     hands[bidder].extend(kitty)
     deck = deck_for_draw[:]
+
+    # pre_round_scores normalization. Partner-mode callers historically pass
+    # `pre_scores` ([team0, team1]) and not `pre_round_scores` — for partner
+    # mode we duplicate per-team across both seats of that team
+    # ([t0, t1, t0, t1]) so cutthroat L-rules reading state.pre_round_scores
+    # never see None just because they're indexing a partner-mode state. The
+    # cutthroat runner passes a real per-seat 4-list explicitly. None survives
+    # only when both args are None (round-context callers w/ no game ctx).
+    _prs = pre_round_scores
+    if _prs is None and pre_scores is not None and len(pre_scores) == 2:
+        _prs = [pre_scores[0], pre_scores[1], pre_scores[0], pre_scores[1]]
 
     cards_drawn = [0, 0, 0, 0]
     for i in range(4):
@@ -99,6 +111,7 @@ def _play_round(bidder: int, bid: int, trump: Suit,
                 team_scores=(pre_scores[:] if pre_scores is not None else None),
                 player_tricks=player_tricks[:],
                 high_trump_player=high_trump_player,
+                pre_round_scores=(_prs[:] if _prs is not None else None),
             )
             card = seat_policy[current].choose_card(current, state, play_history[:])
             led = trick[0][1] if trick else None
