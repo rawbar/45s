@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.74';
+const VERSION = '2.31.77';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4984,7 +4984,7 @@ function chooseTrumpSuit(hand) {
 const AUTO15_PASS_PROB = 0.5;
 const DESP25_PASS_PROB = 0.5;
 
-function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid, _noSpoiler = false, partnerIsHuman = false) {
+function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid, _noSpoiler = false, partnerIsHuman = false, cutthroat = false) {
   const { suit, trumpCount, has5, hasJ } = findBestTrumpSuit(hand);
   const hasAH = hasAceHearts(hand), hasAT = hasAceTrump(hand, suit);
   const highT = countHighTrumps(hand, suit);
@@ -5181,7 +5181,7 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     const spoilTo = currentHighBid + 5;
     if (oppHolds && danger && spoilTo <= 30) {
       const champ = decideBid(hand, currentHighBid, playerIndex, dealer,
-                              teamScores, oppScores, partnerBid, true);
+                              teamScores, oppScores, partnerBid, true, partnerIsHuman, cutthroat);
       if (champ.bid < spoilTo) {
         console.log(`🗡 SPOILER: opp holds ${currentHighBid}, theyNeed ${theyNeed} - overbid ${spoilTo}`);
         return { bid: spoilTo, suit };
@@ -5301,6 +5301,42 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
       else if (has5 && hasAH && trumpCount >= 3) bid = 20;  // 5_AH_T3: 87.53%
       else if (has5 && trumpCount >= 4) bid = 20;  // 5_T4: 91.67%
       else if (hasJ && hasAH && trumpCount >= 5) bid = 20;  // J_AH_T5: 84.06%
+    }
+
+    // CUTTHROAT SURGICAL TIGHT-20 (v2.31.77): six 20-bid hand patterns whose
+    // simulator-measured make-rate in cutthroat is too low to be net-positive.
+    // Ported from bidding_simulator_v2/bidding.py commit 8fcc567 (Python rig).
+    // Pattern-targeted demotion driven by cutthroat_pattern_makerate.py.
+    // Symmetric A-vs-B set-rate primary: +1.24pt z=-3.05 (A's bids set less
+    // often), held-out +0.98pt z=-2.42 (replicated). Partner-mode bidding is
+    // bit-identical — only fires when cutthroat === true. The 20-bid hands
+    // that still pay (5+J+T3, 5+T4, anything with two top trump cards) are
+    // unchanged. Demoted patterns fall through to the 15-bid eval below
+    // (which may then bid 15 or pass).
+    //
+    // Per-pattern make-rates (cutthroat_pattern_makerate.py, n in brackets):
+    //   2.6%  5+T2      [76]
+    //   8.2%  J+T3      [49]
+    //   8.1%  5J+T2     [135]
+    //  12.7%  5+T3      [134]
+    //  19.2%  5AT+T3    [26]
+    //  36.2%  5AH+T3    [246]
+    //
+    // Trump-hearts semantics: hasAT is gated `trump !== ♥` (see hasAceTrump),
+    // hasAH is `A♥` exists. So 5AH+T3 at trump=hearts still fires (hasAH=true,
+    // hasAT=false). 5AT+T3 at trump=hearts cannot fire (hasAT=false). Mirrors
+    // the Python convention.
+    if (cutthroat && bid === 20) {
+      const p_5_T2   = has5 && !hasJ && !hasAH && !hasAT && trumpCount === 3;
+      const p_J_T3   = hasJ && !has5 && !hasAH && !hasAT && trumpCount === 4;
+      const p_5J_T2  = has5 && hasJ && !hasAH && !hasAT && trumpCount === 4;
+      const p_5_T3   = has5 && !hasJ && !hasAH && !hasAT && trumpCount === 4;
+      const p_5AT_T3 = has5 && hasAT && !hasJ && !hasAH && trumpCount === 5;
+      const p_5AH_T3 = has5 && hasAH && !hasJ && !hasAT && trumpCount === 5;
+      if (p_5_T2 || p_J_T3 || p_5J_T2 || p_5_T3 || p_5AT_T3 || p_5AH_T3) {
+        console.log(`🔪 CUTTHROAT TIGHT-20: demoting 20 → 15-eval (pattern matched)`);
+        bid = 0;
+      }
     }
 
     // 15 bid - tightened threshold (removed junk 3-trump bids)
@@ -6828,6 +6864,9 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.77', date: 'May 2026', changes: ['Cutthroat AI bidding tightened on patterns the simulator measured as net-negative against the current defenders. Specifically, six 20-bid hand types with observed make rates between roughly 2 percent and 36 percent are now demoted to 15. Examples: a hand with the 5 of trump but no other top card and only 2 to 3 other trump used to gamble at 20 and bust roughly 88 to 97 percent of the time — it now safely bids 15 instead. This is the rule the user spotted in alpha play (a lone 5 with thin support rarely makes 20 in cutthroat); the simulator\'s per-pattern make-rate analyzer confirmed it empirically and the symmetric A-vs-B set-rate test shipped the rule (primary +1.24pt, replicated held-out +0.98pt, A is set less often). Partner-mode bidding is bit-identical — only the cutthroat code path was touched. The 20-bid hands that still pay (5+J+T3, 5+T4, anything with two top trump cards) are unchanged.'] },
+    { version: '2.31.76', date: 'May 2026', changes: ['Cutthroat bidding semantic fix. The AI bidder was still seeing PARTNER-mode inputs in cutthroat — it was being told "your team has X pts, the other team has Y pts, your partner bid Z." In cutthroat there is no team and no partner, so those numbers had no meaning. In particular the desperation-bidding logic, which asks "is the opposing team about to win?", was adding the scores of two unrelated opponent seats together — giving the AI a false impression of urgency. Fix: in cutthroat the bidder now sees its own seat score, the closest single opponent\'s score (the real threat to game-point), and partner-bid as 0 (no partner). The spoiler / desperation / upbid15 / overbid math now sees correct cutthroat semantics. This does not change the open-bid threshold values themselves — that is a separate calibration question on the queue. Partner-mode behavior is bit-identical.'] },
+    { version: '2.31.75', date: 'May 2026', changes: ['Cutthroat is no longer a "setting" — it is a per-game variant choice. The Default Variant row has been removed from Preferences (where it had been a duplicate of the lobby selector). Your most recent choice on the lobby selector now persists in localStorage so the lobby remembers it across sessions, but it is no longer mirrored into your Firebase preferences.'] },
     { version: '2.31.74', date: 'May 2026', changes: ['Cutthroat AI is now significantly stronger. The variant was previously running partner-mode AI in cutthroat seats, which is what caused the "getting set 50% of the time" problem — partner rules don\'t make sense when there is no partner. This update ports two improvements that were validated in the simulator: (1) the 17 partner-coupled rules are now skipped in cutthroat mode (worth +2.2pt win rate per the rig); (2) cutthroat defenders now coordinate via C1 take-from-bidder + C2 don\'t-overtake-defender (worth another +1.5pt win rate, replicated in held-out). Net: AI plays cutthroat MUCH more like a real cutthroat player. Bidders will be set more often. Partner mode is unaffected — every cutthroat code path is gated on the variant flag.'] },
     { version: '2.31.73', date: 'May 2026', changes: ['Lobby game list now shows 4 individual player scores for cutthroat games in progress (e.g., "N 25 · E 30 · S 45 · W 20") instead of the team-mode "0 · 0" that was previously displayed. The current leader is highlighted in brass-gold. Finished cutthroat games show the winning PLAYER (not team) prominently in the lobby card — "Winner: alice (120)" — with a compact 4-seat scoreboard underneath, and the winning seat tile gets a green border. AI seats label as a single seat letter (N/E/S/W); human seats use the first 2 chars of their username (lobby row) or first 3 chars (game-over card). Partner-mode rendering is byte-identical — only a cutthroat branch was added.'] },
     { version: '2.31.72', date: 'May 2026', changes: ['Cutthroat polish: (1) The four score plaques at the top of the table now show seat-letter labels (N/E/S/W) for AI players and the first three characters of the username for humans, instead of slicing "AI Player N" down to a useless trailing "AI " on every AI seat. (2) The same fix is applied to the cutthroat round-end and game-over modals: AI rows now read "North" / "East" / "South" / "West" (full seat name in the wider modal layout) and human rows keep their full username. (3) The bottom-of-table score-history strip (ScoreTable) now renders four per-player columns in cutthroat games instead of US/THEM, with per-round deltas + running totals stamped under each seat. Round-end history entries written by the bidder-completes-trick-5 and AI-completes-trick-5 paths now include cutthroat-only `playerRoundScores` and `playerTotals` arrays alongside the existing partner-mode fields, so partner-mode entries stay byte-identical and only cutthroat rounds carry the extra payload. (4) The redundant duplicate copy of the Partners-vs-Cutthroat variant selector that v2.31.71 still had inside each Create Game modal (cyberpunk, two Arabian variants, Irish) has been removed — the lobby-level selector right above the Create Game button is now the single source of truth.'] },
@@ -8882,7 +8921,15 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
   const [optFollowAHearts, setOptFollowAHearts] = useState(false);
   const [optThirtyFor60, setOptThirtyFor60] = useState(false);
   // v2.31.71: cutthroat promoted out of Options and into a top-level variant selector
-  const [gameVariant, setGameVariant] = useState('partners'); // 'partners' | 'cutthroat'
+  // v2.31.75: lobby variant choice persists via localStorage (no longer mirrored to Firebase prefs)
+  const [gameVariant, setGameVariantState] = useState(() => {
+    try { return localStorage.getItem('45s_gameVariant') || 'partners'; }
+    catch { return 'partners'; }
+  });
+  const setGameVariant = (v) => {
+    try { localStorage.setItem('45s_gameVariant', v); } catch {}
+    setGameVariantState(v);
+  };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
@@ -8920,10 +8967,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
   const [showPreferences, setShowPreferences] = useState(false);
   const [prefTrickSpeed, setPrefTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'medium');
   const [prefHouseRules, setPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false });
-  const [prefGameVariant, setPrefGameVariant] = useState('partners');
   const [editTrickSpeed, setEditTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'medium');
   const [editPrefHouseRules, setEditPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false });
-  const [editPrefGameVariant, setEditPrefGameVariant] = useState('partners');
 
   // Irish lobby tab state ('games' | 'leaderboard')
   const [lobbyTab, setLobbyTab] = useState('games');
@@ -9164,27 +9209,23 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       const speed = prefs.trickSpeed || 'medium';
       const hr = prefs.houseRules || {};
       const rules = { fiveCardDraw: !!hr.fiveCardDraw, followAHearts: !!hr.followAHearts, thirtyFor60: !!hr.thirtyFor60 };
-      // v2.31.71: migrate legacy `houseRules.cutthroat: true` (from v2.31.69/70) → gameVariant pref.
-      // Top-level `gameVariant` wins if explicitly set; otherwise fall back to the legacy flag.
-      let variant = prefs.gameVariant;
-      if (!variant) variant = hr.cutthroat ? 'cutthroat' : 'partners';
+      // v2.31.75: gameVariant no longer mirrored to Firebase prefs — lobby selector persists via localStorage.
+      // Legacy `prefs.gameVariant` (written by v2.31.71-74) is ignored on load.
       setPrefTrickSpeed(speed);
       setPrefHouseRules(rules);
-      setPrefGameVariant(variant);
       setEditTrickSpeed(speed);
       setEditPrefHouseRules(rules);
-      setEditPrefGameVariant(variant);
       localStorage.setItem('45s_trickSpeed', speed);
     });
   }, [userId]);
 
   // Pre-fill create-game options from persistent house rules when modal opens
+  // v2.31.75: gameVariant is sourced from the lobby selector (already in state, localStorage-backed) — no re-init here.
   useEffect(() => {
     if (showCreateGame) {
       setOptFiveCardDraw(prefHouseRules.fiveCardDraw);
       setOptFollowAHearts(prefHouseRules.followAHearts);
       setOptThirtyFor60(prefHouseRules.thirtyFor60);
-      setGameVariant(prefGameVariant);
     }
   }, [showCreateGame]);
 
@@ -9422,13 +9463,11 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
     try {
       await database.ref(`users/${userId}/prefs`).set({
         trickSpeed: editTrickSpeed,
-        gameVariant: editPrefGameVariant,
         houseRules: { fiveCardDraw: editPrefHouseRules.fiveCardDraw, followAHearts: editPrefHouseRules.followAHearts, thirtyFor60: editPrefHouseRules.thirtyFor60 }
       });
       localStorage.setItem('45s_trickSpeed', editTrickSpeed);
       setPrefTrickSpeed(editTrickSpeed);
       setPrefHouseRules({ ...editPrefHouseRules });
-      setPrefGameVariant(editPrefGameVariant);
       setShowPreferences(false);
     } catch (err) {
       alert('Failed to save preferences: ' + err.message);
@@ -9701,7 +9740,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           <button
             className={isCyberpunk ? 'cp-gear-btn' : 'irlb-gear-btn'}
             title="Preferences"
-            onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setEditPrefGameVariant(prefGameVariant); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
+            onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
           >⚙</button>
         </div>
 
@@ -9930,7 +9969,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(0,229,255,0.3)', borderRadius: '3px', background: showGameOptions ? 'rgba(0,229,255,0.1)' : 'rgba(0,229,255,0.05)', color: '#00e5ff', fontFamily: "'Share Tech Mono',monospace", fontSize: '11px', letterSpacing: '1px', cursor: 'pointer' }}
                 >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}</button>
                 <button
-                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setGameVariant(prefGameVariant); }}
+                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setGameVariant(localStorage.getItem('45s_gameVariant') || 'partners'); }}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(0,229,255,0.2)', borderRadius: '3px', background: 'rgba(0,229,255,0.05)', color: 'rgba(0,229,255,0.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '11px', cursor: 'pointer' }}
                 >Cancel</button>
@@ -9985,7 +10024,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,39,0.4)', borderRadius: '10px', background: showGameOptions ? 'rgba(201,162,39,0.15)' : 'transparent', color: '#c9a227', fontFamily: "'Cinzel',serif", fontSize: '11px', letterSpacing: '1px', cursor: 'pointer' }}
                 >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}</button>
                 <button
-                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setGameVariant(prefGameVariant); }}
+                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setGameVariant(localStorage.getItem('45s_gameVariant') || 'partners'); }}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,39,0.2)', borderRadius: '10px', background: 'transparent', color: 'rgba(245,238,220,0.5)', fontFamily: "'Cinzel',serif", fontSize: '11px', cursor: 'pointer' }}
                 >Cancel</button>
@@ -10040,7 +10079,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,74,0.4)', borderRadius: '10px', background: showGameOptions ? 'rgba(201,162,74,0.15)' : 'transparent', color: '#c9a24a', fontFamily: 'Cinzel, serif', fontSize: '11px', letterSpacing: '1px', cursor: 'pointer' }}
                 >{(optFiveCardDraw || optFollowAHearts || optThirtyFor60) ? 'Options ✓' : 'Options'}</button>
                 <button
-                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setGameVariant(prefGameVariant); }}
+                  onClick={() => { setShowCreateGame(false); setNewGameName(''); setShowGameOptions(false); setOptFiveCardDraw(prefHouseRules.fiveCardDraw); setOptFollowAHearts(prefHouseRules.followAHearts); setOptThirtyFor60(prefHouseRules.thirtyFor60); setGameVariant(localStorage.getItem('45s_gameVariant') || 'partners'); }}
                   disabled={loading}
                   style={{ height: '44px', padding: '0 14px', border: '1px solid rgba(201,162,74,0.2)', borderRadius: '10px', background: 'transparent', color: 'rgba(232,228,217,0.5)', fontFamily: 'Cinzel, serif', fontSize: '11px', cursor: 'pointer' }}
                 >Cancel</button>
@@ -10740,24 +10779,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     ))}
                   </div>
                 </div>
-                {/* v2.31.71: Default Variant */}
-                <div style={{ marginBottom: '20px' }}>
-                  <div className="cp-pref-section-title">Default Variant</div>
-                  <div style={{ fontSize: '11px', color: '#3a5f78', fontFamily: "'Share Tech Mono', monospace", marginBottom: '12px' }}>Pre-selected when you create a new game</div>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
-                      const selected = editPrefGameVariant === val;
-                      return (
-                        <div key={val} onClick={() => setEditPrefGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '6px', border: selected ? '2px solid #ff8c00' : '1px solid rgba(0,229,255,0.2)', background: selected ? 'rgba(255,140,0,0.1)' : 'rgba(0,229,255,0.03)' }}>
-                          <span style={{ fontFamily: "'Share Tech Mono', monospace", fontWeight: 700, fontSize: '13px', color: selected ? '#ff8c00' : '#3a5f78' }}>{label}</span>
-                          {isAlpha && (
-                            <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '2px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
                 {/* House Rules */}
                 <div style={{ marginBottom: '20px' }}>
                   <div className="cp-pref-section-title">House Rules</div>
@@ -10829,25 +10850,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   {['fast', 'medium', 'slow'].map(speed => (
                     <button key={speed} onClick={() => setEditTrickSpeed(speed)} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: editTrickSpeed === speed ? '2px solid #c9a24a' : '1px solid rgba(201,162,74,0.25)', background: editTrickSpeed === speed ? 'rgba(201,162,74,0.15)' : 'rgba(255,255,255,0.04)', color: editTrickSpeed === speed ? '#f6d778' : 'rgba(232,228,217,0.6)', fontWeight: editTrickSpeed === speed ? 'bold' : 'normal', cursor: 'pointer', fontSize: '13px', textTransform: 'capitalize', fontFamily: "'Cinzel', serif" }}>{speed}</button>
                   ))}
-                </div>
-              </div>
-
-              {/* v2.31.71: Default Variant */}
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1.5px', color: 'rgba(201,162,74,0.6)', textTransform: 'uppercase', marginBottom: '10px', fontFamily: "'Cinzel', serif" }}>Default Variant</div>
-                <div style={{ fontSize: '11px', color: 'rgba(232,228,217,0.4)', fontFamily: "'Merriweather', serif", fontStyle: 'italic', marginBottom: '10px' }}>Pre-selected when you create a new game</div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
-                    const selected = editPrefGameVariant === val;
-                    return (
-                      <div key={val} onClick={() => setEditPrefGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '6px', border: selected ? '2px solid #c9a24a' : '1px solid rgba(201,162,74,0.25)', background: selected ? 'rgba(201,162,74,0.15)' : 'rgba(255,255,255,0.04)' }}>
-                        <span style={{ fontFamily: "'Cinzel', serif", fontWeight: 700, fontSize: '13px', color: selected ? '#f6d778' : 'rgba(232,228,217,0.6)' }}>{label}</span>
-                        {isAlpha && (
-                          <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '3px', background: 'rgba(201,162,74,0.2)', border: '1px solid rgba(201,162,74,0.5)', color: '#f6d778', fontFamily: "'Cinzel', serif", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
-                        )}
-                      </div>
-                    );
-                  })}
                 </div>
               </div>
 
@@ -11134,7 +11136,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
                 <span
-                  onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setEditPrefGameVariant(prefGameVariant); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
+                  onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
                   style={{ fontSize: '13px', cursor: 'pointer', opacity: 0.6, userSelect: 'none' }}
                   title="Preferences"
                 >⚙️</span>
@@ -11386,7 +11388,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   setOptFiveCardDraw(prefHouseRules.fiveCardDraw);
                   setOptFollowAHearts(prefHouseRules.followAHearts);
                   setOptThirtyFor60(prefHouseRules.thirtyFor60);
-                  setGameVariant(prefGameVariant);
+                  setGameVariant(localStorage.getItem('45s_gameVariant') || 'partners');
                 }}
                 disabled={loading}
                 style={{
@@ -12054,23 +12056,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     ))}
                   </div>
                 </div>
-                {/* v2.31.71: Default Variant */}
-                <div style={{ marginBottom: '20px' }}>
-                  <div className="cp-pref-section-title">Default Variant</div>
-                  <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-                    {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
-                      const selected = editPrefGameVariant === val;
-                      return (
-                        <div key={val} onClick={() => setEditPrefGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '8px', border: selected ? '2px solid #ff8c00' : '2px solid rgba(0,229,255,0.15)', background: selected ? 'rgba(255,140,0,0.1)' : 'rgba(0,229,255,0.03)' }}>
-                          <span style={{ fontFamily: "'Share Tech Mono', monospace", fontWeight: 700, fontSize: '13px', color: selected ? '#ff8c00' : '#3a5f78' }}>{label}</span>
-                          {isAlpha && (
-                            <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '2px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Share Tech Mono', monospace", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
                 <div style={{ marginBottom: '20px' }}>
                   <div className="cp-pref-section-title">House Rules</div>
                   {[['fiveCardDraw', '5-Card Draw', 'Players may discard all 5 cards.'], ['followAHearts', 'Follow A♥', 'Void in trump must play a heart when A♥ led.'], ['thirtyFor60', '30 for 60', 'After a 30 bid, next may bid "30 for 60".']].map(([key, label, desc]) => (
@@ -12130,29 +12115,6 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                       <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>{sub}</div>
                     </div>
                   ))}
-                </div>
-              </div>
-
-              {/* v2.31.71: Default Variant */}
-              <div style={{ marginBottom: '24px' }}>
-                <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#333', marginBottom: '4px' }}>
-                  Default Variant
-                </div>
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
-                  Pre-selected when you create a new game.
-                </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
-                    const selected = editPrefGameVariant === val;
-                    return (
-                      <div key={val} onClick={() => setEditPrefGameVariant(val)} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '8px', border: selected ? '2px solid #1a5f3f' : '2px solid #ddd', background: selected ? '#e8f5e9' : '#fafafa' }}>
-                        <span style={{ fontWeight: 'bold', fontSize: '14px', color: selected ? '#1a5f3f' : '#333' }}>{label}</span>
-                        {isAlpha && (
-                          <sup style={{ marginLeft: '4px', fontSize: '9px', padding: '1px 4px', borderRadius: '3px', background: '#fff3cd', border: '1px solid #c9a24a', color: '#7a5c10', fontWeight: 'bold', letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
-                        )}
-                      </div>
-                    );
-                  })}
                 </div>
               </div>
 
@@ -15054,15 +15016,31 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       console.log(`🤖 AI P${currentPlayer + 1} (${currentSeat}) executing bid, hand: ${hand.length} cards`);
 
       // Use full AI bidding strategy (matches v3.5.9)
-      const myTeam = currentPlayer % 2;
-      const teamScores = scores[myTeam];
-      const oppScores = scores[1 - myTeam];
-      const partnerIdx = (currentPlayer + 2) % 4;
-      const partnerBid = bids[partnerIdx] !== null && bids[partnerIdx] !== -1 ? bids[partnerIdx] : 0;
-      const partnerPlayer = players[SEAT_NAMES[partnerIdx]];
-      const partnerIsHuman = !!(partnerPlayer && !partnerPlayer.isAI);
+      // v2.31.76: cutthroat semantic fix. Partner-mode passes team scores and
+      // partner bid; cutthroat has no partner — pass my own score, the closest
+      // opponent's score (the threat), and partnerBid=0 so the upbid15 /
+      // spoiler / desperation logic sees correct values. Without this the AI
+      // was treating "opposing team score" = sum of two other-team seats,
+      // which has no meaning when each player has their own score.
+      const isCutthroat = !!(gameOptions && gameOptions.cutthroat);
+      let teamScores, oppScores, partnerBid, partnerIsHuman;
+      if (isCutthroat) {
+        teamScores = (playerScores && playerScores[currentPlayer]) || 0;
+        const otherSeats = [0, 1, 2, 3].filter(i => i !== currentPlayer);
+        oppScores = Math.max(...otherSeats.map(i => (playerScores && playerScores[i]) || 0));
+        partnerBid = 0;
+        partnerIsHuman = false;
+      } else {
+        const myTeam = currentPlayer % 2;
+        teamScores = scores[myTeam];
+        oppScores = scores[1 - myTeam];
+        const partnerIdx = (currentPlayer + 2) % 4;
+        partnerBid = bids[partnerIdx] !== null && bids[partnerIdx] !== -1 ? bids[partnerIdx] : 0;
+        const partnerPlayer = players[SEAT_NAMES[partnerIdx]];
+        partnerIsHuman = !!(partnerPlayer && !partnerPlayer.isAI);
+      }
 
-      const bidResult = decideBid(hand, highBid, currentPlayer, dealer, teamScores, oppScores, partnerBid, false, partnerIsHuman);
+      const bidResult = decideBid(hand, highBid, currentPlayer, dealer, teamScores, oppScores, partnerBid, false, partnerIsHuman, isCutthroat);
       let bid = bidResult.bid;
       console.log('🎲 AI decideBid result:', bidResult)
       

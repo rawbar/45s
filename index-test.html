@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.76';
+const VERSION = '2.31.77';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4984,7 +4984,7 @@ function chooseTrumpSuit(hand) {
 const AUTO15_PASS_PROB = 0.5;
 const DESP25_PASS_PROB = 0.5;
 
-function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid, _noSpoiler = false, partnerIsHuman = false) {
+function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid, _noSpoiler = false, partnerIsHuman = false, cutthroat = false) {
   const { suit, trumpCount, has5, hasJ } = findBestTrumpSuit(hand);
   const hasAH = hasAceHearts(hand), hasAT = hasAceTrump(hand, suit);
   const highT = countHighTrumps(hand, suit);
@@ -5181,7 +5181,7 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     const spoilTo = currentHighBid + 5;
     if (oppHolds && danger && spoilTo <= 30) {
       const champ = decideBid(hand, currentHighBid, playerIndex, dealer,
-                              teamScores, oppScores, partnerBid, true);
+                              teamScores, oppScores, partnerBid, true, partnerIsHuman, cutthroat);
       if (champ.bid < spoilTo) {
         console.log(`🗡 SPOILER: opp holds ${currentHighBid}, theyNeed ${theyNeed} - overbid ${spoilTo}`);
         return { bid: spoilTo, suit };
@@ -5301,6 +5301,42 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
       else if (has5 && hasAH && trumpCount >= 3) bid = 20;  // 5_AH_T3: 87.53%
       else if (has5 && trumpCount >= 4) bid = 20;  // 5_T4: 91.67%
       else if (hasJ && hasAH && trumpCount >= 5) bid = 20;  // J_AH_T5: 84.06%
+    }
+
+    // CUTTHROAT SURGICAL TIGHT-20 (v2.31.77): six 20-bid hand patterns whose
+    // simulator-measured make-rate in cutthroat is too low to be net-positive.
+    // Ported from bidding_simulator_v2/bidding.py commit 8fcc567 (Python rig).
+    // Pattern-targeted demotion driven by cutthroat_pattern_makerate.py.
+    // Symmetric A-vs-B set-rate primary: +1.24pt z=-3.05 (A's bids set less
+    // often), held-out +0.98pt z=-2.42 (replicated). Partner-mode bidding is
+    // bit-identical — only fires when cutthroat === true. The 20-bid hands
+    // that still pay (5+J+T3, 5+T4, anything with two top trump cards) are
+    // unchanged. Demoted patterns fall through to the 15-bid eval below
+    // (which may then bid 15 or pass).
+    //
+    // Per-pattern make-rates (cutthroat_pattern_makerate.py, n in brackets):
+    //   2.6%  5+T2      [76]
+    //   8.2%  J+T3      [49]
+    //   8.1%  5J+T2     [135]
+    //  12.7%  5+T3      [134]
+    //  19.2%  5AT+T3    [26]
+    //  36.2%  5AH+T3    [246]
+    //
+    // Trump-hearts semantics: hasAT is gated `trump !== ♥` (see hasAceTrump),
+    // hasAH is `A♥` exists. So 5AH+T3 at trump=hearts still fires (hasAH=true,
+    // hasAT=false). 5AT+T3 at trump=hearts cannot fire (hasAT=false). Mirrors
+    // the Python convention.
+    if (cutthroat && bid === 20) {
+      const p_5_T2   = has5 && !hasJ && !hasAH && !hasAT && trumpCount === 3;
+      const p_J_T3   = hasJ && !has5 && !hasAH && !hasAT && trumpCount === 4;
+      const p_5J_T2  = has5 && hasJ && !hasAH && !hasAT && trumpCount === 4;
+      const p_5_T3   = has5 && !hasJ && !hasAH && !hasAT && trumpCount === 4;
+      const p_5AT_T3 = has5 && hasAT && !hasJ && !hasAH && trumpCount === 5;
+      const p_5AH_T3 = has5 && hasAH && !hasJ && !hasAT && trumpCount === 5;
+      if (p_5_T2 || p_J_T3 || p_5J_T2 || p_5_T3 || p_5AT_T3 || p_5AH_T3) {
+        console.log(`🔪 CUTTHROAT TIGHT-20: demoting 20 → 15-eval (pattern matched)`);
+        bid = 0;
+      }
     }
 
     // 15 bid - tightened threshold (removed junk 3-trump bids)
@@ -6828,6 +6864,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.77', date: 'May 2026', changes: ['Cutthroat AI bidding tightened on patterns the simulator measured as net-negative against the current defenders. Specifically, six 20-bid hand types with observed make rates between roughly 2 percent and 36 percent are now demoted to 15. Examples: a hand with the 5 of trump but no other top card and only 2 to 3 other trump used to gamble at 20 and bust roughly 88 to 97 percent of the time — it now safely bids 15 instead. This is the rule the user spotted in alpha play (a lone 5 with thin support rarely makes 20 in cutthroat); the simulator\'s per-pattern make-rate analyzer confirmed it empirically and the symmetric A-vs-B set-rate test shipped the rule (primary +1.24pt, replicated held-out +0.98pt, A is set less often). Partner-mode bidding is bit-identical — only the cutthroat code path was touched. The 20-bid hands that still pay (5+J+T3, 5+T4, anything with two top trump cards) are unchanged.'] },
     { version: '2.31.76', date: 'May 2026', changes: ['Cutthroat bidding semantic fix. The AI bidder was still seeing PARTNER-mode inputs in cutthroat — it was being told "your team has X pts, the other team has Y pts, your partner bid Z." In cutthroat there is no team and no partner, so those numbers had no meaning. In particular the desperation-bidding logic, which asks "is the opposing team about to win?", was adding the scores of two unrelated opponent seats together — giving the AI a false impression of urgency. Fix: in cutthroat the bidder now sees its own seat score, the closest single opponent\'s score (the real threat to game-point), and partner-bid as 0 (no partner). The spoiler / desperation / upbid15 / overbid math now sees correct cutthroat semantics. This does not change the open-bid threshold values themselves — that is a separate calibration question on the queue. Partner-mode behavior is bit-identical.'] },
     { version: '2.31.75', date: 'May 2026', changes: ['Cutthroat is no longer a "setting" — it is a per-game variant choice. The Default Variant row has been removed from Preferences (where it had been a duplicate of the lobby selector). Your most recent choice on the lobby selector now persists in localStorage so the lobby remembers it across sessions, but it is no longer mirrored into your Firebase preferences.'] },
     { version: '2.31.74', date: 'May 2026', changes: ['Cutthroat AI is now significantly stronger. The variant was previously running partner-mode AI in cutthroat seats, which is what caused the "getting set 50% of the time" problem — partner rules don\'t make sense when there is no partner. This update ports two improvements that were validated in the simulator: (1) the 17 partner-coupled rules are now skipped in cutthroat mode (worth +2.2pt win rate per the rig); (2) cutthroat defenders now coordinate via C1 take-from-bidder + C2 don\'t-overtake-defender (worth another +1.5pt win rate, replicated in held-out). Net: AI plays cutthroat MUCH more like a real cutthroat player. Bidders will be set more often. Partner mode is unaffected — every cutthroat code path is gated on the variant flag.'] },
@@ -15003,7 +15040,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         partnerIsHuman = !!(partnerPlayer && !partnerPlayer.isAI);
       }
 
-      const bidResult = decideBid(hand, highBid, currentPlayer, dealer, teamScores, oppScores, partnerBid, false, partnerIsHuman);
+      const bidResult = decideBid(hand, highBid, currentPlayer, dealer, teamScores, oppScores, partnerBid, false, partnerIsHuman, isCutthroat);
       let bid = bidResult.bid;
       console.log('🎲 AI decideBid result:', bidResult)
       
