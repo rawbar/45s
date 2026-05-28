@@ -94,7 +94,9 @@ def decide_bid(hand: List[Card],
                 cutthroat: bool = False,
                 cutthroat_tight_20: bool = False,
                 cutthroat_tight_25: bool = False,
-                cutthroat_kill_30: bool = False) -> Tuple[int, Optional[Suit]]:
+                cutthroat_kill_30: bool = False,
+                cutthroat_surgical_tight_20: bool = False,
+                cutthroat_aggressive_tight_20: bool = False) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
     DATA-DERIVED, held-out-validated trigger (commit d19be47: 12k deals/cell
@@ -148,6 +150,8 @@ def decide_bid(hand: List[Card],
         cutthroat_tight_20 = False
         cutthroat_tight_25 = False
         cutthroat_kill_30 = False
+        cutthroat_surgical_tight_20 = False
+        cutthroat_aggressive_tight_20 = False
 
     opp_bid_15 = current_high_bid == 15 and partner_bid != 15
     opp_bid_20 = current_high_bid == 20 and partner_bid != 20
@@ -340,6 +344,63 @@ def decide_bid(hand: List[Card],
             # from 2-3 trump even with two top cards.
             if cutthroat_tight_20 and bid == 20 and trump_count < 4:
                 bid = 0
+            # SURGICAL TIGHT-20 (cutthroat_surgical_tight_20): pattern-targeted
+            # demotion derived from cutthroat_pattern_makerate.py @ 2000 deals
+            # against champion-cutthroat. Drops the six 20-bid patterns with
+            # observed make-rate ≤ 36% (EV-negative at 20). Pattern definitions
+            # use this codebase's trump_count semantics (count_trumps INCLUDES
+            # the 5/J/AH/AT anchors). Hearts-trump caveat: hasAT is False when
+            # trump==hearts (has_ace_trump gate), so the 5AH+T3 check matches
+            # a hearts-trump 5+AH+T3 hand symmetrically with the non-hearts
+            # 5+AT+T3 pattern under the SAME code path — desired behavior.
+            #
+            #   make-rate  pattern (n)         condition (= 3 lower + anchors)
+            #   ----------  ------------------- --------------------------------
+            #    2.6%  5+T2      (n=76)   has5, no JAH/AT, T==3
+            #    8.2%  J+T3      (n=49)   hasJ, no 5/AH/AT, T==4
+            #    8.1%  5J+T2     (n=135)  5+J, no AH/AT, T==4
+            #   12.7%  5+T3      (n=134)  has5, no J/AH/AT, T==4
+            #   19.2%  5AT+T3    (n=26)   5+AT, no J/AH, T==5
+            #   36.2%  5AH+T3    (n=246)  5+AH, no J/AT, T==5
+            if cutthroat_surgical_tight_20 and bid == 20:
+                p_5_T2 = (has5 and not hasJ and not hasAH and not hasAT
+                          and trump_count == 3)
+                p_J_T3 = (hasJ and not has5 and not hasAH and not hasAT
+                          and trump_count == 4)
+                p_5J_T2 = (has5 and hasJ and not hasAH and not hasAT
+                           and trump_count == 4)
+                p_5_T3 = (has5 and not hasJ and not hasAH and not hasAT
+                          and trump_count == 4)
+                p_5AT_T3 = (has5 and hasAT and not hasJ and not hasAH
+                            and trump_count == 5)
+                p_5AH_T3 = (has5 and hasAH and not hasJ and not hasAT
+                            and trump_count == 5)
+                if (p_5_T2 or p_J_T3 or p_5J_T2 or p_5_T3
+                        or p_5AT_T3 or p_5AH_T3):
+                    bid = 0
+            # AGGRESSIVE TIGHT-20 (cutthroat_aggressive_tight_20): surgical
+            # + ALSO drops 5+T4 (n=232, make-rate 53.9%, borderline). If
+            # both surgical and aggressive ship-positive, aggressive wins;
+            # if aggressive hurts vs surgical, 5+T4 IS net-positive at 20.
+            #   53.9%  5+T4      (n=232)  has5, no J/AH/AT, T==5
+            if cutthroat_aggressive_tight_20 and bid == 20:
+                p_5_T2 = (has5 and not hasJ and not hasAH and not hasAT
+                          and trump_count == 3)
+                p_J_T3 = (hasJ and not has5 and not hasAH and not hasAT
+                          and trump_count == 4)
+                p_5J_T2 = (has5 and hasJ and not hasAH and not hasAT
+                           and trump_count == 4)
+                p_5_T3 = (has5 and not hasJ and not hasAH and not hasAT
+                          and trump_count == 4)
+                p_5AT_T3 = (has5 and hasAT and not hasJ and not hasAH
+                            and trump_count == 5)
+                p_5AH_T3 = (has5 and hasAH and not hasJ and not hasAT
+                            and trump_count == 5)
+                p_5_T4 = (has5 and not hasJ and not hasAH and not hasAT
+                          and trump_count == 5)
+                if (p_5_T2 or p_J_T3 or p_5J_T2 or p_5_T3
+                        or p_5AT_T3 or p_5AH_T3 or p_5_T4):
+                    bid = 0
         if bid == 0:
             hasKT = has_card(hand, 'K', suit)
             hasQT = has_card(hand, 'Q', suit)

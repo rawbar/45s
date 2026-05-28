@@ -254,6 +254,71 @@ REGISTRY["cutthroat-tight-25"] = CutthroatTight25()
 REGISTRY["cutthroat-kill-30"]  = CutthroatKill30()
 
 
+# SURGICAL TIGHT-20 — SHIPPED v2.31.77 (this commit) as champion-cutthroat
+# default-on. Pattern-targeted demotion driven by the
+# cutthroat_pattern_makerate.py output @ 2000 deals (commit 4b4858d).
+# Symmetric A-vs-B set-rate (4 seats each config, deals=2000):
+#   primary  seed-base=0       Δ=-1.24pt z=-3.05 SIGNIFICANT
+#                              (15s -2.18 z=-4.61, 20s +0.66 z=+0.79)
+#   held-out seed-base=5000000 Δ=-0.98pt z=-2.42 SIGNIFICANT (replicated)
+#                              (15s -1.82 z=-3.87)
+# Direction: NEGATIVE Δ set-rate = GOOD here (fewer overall sets — healthier
+# bidding population). Demoted 20-bid hands fall through to 15-bid; their
+# pattern-level make-rate jumps from ≤36% at 20 to 35-88% at 15.
+#
+# The coarse cutthroat_tight_20 above (trump_count<4) drops ALL T2/T3
+# 20-bids including 5+J@T3 (analyzer make-rate ~57.6% = +EV); the surgical
+# rule targets ONLY the make-rate≤36% patterns and lets 5J+T3 / 5+T4 keep
+# bidding 20.
+#
+# AGGRESSIVE variant — surgical + ALSO demotes 5+T4 (n=232, make-rate
+# 53.9%, borderline). Result @ 2000 deals: a STATISTICAL TIE vs surgical
+# (Δ=-1.23/-0.99 primary/held-out vs surgical -1.24/-0.98). The extra
+# 5+T4 demotion adds ~zero EV. Shipped: SURGICAL (minimum intervention).
+# Aggressive kept as opt-in for forward reference.
+#
+# This variant is retained as a CHALLENGER name even though its behavior
+# is now bit-identical to champion-cutthroat — useful for ablation (test
+# champion-cutthroat WITHOUT the shipped surgical rule by registering a
+# without-surgical variant, future work).
+class CutthroatSurgicalTight20(Policy):
+    name = "cutthroat-tight-20-surgical"
+    def __init__(self):
+        super().__init__(cutthroat=True)
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True,
+                                  cutthroat_surgical_tight_20=True)
+
+
+class CutthroatAggressiveTight20(Policy):
+    name = "cutthroat-tight-20-aggressive"
+    def __init__(self):
+        super().__init__(cutthroat=True)
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True,
+                                  cutthroat_aggressive_tight_20=True)
+
+
+# ABLATION: champion-cutthroat WITHOUT the shipped surgical tight-20 rule
+# (the meaningful regression test now that surgical is shipped default-ON).
+# Use this as the BASELINE to measure whether the surgical rule keeps
+# paying as the downstream coalition / L1-L3 rules evolve.
+class NoSurgicalTight20(Policy):
+    name = "no-surgical-tight-20"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_surgical_tight_20=False,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-tight-20-surgical"]   = CutthroatSurgicalTight20()
+REGISTRY["cutthroat-tight-20-aggressive"] = CutthroatAggressiveTight20()
+REGISTRY["no-surgical-tight-20"]          = NoSurgicalTight20()
+
+
 # CUTTHROAT COALITION (opt-in challengers; champion-cutthroat default OFF).
 # Two coordinated defender rules — see improved_ai.py for the gates:
 #   C1 (cutthroat_c1_take_from_bidder): defender following, BIDDER currently

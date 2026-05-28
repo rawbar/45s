@@ -24,17 +24,32 @@ class Policy:
     `cutthroat` (bool, default False) switches the bidding side to
     every-man-for-himself mode (no partner concept). Card-play is NOT yet
     gated for cutthroat — that ships in chunk B. The flag is threaded into
-    ai_flags so improved_ai.py can read it later without further plumbing."""
+    ai_flags so improved_ai.py can read it later without further plumbing.
+
+    `cutthroat_surgical_tight_20` (bool, default True) — SHIPPED default-on
+    for cutthroat policies. Demotes 6 EV-negative 20-bid patterns identified
+    by cutthroat_pattern_makerate.py @ 2000 deals (make-rate ≤ 36%). See
+    bidding.decide_bid for the pattern list and the symmetric set-rate test
+    results in the registry commit message. Flag is a no-op in partner mode
+    (forced off inside bidding.decide_bid's `else` branch). Champion-cutthroat
+    self-test stays at 25.00% exact (4 seats run same policy, symmetric).
+    Partner-mode regression stays at 50.00% exact."""
     name = "champion"
     ai_flags: dict = None
     cutthroat: bool = False
+    cutthroat_surgical_tight_20: bool = True
 
     def __init__(self, cutthroat: bool = False, ai_flags: dict = None,
-                 name: str = None):
+                 name: str = None,
+                 cutthroat_surgical_tight_20: bool = True):
         # All args default-None/False so existing zero-arg `Policy()` callers
         # stay bit-identical. Subclasses that don't call super still work
         # because the class attrs above provide the defaults.
+        # cutthroat_surgical_tight_20 defaults True to ship the surgical
+        # tighten-20 rule by default; it is forced OFF in partner mode
+        # inside bidding.decide_bid so partner-mode bit-identity is preserved.
         self.cutthroat = cutthroat
+        self.cutthroat_surgical_tight_20 = cutthroat_surgical_tight_20
         if ai_flags is not None:
             self.ai_flags = dict(ai_flags)
         if name is not None:
@@ -53,7 +68,9 @@ class Policy:
                     partner_bid: int) -> Tuple[int, Optional[Suit]]:
         return bidding.decide_bid(hand, current_high_bid, player_index, dealer,
                                   team_scores, opp_scores, partner_bid,
-                                  cutthroat=self.cutthroat)
+                                  cutthroat=self.cutthroat,
+                                  cutthroat_surgical_tight_20=
+                                      self.cutthroat_surgical_tight_20)
 
     def choose_discards(self, hand: List[Card], trump: Suit, is_bid_winner: bool,
                         bid_amount: int) -> List[Card]:
