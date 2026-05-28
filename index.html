@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.78';
+const VERSION = '2.31.79';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6880,6 +6880,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.79', date: 'May 2026', changes: ['Show Hands (Round Summary) modal — in cutthroat games the score row now displays four per-player scores (N/E/S/W or the first three characters of each human\'s username) instead of the N/S vs E/W team line, and the modal title now reads "Round Summary · Cutthroat" so the variant is clear at a glance. Your own seat is highlighted. Partner-mode behavior unchanged.'] },
     { version: '2.31.78', date: 'May 2026', changes: ['Cutthroat bidding fix — AI was bidding 25 and 30 with garbage hands as defensive "spoiler" overbids whenever any opponent was close to 120 points. The spoiler logic was correctly noticing "an opponent is near game point" but was overbidding against the wrong opponent — specifically, whichever opponent happened to currently hold the bid, regardless of THEIR score. Example from user screenshot: opponent at 100 points triggers spoiler mode; another opponent at 35 points opens at 20; AI sees "someone at 100, someone has the bid, must spoil" and overbids to 25 with three trump cards and no Five/Jack/A-Hearts. Then the dealer AI sees 25 and bids 30 with similar garbage. Both get set, the actual leader gains relative ground. The fix routes the spoiler\'s "are they about to win?" check to the actual bidder\'s individual score in cutthroat, so spoiling only fires when the player currently holding the bid is themselves the near-game-point threat. Partner mode behavior is bit-identical (the bidder is always on the opposing team, so the old and new check produce the same number).'] },
     { version: '2.31.77', date: 'May 2026', changes: ['Cutthroat AI bidding tightened on patterns the simulator measured as net-negative against the current defenders. Specifically, six 20-bid hand types with observed make rates between roughly 2 percent and 36 percent are now demoted to 15. Examples: a hand with the 5 of trump but no other top card and only 2 to 3 other trump used to gamble at 20 and bust roughly 88 to 97 percent of the time — it now safely bids 15 instead. This is the rule the user spotted in alpha play (a lone 5 with thin support rarely makes 20 in cutthroat); the simulator\'s per-pattern make-rate analyzer confirmed it empirically and the symmetric A-vs-B set-rate test shipped the rule (primary +1.24pt, replicated held-out +0.98pt, A is set less often). Partner-mode bidding is bit-identical — only the cutthroat code path was touched. The 20-bid hands that still pay (5+J+T3, 5+T4, anything with two top trump cards) are unchanged.'] },
     { version: '2.31.76', date: 'May 2026', changes: ['Cutthroat bidding semantic fix. The AI bidder was still seeing PARTNER-mode inputs in cutthroat — it was being told "your team has X pts, the other team has Y pts, your partner bid Z." In cutthroat there is no team and no partner, so those numbers had no meaning. In particular the desperation-bidding logic, which asks "is the opposing team about to win?", was adding the scores of two unrelated opponent seats together — giving the AI a false impression of urgency. Fix: in cutthroat the bidder now sees its own seat score, the closest single opponent\'s score (the real threat to game-point), and partner-bid as 0 (no partner). The spoiler / desperation / upbid15 / overbid math now sees correct cutthroat semantics. This does not change the open-bid threshold values themselves — that is a separate calibration question on the queue. Partner-mode behavior is bit-identical.'] },
@@ -7625,7 +7626,7 @@ function RulesModal({ isOpen, onClose }) {
 }
 
 // Show Hands Modal — original layout with Irish Card Room theming
-function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, drawnCards, kittyCardIds, wasBagged, playHistory, bids, mySeatIndex, players, scores, faceUpCard = null }) {
+function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, drawnCards, kittyCardIds, wasBagged, playHistory, bids, mySeatIndex, players, scores, playerScores, isCutthroat = false, faceUpCard = null }) {
   if (!isOpen || !hands) return null;
 
   const isCyberpunk = currentThemeId === 'cyberpunk';
@@ -7637,6 +7638,17 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
     const seat = seatNames[playerIdx];
     const player = players && players[seat];
     return player ? player.username : seatNames[playerIdx];
+  };
+
+  // v2.31.79: short label for cutthroat per-seat score chips. AI seats use the
+  // seat letter (N/E/S/W); humans get 3-char username slice. Mirrors the
+  // convention used in the top-of-game plaques + round-end/game-over modals.
+  const ctLabel = (seat) => {
+    const seatNames = ['North', 'East', 'South', 'West'];
+    const player = players && players[seatNames[seat]];
+    if (player && player.isAI) return seatNames[seat][0];
+    if (player && player.username) return player.username.slice(0, 3).toUpperCase();
+    return seatNames[seat][0];
   };
 
   const getAvatar = (playerIdx) => {
@@ -7743,7 +7755,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
       <div className="cp-modal-overlay" onClick={onClose}>
         <div className="cp-modal" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '400px', maxHeight: '82vh', overflowY: 'auto' }}>
           <div className="cp-modal-header">
-            <span className="cp-modal-title">Round Summary</span>
+            <span className="cp-modal-title">Round Summary{isCutthroat ? ' · Cutthroat' : ''}</span>
             <button className="cp-modal-close" onClick={onClose}>×</button>
           </div>
           <div className="cp-modal-hairline" />
@@ -7757,10 +7769,16 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
                     {highBid > 0 && <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '10px', color: '#00e5ff' }}>· {wasBagged ? 'BAGGED ' : ''}{highBid}</span>}
                   </div>
                 : <div />}
-              {scores && <div style={{ display: 'flex', gap: '12px', fontSize: '11px' }}>
-                <span className="cp-score-us">N/S <strong>{scores[0]}</strong></span>
-                <span className="cp-score-them">E/W <strong>{scores[1]}</strong></span>
-              </div>}
+              {isCutthroat && playerScores
+                ? <div style={{ display: 'flex', gap: '6px', fontSize: '10px', fontFamily: "'Share Tech Mono', monospace" }}>
+                    {[0, 1, 2, 3].map(s => (
+                      <span key={s} style={{ color: s === mySeatIndex ? '#00ff88' : '#00e5ff' }}>{ctLabel(s)} <strong>{playerScores[s] || 0}</strong></span>
+                    ))}
+                  </div>
+                : (scores && <div style={{ display: 'flex', gap: '12px', fontSize: '11px' }}>
+                    <span className="cp-score-us">N/S <strong>{scores[0]}</strong></span>
+                    <span className="cp-score-them">E/W <strong>{scores[1]}</strong></span>
+                  </div>)}
             </div>
 
             {/* Legend */}
@@ -7809,7 +7827,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px 8px' }}>
             <div>
-              <span style={{ fontFamily: "'Cinzel',serif", fontSize: '14px', fontWeight: 700, color: '#f6d778', letterSpacing: '1px' }}>Round Summary</span>
+              <span style={{ fontFamily: "'Cinzel',serif", fontSize: '14px', fontWeight: 700, color: '#f6d778', letterSpacing: '1px' }}>Round Summary{isCutthroat ? ' · Cutthroat' : ''}</span>
               <span style={{ marginLeft: '8px', fontSize: '9px', color: 'rgba(201,162,39,0.4)', fontFamily: "'Cinzel',serif" }}>v{VERSION}</span>
             </div>
             <div onClick={onClose} style={{ width: '26px', height: '26px', border: '1px solid rgba(201,162,39,0.4)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c9a227', fontSize: '16px', cursor: 'pointer', lineHeight: 1 }}>×</div>
@@ -7826,10 +7844,16 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
                     {highBid > 0 && <span style={{ fontFamily: "'Cinzel',serif", fontSize: '10px', color: '#c9a227' }}>· {wasBagged ? 'BAGGED ' : ''}{highBid}</span>}
                   </div>
                 : <div />}
-              {scores && <div style={{ display: 'flex', gap: '12px', fontSize: '11px' }}>
-                <span style={{ fontFamily: "'Cinzel',serif", color: '#5dd084' }}>N/S <strong>{scores[0]}</strong></span>
-                <span style={{ fontFamily: "'Cinzel',serif", color: '#ef7c74' }}>E/W <strong>{scores[1]}</strong></span>
-              </div>}
+              {isCutthroat && playerScores
+                ? <div style={{ display: 'flex', gap: '6px', fontSize: '10px' }}>
+                    {[0, 1, 2, 3].map(s => (
+                      <span key={s} style={{ fontFamily: "'Cinzel',serif", color: s === mySeatIndex ? '#5dd084' : '#f6d778' }}>{ctLabel(s)} <strong>{playerScores[s] || 0}</strong></span>
+                    ))}
+                  </div>
+                : (scores && <div style={{ display: 'flex', gap: '12px', fontSize: '11px' }}>
+                    <span style={{ fontFamily: "'Cinzel',serif", color: '#5dd084' }}>N/S <strong>{scores[0]}</strong></span>
+                    <span style={{ fontFamily: "'Cinzel',serif", color: '#ef7c74' }}>E/W <strong>{scores[1]}</strong></span>
+                  </div>)}
             </div>
 
             {/* Legend */}
@@ -7878,7 +7902,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '14px', fontWeight: 700, background: `linear-gradient(135deg, ${brassHi}, ${brass})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Round Summary</span>
+            <span style={{ fontFamily: "'Cinzel', serif", fontSize: '14px', fontWeight: 700, background: `linear-gradient(135deg, ${brassHi}, ${brass})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Round Summary{isCutthroat ? ' · Cutthroat' : ''}</span>
             <span style={{ marginLeft: '8px', fontSize: '9px', color: 'rgba(201,162,74,0.4)', fontFamily: "'Cinzel', serif" }}>v{VERSION}</span>
           </div>
           <div onClick={onClose} style={{ width: '26px', height: '26px', border: `1px solid rgba(201,162,74,0.4)`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: brass, fontSize: '16px', cursor: 'pointer', lineHeight: 1 }}>×</div>
@@ -7893,10 +7917,16 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
                 {highBid > 0 && <span style={{ fontFamily: "'Cinzel', serif", fontSize: '10px', color: brass }}>· {wasBagged ? 'BAGGED ' : ''}{highBid}</span>}
               </div>
             : <div />}
-          {scores && <div style={{ display: 'flex', gap: '12px', fontSize: '11px' }}>
-            <span style={{ fontFamily: "'Cinzel', serif", color: '#6ec97a' }}>N/S <strong>{scores[0]}</strong></span>
-            <span style={{ fontFamily: "'Cinzel', serif", color: '#6bb6ff' }}>E/W <strong>{scores[1]}</strong></span>
-          </div>}
+          {isCutthroat && playerScores
+            ? <div style={{ display: 'flex', gap: '6px', fontSize: '10px' }}>
+                {[0, 1, 2, 3].map(s => (
+                  <span key={s} style={{ fontFamily: "'Cinzel', serif", color: s === mySeatIndex ? '#6ec97a' : brassHi }}>{ctLabel(s)} <strong>{playerScores[s] || 0}</strong></span>
+                ))}
+              </div>
+            : (scores && <div style={{ display: 'flex', gap: '12px', fontSize: '11px' }}>
+                <span style={{ fontFamily: "'Cinzel', serif", color: '#6ec97a' }}>N/S <strong>{scores[0]}</strong></span>
+                <span style={{ fontFamily: "'Cinzel', serif", color: '#6bb6ff' }}>E/W <strong>{scores[1]}</strong></span>
+              </div>)}
         </div>
 
         {/* Legend */}
@@ -18555,6 +18585,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         mySeatIndex={mySeatIndex}
         players={players}
         scores={scores}
+        playerScores={playerScores}
+        isCutthroat={!!(gameOptions && gameOptions.cutthroat)}
         faceUpCard={faceUpCard}
       />
       <HelpModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
