@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.77';
+const VERSION = '2.31.78';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4984,7 +4984,17 @@ function chooseTrumpSuit(hand) {
 const AUTO15_PASS_PROB = 0.5;
 const DESP25_PASS_PROB = 0.5;
 
-function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid, _noSpoiler = false, partnerIsHuman = false, cutthroat = false) {
+function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid, _noSpoiler = false, partnerIsHuman = false, cutthroat = false, bidderScore = null) {
+  // v2.31.78: bidderScore = score of the player who CURRENTLY holds the bid.
+  // In partner mode this equals oppScores (the bidder is on the opposing team).
+  // In cutthroat this is the bidder's OWN score — a leader at 100 with the
+  // bid is a real threat (their +bid wins the game); a non-leader at 35 with
+  // the bid is not. Without this, the spoiler logic was firing against
+  // garbage-hand AI bids just because the LEADER (a different opp) happened
+  // to be near game point, producing the "AI bids 25/30 with no top trump"
+  // pattern user reported in cutthroat alpha. Default null → fall back to
+  // oppScores (= prior partner-mode behavior, bit-identical).
+  if (bidderScore === null || bidderScore === undefined) bidderScore = oppScores;
   const { suit, trumpCount, has5, hasJ } = findBestTrumpSuit(hand);
   const hasAH = hasAceHearts(hand), hasAT = hasAceTrump(hand, suit);
   const highT = countHighTrumps(hand, suit);
@@ -5175,15 +5185,21 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     const oppHolds = (oppBidIs15 && currentHighBid === 15) ||
                      (oppBidIs20 && currentHighBid === 20) ||
                      (oppBidIs25 && currentHighBid === 25);
-    const danger = (currentHighBid === 15 && theyNeed <= 20) ||
-                    (currentHighBid === 20 && theyNeed <= 20) ||
-                    (currentHighBid === 25 && theyNeed <= 25);
+    // v2.31.78: danger now keys on the BIDDER's distance to 120, not the
+    // leader's. In partner mode bidderScore === oppScores (the bidder is on
+    // the opposing team) — bit-identical. In cutthroat bidderScore is the
+    // bidder's individual score, so a non-leader bidder no longer triggers
+    // the spoiler just because some other opp happens to be near 120.
+    const bidderNeeds = 120 - bidderScore;
+    const danger = (currentHighBid === 15 && bidderNeeds <= 20) ||
+                    (currentHighBid === 20 && bidderNeeds <= 20) ||
+                    (currentHighBid === 25 && bidderNeeds <= 25);
     const spoilTo = currentHighBid + 5;
     if (oppHolds && danger && spoilTo <= 30) {
       const champ = decideBid(hand, currentHighBid, playerIndex, dealer,
-                              teamScores, oppScores, partnerBid, true, partnerIsHuman, cutthroat);
+                              teamScores, oppScores, partnerBid, true, partnerIsHuman, cutthroat, bidderScore);
       if (champ.bid < spoilTo) {
-        console.log(`🗡 SPOILER: opp holds ${currentHighBid}, theyNeed ${theyNeed} - overbid ${spoilTo}`);
+        console.log(`🗡 SPOILER: opp holds ${currentHighBid}, bidderNeeds ${bidderNeeds} - overbid ${spoilTo}`);
         return { bid: spoilTo, suit };
       }
     }
@@ -6864,6 +6880,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.78', date: 'May 2026', changes: ['Cutthroat bidding fix — AI was bidding 25 and 30 with garbage hands as defensive "spoiler" overbids whenever any opponent was close to 120 points. The spoiler logic was correctly noticing "an opponent is near game point" but was overbidding against the wrong opponent — specifically, whichever opponent happened to currently hold the bid, regardless of THEIR score. Example from user screenshot: opponent at 100 points triggers spoiler mode; another opponent at 35 points opens at 20; AI sees "someone at 100, someone has the bid, must spoil" and overbids to 25 with three trump cards and no Five/Jack/A-Hearts. Then the dealer AI sees 25 and bids 30 with similar garbage. Both get set, the actual leader gains relative ground. The fix routes the spoiler\'s "are they about to win?" check to the actual bidder\'s individual score in cutthroat, so spoiling only fires when the player currently holding the bid is themselves the near-game-point threat. Partner mode behavior is bit-identical (the bidder is always on the opposing team, so the old and new check produce the same number).'] },
     { version: '2.31.77', date: 'May 2026', changes: ['Cutthroat AI bidding tightened on patterns the simulator measured as net-negative against the current defenders. Specifically, six 20-bid hand types with observed make rates between roughly 2 percent and 36 percent are now demoted to 15. Examples: a hand with the 5 of trump but no other top card and only 2 to 3 other trump used to gamble at 20 and bust roughly 88 to 97 percent of the time — it now safely bids 15 instead. This is the rule the user spotted in alpha play (a lone 5 with thin support rarely makes 20 in cutthroat); the simulator\'s per-pattern make-rate analyzer confirmed it empirically and the symmetric A-vs-B set-rate test shipped the rule (primary +1.24pt, replicated held-out +0.98pt, A is set less often). Partner-mode bidding is bit-identical — only the cutthroat code path was touched. The 20-bid hands that still pay (5+J+T3, 5+T4, anything with two top trump cards) are unchanged.'] },
     { version: '2.31.76', date: 'May 2026', changes: ['Cutthroat bidding semantic fix. The AI bidder was still seeing PARTNER-mode inputs in cutthroat — it was being told "your team has X pts, the other team has Y pts, your partner bid Z." In cutthroat there is no team and no partner, so those numbers had no meaning. In particular the desperation-bidding logic, which asks "is the opposing team about to win?", was adding the scores of two unrelated opponent seats together — giving the AI a false impression of urgency. Fix: in cutthroat the bidder now sees its own seat score, the closest single opponent\'s score (the real threat to game-point), and partner-bid as 0 (no partner). The spoiler / desperation / upbid15 / overbid math now sees correct cutthroat semantics. This does not change the open-bid threshold values themselves — that is a separate calibration question on the queue. Partner-mode behavior is bit-identical.'] },
     { version: '2.31.75', date: 'May 2026', changes: ['Cutthroat is no longer a "setting" — it is a per-game variant choice. The Default Variant row has been removed from Preferences (where it had been a duplicate of the lobby selector). Your most recent choice on the lobby selector now persists in localStorage so the lobby remembers it across sessions, but it is no longer mirrored into your Firebase preferences.'] },
@@ -15023,13 +15040,22 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       // was treating "opposing team score" = sum of two other-team seats,
       // which has no meaning when each player has their own score.
       const isCutthroat = !!(gameOptions && gameOptions.cutthroat);
-      let teamScores, oppScores, partnerBid, partnerIsHuman;
+      let teamScores, oppScores, partnerBid, partnerIsHuman, bidderScore;
       if (isCutthroat) {
         teamScores = (playerScores && playerScores[currentPlayer]) || 0;
         const otherSeats = [0, 1, 2, 3].filter(i => i !== currentPlayer);
         oppScores = Math.max(...otherSeats.map(i => (playerScores && playerScores[i]) || 0));
         partnerBid = 0;
         partnerIsHuman = false;
+        // v2.31.78: bidderScore = the current high bidder's OWN score (not the
+        // max opp). Without this the spoiler logic was firing against any opp
+        // bidder whenever ANY other opp was near 120 — see the screenshot of
+        // AI bidding 25/30 with garbage trump because Robr happened to be at
+        // 100. If no one has bid yet (bidWinner=-1), no spoiler context — use
+        // oppScores so the danger check naturally fails to trigger anything.
+        bidderScore = (bidWinner >= 0)
+          ? ((playerScores && playerScores[bidWinner]) || 0)
+          : oppScores;
       } else {
         const myTeam = currentPlayer % 2;
         teamScores = scores[myTeam];
@@ -15038,9 +15064,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         partnerBid = bids[partnerIdx] !== null && bids[partnerIdx] !== -1 ? bids[partnerIdx] : 0;
         const partnerPlayer = players[SEAT_NAMES[partnerIdx]];
         partnerIsHuman = !!(partnerPlayer && !partnerPlayer.isAI);
+        // Partner mode: the bidder is on the opp team, so bidderScore === oppScores.
+        bidderScore = oppScores;
       }
 
-      const bidResult = decideBid(hand, highBid, currentPlayer, dealer, teamScores, oppScores, partnerBid, false, partnerIsHuman, isCutthroat);
+      const bidResult = decideBid(hand, highBid, currentPlayer, dealer, teamScores, oppScores, partnerBid, false, partnerIsHuman, isCutthroat, bidderScore);
       let bid = bidResult.bid;
       console.log('🎲 AI decideBid result:', bidResult)
       
