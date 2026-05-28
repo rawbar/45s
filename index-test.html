@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.75';
+const VERSION = '2.31.76';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6828,6 +6828,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.76', date: 'May 2026', changes: ['Cutthroat bidding semantic fix. The AI bidder was still seeing PARTNER-mode inputs in cutthroat — it was being told "your team has X pts, the other team has Y pts, your partner bid Z." In cutthroat there is no team and no partner, so those numbers had no meaning. In particular the desperation-bidding logic, which asks "is the opposing team about to win?", was adding the scores of two unrelated opponent seats together — giving the AI a false impression of urgency. Fix: in cutthroat the bidder now sees its own seat score, the closest single opponent\'s score (the real threat to game-point), and partner-bid as 0 (no partner). The spoiler / desperation / upbid15 / overbid math now sees correct cutthroat semantics. This does not change the open-bid threshold values themselves — that is a separate calibration question on the queue. Partner-mode behavior is bit-identical.'] },
     { version: '2.31.75', date: 'May 2026', changes: ['Cutthroat is no longer a "setting" — it is a per-game variant choice. The Default Variant row has been removed from Preferences (where it had been a duplicate of the lobby selector). Your most recent choice on the lobby selector now persists in localStorage so the lobby remembers it across sessions, but it is no longer mirrored into your Firebase preferences.'] },
     { version: '2.31.74', date: 'May 2026', changes: ['Cutthroat AI is now significantly stronger. The variant was previously running partner-mode AI in cutthroat seats, which is what caused the "getting set 50% of the time" problem — partner rules don\'t make sense when there is no partner. This update ports two improvements that were validated in the simulator: (1) the 17 partner-coupled rules are now skipped in cutthroat mode (worth +2.2pt win rate per the rig); (2) cutthroat defenders now coordinate via C1 take-from-bidder + C2 don\'t-overtake-defender (worth another +1.5pt win rate, replicated in held-out). Net: AI plays cutthroat MUCH more like a real cutthroat player. Bidders will be set more often. Partner mode is unaffected — every cutthroat code path is gated on the variant flag.'] },
     { version: '2.31.73', date: 'May 2026', changes: ['Lobby game list now shows 4 individual player scores for cutthroat games in progress (e.g., "N 25 · E 30 · S 45 · W 20") instead of the team-mode "0 · 0" that was previously displayed. The current leader is highlighted in brass-gold. Finished cutthroat games show the winning PLAYER (not team) prominently in the lobby card — "Winner: alice (120)" — with a compact 4-seat scoreboard underneath, and the winning seat tile gets a green border. AI seats label as a single seat letter (N/E/S/W); human seats use the first 2 chars of their username (lobby row) or first 3 chars (game-over card). Partner-mode rendering is byte-identical — only a cutthroat branch was added.'] },
@@ -14978,13 +14979,29 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       console.log(`🤖 AI P${currentPlayer + 1} (${currentSeat}) executing bid, hand: ${hand.length} cards`);
 
       // Use full AI bidding strategy (matches v3.5.9)
-      const myTeam = currentPlayer % 2;
-      const teamScores = scores[myTeam];
-      const oppScores = scores[1 - myTeam];
-      const partnerIdx = (currentPlayer + 2) % 4;
-      const partnerBid = bids[partnerIdx] !== null && bids[partnerIdx] !== -1 ? bids[partnerIdx] : 0;
-      const partnerPlayer = players[SEAT_NAMES[partnerIdx]];
-      const partnerIsHuman = !!(partnerPlayer && !partnerPlayer.isAI);
+      // v2.31.76: cutthroat semantic fix. Partner-mode passes team scores and
+      // partner bid; cutthroat has no partner — pass my own score, the closest
+      // opponent's score (the threat), and partnerBid=0 so the upbid15 /
+      // spoiler / desperation logic sees correct values. Without this the AI
+      // was treating "opposing team score" = sum of two other-team seats,
+      // which has no meaning when each player has their own score.
+      const isCutthroat = !!(gameOptions && gameOptions.cutthroat);
+      let teamScores, oppScores, partnerBid, partnerIsHuman;
+      if (isCutthroat) {
+        teamScores = (playerScores && playerScores[currentPlayer]) || 0;
+        const otherSeats = [0, 1, 2, 3].filter(i => i !== currentPlayer);
+        oppScores = Math.max(...otherSeats.map(i => (playerScores && playerScores[i]) || 0));
+        partnerBid = 0;
+        partnerIsHuman = false;
+      } else {
+        const myTeam = currentPlayer % 2;
+        teamScores = scores[myTeam];
+        oppScores = scores[1 - myTeam];
+        const partnerIdx = (currentPlayer + 2) % 4;
+        partnerBid = bids[partnerIdx] !== null && bids[partnerIdx] !== -1 ? bids[partnerIdx] : 0;
+        const partnerPlayer = players[SEAT_NAMES[partnerIdx]];
+        partnerIsHuman = !!(partnerPlayer && !partnerPlayer.isAI);
+      }
 
       const bidResult = decideBid(hand, highBid, currentPlayer, dealer, teamScores, oppScores, partnerBid, false, partnerIsHuman);
       let bid = bidResult.bid;
