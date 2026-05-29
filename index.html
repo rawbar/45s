@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.80';
+const VERSION = '2.31.81';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6889,6 +6889,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.81', date: 'May 2026', changes: ['Removed the "Multiplayer 45s / Deal Cards" white-on-bright-green screen that used to flash for ~300ms every time a game started. That screen rendered while the auto-deal logic was doing two Firebase round-trips before it could deal cards. It is now replaced with the same dark themed table background you see during the bidding / playing phases, so the transition from lobby to cards is visually seamless — you should just see a brief dark blink instead of the content flash. A small Leave button is kept top-right as a safety hatch in case auto-deal ever stalls.'] },
     { version: '2.31.80', date: 'May 2026', changes: ['Cutthroat bidding fix part 2 — the desperation block had the same kind of bug that the spoiler block did in v2.31.78. When the leader was near 120, the AI would still force overbids against any opponent who held the bid, regardless of whether THAT bidder was actually a threat. Example from the user screenshot: Robr at 110 (leader), West at 20 had overbid Robr\'s 15 to 20, East at 15 (dealer) then jumped to 25 with a J + low-trump hand — because the desperation logic was asking "is the leader close to 120?" instead of "is the bidder close to 120?" Same fix as v2.31.78 applied to the three desperation overbid rules: they now check whether the actual current bidder can win the game by making their bid, not whether the unrelated leader can. Partner-mode behavior bit-identical (in partner the bidder is on the opp team so the two checks produce the same number).'] },
     { version: '2.31.79', date: 'May 2026', changes: ['Show Hands (Round Summary) modal — in cutthroat games the score row now displays four per-player scores (N/E/S/W or the first three characters of each human\'s username) instead of the N/S vs E/W team line, and the modal title now reads "Round Summary · Cutthroat" so the variant is clear at a glance. Your own seat is highlighted. Partner-mode behavior unchanged.'] },
     { version: '2.31.78', date: 'May 2026', changes: ['Cutthroat bidding fix — AI was bidding 25 and 30 with garbage hands as defensive "spoiler" overbids whenever any opponent was close to 120 points. The spoiler logic was correctly noticing "an opponent is near game point" but was overbidding against the wrong opponent — specifically, whichever opponent happened to currently hold the bid, regardless of THEIR score. Example from user screenshot: opponent at 100 points triggers spoiler mode; another opponent at 35 points opens at 20; AI sees "someone at 100, someone has the bid, must spoil" and overbids to 25 with three trump cards and no Five/Jack/A-Hearts. Then the dealer AI sees 25 and bids 30 with similar garbage. Both get set, the actual leader gains relative ground. The fix routes the spoiler\'s "are they about to win?" check to the actual bidder\'s individual score in cutthroat, so spoiling only fires when the player currently holding the bid is themselves the near-game-point threat. Partner mode behavior is bit-identical (the bidder is always on the opposing team, so the old and new check produce the same number).'] },
@@ -16852,54 +16853,21 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
   // Render based on phase
   if (phase === 'start') {
+    // v2.31.81: the legacy "Multiplayer 45s / Deal Cards" UI used to flash
+    // for ~300ms while the auto-startGame useEffect above did two Firebase
+    // round-trips (creatorId + gameState.phase) before calling startGame.
+    // That flash was the white-text-on-bright-green block users reported as
+    // jarring. Replace it with the same v3-phone themed wrapper the main
+    // game table uses, so the transition from lobby → cards is visually
+    // seamless (a brief dark themed background, then cards animate in).
+    // The small leave button is kept as a safety hatch in case autoStart
+    // ever stalls.
     return (
-      <div style={{
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #1a5f3f 0%, #2d8f5f 100%)',
-        color: 'white',
-        padding: '20px'
-      }}>
-        <h1 style={{ marginBottom: '16px' }}>Multiplayer 45s</h1>
-        <p>Game ID: {gameId}</p>
-        <p>Playing as: {mySeat}</p>
-        
-        <button
-          onClick={startGame}
-          style={{
-            marginTop: '24px',
-            padding: '12px 24px',
-            background: '#2d8f5f',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: 'bold'
-          }}
-        >
-          Deal Cards
-        </button>
-        
+      <div className={`v3-phone ${currentThemeId === 'cyberpunk' ? 'theme-cyberpunk' : currentThemeId === 'arabian' ? 'theme-arabian' : 'theme-irish'}`}>
         <button
           onClick={onLeaveGame}
-          style={{
-            marginTop: '12px',
-            padding: '12px 24px',
-            background: '#f44336',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: 'bold'
-          }}
-        >
-          Leave Game
-        </button>
+          style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(0,0,0,0.45)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(201,162,74,0.35)', borderRadius: '4px', padding: '6px 10px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', zIndex: 100 }}
+        >Leave</button>
       </div>
     );
   }
