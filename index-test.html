@@ -6372,6 +6372,18 @@ if (trick.length > 0) {
     for (let i = 0; i < trick.length; i++) {
       if (bidWinner === (leader + i) % 4) { _bidderHasPlayed = true; break; }
     }
+    // DIAGNOSTIC (v2.31.82-debug): dump gate values for every defender decision
+    // in cutthroat so we can see why C2 didn't fire in the round-2 West A♥
+    // screenshot. Remove once diagnosed.
+    console.log(`🔍 C2-GATE P${player + 1}:`, JSON.stringify({
+      player, bidWinner, currentWinner, trickNum,
+      playerTricks: Array.isArray(playerTricks) ? [...playerTricks] : playerTricks,
+      highTrumpPlayer, highBid,
+      bidderHasPlayed: _bidderHasPlayed,
+      setLk: _setLk, madeLk: _madeLk,
+      cutthroat, trickLen: trick.length, leader,
+      trickCards: trick.map(c => c && c.id)
+    }));
     // C2 — don't overtake a fellow defender (bidder must have already played).
     if (currentWinner !== bidWinner && currentWinner !== player &&
         _bidderHasPlayed && !_setLk) {
