@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.79';
+const VERSION = '2.31.80';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5020,6 +5020,15 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   const desperation = theyNeed <= 15 && weNeed > 0;
   const theyCanWinWith15 = theyNeed <= 15;
   const theyCanWinWith20 = theyNeed <= 20;
+  // v2.31.80: when evaluating whether to BLOCK the current bidder via a
+  // desperation overbid, check if the CURRENT BIDDER (not the leader) would
+  // actually win by making their bid. In partner mode bidderScore ===
+  // oppScores so this is bit-identical to theyCanWin*. In cutthroat the
+  // bidder might be a non-leader at low score — no point overbidding to
+  // "block" them when they can't win regardless. (v2.31.78 fixed the same
+  // class of bug in the spoiler block; this is the desperation-block twin.)
+  const bidderCanWinWith15 = (bidderScore + 15) >= 120;
+  const bidderCanWinWith20 = (bidderScore + 20) >= 120;
 
   // Check if opponent has already bid (their bid is the current high)
   const oppBidIs15 = currentHighBid === 15 && partnerBid !== 15;
@@ -5060,14 +5069,14 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     // RULE 1: If opponent bid 15 and they can win with 15, MUST overbid to
     // 20 (aggressive sacrifice — gated for a human partner; the human owns
     // this overbid decision since the AI cannot know their hand).
-    if (oppBidIs15 && theyCanWinWith15 && !partnerIsHuman) {
+    if (oppBidIs15 && bidderCanWinWith15 && !partnerIsHuman) {
       console.log(`🚨 Opponent bid 15 and can win - MUST bid 20`);
       return { bid: 20, suit };
     }
 
     // RULE 2: If opponent bid 20 and they can win with 20, bid 25 if we're
     // last chance (aggressive sacrifice — gated for a human partner).
-    if (oppBidIs20 && theyCanWinWith20 && playerIndex === dealer && !partnerIsHuman) {
+    if (oppBidIs20 && bidderCanWinWith20 && playerIndex === dealer && !partnerIsHuman) {
       // (C v2.31.44) The 25-sacrifice is exploitable: a human bids 20 on
       // air knowing the AI always overbids into a doomed 25. 20-overbids
       // stay always-on. Here, ONLY when the hand is crap for 25 (can't
@@ -5137,7 +5146,7 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
 
     // RULE 5: Opponent doesn't have dealer - overbid their 15
     if (!oppHasDealer) {
-      if (oppBidIs15 && theyCanWinWith15) {
+      if (oppBidIs15 && bidderCanWinWith15) {
         // If we have 5, bid 20; otherwise pass for partner
         if (has5) {
           console.log(`🚨 They bid 15 (can win) - we have 5, bidding 20`);
@@ -6880,6 +6889,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.80', date: 'May 2026', changes: ['Cutthroat bidding fix part 2 — the desperation block had the same kind of bug that the spoiler block did in v2.31.78. When the leader was near 120, the AI would still force overbids against any opponent who held the bid, regardless of whether THAT bidder was actually a threat. Example from the user screenshot: Robr at 110 (leader), West at 20 had overbid Robr\'s 15 to 20, East at 15 (dealer) then jumped to 25 with a J + low-trump hand — because the desperation logic was asking "is the leader close to 120?" instead of "is the bidder close to 120?" Same fix as v2.31.78 applied to the three desperation overbid rules: they now check whether the actual current bidder can win the game by making their bid, not whether the unrelated leader can. Partner-mode behavior bit-identical (in partner the bidder is on the opp team so the two checks produce the same number).'] },
     { version: '2.31.79', date: 'May 2026', changes: ['Show Hands (Round Summary) modal — in cutthroat games the score row now displays four per-player scores (N/E/S/W or the first three characters of each human\'s username) instead of the N/S vs E/W team line, and the modal title now reads "Round Summary · Cutthroat" so the variant is clear at a glance. Your own seat is highlighted. Partner-mode behavior unchanged.'] },
     { version: '2.31.78', date: 'May 2026', changes: ['Cutthroat bidding fix — AI was bidding 25 and 30 with garbage hands as defensive "spoiler" overbids whenever any opponent was close to 120 points. The spoiler logic was correctly noticing "an opponent is near game point" but was overbidding against the wrong opponent — specifically, whichever opponent happened to currently hold the bid, regardless of THEIR score. Example from user screenshot: opponent at 100 points triggers spoiler mode; another opponent at 35 points opens at 20; AI sees "someone at 100, someone has the bid, must spoil" and overbids to 25 with three trump cards and no Five/Jack/A-Hearts. Then the dealer AI sees 25 and bids 30 with similar garbage. Both get set, the actual leader gains relative ground. The fix routes the spoiler\'s "are they about to win?" check to the actual bidder\'s individual score in cutthroat, so spoiling only fires when the player currently holding the bid is themselves the near-game-point threat. Partner mode behavior is bit-identical (the bidder is always on the opposing team, so the old and new check produce the same number).'] },
     { version: '2.31.77', date: 'May 2026', changes: ['Cutthroat AI bidding tightened on patterns the simulator measured as net-negative against the current defenders. Specifically, six 20-bid hand types with observed make rates between roughly 2 percent and 36 percent are now demoted to 15. Examples: a hand with the 5 of trump but no other top card and only 2 to 3 other trump used to gamble at 20 and bust roughly 88 to 97 percent of the time — it now safely bids 15 instead. This is the rule the user spotted in alpha play (a lone 5 with thin support rarely makes 20 in cutthroat); the simulator\'s per-pattern make-rate analyzer confirmed it empirically and the symmetric A-vs-B set-rate test shipped the rule (primary +1.24pt, replicated held-out +0.98pt, A is set less often). Partner-mode bidding is bit-identical — only the cutthroat code path was touched. The 20-bid hands that still pay (5+J+T3, 5+T4, anything with two top trump cards) are unchanged.'] },
