@@ -98,7 +98,8 @@ def decide_bid(hand: List[Card],
                 cutthroat_surgical_tight_20: bool = False,
                 cutthroat_aggressive_tight_20: bool = False,
                 cutthroat_surgical_tight_15: bool = False,
-                cutthroat_allow_5ahat_25: bool = False) -> Tuple[int, Optional[Suit]]:
+                cutthroat_allow_5ahat_25: bool = False,
+                cutthroat_force_upbid15: bool = False) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
     DATA-DERIVED, held-out-validated trigger (commit d19be47: 12k deals/cell
@@ -135,14 +136,17 @@ def decide_bid(hand: List[Card],
     if cutthroat:
         partner_bid = 0
         enable_spoiler = False
-        # Both rules were calibrated against the partner-mode evaluator and
-        # are aggressive overbids that depend on partner-share-the-load
-        # economics. In cutthroat (no partner) they are net-negative — force
-        # off regardless of caller request. (Both kwargs are currently no-ops
-        # in this file's logic — the rules live in index.html v2.31.36 /
-        # v2.31.56 and were never back-ported — but forced-off here so when
-        # they ARE ported, cutthroat is correct out of the box.)
-        enable_upbid15 = False
+        # UPBID15 (v2.31.56) and loose-open (v2.31.36) were calibrated against
+        # the partner-mode evaluator and are aggressive overbids that depend
+        # on partner-share-the-load economics. In cutthroat (no partner) the
+        # default assumption is net-negative → force off. The
+        # `cutthroat_force_upbid15` opt-in flag lets a challenger override
+        # this gate to measure the actual delta (live JS in index-test.html
+        # currently has UPBID15 ON in cutthroat unintentionally — this rig
+        # confirms whether that's a bug or a feature). UPBID15 is now ported
+        # into this file (see post-bid block below); loose-open still lives
+        # JS-only.
+        enable_upbid15 = bool(cutthroat_force_upbid15)
         enable_loose_open = False
     else:
         # Safety: the cutthroat_tight_* kwargs are CUTTHROAT-MODE tightening
@@ -461,6 +465,18 @@ def decide_bid(hand: List[Card],
             and has5 and hasAH and hasAT and not hasJ
             and trump_count >= 4):
         bid = 25
+
+    # UPBID15 (v2.31.56, JS port from index.html). When the auction stands
+    # at 15 AND our natural bid is 15 (which would otherwise pass since we
+    # can't equal the high bid), overbid to 20. Excludes the dealer (separate
+    # forced-15 path) and partner-bid-15 (don't overbid your own partner).
+    # Partner-mode rig validated at +5.42pt z=21.68 primary 20k / +5.30pt
+    # z=25.96 held-out 30k (jack2112-derived). In cutthroat this is gated
+    # off by default (see cutthroat normalization above) — only fires when
+    # `cutthroat_force_upbid15=True` is passed for opt-in measurement.
+    if (enable_upbid15 and bid == 15 and current_high_bid == 15
+            and player_index != dealer and partner_bid != 15):
+        bid = 20
 
     # Dealer clamp (only bid the minimum needed)
     if bid > current_high_bid and player_index == dealer and current_high_bid > 0:

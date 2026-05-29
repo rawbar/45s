@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.82';
+const VERSION = '2.31.83';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5397,13 +5397,24 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   // (separate forced-15 path) and partner-bid-15 (don't overbid your own
   // partner). Also gated on !partnerIsHuman per the v2.31.38 "gentler
   // bot partner" precedent — keep AI partners of humans conservative.
-  // Rig: +5.42pt z=21.68 primary 20k / +5.30pt z=25.96 held-out 30k
-  // (replicated). The OLD 5M-sim calibration that originally pruned
-  // these 15-strength hands from 20-bid threshold ran against a much
-  // weaker champion AI; the current card-play converts borderline 15s
-  // to 20-makes often enough.
+  // Partner-mode rig: +5.42pt z=21.68 primary 20k / +5.30pt z=25.96
+  // held-out 30k (replicated). The OLD 5M-sim calibration that originally
+  // pruned these 15-strength hands from 20-bid threshold ran against a
+  // much weaker champion AI; the current card-play converts borderline
+  // 15s to 20-makes often enough.
+  //
+  // CUTTHROAT GATE (v2.31.83, robr screenshot a265ca87 2026-05-29): UPBID15
+  // is PARTNER-MODE-ONLY. The partner-converts-borderline-15s assumption
+  // does not survive 3 coordinated defenders. Symmetric A-vs-B set-rate
+  // (champion-cutthroat vs cutthroat-upbid15-on): primary 20k seed-base=0
+  // Δ +14.31pt z=+113.79 / held-out 30k seed-base=5M Δ +14.55pt z=+141.51
+  // (replicated). 20-bid level alone: UPBID15-promoted hands set 58.36%
+  // vs 31.17% baseline (Δ +27.19pt z=+139.40 held-out). Live East J♠+4♠+
+  // 10♠+10♦+6♣ bid 20♠ exactly matches the failure pattern. The Python
+  // sim has had UPBID15 force-off in cutthroat since chunk A (bidding.py
+  // line 145) — this gate makes the JS match.
   if (bid === 15 && currentHighBid === 15 && playerIndex !== dealer
-      && partnerBid !== 15 && !partnerIsHuman) {
+      && partnerBid !== 15 && !partnerIsHuman && !cutthroat) {
     console.log(`📈 UPBID15: ${playerIndex} overbidding 15→20${suit}`);
     bid = 20;
   }
@@ -6903,6 +6914,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.83', date: 'May 2026', changes: ['Cutthroat bidding fix — the AI was over-promoting borderline 15-bid hands to 20 in cutthroat. UPBID15 (the rule that turns a natural 15-bid into a 20-bid when someone else has already bid 15) was originally calibrated in PARTNER mode, where it tested at +5.42pt in the rig — partner could cover the borderline hands. In cutthroat there is no partner, three opponents coordinate to set you, and the same rule turns out to be catastrophic: the simulator measures UPBID15-on bidders being SET 14.31 to 14.55 points more often (replicated across primary 20k and held-out 30k seeds, z over 113), with the 20-bid level alone going from 31% set-rate to 58% set-rate. Real-game example from a user screenshot (the one this fix was triggered by): East held J♠ + 4♠ + 10♠ + 10♦ + 6♣ in spades trump and bid 20♠ purely because North had bid 15 — that hand is a natural pass in cutthroat and is now correctly passed. UPBID15 stays ON in partner mode (it remains net-positive there).'] },
     { version: '2.31.82', date: 'May 2026', changes: ['Cutthroat AI: new bidding rule mined from real user games. When an opponent has bid 20 and the AI holds 5 of trump + A♥ + Ace of trump + at least one other trump (but NOT the Jack of trump), the AI now overbids to 25 instead of passing. This pattern (4 trump including 3 of the 4 top trump cards, missing only the Jack) was previously slipping through the standard 25-bid eligibility, which requires the Jack. The rule was discovered by mining the real-play log of a user who bid 25 on exactly this hand shape and made it; it then tested strongly positive in the simulator (symmetric set-rate -1.49pt z=-3.67 primary, -1.03pt z=-2.53 held-out; 1-vs-3 +1.54pt z=+3.18 primary, +1.67pt z=+3.46 held-out — all replicated). EV mechanism is spoiler-class: even when the promoted 25 itself only makes about half the time, it denies the opponent\'s likely-made 20 — net +12.5 pts per fired decision. Partner mode bidding is unaffected.'] },
     { version: '2.31.81', date: 'May 2026', changes: ['Removed the "Multiplayer 45s / Deal Cards" white-on-bright-green screen that used to flash for ~300ms every time a game started. That screen rendered while the auto-deal logic was doing two Firebase round-trips before it could deal cards. It is now replaced with the same dark themed table background you see during the bidding / playing phases, so the transition from lobby to cards is visually seamless — you should just see a brief dark blink instead of the content flash. A small Leave button is kept top-right as a safety hatch in case auto-deal ever stalls.'] },
     { version: '2.31.80', date: 'May 2026', changes: ['Cutthroat bidding fix part 2 — the desperation block had the same kind of bug that the spoiler block did in v2.31.78. When the leader was near 120, the AI would still force overbids against any opponent who held the bid, regardless of whether THAT bidder was actually a threat. Example from the user screenshot: Robr at 110 (leader), West at 20 had overbid Robr\'s 15 to 20, East at 15 (dealer) then jumped to 25 with a J + low-trump hand — because the desperation logic was asking "is the leader close to 120?" instead of "is the bidder close to 120?" Same fix as v2.31.78 applied to the three desperation overbid rules: they now check whether the actual current bidder can win the game by making their bid, not whether the unrelated leader can. Partner-mode behavior bit-identical (in partner the bidder is on the opp team so the two checks produce the same number).'] },

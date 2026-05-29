@@ -424,6 +424,37 @@ class NoAllow5AHAT25(Policy):
 REGISTRY["no-allow-5ahat-25"] = NoAllow5AHAT25()
 
 
+# CUTTHROAT UPBID15-ON (opt-in challenger). Live index-test.html /
+# index.html (through v2.31.82) has UPBID15 (v2.31.56) firing in cutthroat
+# unintentionally — the partner-mode rule that promotes a natural 15-bid
+# to 20 when the auction stands at 15 was never gated. The Python sim has
+# had it forced OFF in cutthroat since the cutthroat infra was built
+# (bidding.decide_bid line 145 + comment "rules live in index.html …
+# never back-ported"), so the shipped champion-cutthroat = UPBID15-OFF.
+#
+# Symptom (robr screenshot a265ca87, 2026-05-29): East bid 20♠ on
+# J♠+4♠+10♠+10♦+6♣ in cutthroat. has5=False, hasAH=False, hasAT=False,
+# trump_count=3 → does not match any base 20-bid rule → falls into 15
+# via `hasJ`. UPBID15 then sees chb=15 (N had bid 15) and promotes to 20.
+# In partner mode the partner-converts-borderline-15s assumption gives
+# UPBID15 +5.42pt. In cutthroat 3 coordinated defenders set this hand
+# routinely → hypothesis is large negative.
+#
+# This challenger forces UPBID15 ON in cutthroat by passing
+# `cutthroat_force_upbid15=True`. Symmetric A-vs-B set-rate test confirms
+# the magnitude before we ship the JS gate.
+class CutthroatUpBid15On(Policy):
+    name = "cutthroat-upbid15-on"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_force_upbid15=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-upbid15-on"] = CutthroatUpBid15On()
+
+
 # CUTTHROAT COALITION (opt-in challengers; champion-cutthroat default OFF).
 # Two coordinated defender rules — see improved_ai.py for the gates:
 #   C1 (cutthroat_c1_take_from_bidder): defender following, BIDDER currently
