@@ -40,12 +40,16 @@ class Policy:
     cutthroat_surgical_tight_20: bool = True
     cutthroat_allow_5ahat_25: bool = True
     cutthroat_force_upbid15: bool = False
+    cutthroat_desp_tight_20: bool = False
+    cutthroat_force_loose_open: bool = False
 
     def __init__(self, cutthroat: bool = False, ai_flags: dict = None,
                  name: str = None,
                  cutthroat_surgical_tight_20: bool = True,
                  cutthroat_allow_5ahat_25: bool = True,
-                 cutthroat_force_upbid15: bool = False):
+                 cutthroat_force_upbid15: bool = False,
+                 cutthroat_desp_tight_20: bool = False,
+                 cutthroat_force_loose_open: bool = False):
         # All args default-None/False so existing zero-arg `Policy()` callers
         # stay bit-identical. Subclasses that don't call super still work
         # because the class attrs above provide the defaults.
@@ -60,6 +64,8 @@ class Policy:
         self.cutthroat_surgical_tight_20 = cutthroat_surgical_tight_20
         self.cutthroat_allow_5ahat_25 = cutthroat_allow_5ahat_25
         self.cutthroat_force_upbid15 = cutthroat_force_upbid15
+        self.cutthroat_desp_tight_20 = cutthroat_desp_tight_20
+        self.cutthroat_force_loose_open = cutthroat_force_loose_open
         if ai_flags is not None:
             self.ai_flags = dict(ai_flags)
         if name is not None:
@@ -84,7 +90,11 @@ class Policy:
                                   cutthroat_allow_5ahat_25=
                                       self.cutthroat_allow_5ahat_25,
                                   cutthroat_force_upbid15=
-                                      self.cutthroat_force_upbid15)
+                                      self.cutthroat_force_upbid15,
+                                  cutthroat_desp_tight_20=
+                                      self.cutthroat_desp_tight_20,
+                                  cutthroat_force_loose_open=
+                                      self.cutthroat_force_loose_open)
 
     def choose_discards(self, hand: List[Card], trump: Suit, is_bid_winner: bool,
                         bid_amount: int) -> List[Card]:

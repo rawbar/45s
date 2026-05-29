@@ -455,6 +455,70 @@ class CutthroatUpBid15On(Policy):
 REGISTRY["cutthroat-upbid15-on"] = CutthroatUpBid15On()
 
 
+# CUTTHROAT DESPERATION-TIGHT-20 (candidate challenger). Two robr screenshots
+# in a row (2026-05-29) hit the same desperation block leak: RULE 6 of the
+# DESPERATION bid logic (preemptive 20 when an opp can win with 15 and no one
+# has bid yet) gates on `can20_60`, the partner-mode "60%+ make-rate" table.
+# That table includes:
+#   - AH_T4   (64.05%) ← robr screenshot 1: E bid 20♠ on A♥+T4 no other top
+#   - J_T3    (63.5%)  ← robr screenshot 2: W bid 20♥ on J+T3 (pre-draw)
+#   - AT_T4   (61.47%)
+#   - J_AH_T2 (66.3%)
+#   - J_AT_T2 (62.69%)
+# All five paths fire RULE 6 with no genuine 20-bid strength, on the theory
+# that the leader will otherwise make 15 and win. In partner mode this is
+# net-positive (partner can cover the sacrifice). In cutthroat the leader
+# only needs ~5 trick points to win and 3 coordinated defenders make the
+# bidder bust → the sacrifice converts to leader-wins-via-defender-tricks.
+#
+# This challenger tightens RULE 6 in cutthroat to require either has5 (the
+# unbeatable trump bonus carries a hand at any seat) OR (hasJ AND hasAH)
+# (J+A♥ is the only J-led pattern that holds up vs cutthroat defenders —
+# 2nd and 3rd highest trump in the game). All other partner-mode `can20_60`
+# paths fall through to PASS in cutthroat RULE 6.
+#
+# Partner-mode RULE 6 is bit-identical (the `cutthroat_desp_tight_20` gate
+# is wrapped in `if cutthroat`). Champion-cutthroat is also bit-identical
+# (flag default False).
+class CutthroatDespTight20(Policy):
+    name = "cutthroat-desp-tight-20"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_desp_tight_20=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-desp-tight-20"] = CutthroatDespTight20()
+
+
+# CUTTHROAT OPEN-15-ON (opt-in challenger). Live index-test.html / index.html
+# (through v2.31.85) has OPEN-15 (v2.31.36-37) firing in cutthroat
+# unintentionally — same architectural gap as UPBID15 (now v2.31.83-gated).
+# OPEN-15 unconditionally opens 15 when no one has bid, partner has not bid,
+# we are not cruising, and not in desperation — calibrated in partner mode at
+# +3.52pt / +1.19pt held-out where partner-cover can rescue borderline opens.
+# In cutthroat there is no partner, three opponents coordinate to set.
+#
+# Symptom (robr screenshot d5affd47, 2026-05-29): W bid 15♣ on K♣ + 3 low
+# trump + K♥ (no 5, no J, no AH, no AT, no QT — natural pass). OPEN-15 fired
+# because W was first-to-bid in a clean open with no cruise/desperation gate.
+#
+# This challenger forces OPEN-15 ON in cutthroat by passing
+# `cutthroat_force_loose_open=True`. Symmetric A-vs-B set-rate test confirms
+# the magnitude before we ship the JS gate.
+class CutthroatOpen15On(Policy):
+    name = "cutthroat-open15-on"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_force_loose_open=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-open15-on"] = CutthroatOpen15On()
+
+
 # CUTTHROAT COALITION (opt-in challengers; champion-cutthroat default OFF).
 # Two coordinated defender rules — see improved_ai.py for the gates:
 #   C1 (cutthroat_c1_take_from_bidder): defender following, BIDDER currently

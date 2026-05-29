@@ -99,7 +99,9 @@ def decide_bid(hand: List[Card],
                 cutthroat_aggressive_tight_20: bool = False,
                 cutthroat_surgical_tight_15: bool = False,
                 cutthroat_allow_5ahat_25: bool = False,
-                cutthroat_force_upbid15: bool = False) -> Tuple[int, Optional[Suit]]:
+                cutthroat_force_upbid15: bool = False,
+                cutthroat_desp_tight_20: bool = False,
+                cutthroat_force_loose_open: bool = False) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
     DATA-DERIVED, held-out-validated trigger (commit d19be47: 12k deals/cell
@@ -136,18 +138,20 @@ def decide_bid(hand: List[Card],
     if cutthroat:
         partner_bid = 0
         enable_spoiler = False
-        # UPBID15 (v2.31.56) and loose-open (v2.31.36) were calibrated against
-        # the partner-mode evaluator and are aggressive overbids that depend
-        # on partner-share-the-load economics. In cutthroat (no partner) the
-        # default assumption is net-negative → force off. The
-        # `cutthroat_force_upbid15` opt-in flag lets a challenger override
-        # this gate to measure the actual delta (live JS in index-test.html
-        # currently has UPBID15 ON in cutthroat unintentionally — this rig
-        # confirms whether that's a bug or a feature). UPBID15 is now ported
-        # into this file (see post-bid block below); loose-open still lives
-        # JS-only.
+        # UPBID15 (v2.31.56) and loose-open (v2.31.36-37) were calibrated
+        # against the partner-mode evaluator and are aggressive overbids that
+        # depend on partner-share-the-load economics. In cutthroat (no partner)
+        # the default assumption is net-negative → force off. Two opt-in flags
+        # let challengers override these gates to measure the actual delta:
+        #   cutthroat_force_upbid15 — UPBID15 (v2.31.56) ON in cutthroat
+        #   cutthroat_force_loose_open — OPEN-15 (v2.31.36-37) ON in cutthroat
+        # Both rules are ported into this file (see post-bid blocks below)
+        # so the rig can actually exercise the JS-side gap. As of 2026-05-29:
+        # UPBID15 confirmed catastrophic in cutthroat (Δ +14.31pt z=+113.79
+        # primary / +14.55pt z=+141.51 held-out), shipped JS gate v2.31.83.
+        # Loose-open under test.
         enable_upbid15 = bool(cutthroat_force_upbid15)
-        enable_loose_open = False
+        enable_loose_open = bool(cutthroat_force_loose_open)
     else:
         # Safety: the cutthroat_tight_* kwargs are CUTTHROAT-MODE tightening
         # only. Force off in partner mode so a misconfigured caller can never
@@ -204,7 +208,18 @@ def decide_bid(hand: List[Card],
                     return 0, None
                 return 20, suit
         if they_can_win_15 and current_high_bid == 0:
-            if can20_60 or has5:
+            # RULE 6 — preemptive 20 to block opp's likely game-winning 15.
+            # CUTTHROAT TIGHTENING (cutthroat_desp_tight_20, opt-in challenger):
+            # the partner-mode can20_60 table includes AH_T4 (64.05%), J_T3
+            # (63.5%), AT_T4 (61.47%), etc. — patterns that pay in partner
+            # mode but get crushed by 3 coordinated defenders in cutthroat.
+            # Two robr screenshots in a row hit this (AH_T4 + J_T3 leak
+            # paths). Tightening requires has5 OR (hasJ AND hasAH) — both
+            # patterns that justify a 20 even with cutthroat defenders.
+            if cutthroat and cutthroat_desp_tight_20:
+                if has5 or (hasJ and hasAH):
+                    return 20, suit
+            elif can20_60 or has5:
                 return 20, suit
 
     # ── SPOILER (opt-in: enable_spoiler, default False = champion-identical) ──
@@ -485,6 +500,29 @@ def decide_bid(hand: List[Card],
     if bid <= current_high_bid:
         # Dealer bagged: all passed → forced 15
         if player_index == dealer and current_high_bid == 0:
+            return 15, suit
+        # OPEN-15 (v2.31.36-37, JS port from index.html). Loose unconditional
+        # 15 open: when no one has bid, partner has not bid, we are not
+        # cruising (we_need<=15 with leader-not-yet-near-120), and not in
+        # desperation (their score not near 120), open 15. Partner-mode rig
+        # validated at +3.52pt (v2.31.36 looser open) / +1.19pt held-out
+        # (v2.31.37 open:nd). Gated off in cutthroat by default (see cutthroat
+        # normalization above) — only fires when `cutthroat_force_loose_open`
+        # is True for opt-in measurement. partnerIsHuman is not modelled in
+        # the sim (all-AI). AUTO15_PASS_PROB randomized pass is modelled via
+        # loose_open_pass_prob (already wired through the spoiler recursion
+        # path). NB: AUTO15_PASS_PROB=0.5 is the JS live value but the sim
+        # has been calling decide_bid with default 0.0 (always-fire) so the
+        # rig measures the worst-case (loosest) variant — appropriate for an
+        # opt-in challenger.
+        if (enable_loose_open and current_high_bid == 0
+                and not (partner_bid > 0)
+                and not (we_need <= 15 and opp_scores <= 85)
+                and not (they_need <= 15 and we_need > 0)):
+            if loose_open_pass_prob > 0.0:
+                import random
+                if random.random() < loose_open_pass_prob:
+                    return 0, None
             return 15, suit
         return 0, None
     return bid, suit
