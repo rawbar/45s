@@ -38,18 +38,25 @@ class Policy:
     ai_flags: dict = None
     cutthroat: bool = False
     cutthroat_surgical_tight_20: bool = True
+    cutthroat_allow_5ahat_25: bool = True
 
     def __init__(self, cutthroat: bool = False, ai_flags: dict = None,
                  name: str = None,
-                 cutthroat_surgical_tight_20: bool = True):
+                 cutthroat_surgical_tight_20: bool = True,
+                 cutthroat_allow_5ahat_25: bool = True):
         # All args default-None/False so existing zero-arg `Policy()` callers
         # stay bit-identical. Subclasses that don't call super still work
         # because the class attrs above provide the defaults.
         # cutthroat_surgical_tight_20 defaults True to ship the surgical
         # tighten-20 rule by default; it is forced OFF in partner mode
         # inside bidding.decide_bid so partner-mode bit-identity is preserved.
+        # cutthroat_allow_5ahat_25 defaults True to ship the 5+AH+AT-no-J →25
+        # overbid rule (robr-derived divergence; symmetric Δ=-1.49pt z=-3.67
+        # primary / -1.03pt z=-2.53 held-out; 1-vs-3 +1.54pt z=+3.18 /
+        # +1.67pt z=+3.46 held-out — replicated). Forced OFF in partner mode.
         self.cutthroat = cutthroat
         self.cutthroat_surgical_tight_20 = cutthroat_surgical_tight_20
+        self.cutthroat_allow_5ahat_25 = cutthroat_allow_5ahat_25
         if ai_flags is not None:
             self.ai_flags = dict(ai_flags)
         if name is not None:
@@ -70,7 +77,9 @@ class Policy:
                                   team_scores, opp_scores, partner_bid,
                                   cutthroat=self.cutthroat,
                                   cutthroat_surgical_tight_20=
-                                      self.cutthroat_surgical_tight_20)
+                                      self.cutthroat_surgical_tight_20,
+                                  cutthroat_allow_5ahat_25=
+                                      self.cutthroat_allow_5ahat_25)
 
     def choose_discards(self, hand: List[Card], trump: Suit, is_bid_winner: bool,
                         bid_amount: int) -> List[Card]:

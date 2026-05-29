@@ -97,7 +97,8 @@ def decide_bid(hand: List[Card],
                 cutthroat_kill_30: bool = False,
                 cutthroat_surgical_tight_20: bool = False,
                 cutthroat_aggressive_tight_20: bool = False,
-                cutthroat_surgical_tight_15: bool = False) -> Tuple[int, Optional[Suit]]:
+                cutthroat_surgical_tight_15: bool = False,
+                cutthroat_allow_5ahat_25: bool = False) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
     DATA-DERIVED, held-out-validated trigger (commit d19be47: 12k deals/cell
@@ -154,6 +155,7 @@ def decide_bid(hand: List[Card],
         cutthroat_surgical_tight_20 = False
         cutthroat_aggressive_tight_20 = False
         cutthroat_surgical_tight_15 = False
+        cutthroat_allow_5ahat_25 = False
 
     opp_bid_15 = current_high_bid == 15 and partner_bid != 15
     opp_bid_20 = current_high_bid == 20 and partner_bid != 20
@@ -444,6 +446,21 @@ def decide_bid(hand: List[Card],
                                  and not hasAT and trump_count <= 2)
                 if p_J_alone_T12 or p_5_alone_T12:
                     bid = 0
+
+    # CUTTHROAT ALLOW 5+AH+AT-no-J → 25 (opt-in challenger flag, cutthroat-
+    # only). Derived from a robr bidLogCutthroat divergence: he bid 25 on a
+    # 5+AH+AT+T1 hand (5 of trump + A♥ + A of trump + 1 lower trump, no J)
+    # and made it. EV math: 5 + AH + AT + offsuit K = 4 likely tricks @ 5pt
+    # each + 5pt high-trump bonus = 25pt. With 4 trump including 3 top
+    # anchors (5/AH/AT) and only J of trump as the over-card threat (kitty
+    # or extracted on a later trick), the bid is +EV at 25. Champion-
+    # cutthroat currently passes (5+AH+AT+T1 → natural 20-bid against a 20
+    # auction → pass). Rule overrides to 25 when the auction stands at 20.
+    if (cutthroat and cutthroat_allow_5ahat_25
+            and current_high_bid == 20 and bid < 25
+            and has5 and hasAH and hasAT and not hasJ
+            and trump_count >= 4):
+        bid = 25
 
     # Dealer clamp (only bid the minimum needed)
     if bid > current_high_bid and player_index == dealer and current_high_bid > 0:

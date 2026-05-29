@@ -364,6 +364,66 @@ class CutthroatSurgicalTight15(Policy):
 REGISTRY["cutthroat-tight-15-surgical"]   = CutthroatSurgicalTight15()
 
 
+# CUTTHROAT ALLOW 5+AH+AT → 25 — SHIPPED this commit as champion-cutthroat
+# default-on (Policy.cutthroat_allow_5ahat_25=True). Cutthroat-only;
+# partner-mode bit-identity preserved by the `else` safety guard in
+# bidding.decide_bid that force-resets the flag to False.
+#
+# Derived from a robr bidLogCutthroat divergence: he bid 25 on a
+# 5+AH+AT+T1 hand (5 of trump + A♥ + A of trump + 1 lower trump, no J)
+# and made it. EV math: 4 likely tricks @ 5pt + 5pt high-trump bonus =
+# 25pt. Pre-rule champion-cutthroat passed that hand against a 20-bid
+# (natural 20-bid → bid <= chb → pass). Rule overrides to 25 when the
+# auction stands at 20 and the hand has has5 ∧ hasAH ∧ hasAT ∧ !hasJ ∧
+# trump_count >= 4.
+#
+# Symmetric set-rate (cutthroat-allow-5ahat-25 vs champion-cutthroat,
+# 4 seats each, deals=2000):
+#   primary  seed-base=0       Δ=-1.49pt z=-3.67 SIGNIFICANT NEGATIVE
+#                              (15s -1.71 z=-3.64, 20s -0.99 z=-1.13,
+#                              25s -0.90 z=-0.71)
+#   held-out seed-base=5000000 Δ=-1.03pt z=-2.53 SIGNIFICANT NEGATIVE
+#                              (replicated; 15s -1.21 z=-2.60)
+# 1-vs-3 win-rate (lone allow-5ahat-25 vs 3 champion-cutthroat,
+# deals=2000):
+#   primary  win=26.54% z=+3.18 SIGNIFICANT POSITIVE (+1.54pt over 25%)
+#   held-out win=26.67% z=+3.46 SIGNIFICANT POSITIVE (replicated)
+# Per-pattern make-rate at the new 25-bid level (post-draw 5AHAT+T4,
+# the most common promoted bucket): ~47% direct — below the 60%
+# heuristic floor, but the rule's EV comes mainly from DENYING the
+# opp's 20-bid (~70% baseline make-rate at 20). Spoiler-dynamics
+# captured by the symmetric headline. Ship justified by both primary
+# metrics significant + replicated on disjoint seeds.
+class CutthroatAllow5AHAT25(Policy):
+    name = "cutthroat-allow-5ahat-25"
+    def __init__(self):
+        super().__init__(cutthroat=True)
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True,
+                                  cutthroat_surgical_tight_20=True,
+                                  cutthroat_allow_5ahat_25=True)
+
+
+REGISTRY["cutthroat-allow-5ahat-25"] = CutthroatAllow5AHAT25()
+
+
+# ABLATION: champion-cutthroat WITHOUT the shipped allow-5ahat-25 rule
+# (regression-test baseline now that the rule is default-on). Use this
+# to measure whether the rule keeps paying as future cutthroat work
+# evolves.
+class NoAllow5AHAT25(Policy):
+    name = "no-allow-5ahat-25"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_allow_5ahat_25=False,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["no-allow-5ahat-25"] = NoAllow5AHAT25()
+
+
 # CUTTHROAT COALITION (opt-in challengers; champion-cutthroat default OFF).
 # Two coordinated defender rules — see improved_ai.py for the gates:
 #   C1 (cutthroat_c1_take_from_bidder): defender following, BIDDER currently
