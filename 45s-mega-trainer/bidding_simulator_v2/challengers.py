@@ -596,6 +596,66 @@ CUTTHROAT_NICKEL_GRAB.name = "cutthroat-nickel-grab"
 REGISTRY["cutthroat-nickel-grab"] = CUTTHROAT_NICKEL_GRAB
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# CUTTHROAT D1 — DEFENDER RUFFS A FELLOW DEFENDER'S OFFSUIT LEAD
+# ─────────────────────────────────────────────────────────────────────────
+# D1 (cutthroat_d1_ruff_defender_offsuit_lead): defender following, the
+# LEADER was a fellow defender on OFFSUIT, the BIDDER HAS NOT yet played
+# in this trick, set not locked, I hold trump → play cheapest winning trump.
+# Covers the pre-bidder-play window that C1 (bidder currently winning) and
+# C2 (bidder already played) leave uncovered.
+#
+# User observation that motivated this rule: "when West leads offsuit in
+# cutthroat, nobody throws trump at all, giving me a free trick." The
+# defender coalition was failing to deny the bidder a free over-trump on
+# defender-defender-offsuit-lead tricks.
+#
+# Interaction with C1/C2: D1 fires when bidder_has_played == False AND
+# leader != bidder. C1 fires when current winner IS the bidder (so the
+# bidder has played and is winning). C2 fires when bidder_has_played
+# == True AND a fellow defender currently wins. The three rules cover
+# disjoint sub-cases of "defender following".
+#
+# D1-LATE variant (cutthroat_d1_late_only) restricts D1 to trick_num >= 2
+# (trick 3+ in 1-indexed counting). Hypothesis: early-trick ruffing wastes
+# trump that could win higher-value spots later.
+#
+# RESULT 2026-05-29 — TESTED, NOT SHIPPED:
+#   D1-broad symmetric @2k:   Δ +0.56pt z=+1.37 (right direction, NOT significant)
+#   D1-broad 1-vs-3 @2k:      24.51% z=-1.01 (slight neg for lone challenger)
+#   D1-LATE symmetric @2k:    Δ +0.56pt z=+1.37 (IDENTICAL to broad)
+#   D1-LATE 1-vs-3 @2k:       24.51% z=-1.01 (IDENTICAL to broad)
+# LATE and broad are behaviorally identical: trick 1's leader is ALWAYS
+# the bidder (bid winner leads first), so the "leader != bidder" gate
+# already filters out trick 1. The trick_num >= 2 additional gate is a
+# no-op. The 1-vs-3 slight-negative is the documented cooperative-equilibrium
+# underestimate (a lone ruff that denies the bidder pays full coalition
+# cost — the lone defender burns trump — without the other defenders'
+# reciprocal nickel-grab benefit). The symmetric +0.56pt is in the right
+# direction (bidders set more often when all 4 defenders coordinate D1)
+# but z=+1.37 doesn't clear the z>2 ship gate.
+# INTERPRETATION: the user's observation generalizes to a small +EV signal,
+# but it's largely already captured by C1/C2 — the pre-bidder-play case
+# where a defender leads offsuit and another defender CAN ruff cheaply is
+# rare enough (and the fallback "I follow offsuit, bidder ruffs cheaply"
+# costs the defending team similar EV in most spots) that the marginal
+# coalition gain is small. Kept opt-in for future iteration / data layer.
+CUTTHROAT_D1_RUFF = Policy(cutthroat=True,
+                           ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                     'cutthroat_c2_dont_overtake': True,
+                                     'cutthroat_d1_ruff_defender_offsuit_lead': True})
+CUTTHROAT_D1_RUFF.name = "cutthroat-d1-ruff-defender-offsuit"
+REGISTRY["cutthroat-d1-ruff-defender-offsuit"] = CUTTHROAT_D1_RUFF
+
+CUTTHROAT_D1_RUFF_LATE = Policy(cutthroat=True,
+                                ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                          'cutthroat_c2_dont_overtake': True,
+                                          'cutthroat_d1_ruff_defender_offsuit_lead': True,
+                                          'cutthroat_d1_late_only': True})
+CUTTHROAT_D1_RUFF_LATE.name = "cutthroat-d1-ruff-defender-offsuit-late"
+REGISTRY["cutthroat-d1-ruff-defender-offsuit-late"] = CUTTHROAT_D1_RUFF_LATE
+
+
 # FORCE-EXTRACT challenger variants (opt-in rule, default absent in champion).
 # Each enables the rule + one partner-trump-rich proxy; data picks the proxy.
 def _fx(proxy: str):

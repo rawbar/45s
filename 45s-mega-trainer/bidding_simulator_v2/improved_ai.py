@@ -1132,6 +1132,37 @@ class ImprovedAI:
                         # cheapest winner is a top-3 trump — save it.
                         return play_lowest(playable)
                     return _lo_win
+                # D1 — defender ruffs a fellow-defender's offsuit lead BEFORE
+                # the bidder plays (opt-in). Covers the pre-bidder-play window
+                # that C1 (bidder currently winning) and C2 (bidder already
+                # played) leave uncovered: a defender leads offsuit, no one
+                # has ruffed yet, and unless I ruff, the bidder over-trumps
+                # and steals the trick. User observation: "when West leads
+                # offsuit in cutthroat, nobody throws trump at all, giving me
+                # a free trick." Action: cheapest winning trump (same pattern
+                # as C1). LATE variant additionally gates on trick_num >= 2.
+                # Skip if set is locked (N1 owns the locked regime).
+                if (Fon('cutthroat_d1_ruff_defender_offsuit_lead')
+                        and not _set_lk
+                        and not _is_trump(trick[0], trump)
+                        and leader != _bw
+                        and not _bidder_has_played
+                        and any(_is_trump(c, trump) for c in playable)):
+                    _d1_late_ok = (
+                        not Fon('cutthroat_d1_late_only')
+                        or trick_num >= 2)
+                    if _d1_late_ok:
+                        _d1_trumps = [c for c in playable
+                                      if _is_trump(c, trump)]
+                        _d1_winners = [c for c in _d1_trumps
+                                       if trick_winner(
+                                           _pad4(trick + [c],
+                                                 trump if F('safe_pad4')
+                                                 else None),
+                                           trump, leader) == player]
+                        if _d1_winners:
+                            return min(_d1_winners,
+                                       key=lambda c: _tr(c, trump))
                 # C2 — don't overtake a fellow defender (opt-in).
                 # PASS-2 GATE: only fires if the bidder has already played
                 # in this trick. Otherwise the bidder is downstream and
