@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.84';
+const VERSION = '2.31.85';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6926,6 +6926,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.85', date: 'May 2026', changes: ['Cutthroat is now BETA. The variant badges in the lobby selector and the first-bidding-phase disclaimer now read BETA instead of ALPHA. The disclaimer copy has been refreshed to match the current state: AI plays cutthroat-aware bidding (the partner-mode upbid15 rule is gated off, the surgical tight-20 patterns are demoted, the 5+AH+AT-no-J pattern is promoted to 25, spoiler/desperation logic uses the actual bidder\'s score rather than the leader\'s) and coalition defender card-play (C1 take-from-bidder, C2 don\'t-overtake-defender). Stats / badges / leaderboard are still not tracked for cutthroat — that opens up in a later release.'] },
     { version: '2.31.84', date: 'May 2026', changes: ['Internal data pipeline fix for cutthroat. The per-bid logging that the simulator uses to mine new rules from real games (bidLogCutthroat) now also captures the per-player scores at the moment of each bid, plus convenience fields for the current high bidder\'s score and the strongest single opponent\'s score. The shipped 5+AH+AT-no-J → 25 rule (v2.31.82) and a few earlier candidates were mined without this context, which meant the analyzer could not cleanly separate "this is a +EV hand pattern" from "I was at 30, the leader was at 100, I had to do something." That gap was the main reason the variant was still labeled alpha rather than beta; the data pipeline mining future rules from cutthroat play now records what it needs. Partner-mode bidLog is bit-identical (only cutthroat games get the new fields). No gameplay change.'] },
     { version: '2.31.83', date: 'May 2026', changes: ['Cutthroat bidding fix — the AI was over-promoting borderline 15-bid hands to 20 in cutthroat. UPBID15 (the rule that turns a natural 15-bid into a 20-bid when someone else has already bid 15) was originally calibrated in PARTNER mode, where it tested at +5.42pt in the rig — partner could cover the borderline hands. In cutthroat there is no partner, three opponents coordinate to set you, and the same rule turns out to be catastrophic: the simulator measures UPBID15-on bidders being SET 14.31 to 14.55 points more often (replicated across primary 20k and held-out 30k seeds, z over 113), with the 20-bid level alone going from 31% set-rate to 58% set-rate. Real-game example from a user screenshot (the one this fix was triggered by): East held J♠ + 4♠ + 10♠ + 10♦ + 6♣ in spades trump and bid 20♠ purely because North had bid 15 — that hand is a natural pass in cutthroat and is now correctly passed. UPBID15 stays ON in partner mode (it remains net-positive there). Adds a C2-gate diagnostic log on every cutthroat defender decision so we can trace any remaining card-play anomalies in alpha.'] },
     { version: '2.31.82', date: 'May 2026', changes: ['Cutthroat AI: new bidding rule mined from real user games. When an opponent has bid 20 and the AI holds 5 of trump + A♥ + Ace of trump + at least one other trump (but NOT the Jack of trump), the AI now overbids to 25 instead of passing. This pattern (4 trump including 3 of the 4 top trump cards, missing only the Jack) was previously slipping through the standard 25-bid eligibility, which requires the Jack. The rule was discovered by mining the real-play log of a user who bid 25 on exactly this hand shape and made it; it then tested strongly positive in the simulator (symmetric set-rate -1.49pt z=-3.67 primary, -1.03pt z=-2.53 held-out; 1-vs-3 +1.54pt z=+3.18 primary, +1.67pt z=+3.46 held-out — all replicated). EV mechanism is spoiler-class: even when the promoted 25 itself only makes about half the time, it denies the opponent\'s likely-made 20 — net +12.5 pts per fired decision. Partner mode bidding is unaffected.'] },
@@ -9983,14 +9984,14 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   Cutthroat is a variant (different game), not a house rule, so it
                   belongs at the lobby level not inside the modal. */}
               <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-                {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isAlpha]) => {
+                {[['partners', 'Partners', false], ['cutthroat', 'Cutthroat', true]].map(([val, label, isBeta]) => {
                   const selected = gameVariant === val;
                   if (isCyberpunk) {
                     return (
                       <div key={val} onClick={() => { SoundManager.play('buttonClick'); setGameVariant(val); }} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '3px', border: selected ? '1px solid #ff8c00' : '1px solid rgba(0,229,255,0.25)', background: selected ? 'rgba(255,140,0,0.12)' : 'rgba(0,229,255,0.04)', boxShadow: selected ? '0 0 12px rgba(255,140,0,0.18)' : 'none', transition: 'all 0.15s' }}>
                         <span style={{ fontFamily: "'Orbitron',sans-serif", fontWeight: 700, fontSize: '12px', letterSpacing: '1.5px', color: selected ? '#ff8c00' : 'rgba(0,229,255,0.7)', textShadow: selected ? '0 0 8px rgba(255,140,0,0.6)' : 'none' }}>{label}</span>
-                        {isAlpha && (
-                          <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '2px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                        {isBeta && (
+                          <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '2px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '1px', verticalAlign: 'super' }}>BETA</sup>
                         )}
                       </div>
                     );
@@ -9998,8 +9999,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   return (
                     <div key={val} onClick={() => { SoundManager.play('buttonClick'); setGameVariant(val); }} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '8px', border: selected ? '1px solid #c9a24a' : '1px solid rgba(201,162,74,0.25)', background: selected ? 'linear-gradient(180deg, rgba(246,215,120,0.18) 0%, rgba(201,162,74,0.12) 100%)' : 'rgba(0,0,0,0.35)', boxShadow: selected ? '0 0 10px rgba(201,162,74,0.25), inset 0 1px 0 rgba(255,245,200,0.18)' : 'none', transition: 'all 0.15s' }}>
                       <span style={{ fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: '13px', letterSpacing: '1.5px', color: selected ? '#f6d778' : 'rgba(201,162,74,0.65)' }}>{label}</span>
-                      {isAlpha && (
-                        <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '3px', background: 'rgba(255,140,0,0.2)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Cinzel',serif", fontWeight: 700, letterSpacing: '1px', verticalAlign: 'super' }}>ALPHA</sup>
+                      {isBeta && (
+                        <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '3px', background: 'rgba(255,140,0,0.2)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Cinzel',serif", fontWeight: 700, letterSpacing: '1px', verticalAlign: 'super' }}>BETA</sup>
                       )}
                     </div>
                   );
@@ -14015,9 +14016,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [showHouseRules, setShowHouseRules] = useState(false);
   const houseRulesShown = useRef(false);
 
-  // v2.31.71: Cutthroat alpha disclaimer — one-shot modal at first bidding phase
-  const [showCutthroatAlpha, setShowCutthroatAlpha] = useState(false);
-  const cutthroatAlphaShown = useRef(false);
+  // v2.31.71: Cutthroat beta disclaimer — one-shot modal at first bidding phase
+  // (renamed from showCutthroatAlpha at v2.31.85 promotion)
+  const [showCutthroatBeta, setShowCutthroatBeta] = useState(false);
+  const cutthroatBetaShown = useRef(false);
 
   // Per-game achievement tracking (reset each new game)
   const [gameTimesSet, setGameTimesSet] = useState(0);
@@ -16881,14 +16883,14 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     return () => clearTimeout(t);
   }, [phase, gameOptions]);
 
-  // v2.31.71: Cutthroat alpha disclaimer — show once at first bidding phase of a cutthroat game.
-  // No timeout — user must dismiss explicitly because they're acknowledging an alpha caveat.
+  // v2.31.71: Cutthroat beta disclaimer — show once at first bidding phase of a cutthroat game.
+  // No timeout — user must dismiss explicitly because they're acknowledging a beta caveat.
   useEffect(() => {
     if (phase !== 'bidding') return;
     if (!gameOptions?.cutthroat) return;
-    if (cutthroatAlphaShown.current) return;
-    cutthroatAlphaShown.current = true;
-    setShowCutthroatAlpha(true);
+    if (cutthroatBetaShown.current) return;
+    cutthroatBetaShown.current = true;
+    setShowCutthroatBeta(true);
   }, [phase, gameOptions]);
 
   // Handle rematch - create new game with same players
@@ -17708,8 +17710,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           </div>
         )}
 
-        {/* v2.31.71: Cutthroat alpha disclaimer — first-bidding-phase one-shot */}
-        {showCutthroatAlpha && (() => {
+        {/* v2.31.71: Cutthroat beta disclaimer — first-bidding-phase one-shot */}
+        {showCutthroatBeta && (() => {
           const isCp = currentThemeId === 'cyberpunk';
           const isArab = currentThemeId === 'arabian';
           const accentColor = isCp ? '#00e5ff' : '#f6d778';
@@ -17723,7 +17725,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           const okShadow = isCp ? '0 0 12px rgba(255,140,0,0.4)' : '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)';
           return (
             <div
-              onClick={() => setShowCutthroatAlpha(false)}
+              onClick={() => setShowCutthroatBeta(false)}
               style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 600, pointerEvents: 'auto', padding: '16px' }}
             >
               <div
@@ -17742,20 +17744,17 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               >
                 <div style={{ fontSize: '15px', fontFamily: titleFont, color: accentColor, fontWeight: 700, letterSpacing: isCp ? '2px' : '1px', marginBottom: '4px' }}>
                   Cutthroat
-                  <sup style={{ marginLeft: '6px', fontSize: '9px', padding: '2px 5px', borderRadius: '3px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: bodyFont, letterSpacing: '1.5px', verticalAlign: 'super', fontWeight: 700 }}>ALPHA</sup>
+                  <sup style={{ marginLeft: '6px', fontSize: '9px', padding: '2px 5px', borderRadius: '3px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: bodyFont, letterSpacing: '1.5px', verticalAlign: 'super', fontWeight: 700 }}>BETA</sup>
                 </div>
                 <div style={{ height: '1px', background: isCp ? 'linear-gradient(90deg, #00e5ff 0%, #ff00cc 50%, transparent 100%)' : 'linear-gradient(90deg,transparent,#c9a24a 50%,transparent)', margin: '10px 0 14px' }} />
                 <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'rgba(232,228,217,0.88)', fontFamily: bodyFont, textAlign: 'left' }}>
-                  Scoring works. The AI does not know cutthroat-specific strategy yet and will sometimes play sub-optimally — it will not always coordinate to set the leader, and will not always grab a free 5 points instead of cooperating.
+                  AI now plays cutthroat-aware bidding and coordinated defender card-play. Some sub-optimality may still surface in real games — please flag any AI plays that look wrong so they can be mined into new rules.
                   <div style={{ marginTop: '8px' }}>
-                    Stats, badges, and the leaderboard are not tracked for cutthroat games.
-                  </div>
-                  <div style={{ marginTop: '8px', color: accentColor }}>
-                    Real cutthroat AI is coming.
+                    Stats, badges, and the leaderboard are not yet tracked for cutthroat games.
                   </div>
                 </div>
                 <button
-                  onClick={() => setShowCutthroatAlpha(false)}
+                  onClick={() => setShowCutthroatBeta(false)}
                   style={{
                     marginTop: '16px',
                     padding: '10px 28px',
