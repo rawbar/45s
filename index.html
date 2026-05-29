@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.81';
+const VERSION = '2.31.82';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5318,6 +5318,20 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
       // unaffected (separate branch).
     }
 
+    // v2.31.82: CUTTHROAT 5+AH+AT-no-J → 25 promotion. Mined from robr's
+    // bidLogCutthroat — he bid 25 on 5♠+A♥+A♠+4♠+K♣ and MADE +30 in real
+    // play. Sim commit bbaaf89: symmetric Δ set-rate -1.49pt z=-3.67 primary /
+    // -1.03pt z=-2.53 held-out; 1-vs-3 +1.54pt z=+3.18 primary / +1.67pt
+    // z=+3.46 held-out. SPOILER-CLASS EV: denies opp's ~70% likely-made 20
+    // by stealing the contract; even at ~47% direct make rate of the
+    // promoted hand, total round EV is +12.5pt per fired decision. Hand
+    // shape: 5+AH+AT (3 anchors) + ≥1 other trump (4+ total), NO J. The
+    // standard 25-bid block above requires J — this pattern slips through.
+    if (cutthroat && bid < 25 && oppBidIs20 && has5 && hasAH && hasAT && !hasJ && trumpCount >= 4) {
+      console.log(`🗡 CUTTHROAT 5+AH+AT-no-J: promoting opp's 20 → 25`);
+      bid = 25;
+    }
+
     // 20 bid - ≥67% success threshold (5M round data)
     // 5_J (any T): T2=84.34%, T3=92.09% | 5_AH_T3: 87.53% | 5_T4: 91.67% | J_AH_T5: 84.06%
     // Removed: J_AT_T3 (64% < 67%)
@@ -6889,6 +6903,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.82', date: 'May 2026', changes: ['Cutthroat AI: new bidding rule mined from real user games. When an opponent has bid 20 and the AI holds 5 of trump + A♥ + Ace of trump + at least one other trump (but NOT the Jack of trump), the AI now overbids to 25 instead of passing. This pattern (4 trump including 3 of the 4 top trump cards, missing only the Jack) was previously slipping through the standard 25-bid eligibility, which requires the Jack. The rule was discovered by mining the real-play log of a user who bid 25 on exactly this hand shape and made it; it then tested strongly positive in the simulator (symmetric set-rate -1.49pt z=-3.67 primary, -1.03pt z=-2.53 held-out; 1-vs-3 +1.54pt z=+3.18 primary, +1.67pt z=+3.46 held-out — all replicated). EV mechanism is spoiler-class: even when the promoted 25 itself only makes about half the time, it denies the opponent\'s likely-made 20 — net +12.5 pts per fired decision. Partner mode bidding is unaffected.'] },
     { version: '2.31.81', date: 'May 2026', changes: ['Removed the "Multiplayer 45s / Deal Cards" white-on-bright-green screen that used to flash for ~300ms every time a game started. That screen rendered while the auto-deal logic was doing two Firebase round-trips before it could deal cards. It is now replaced with the same dark themed table background you see during the bidding / playing phases, so the transition from lobby to cards is visually seamless — you should just see a brief dark blink instead of the content flash. A small Leave button is kept top-right as a safety hatch in case auto-deal ever stalls.'] },
     { version: '2.31.80', date: 'May 2026', changes: ['Cutthroat bidding fix part 2 — the desperation block had the same kind of bug that the spoiler block did in v2.31.78. When the leader was near 120, the AI would still force overbids against any opponent who held the bid, regardless of whether THAT bidder was actually a threat. Example from the user screenshot: Robr at 110 (leader), West at 20 had overbid Robr\'s 15 to 20, East at 15 (dealer) then jumped to 25 with a J + low-trump hand — because the desperation logic was asking "is the leader close to 120?" instead of "is the bidder close to 120?" Same fix as v2.31.78 applied to the three desperation overbid rules: they now check whether the actual current bidder can win the game by making their bid, not whether the unrelated leader can. Partner-mode behavior bit-identical (in partner the bidder is on the opp team so the two checks produce the same number).'] },
     { version: '2.31.79', date: 'May 2026', changes: ['Show Hands (Round Summary) modal — in cutthroat games the score row now displays four per-player scores (N/E/S/W or the first three characters of each human\'s username) instead of the N/S vs E/W team line, and the modal title now reads "Round Summary · Cutthroat" so the variant is clear at a glance. Your own seat is highlighted. Partner-mode behavior unchanged.'] },
