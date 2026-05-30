@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.88';
+const VERSION = '2.31.89';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6408,18 +6408,30 @@ if (trick.length > 0) {
     for (let i = 0; i < trick.length; i++) {
       if (bidWinner === (leader + i) % 4) { _bidderHasPlayed = true; break; }
     }
-    // DIAGNOSTIC (v2.31.82-debug): dump gate values for every defender decision
-    // in cutthroat so we can see why C2 didn't fire in the round-2 West A♥
-    // screenshot. Remove once diagnosed.
-    console.log(`🔍 C2-GATE P${player + 1}:`, JSON.stringify({
+    // DIAGNOSTIC (v2.31.82-debug, expanded v2.31.89): dump gate values for
+    // every defender decision in cutthroat. console.log + Firebase write so
+    // mobile players (no devtools) can still produce inspectable traces.
+    // window.__c2Debug is set by MultiplayerGameTable when a game starts;
+    // we push to games/{gameId}/c2Debug/ via fire-and-forget. Remove this
+    // whole block once the C2-non-fire bug is root-caused.
+    const _c2payload = {
       player, bidWinner, currentWinner, trickNum,
       playerTricks: Array.isArray(playerTricks) ? [...playerTricks] : playerTricks,
       highTrumpPlayer, highBid,
       bidderHasPlayed: _bidderHasPlayed,
       setLk: _setLk, madeLk: _madeLk,
       cutthroat, trickLen: trick.length, leader,
-      trickCards: trick.map(c => c && c.id)
-    }));
+      trickCards: trick.map(c => c && c.id),
+      hand: hand.map(c => c && c.id),
+      ts: Date.now()
+    };
+    console.log(`🔍 C2-GATE P${player + 1}:`, JSON.stringify(_c2payload));
+    try {
+      const _t = (typeof window !== 'undefined') ? window.__c2Debug : null;
+      if (_t && _t.db && _t.gameId) {
+        _t.db.ref(`games/${_t.gameId}/c2Debug`).push(_c2payload).catch(() => {});
+      }
+    } catch (_e) { /* diagnostic must never break play */ }
     // C2 — don't overtake a fellow defender (bidder must have already played).
     if (currentWinner !== bidWinner && currentWinner !== player &&
         _bidderHasPlayed && !_setLk) {
@@ -6951,6 +6963,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.89', date: 'May 2026', changes: ['Diagnostic-only build. The cutthroat C2 (don\'t-overtake-defender) rule has been observed twice not firing when it should — most recently West played A♥ over your A♠ when A♠ was already winning the trick. The existing C2-GATE diagnostic was console-only, which is useless on mobile. This release additionally writes that same gate-value dump to Firebase under games/{gameId}/c2Debug/ so the trace can be inspected after-the-fact. No gameplay change. Once we capture one full C2-non-fire trace and root-cause the bug, the diagnostic block will be removed.'] },
     { version: '2.31.88', date: 'May 2026', changes: ['Cutthroat stats and leaderboard are now tracked. Each cutthroat game you finish records your placement (1st through 4th) to a separate stats node (statsCutthroat) so it does not contaminate the partner-mode win-rate. The leaderboard tab now has a Partners / Cutthroat toggle (defaulting to whichever variant you last played from the lobby). The Cutthroat leaderboard ranks by average placement (lower is better — 1.00 means always 1st, 2.50 is exactly average) with 1st-place rate as the secondary stat, and requires at least 10 cutthroat games to qualify (partner-mode still uses the 5-game minimum because its variance is lower with binary outcomes). Badges for cutthroat are not yet wired up — that comes in a separate release once we see a few weeks of data to design against. Existing partner-mode stats, badges, and leaderboard are bit-identical.'] },
     { version: '2.31.87', date: 'May 2026', changes: ['Cutthroat bidding fix — the "is the dealer on the opposing team?" check, which gates the desperation-mode "bag the dealer" branch (let the dealer get auto-forced into a doomed 15 instead of overbidding), was using partner-mode seat-parity arithmetic. In partner mode that returns the correct answer (binary teams). In cutthroat there are no teams, so the same arithmetic was effectively a coin flip on a seat-parity coincidence — it told only half the cutthroat seats that the dealer was an opponent (which they always are in cutthroat) and led the other half to instead push into doomed 20- and 25-bids when they should have passed-to-bag the dealer. The simulator now treats every non-self cutthroat seat as having an opponent dealer; symmetric A-vs-B tests show bidders set 1.21–1.30 points less often (replicated across primary 20k and held-out 30k seeds, z over 10), with the 20-bid level dropping 3.22pt and the 25-bid level dropping 5.76pt, and the total 25-bid count falling 44%. Partner-mode bidding bit-identical.'] },
     { version: '2.31.86', date: 'May 2026', changes: ['Cutthroat bidding fix — second class of partner-mode-only bid leaking into cutthroat, after the UPBID15 fix at v2.31.83. OPEN-15 (the rule that opens a 15-bid in a clean auction even on borderline hands) was calibrated in PARTNER mode at +3.52pt and held-out +1.19pt — partner-cover rescues the borderline 15. In cutthroat with three coordinated defenders, the same junk-open gets set roughly half the time. The simulator measures OPEN-15-on bidders being set 11.60 to 11.67 points more often (replicated across primary 20k and held-out 30k seeds, z over 89), with the 15-bid level alone going from 36% set-rate to 52% set-rate. Real-game example from a user screenshot: West held K♣ + 3 low trump + K♥ in clubs trump and bid 15♣ purely because the table was empty — that hand is a natural pass in cutthroat and is now correctly passed. OPEN-15 stays ON in partner mode (it remains net-positive there).'] },
@@ -14291,6 +14304,13 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     setNewlyEarnedBadges([]);
     setGameScoreWentNegative(false);
     console.log('Game ID changed - reset statsUpdated flag');
+    // v2.31.89: side-channel for chooseCardToPlay (pure function, no
+    // db/gameId in scope) so the C2-GATE diagnostic can write to Firebase
+    // for mobile players. Remove with the diagnostic itself once the bug
+    // is root-caused.
+    if (typeof window !== 'undefined' && gameId) {
+      window.__c2Debug = { db: database, gameId };
+    }
   }, [gameId]);
 
   const autoStartFired = useRef(false);
