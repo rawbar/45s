@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.90';
+const VERSION = '2.31.91';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6990,6 +6990,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.91', date: 'May 2026', changes: ['Cutthroat bug fix: rejoining a game in progress reset your score to zero. Root cause was in the next-round handler — when one round ended and the next was set up, the new Firebase game state was written with a full replace, and the per-player scores array was not included in that write. While you stayed on the page, your local React state kept the right scores so the bug was invisible. As soon as you left and rejoined, the page rebooted with empty local state and Firebase had nothing to restore from, so all four players appeared at zero. Now the per-player scores are explicitly preserved in the next-round write, so rejoining mid-game shows the correct standings.'] },
     { version: '2.31.90', date: 'May 2026', changes: ['Cutthroat: replaced the BETA pill in the lobby variant selector with a brighter, pulsing NEW pill, and removed the first-bidding-phase disclaimer modal that used to pop up at the start of every cutthroat game. The variant works well enough now (3 structural bidding fixes, coordinated defender play, separate stats + leaderboard) that the modal was just friction. The NEW pill stays loud as long as the variant is fresh; we will swap it back to a subtle indicator once enough people are playing it that the call-out is unnecessary.'] },
     { version: '2.31.89', date: 'May 2026', changes: ['Diagnostic-only build. The cutthroat C2 (don\'t-overtake-defender) rule has been observed twice not firing when it should — most recently West played A♥ over your A♠ when A♠ was already winning the trick. The existing C2-GATE diagnostic was console-only, which is useless on mobile. This release additionally writes that same gate-value dump to Firebase under games/{gameId}/c2Debug/ so the trace can be inspected after-the-fact. No gameplay change. Once we capture one full C2-non-fire trace and root-cause the bug, the diagnostic block will be removed.'] },
     { version: '2.31.88', date: 'May 2026', changes: ['Cutthroat stats and leaderboard are now tracked. Each cutthroat game you finish records your placement (1st through 4th) to a separate stats node (statsCutthroat) so it does not contaminate the partner-mode win-rate. The leaderboard tab now has a Partners / Cutthroat toggle (defaulting to whichever variant you last played from the lobby). The Cutthroat leaderboard ranks by average placement (lower is better — 1.00 means always 1st, 2.50 is exactly average) with 1st-place rate as the secondary stat, and requires at least 10 cutthroat games to qualify (partner-mode still uses the 5-game minimum because its variance is lower with binary outcomes). Badges for cutthroat are not yet wired up — that comes in a separate release once we see a few weeks of data to design against. Existing partner-mode stats, badges, and leaderboard are bit-identical.'] },
@@ -15747,6 +15748,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         roundPts: [0, 0],
         drawn: [0, 0, 0, 0],
         scores: scores,     // ✅ Keep scores across rounds
+        playerScores: playerScores,  // ✅ v2.31.91: cutthroat per-player scores — was missing, caused score reset to 0 on rejoin
         history: history,   // ✅ Keep history for score table
         highTrumpInfo: { rank: -1, player: -1 },  // ✅ Reset high trump tracking
         drawnCardsArray: [],  // ✅ Reset drawn cards tracking
@@ -15775,7 +15777,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       console.log('✓ Round reset complete, unlocking AI');
       setResettingRound(false);
     }, 1000);
-  }, [dealer, gameId, database, scores, isSpectator]);
+  }, [dealer, gameId, database, scores, playerScores, isSpectator]);
 
 
   // Handle playing a card
