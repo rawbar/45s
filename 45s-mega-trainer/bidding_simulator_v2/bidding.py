@@ -101,7 +101,8 @@ def decide_bid(hand: List[Card],
                 cutthroat_allow_5ahat_25: bool = False,
                 cutthroat_force_upbid15: bool = False,
                 cutthroat_desp_tight_20: bool = False,
-                cutthroat_force_loose_open: bool = False) -> Tuple[int, Optional[Suit]]:
+                cutthroat_force_loose_open: bool = False,
+                cutthroat_opp_has_dealer_always: bool = False) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
     DATA-DERIVED, held-out-validated trigger (commit d19be47: 12k deals/cell
@@ -122,7 +123,19 @@ def decide_bid(hand: List[Card],
     my_team = get_team(player_index)
     we_need = 120 - team_scores
     they_need = 120 - opp_scores
-    opp_has_dealer = get_team(dealer) != my_team
+    # opp_has_dealer: partner-mode logic = "the dealer is on the opposing
+    # team" via seat parity. In cutthroat there is no team — every non-self
+    # seat including the dealer is an opp, so the semantic answer is True
+    # iff I am not the dealer. Cutthroat now defaults to the semantic
+    # version (cutthroat_opp_has_dealer_always=True, ship v2.31.87) which
+    # tested symmetric Δ -1.30pt z=-10.16 primary / -1.21pt z=-11.6 held-
+    # out (replicated, 25-bid count -44%). Setting the flag False on a
+    # cutthroat policy is the ablation/regression baseline. Partner mode
+    # always uses the parity check — bit-identical regardless of flag.
+    if cutthroat and cutthroat_opp_has_dealer_always:
+        opp_has_dealer = (dealer != player_index)
+    else:
+        opp_has_dealer = get_team(dealer) != my_team
 
     desperation = they_need <= desp_they_need and we_need > desp_we_need_floor
     they_can_win_15 = they_need <= 15

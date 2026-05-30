@@ -3431,7 +3431,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.86';
+const VERSION = '2.31.87';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5014,7 +5014,19 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   const myTeam = getTeam(playerIndex);
   const weNeed = 120 - teamScores;
   const theyNeed = 120 - oppScores;
-  const oppHasDealer = getTeam(dealer) !== myTeam;
+  // Partner-mode: oppHasDealer asks whether the dealer is on the opposing
+  // TEAM via seat parity. Cutthroat has no teams — every non-self seat
+  // including the dealer is an opp, so the semantic answer is True iff I
+  // am not the dealer myself. The historic parity check gave True only for
+  // ~50% of cutthroat seats (a parity coincidence), causing desperation
+  // RULE 4 (bag-the-dealer) and RULE 5 (overbid their 15) to fire only
+  // for parity-lucky cutthroat seats. Symmetric A-vs-B set-rate (v2.31.87
+  // ship): primary 20k seed-base=0 Δ -1.30pt z=-10.16 / held-out 30k
+  // seed-base=5M Δ -1.21pt z=-11.6 (replicated). 20-bid Δ -3.22/-3.25
+  // z=-11/-14; 25-bid Δ -5.76/-5.08 z=-12/-13; 25-bid count drops 44%
+  // on both — RULE 4 now triggers uniformly so doomed-25 bids
+  // correctly pass-to-bag. Partner-mode logic bit-identical.
+  const oppHasDealer = cutthroat ? (dealer !== playerIndex) : (getTeam(dealer) !== myTeam);
 
   // DESPERATION MODE: They need <=30, we need >30
   const desperation = theyNeed <= 15 && weNeed > 0;
@@ -6939,6 +6951,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.87', date: 'May 2026', changes: ['Cutthroat bidding fix — the "is the dealer on the opposing team?" check, which gates the desperation-mode "bag the dealer" branch (let the dealer get auto-forced into a doomed 15 instead of overbidding), was using partner-mode seat-parity arithmetic. In partner mode that returns the correct answer (binary teams). In cutthroat there are no teams, so the same arithmetic was effectively a coin flip on a seat-parity coincidence — it told only half the cutthroat seats that the dealer was an opponent (which they always are in cutthroat) and led the other half to instead push into doomed 20- and 25-bids when they should have passed-to-bag the dealer. The simulator now treats every non-self cutthroat seat as having an opponent dealer; symmetric A-vs-B tests show bidders set 1.21–1.30 points less often (replicated across primary 20k and held-out 30k seeds, z over 10), with the 20-bid level dropping 3.22pt and the 25-bid level dropping 5.76pt, and the total 25-bid count falling 44%. Partner-mode bidding bit-identical.'] },
     { version: '2.31.86', date: 'May 2026', changes: ['Cutthroat bidding fix — second class of partner-mode-only bid leaking into cutthroat, after the UPBID15 fix at v2.31.83. OPEN-15 (the rule that opens a 15-bid in a clean auction even on borderline hands) was calibrated in PARTNER mode at +3.52pt and held-out +1.19pt — partner-cover rescues the borderline 15. In cutthroat with three coordinated defenders, the same junk-open gets set roughly half the time. The simulator measures OPEN-15-on bidders being set 11.60 to 11.67 points more often (replicated across primary 20k and held-out 30k seeds, z over 89), with the 15-bid level alone going from 36% set-rate to 52% set-rate. Real-game example from a user screenshot: West held K♣ + 3 low trump + K♥ in clubs trump and bid 15♣ purely because the table was empty — that hand is a natural pass in cutthroat and is now correctly passed. OPEN-15 stays ON in partner mode (it remains net-positive there).'] },
     { version: '2.31.85', date: 'May 2026', changes: ['Cutthroat is now BETA. The variant badges in the lobby selector and the first-bidding-phase disclaimer now read BETA instead of ALPHA. The disclaimer copy has been refreshed to match the current state: AI plays cutthroat-aware bidding (the partner-mode upbid15 rule is gated off, the surgical tight-20 patterns are demoted, the 5+AH+AT-no-J pattern is promoted to 25, spoiler/desperation logic uses the actual bidder\'s score rather than the leader\'s) and coalition defender card-play (C1 take-from-bidder, C2 don\'t-overtake-defender). Stats / badges / leaderboard are still not tracked for cutthroat — that opens up in a later release.'] },
     { version: '2.31.84', date: 'May 2026', changes: ['Internal data pipeline fix for cutthroat. The per-bid logging that the simulator uses to mine new rules from real games (bidLogCutthroat) now also captures the per-player scores at the moment of each bid, plus convenience fields for the current high bidder\'s score and the strongest single opponent\'s score. The shipped 5+AH+AT-no-J → 25 rule (v2.31.82) and a few earlier candidates were mined without this context, which meant the analyzer could not cleanly separate "this is a +EV hand pattern" from "I was at 30, the leader was at 100, I had to do something." That gap was the main reason the variant was still labeled alpha rather than beta; the data pipeline mining future rules from cutthroat play now records what it needs. Partner-mode bidLog is bit-identical (only cutthroat games get the new fields). No gameplay change.'] },

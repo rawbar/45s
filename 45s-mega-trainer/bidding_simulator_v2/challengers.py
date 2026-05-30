@@ -573,6 +573,58 @@ REGISTRY["cutthroat-save5-t12lo"] = CutthroatSave5T12Lo()
 REGISTRY["cutthroat-save5-t12hi"] = CutthroatSave5T12Hi()
 
 
+# CUTTHROAT OPP-HAS-DEALER-ALWAYS (SHIPPED v2.31.87, now champion default).
+# Partner-mode logic `opp_has_dealer = get_team(dealer) != my_team` uses
+# seat parity which is meaningless in cutthroat — every non-self seat is
+# an opp by definition. The pre-v2.31.87 cutthroat champion inherited the
+# parity check and got opp_has_dealer = True only for seats whose parity
+# differed from the dealer's, ~50% of cutthroat seats. That made
+# desperation RULE 4 (bag-the-dealer) and RULE 5 (overbid their 15) fire
+# only for parity-lucky cutthroat seats on a meaningless coincidence.
+#
+# Symmetric A-vs-B set-rate (champion-cutthroat pre-ship vs ohd-always):
+#   primary  20k seed-base=0       Δ=-1.30pt z=-10.16 SIGNIFICANT (B set
+#                                  less, mechanism: 25-bid count -44.7%
+#                                  as RULE 4 bag-the-dealer triggers
+#                                  uniformly, weaker hands pass-to-bag
+#                                  instead of pushing into doomed 20/25)
+#   held-out 30k seed-base=5000000 Δ=-1.21pt z=-11.6  SIGNIFICANT
+#                                  (REPLICATED; 25-bid count -44.7% same)
+# Per-bid level: 15 +1.07/+1.15 (slight worse — marginal hands stay at 15
+# instead of upbidding); 20 -3.22/-3.25 z=-11/-14; 25 -5.76/-5.08 z=-12/-13.
+#
+# Now default-on for cutthroat policies. Champion-cutthroat reads it from
+# the Policy class default (`cutthroat_opp_has_dealer_always: bool = True`).
+# Partner mode bit-identical (the flag's effect is gated on cutthroat=True
+# inside bidding.decide_bid). This explicit challenger remains for self-
+# documentation and identity-vs-champion verification.
+class CutthroatOppHasDealerAlways(Policy):
+    name = "cutthroat-ohd-always"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_opp_has_dealer_always=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-ohd-always"] = CutthroatOppHasDealerAlways()
+
+
+# CUTTHROAT OHD-PARITY: the pre-v2.31.87 ablation baseline. Reverts to the
+# parity-based opp_has_dealer check (the partner-mode logic). Use this to
+# regression-test the v2.31.87 ship as future cutthroat work evolves.
+class CutthroatOppHasDealerParity(Policy):
+    name = "cutthroat-ohd-parity"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_opp_has_dealer_always=False,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-ohd-parity"] = CutthroatOppHasDealerParity()
+
+
 # CUTTHROAT COALITION (opt-in challengers; champion-cutthroat default OFF).
 # Two coordinated defender rules — see improved_ai.py for the gates:
 #   C1 (cutthroat_c1_take_from_bidder): defender following, BIDDER currently
