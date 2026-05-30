@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.93';
+const VERSION = '2.31.94';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7075,6 +7075,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.94', date: 'May 2026', changes: ['Show Hands (Round Summary) modal now displays the game ID next to the version string in the title — e.g., "Round Summary · Cutthroat v2.31.94 · 5BPG5V". This is so when you screenshot a round and report a strange AI play, the game ID is captured in the same image and the saved Firebase diagnostic logs for that exact game can be looked up instantly. Cosmetic addition only — no gameplay change.'] },
     { version: '2.31.93', date: 'May 2026', changes: ['Cutthroat card-play bug fix — the C2 "don\'t overtake a fellow defender" rule was being silently bypassed by an earlier rule that cashes the A-of-hearts (or any boss trump) when the defender is following and can win the trick. That earlier rule was originally written for partner mode where it asked "is partner winning?" — a check that always returns false in cutthroat (no partner concept). So even when a fellow defender was winning the trick (which the C2 rule would have correctly told the AI to play cheap and concede), the boss-cash rule fired first and the AI over-trumped its own defender. Real-game example: West held A♥ in clubs trump; bidder North led offsuit, you (Robr) played a winning trump card, West then cashed the A♥ over your trump — handing West the trick. Now the boss-cash rules check, in cutthroat, whether a fellow defender (not the bidder) is the current trick winner. If so, the cash rule is skipped and play falls through to the C2 "play cheap" path. Partner mode is bit-identical (the new gate only activates when cutthroat=true).'] },
     { version: '2.31.92', date: 'May 2026', changes: ['Cutthroat win-resolution rule corrected. Before this release, when two or more defenders both ended a round at 120 or more, the winner was simply whoever had the higher final score. The actual rule of the variant is: the defender whose trick FIRST pushed them to 120 wins, even if another defender ended the round with a higher final total. Higher final score does not override an earlier crossing. The bidder reaching 120 still wins outright regardless of any defender — that part was already correct. The resolver now walks trick by trick at round end, applies the +5 high-trump bonus to the trick that earned it, and finds each tied defender\'s crossing-trick to determine the winner. The single most common case (only one player at 120 or above) is unaffected.'] },
     { version: '2.31.91', date: 'May 2026', changes: ['Cutthroat bug fix: rejoining a game in progress reset your score to zero. Root cause was in the next-round handler — when one round ended and the next was set up, the new Firebase game state was written with a full replace, and the per-player scores array was not included in that write. While you stayed on the page, your local React state kept the right scores so the bug was invisible. As soon as you left and rejoined, the page rebooted with empty local state and Firebase had nothing to restore from, so all four players appeared at zero. Now the per-player scores are explicitly preserved in the next-round write, so rejoining mid-game shows the correct standings.'] },
@@ -7835,7 +7836,7 @@ function RulesModal({ isOpen, onClose }) {
 }
 
 // Show Hands Modal — original layout with Irish Card Room theming
-function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, drawnCards, kittyCardIds, wasBagged, playHistory, bids, mySeatIndex, players, scores, playerScores, isCutthroat = false, faceUpCard = null }) {
+function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, trumpSuit, drawn, drawnCards, kittyCardIds, wasBagged, playHistory, bids, mySeatIndex, players, scores, playerScores, isCutthroat = false, faceUpCard = null, gameId = null }) {
   if (!isOpen || !hands) return null;
 
   const isCyberpunk = currentThemeId === 'cyberpunk';
@@ -7964,7 +7965,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
       <div className="cp-modal-overlay" onClick={onClose}>
         <div className="cp-modal" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '400px', maxHeight: '82vh', overflowY: 'auto' }}>
           <div className="cp-modal-header">
-            <span className="cp-modal-title">Round Summary{isCutthroat ? ' · Cutthroat' : ''}</span>
+            <span className="cp-modal-title">Round Summary{isCutthroat ? ' · Cutthroat' : ''}{gameId ? ` · ${gameId}` : ''}</span>
             <button className="cp-modal-close" onClick={onClose}>×</button>
           </div>
           <div className="cp-modal-hairline" />
@@ -8038,6 +8039,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
             <div>
               <span style={{ fontFamily: "'Cinzel',serif", fontSize: '14px', fontWeight: 700, color: '#f6d778', letterSpacing: '1px' }}>Round Summary{isCutthroat ? ' · Cutthroat' : ''}</span>
               <span style={{ marginLeft: '8px', fontSize: '9px', color: 'rgba(201,162,39,0.4)', fontFamily: "'Cinzel',serif" }}>v{VERSION}</span>
+              {gameId && <span style={{ marginLeft: '6px', fontSize: '9px', color: 'rgba(201,162,39,0.55)', fontFamily: "'Cinzel',serif", letterSpacing: '0.5px' }}>· {gameId}</span>}
             </div>
             <div onClick={onClose} style={{ width: '26px', height: '26px', border: '1px solid rgba(201,162,39,0.4)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c9a227', fontSize: '16px', cursor: 'pointer', lineHeight: 1 }}>×</div>
           </div>
@@ -8113,6 +8115,7 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
           <div>
             <span style={{ fontFamily: "'Cinzel', serif", fontSize: '14px', fontWeight: 700, background: `linear-gradient(135deg, ${brassHi}, ${brass})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Round Summary{isCutthroat ? ' · Cutthroat' : ''}</span>
             <span style={{ marginLeft: '8px', fontSize: '9px', color: 'rgba(201,162,74,0.4)', fontFamily: "'Cinzel', serif" }}>v{VERSION}</span>
+            {gameId && <span style={{ marginLeft: '6px', fontSize: '9px', color: 'rgba(201,162,74,0.55)', fontFamily: "'Cinzel', serif", letterSpacing: '0.5px' }}>· {gameId}</span>}
           </div>
           <div onClick={onClose} style={{ width: '26px', height: '26px', border: `1px solid rgba(201,162,74,0.4)`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: brass, fontSize: '16px', cursor: 'pointer', lineHeight: 1 }}>×</div>
         </div>
@@ -18899,6 +18902,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         playerScores={playerScores}
         isCutthroat={!!(gameOptions && gameOptions.cutthroat)}
         faceUpCard={faceUpCard}
+        gameId={gameId}
       />
       <HelpModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
 
