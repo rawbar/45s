@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.95';
+const VERSION = '2.31.96';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7075,6 +7075,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.96', date: 'May 2026', changes: ['Clicking a player on the cutthroat leaderboard now opens a dedicated cutthroat stats panel instead of the partner-mode one. The cutthroat panel shows games played, average placement (1.00 best, 4.00 worst), the four placement counts with their percentages (1st through 4th), best 1st-place streak, and your highest single-game score. Partner-mode badges and bid-make breakdowns are not displayed because they would all read as zero for cutthroat games (the schemas are tracked separately). Dedicated cutthroat badges are still in the queue for a later release. Partner-mode leaderboard click is unchanged.'] },
     { version: '2.31.95', date: 'May 2026', changes: ['Bug fix: when reopening the browser onto a finished game and then starting a new game, the new game would sometimes launch with NONE of your saved house rules enabled, even though all three were checked in your preferences. Cause was a race between Firebase loading your saved prefs and the Create Game modal pre-fill: the pre-fill ran once when the modal opened and never re-ran when the prefs finally arrived, so the options stayed stuck at the initial all-false defaults. The pre-fill now also re-fires whenever the saved prefs change, so the modal catches up to the real settings as soon as they load. No effect on games already created with the right options.'] },
     { version: '2.31.94', date: 'May 2026', changes: ['Show Hands (Round Summary) modal now displays the game ID next to the version string in the title — e.g., "Round Summary · Cutthroat v2.31.94 · 5BPG5V". This is so when you screenshot a round and report a strange AI play, the game ID is captured in the same image and the saved Firebase diagnostic logs for that exact game can be looked up instantly. Cosmetic addition only — no gameplay change.'] },
     { version: '2.31.93', date: 'May 2026', changes: ['Cutthroat card-play bug fix — the C2 "don\'t overtake a fellow defender" rule was being silently bypassed by an earlier rule that cashes the A-of-hearts (or any boss trump) when the defender is following and can win the trick. That earlier rule was originally written for partner mode where it asked "is partner winning?" — a check that always returns false in cutthroat (no partner concept). So even when a fellow defender was winning the trick (which the C2 rule would have correctly told the AI to play cheap and concede), the boss-cash rule fired first and the AI over-trumped its own defender. Real-game example: West held A♥ in clubs trump; bidder North led offsuit, you (Robr) played a winning trump card, West then cashed the A♥ over your trump — handing West the trick. Now the boss-cash rules check, in cutthroat, whether a fellow defender (not the bidder) is the current trick winner. If so, the cash rule is skipped and play falls through to the C2 "play cheap" path. Partner mode is bit-identical (the new gate only activates when cutthroat=true).'] },
@@ -9214,6 +9215,14 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
   const [statsPlayerId, setStatsPlayerId] = useState(null);
   const [activeBadge, setActiveBadge] = useState(null);
 
+  // v2.31.96: cutthroat-mode player stats overlay — separate from the
+  // partner-mode modal because the data shape (placement-based, no
+  // badges yet) is too different to graft onto the existing layout.
+  const [showCtStatsModal, setShowCtStatsModal] = useState(false);
+  const [ctStatsPlayer, setCtStatsPlayer] = useState(null);
+  const [ctStatsData, setCtStatsData] = useState(null);
+  const [ctStatsLoading, setCtStatsLoading] = useState(false);
+
   // Leaderboard modal state
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -9410,6 +9419,28 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       setStatsPlayerBadges({});
     } finally {
       setStatsLoading(false);
+    }
+  };
+
+  // v2.31.96: cutthroat-mode player stats fetcher. Reads from
+  // users/{uid}/statsCutthroat (the schema introduced in v2.31.88).
+  // Distinct from fetchPlayerStats which reads the partner-mode node.
+  const fetchCtPlayerStats = async (playerId, playerInfo) => {
+    setCtStatsLoading(true);
+    setCtStatsPlayer(playerInfo);
+    setShowCtStatsModal(true);
+    try {
+      const snap = await database.ref(`users/${playerId}/statsCutthroat`).once('value');
+      setCtStatsData(snap.val() || {
+        gamesPlayed: 0, firstPlace: 0, secondPlace: 0, thirdPlace: 0, fourthPlace: 0,
+        placementSum: 0, currentStreakFirst: 0, bestStreakFirst: 0,
+        highestScore: 0, lastPlayed: 0,
+      });
+    } catch (err) {
+      console.error('Error fetching cutthroat stats:', err);
+      setCtStatsData(null);
+    } finally {
+      setCtStatsLoading(false);
     }
   };
 
@@ -9960,9 +9991,10 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
 
     // v2.31.88: cutthroat row renderer. Mirrors renderIrishLbRow shape but
     // shows avg-placement as the headline number (lower = better) and 1st-
-    // place % in the subtitle. No badges yet (Phase 2). Onclick still opens
-    // the per-player stats modal — that modal will need a cutthroat panel
-    // in a follow-up; for now it falls back to partner-mode display.
+    // place % in the subtitle. No badges yet (Phase 2).
+    // v2.31.96: onClick now opens the cutthroat-specific stats overlay
+    // (showCtStatsModal) instead of the partner-mode modal — that was
+    // showing partner stats/medals which made no sense for cutthroat.
     const renderIrishLbRowCutthroat = (player, rank, dimmed) => {
       const rankClass = rank === 0 ? 'rank1' : rank === 1 ? 'rank2' : rank === 2 ? 'rank3' : '';
       const rankLabel = rank === 0 ? 'gold' : rank === 1 ? 'silver' : rank === 2 ? 'bronze' : '';
@@ -9981,7 +10013,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           key={player.uid}
           className={isCyberpunk ? `cp-leaderboard-row ${rank < 3 ? 'top3 ' + rankClass : ''}` : `irlb-lb-row ${rank < 3 ? 'top3 ' + rankClass : ''}`}
           style={{ opacity: dimmed ? 0.5 : 1 }}
-          onClick={() => fetchPlayerStats(player.uid, { username: player.username, avatar: player.avatar })}
+          onClick={() => fetchCtPlayerStats(player.uid, { username: player.username, avatar: player.avatar })}
         >
           {rank === 0 && <span className="irlb-crown">👑</span>}
           <div className={isCyberpunk ? `cp-rank-num${rankLabel ? ' ' + rankLabel : ''}` : `irlb-lb-rank${rankLabel ? ' ' + rankLabel : ''}`}>{rank + 1}</div>
@@ -10486,6 +10518,71 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
             </div>
           </div>
         ))}
+
+        {/* v2.31.96: Cutthroat Player Stats Modal — placement-based summary. */}
+        {showCtStatsModal && (() => {
+          const isCp = currentThemeId === 'cyberpunk';
+          const titleFont = isCp ? "'Orbitron',sans-serif" : "'Cinzel',serif";
+          const bodyFont = isCp ? "'Share Tech Mono',monospace" : "'Cinzel',serif";
+          const accent = isCp ? '#ff8c00' : '#f6d778';
+          const accent2 = isCp ? '#00e5ff' : '#c9a24a';
+          const bg = isCp ? 'rgba(2,5,10,0.97)' : 'rgba(12,6,2,0.95)';
+          const border = isCp ? '1px solid rgba(0,229,255,0.4)' : '1px solid #c9a24a';
+          const s = ctStatsData || {};
+          const gp = s.gamesPlayed || 0;
+          const fp = s.firstPlace || 0, sp = s.secondPlace || 0, tp = s.thirdPlace || 0, fop = s.fourthPlace || 0;
+          const avgPlace = gp > 0 ? ((s.placementSum || 0) / gp).toFixed(2) : '—';
+          const pct = (n) => gp > 0 ? Math.round((n / gp) * 100) + '%' : '—';
+          const card = (label, value, big) => (
+            <div style={{ background: isCp ? 'rgba(0,229,255,0.05)' : 'rgba(10,40,20,0.55)', border: isCp ? '1px solid rgba(0,229,255,0.18)' : '1px solid rgba(201,162,74,0.25)', borderRadius: '8px', padding: '10px 8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '9px', color: isCp ? 'rgba(0,229,255,0.55)' : 'rgba(251,246,228,0.55)', fontFamily: bodyFont, letterSpacing: '1px', marginBottom: '4px' }}>{label}</div>
+              <div style={{ fontSize: big ? '22px' : '16px', fontWeight: 800, color: big ? accent : '#e8e4d9', fontFamily: titleFont, lineHeight: 1 }}>{value}</div>
+            </div>
+          );
+          return (
+            <div onClick={() => setShowCtStatsModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, padding: '16px' }}>
+              <div onClick={e => e.stopPropagation()} style={{ background: bg, border, borderRadius: isCp ? '4px' : '12px', padding: '20px', maxWidth: '380px', width: '100%', color: '#e8e4d9', boxShadow: '0 8px 32px rgba(0,0,0,0.7)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <div>
+                    <div style={{ fontFamily: titleFont, fontSize: '16px', fontWeight: 700, color: accent, letterSpacing: isCp ? '2px' : '1px' }}>
+                      {(ctStatsPlayer && ctStatsPlayer.username) || 'Player'}
+                    </div>
+                    <div style={{ fontFamily: bodyFont, fontSize: '10px', color: accent2, letterSpacing: '1.5px', marginTop: '2px' }}>CUTTHROAT STATS</div>
+                  </div>
+                  <button onClick={() => setShowCtStatsModal(false)} style={{ background: 'transparent', border: 'none', color: accent2, fontSize: '22px', cursor: 'pointer', padding: '0 4px' }}>×</button>
+                </div>
+                {ctStatsLoading ? (
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: accent2, fontFamily: bodyFont, fontSize: '12px' }}>Loading…</div>
+                ) : gp === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: 'rgba(232,228,217,0.6)', fontFamily: bodyFont, fontSize: '12px' }}>No cutthroat games played yet.</div>
+                ) : (
+                  <>
+                    {/* Headline: games + avg placement */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                      {card('Games', gp, true)}
+                      {card('Avg Place', avgPlace, true)}
+                    </div>
+                    {/* Placement breakdown */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '6px', marginBottom: '12px' }}>
+                      {card('🥇 1st', `${fp} · ${pct(fp)}`)}
+                      {card('🥈 2nd', `${sp} · ${pct(sp)}`)}
+                      {card('🥉 3rd', `${tp} · ${pct(tp)}`)}
+                      {card('4th', `${fop} · ${pct(fop)}`)}
+                    </div>
+                    {/* Highlights */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      {card('Best 1st Streak', s.bestStreakFirst || 0)}
+                      {card('Highest Score', s.highestScore || 0)}
+                    </div>
+                  </>
+                )}
+                <div style={{ marginTop: '14px', fontSize: '10px', color: 'rgba(232,228,217,0.4)', textAlign: 'center', fontFamily: bodyFont }}>
+                  Badges for cutthroat coming in a later release.
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Irish Card Room — Player Stats Modal (bottom sheet) */}
         {showStatsModal && (() => {
