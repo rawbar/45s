@@ -565,6 +565,30 @@ class ImprovedAI:
                 if _provably_boss:
                     return _ah
 
+        # CUTTHROAT_SAVE_5_LEAD (opt-in, user-derived 2026-05-29). MUST be
+        # placed BEFORE the BOSS CARD priority loop below — otherwise the
+        # 5 of trump (always boss, rank 102) triggers the boss-leading path
+        # and returns before this rule can fire. Four variants test the
+        # user's principle: bidder holding the 5 of trump + >=1 other trump
+        # + >=1 offsuit should NOT lead the 5 trick 1. Lead an offsuit
+        # instead; reserve the 5 for late-position bonus capture or to take
+        # a defender's boss. Champion bit-identical (all four default-off
+        # via Fon).
+        if (self.flags.get('cutthroat') and is_leading
+                and player == bid_winner):
+            _ct_trumps = [c for c in playable if _is_trump(c, trump)]
+            _ct_nt = [c for c in playable if not _is_trump(c, trump)]
+            if (_ct_trumps and _ct_nt and len(_ct_trumps) >= 2
+                    and any(_tr(c, trump) == 102 for c in _ct_trumps)):
+                if Fon('cutthroat_save_5_t1lo') and trick_num == 1:
+                    return min(_ct_nt, key=get_offsuit_rank)
+                if Fon('cutthroat_save_5_t1hi') and trick_num == 1:
+                    return max(_ct_nt, key=get_offsuit_rank)
+                if Fon('cutthroat_save_5_t12lo') and trick_num <= 2:
+                    return min(_ct_nt, key=get_offsuit_rank)
+                if Fon('cutthroat_save_5_t12hi') and trick_num <= 2:
+                    return max(_ct_nt, key=get_offsuit_rank)
+
         # ── STRATEGIC PRIORITY #1: BOSS CARD ─────────────────────────────────
         if not partner_winning_now:
             for card in playable:

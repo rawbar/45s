@@ -519,6 +519,60 @@ class CutthroatOpen15On(Policy):
 REGISTRY["cutthroat-open15-on"] = CutthroatOpen15On()
 
 
+# CUTTHROAT SAVE-5-LEAD VARIANTS (opt-in challengers, user-derived 2026-05-29).
+# Robr screenshot 0d2a9549: bidder W (15♣) held 5♣+4♣ (trump) + Q♠/5♥/A♠
+# (offsuit). Champion led the 5; user contends offsuit lead conserves the
+# 5 for positional bonus capture and the 4 (3rd-highest number-trump in
+# clubs trump, not "lowest") for late-position ruff. Four variants test
+# the principle across trick-window × offsuit-preference:
+#
+#   t1lo : trick 1 only / lead lowest offsuit
+#   t1hi : trick 1 only / lead highest offsuit
+#   t12lo: tricks 1-2 (still holds 5) / lowest offsuit
+#   t12hi: tricks 1-2 (still holds 5) / highest offsuit
+#
+# Gate: cutthroat=True AND bidder leading AND has 5 of trump AND has >=2
+# trump (5 + at least one more) AND has >=1 offsuit. Champion-cutthroat
+# bit-identical (all four default-off via Fon).
+#
+# Prior context: a partner-mode `bidder_trump_save_lead` was tested
+# v2.31.33-34 and REMOVED as net-negative; H-A `bidder_lead_low_trump`
+# (lead lowest trump) tested 2026-05-17 negative. THIS is a different
+# hypothesis: lead OFFSUIT not trump, and gated tighter (must hold 5).
+class _CutthroatSave5(Policy):
+    """Base for the four save-5-lead variants. Each subclass enables exactly
+    one flag so the symmetric A-vs-B set-rate isolates that variant's EV."""
+    _flag: str = None  # overridden per subclass
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True,
+                                   self._flag: True})
+
+
+class CutthroatSave5T1Lo(_CutthroatSave5):
+    name = "cutthroat-save5-t1lo"
+    _flag = "cutthroat_save_5_t1lo"
+
+class CutthroatSave5T1Hi(_CutthroatSave5):
+    name = "cutthroat-save5-t1hi"
+    _flag = "cutthroat_save_5_t1hi"
+
+class CutthroatSave5T12Lo(_CutthroatSave5):
+    name = "cutthroat-save5-t12lo"
+    _flag = "cutthroat_save_5_t12lo"
+
+class CutthroatSave5T12Hi(_CutthroatSave5):
+    name = "cutthroat-save5-t12hi"
+    _flag = "cutthroat_save_5_t12hi"
+
+
+REGISTRY["cutthroat-save5-t1lo"]  = CutthroatSave5T1Lo()
+REGISTRY["cutthroat-save5-t1hi"]  = CutthroatSave5T1Hi()
+REGISTRY["cutthroat-save5-t12lo"] = CutthroatSave5T12Lo()
+REGISTRY["cutthroat-save5-t12hi"] = CutthroatSave5T12Hi()
+
+
 # CUTTHROAT COALITION (opt-in challengers; champion-cutthroat default OFF).
 # Two coordinated defender rules — see improved_ai.py for the gates:
 #   C1 (cutthroat_c1_take_from_bidder): defender following, BIDDER currently
