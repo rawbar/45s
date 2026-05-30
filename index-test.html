@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.94';
+const VERSION = '2.31.95';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7075,6 +7075,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.95', date: 'May 2026', changes: ['Bug fix: when reopening the browser onto a finished game and then starting a new game, the new game would sometimes launch with NONE of your saved house rules enabled, even though all three were checked in your preferences. Cause was a race between Firebase loading your saved prefs and the Create Game modal pre-fill: the pre-fill ran once when the modal opened and never re-ran when the prefs finally arrived, so the options stayed stuck at the initial all-false defaults. The pre-fill now also re-fires whenever the saved prefs change, so the modal catches up to the real settings as soon as they load. No effect on games already created with the right options.'] },
     { version: '2.31.94', date: 'May 2026', changes: ['Show Hands (Round Summary) modal now displays the game ID next to the version string in the title — e.g., "Round Summary · Cutthroat v2.31.94 · 5BPG5V". This is so when you screenshot a round and report a strange AI play, the game ID is captured in the same image and the saved Firebase diagnostic logs for that exact game can be looked up instantly. Cosmetic addition only — no gameplay change.'] },
     { version: '2.31.93', date: 'May 2026', changes: ['Cutthroat card-play bug fix — the C2 "don\'t overtake a fellow defender" rule was being silently bypassed by an earlier rule that cashes the A-of-hearts (or any boss trump) when the defender is following and can win the trick. That earlier rule was originally written for partner mode where it asked "is partner winning?" — a check that always returns false in cutthroat (no partner concept). So even when a fellow defender was winning the trick (which the C2 rule would have correctly told the AI to play cheap and concede), the boss-cash rule fired first and the AI over-trumped its own defender. Real-game example: West held A♥ in clubs trump; bidder North led offsuit, you (Robr) played a winning trump card, West then cashed the A♥ over your trump — handing West the trick. Now the boss-cash rules check, in cutthroat, whether a fellow defender (not the bidder) is the current trick winner. If so, the cash rule is skipped and play falls through to the C2 "play cheap" path. Partner mode is bit-identical (the new gate only activates when cutthroat=true).'] },
     { version: '2.31.92', date: 'May 2026', changes: ['Cutthroat win-resolution rule corrected. Before this release, when two or more defenders both ended a round at 120 or more, the winner was simply whoever had the higher final score. The actual rule of the variant is: the defender whose trick FIRST pushed them to 120 wins, even if another defender ended the round with a higher final total. Higher final score does not override an earlier crossing. The bidder reaching 120 still wins outright regardless of any defender — that part was already correct. The resolver now walks trick by trick at round end, applies the +5 high-trump bonus to the trick that earned it, and finds each tied defender\'s crossing-trick to determine the winner. The single most common case (only one player at 120 or above) is unaffected.'] },
@@ -9533,13 +9534,16 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
 
   // Pre-fill create-game options from persistent house rules when modal opens
   // v2.31.75: gameVariant is sourced from the lobby selector (already in state, localStorage-backed) — no re-init here.
+  // v2.31.95: also re-fire when prefHouseRules changes — fixes the race
+  // where Firebase load completes AFTER the user has opened Create Game,
+  // leaving the opts stuck at the initial all-false defaults.
   useEffect(() => {
     if (showCreateGame) {
       setOptFiveCardDraw(prefHouseRules.fiveCardDraw);
       setOptFollowAHearts(prefHouseRules.followAHearts);
       setOptThirtyFor60(prefHouseRules.thirtyFor60);
     }
-  }, [showCreateGame]);
+  }, [showCreateGame, prefHouseRules]);
 
   useEffect(() => {
     // Clean up old/inactive games on lobby mount
