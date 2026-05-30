@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.91';
+const VERSION = '2.31.92';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -4952,6 +4952,74 @@ function determineTrickWinner(trick, trumpSuit, startPlayer) {
   let winIdx = 0, winCard = trick[0];
   for (let i = 1; i < 4; i++) { if (cardBeats(trick[i], winCard, trumpSuit, ledSuit)) { winIdx = i; winCard = trick[i]; } }
   return (startPlayer + winIdx) % 4;
+}
+
+// v2.31.92: cutthroat game-winner resolver. User-clarified rule:
+//   1) Bidder wins outright if they reach >=120 (only possible by making
+//      their bid). Bidder priority is absolute, regardless of any
+//      defender's score.
+//   2) Otherwise, among defenders at >=120:
+//      - 0 → no winner this round, return null
+//      - 1 → that defender wins
+//      - 2+ → defender whose trick-by-trick running total FIRST crossed
+//        120 within THIS round wins. Higher final score does NOT decide.
+//
+// For the 2+ case, walks per-trick winners from playHistory, applies the
+// +5 high-trump-bonus at the trick that contained the round's highest
+// trump played, and finds each tied defender's crossing-trick from their
+// pre-round score + running accrual.
+function resolveCutthroatWinner({ prePts, postPts, playerRoundPts, bidWinner, highBid, playHistory, trumpSuit }) {
+  const bidderMade = (playerRoundPts[bidWinner] || 0) >= highBid;
+  if (bidderMade && (postPts[bidWinner] || 0) >= 120) return bidWinner;
+
+  const tied = [];
+  for (let p = 0; p < 4; p++) {
+    if (p !== bidWinner && (postPts[p] || 0) >= 120) tied.push(p);
+  }
+  if (tied.length === 0) return null;
+  if (tied.length === 1) return tied[0];
+
+  // 2+ tied: walk tricks to find earliest crossing.
+  const trickWinnerByT = [];
+  for (let t = 1; t <= 5; t++) {
+    const entries = (playHistory || []).filter(h => h.trick === t);
+    if (entries.length !== 4) { trickWinnerByT[t] = null; continue; }
+    const cards = entries.map(h => h.card);
+    const leader = entries[0].player;
+    trickWinnerByT[t] = determineTrickWinner(cards, trumpSuit, leader);
+  }
+  // Trick containing the round's highest trump played (where the +5
+  // high-trump bonus lands at end-of-round scoring).
+  let highTrumpTrick = -1;
+  let highTrumpRank = -1;
+  for (const h of (playHistory || [])) {
+    if (!h.card) continue;
+    const r = getTrumpRank(h.card, trumpSuit);
+    if (r >= 0 && r > highTrumpRank) {
+      highTrumpRank = r;
+      highTrumpTrick = h.trick;
+    }
+  }
+  const running = [0, 0, 0, 0];
+  const crossedAt = {};
+  for (let t = 1; t <= 5; t++) {
+    const w = trickWinnerByT[t];
+    if (w === null || w === undefined) continue;
+    running[w] += 5;
+    if (t === highTrumpTrick) running[w] += 5;
+    for (const d of tied) {
+      if (crossedAt[d] === undefined && (prePts[d] + running[d]) >= 120) {
+        crossedAt[d] = t;
+      }
+    }
+  }
+  let earliest = 999, winner = tied[0];
+  for (const d of tied) {
+    const c = crossedAt[d];
+    if (c !== undefined && c < earliest) { earliest = c; winner = d; }
+  }
+  console.log(`🗡 CUTTHROAT tiebreak: ${tied.length} defenders >=120, crossedAt:`, crossedAt, `→ P${winner + 1}`);
+  return winner;
 }
 
 // 2 of a NON-trump suit — used to pad partial tricks for trick-winner
@@ -6990,6 +7058,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.92', date: 'May 2026', changes: ['Cutthroat win-resolution rule corrected. Before this release, when two or more defenders both ended a round at 120 or more, the winner was simply whoever had the higher final score. The actual rule of the variant is: the defender whose trick FIRST pushed them to 120 wins, even if another defender ended the round with a higher final total. Higher final score does not override an earlier crossing. The bidder reaching 120 still wins outright regardless of any defender — that part was already correct. The resolver now walks trick by trick at round end, applies the +5 high-trump bonus to the trick that earned it, and finds each tied defender\'s crossing-trick to determine the winner. The single most common case (only one player at 120 or above) is unaffected.'] },
     { version: '2.31.91', date: 'May 2026', changes: ['Cutthroat bug fix: rejoining a game in progress reset your score to zero. Root cause was in the next-round handler — when one round ended and the next was set up, the new Firebase game state was written with a full replace, and the per-player scores array was not included in that write. While you stayed on the page, your local React state kept the right scores so the bug was invisible. As soon as you left and rejoined, the page rebooted with empty local state and Firebase had nothing to restore from, so all four players appeared at zero. Now the per-player scores are explicitly preserved in the next-round write, so rejoining mid-game shows the correct standings.'] },
     { version: '2.31.90', date: 'May 2026', changes: ['Cutthroat: replaced the BETA pill in the lobby variant selector with a brighter, pulsing NEW pill, and removed the first-bidding-phase disclaimer modal that used to pop up at the start of every cutthroat game. The variant works well enough now (3 structural bidding fixes, coordinated defender play, separate stats + leaderboard) that the modal was just friction. The NEW pill stays loud as long as the variant is fresh; we will swap it back to a subtle indicator once enough people are playing it that the call-out is unnecessary.'] },
     { version: '2.31.89', date: 'May 2026', changes: ['Diagnostic-only build. The cutthroat C2 (don\'t-overtake-defender) rule has been observed twice not firing when it should — most recently West played A♥ over your A♠ when A♠ was already winning the trick. The existing C2-GATE diagnostic was console-only, which is useless on mobile. This release additionally writes that same gate-value dump to Firebase under games/{gameId}/c2Debug/ so the trace can be inspected after-the-fact. No gameplay change. Once we capture one full C2-non-fire trace and root-cause the bug, the diagnostic block will be removed.'] },
@@ -16319,23 +16388,20 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           } : {}),
         }];
 
-        // Check for game winner. Cutthroat: first PLAYER to 120; on simultaneous
-        // tie, bidder wins. Partner mode: first TEAM to 120; on tie, bidding
-        // team wins.
+        // Check for game winner. Cutthroat: v2.31.92 first-crossing rule
+        // (see resolveCutthroatWinner). Partner mode: first TEAM to 120;
+        // on tie, bidding team wins.
         let gameWinner = null;
         if (gameOptions.cutthroat) {
-          let bestScore = -Infinity;
-          for (let p = 0; p < 4; p++) {
-            if (newPlayerScores[p] >= 120 && newPlayerScores[p] > bestScore) {
-              bestScore = newPlayerScores[p];
-              gameWinner = p;
-            }
-          }
-          // Tie-break: if bidder is tied with the lead, bidder wins
-          if (gameWinner !== null && newPlayerScores[bidWinner] === bestScore
-              && bidWinner !== gameWinner && newPlayerScores[bidWinner] >= 120) {
-            gameWinner = bidWinner;
-          }
+          gameWinner = resolveCutthroatWinner({
+            prePts: playerScores,
+            postPts: newPlayerScores,
+            playerRoundPts,
+            bidWinner,
+            highBid,
+            playHistory: newPlayHistory,
+            trumpSuit,
+          });
         } else {
           const team0Reached120 = newScores[0] >= 120;
           const team1Reached120 = newScores[1] >= 120;
@@ -16946,20 +17012,20 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             } : {}),
           }];
 
-          // Check for game winner. Cutthroat: first PLAYER to 120, bidder wins ties.
+          // Check for game winner. Cutthroat: v2.31.92 first-crossing rule
+          // (see resolveCutthroatWinner). Partner mode: first TEAM to 120;
+          // on tie, bidding team wins.
           let gameWinner = null;
           if (gameOptions.cutthroat) {
-            let bestScore = -Infinity;
-            for (let p = 0; p < 4; p++) {
-              if (newPlayerScores[p] >= 120 && newPlayerScores[p] > bestScore) {
-                bestScore = newPlayerScores[p];
-                gameWinner = p;
-              }
-            }
-            if (gameWinner !== null && newPlayerScores[bidWinner] === bestScore
-                && bidWinner !== gameWinner && newPlayerScores[bidWinner] >= 120) {
-              gameWinner = bidWinner;
-            }
+            gameWinner = resolveCutthroatWinner({
+              prePts: playerScores,
+              postPts: newPlayerScores,
+              playerRoundPts,
+              bidWinner,
+              highBid,
+              playHistory: newPlayHistory,
+              trumpSuit,
+            });
           } else {
             const team0Reached120 = newScores[0] >= 120;
             const team1Reached120 = newScores[1] >= 120;
