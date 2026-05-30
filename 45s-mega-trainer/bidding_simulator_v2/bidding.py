@@ -102,7 +102,8 @@ def decide_bid(hand: List[Card],
                 cutthroat_force_upbid15: bool = False,
                 cutthroat_desp_tight_20: bool = False,
                 cutthroat_force_loose_open: bool = False,
-                cutthroat_opp_has_dealer_always: bool = False) -> Tuple[int, Optional[Suit]]:
+                cutthroat_opp_has_dealer_always: bool = False,
+                cutthroat_desp_rule4_tight: bool = False) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
     DATA-DERIVED, held-out-validated trigger (commit d19be47: 12k deals/cell
@@ -197,22 +198,52 @@ def decide_bid(hand: List[Card],
         if opp_bid_25:
             return 0, None
         if opp_has_dealer and current_high_bid == 0:
-            if they_need <= 5:
-                if has5 and hasJ and hasAH and trump_count >= 5:
-                    return 20, suit
-                return 0, None
-            if they_need <= 10:
-                if has5 and hasJ and trump_count >= 4:
-                    return 20, suit
-                return 0, None
-            if they_need <= 15:
-                if has5 and trump_count >= 4:
-                    return 20, suit
-                return 0, None
-            if they_need <= 20:
-                if has5 or (hasJ and hasAH and trump_count >= 3):
-                    return 20, suit
-                return 0, None
+            # RULE 4 — bag-the-dealer with hand-strength threshold for "can
+            # we make X to survive?" Calibrated against partner-mode 1.1M
+            # simulation. In cutthroat with C1+C2 coalition, make rates are
+            # lower → thresholds want to be tighter. Opt-in challenger
+            # `cutthroat_desp_rule4_tight` adds the J of trump (2nd-highest
+            # trump in the game) to each canMake test that lacks it, so the
+            # bid-20-vs-pass-to-bag exit gates on hands that actually carry
+            # in cutthroat. canMake30 (5+J+AH+T5) is already maximally
+            # strict.
+            if cutthroat and cutthroat_desp_rule4_tight:
+                if they_need <= 5:
+                    if has5 and hasJ and hasAH and trump_count >= 5:
+                        return 20, suit
+                    return 0, None
+                if they_need <= 10:
+                    # Was: 5+J+T4. Tightened: add AH (3 top trump + 1).
+                    if has5 and hasJ and hasAH and trump_count >= 4:
+                        return 20, suit
+                    return 0, None
+                if they_need <= 15:
+                    # Was: 5+T4. Tightened: add J (5+J = boss-plus-2nd-boss).
+                    if has5 and hasJ and trump_count >= 4:
+                        return 20, suit
+                    return 0, None
+                if they_need <= 20:
+                    # Was: has5 OR (J+AH+T3). Tightened: 5+J or J+AH+T4.
+                    if (has5 and hasJ) or (hasJ and hasAH and trump_count >= 4):
+                        return 20, suit
+                    return 0, None
+            else:
+                if they_need <= 5:
+                    if has5 and hasJ and hasAH and trump_count >= 5:
+                        return 20, suit
+                    return 0, None
+                if they_need <= 10:
+                    if has5 and hasJ and trump_count >= 4:
+                        return 20, suit
+                    return 0, None
+                if they_need <= 15:
+                    if has5 and trump_count >= 4:
+                        return 20, suit
+                    return 0, None
+                if they_need <= 20:
+                    if has5 or (hasJ and hasAH and trump_count >= 3):
+                        return 20, suit
+                    return 0, None
         if not opp_has_dealer:
             if opp_bid_15 and they_can_win_15:
                 if has5:

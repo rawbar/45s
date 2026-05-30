@@ -625,6 +625,31 @@ class CutthroatOppHasDealerParity(Policy):
 REGISTRY["cutthroat-ohd-parity"] = CutthroatOppHasDealerParity()
 
 
+# CUTTHROAT DESP-RULE4-TIGHT (candidate). After the v2.31.87 OHD-always
+# ship, desperation RULE 4 (bag-the-dealer with canMake15/20/25/30
+# thresholds for "can we make X to survive") fires uniformly across
+# cutthroat seats. The canMake thresholds were calibrated against the
+# partner-mode 1.1M-sim; in cutthroat with C1+C2 coalition the make
+# rates are lower → bid-20 exit gates that aren't J-anchored bust more
+# often. This challenger adds the J of trump (2nd-highest trump) to
+# each canMake test that lacks it:
+#   theyNeed<=5  : unchanged (5+J+AH+T5 already maximally strict)
+#   theyNeed<=10 : was 5+J+T4 → 5+J+AH+T4   (add AH)
+#   theyNeed<=15 : was 5+T4 → 5+J+T4         (add J)
+#   theyNeed<=20 : was 5 OR J+AH+T3 → 5+J OR J+AH+T4 (tighten both arms)
+# Net effect: fewer doomed bid-20 exits, more passes-to-bag.
+class CutthroatDespRule4Tight(Policy):
+    name = "cutthroat-desp-rule4-tight"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_desp_rule4_tight=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-desp-rule4-tight"] = CutthroatDespRule4Tight()
+
+
 # CUTTHROAT COALITION (opt-in challengers; champion-cutthroat default OFF).
 # Two coordinated defender rules — see improved_ai.py for the gates:
 #   C1 (cutthroat_c1_take_from_bidder): defender following, BIDDER currently
