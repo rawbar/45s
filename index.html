@@ -42,6 +42,33 @@
     @keyframes cardPlay { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
     @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
     @keyframes voicePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    /* v2.31.90: NEW pill for cutthroat — saturated yellow-orange glow that
+       pulses 1.4s. Loud on purpose so people notice it (replaces the
+       quieter BETA outline). */
+    @keyframes newPulse {
+      0%, 100% {
+        background: rgba(255,200,40,0.95);
+        box-shadow: 0 0 6px rgba(255,200,40,0.7), 0 0 14px rgba(255,140,0,0.5);
+        color: #1a0a00;
+      }
+      50% {
+        background: rgba(255,235,90,1);
+        box-shadow: 0 0 14px rgba(255,235,90,0.95), 0 0 26px rgba(255,180,40,0.8);
+        color: #100600;
+      }
+    }
+    .new-pill {
+      display: inline-block;
+      margin-left: 5px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      vertical-align: super;
+      animation: newPulse 1.4s ease-in-out infinite;
+      border: 1px solid rgba(255,140,0,0.95);
+    }
     /* Legendary badge (50+pt tier): rainbow holographic glow that pulses
        between magenta/cyan and cyan/gold, with a gold border. Cleaner
        implementation via box-shadow animation (no DOM-structure change). */
@@ -3431,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.89';
+const VERSION = '2.31.90';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6963,6 +6990,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.90', date: 'May 2026', changes: ['Cutthroat: replaced the BETA pill in the lobby variant selector with a brighter, pulsing NEW pill, and removed the first-bidding-phase disclaimer modal that used to pop up at the start of every cutthroat game. The variant works well enough now (3 structural bidding fixes, coordinated defender play, separate stats + leaderboard) that the modal was just friction. The NEW pill stays loud as long as the variant is fresh; we will swap it back to a subtle indicator once enough people are playing it that the call-out is unnecessary.'] },
     { version: '2.31.89', date: 'May 2026', changes: ['Diagnostic-only build. The cutthroat C2 (don\'t-overtake-defender) rule has been observed twice not firing when it should — most recently West played A♥ over your A♠ when A♠ was already winning the trick. The existing C2-GATE diagnostic was console-only, which is useless on mobile. This release additionally writes that same gate-value dump to Firebase under games/{gameId}/c2Debug/ so the trace can be inspected after-the-fact. No gameplay change. Once we capture one full C2-non-fire trace and root-cause the bug, the diagnostic block will be removed.'] },
     { version: '2.31.88', date: 'May 2026', changes: ['Cutthroat stats and leaderboard are now tracked. Each cutthroat game you finish records your placement (1st through 4th) to a separate stats node (statsCutthroat) so it does not contaminate the partner-mode win-rate. The leaderboard tab now has a Partners / Cutthroat toggle (defaulting to whichever variant you last played from the lobby). The Cutthroat leaderboard ranks by average placement (lower is better — 1.00 means always 1st, 2.50 is exactly average) with 1st-place rate as the secondary stat, and requires at least 10 cutthroat games to qualify (partner-mode still uses the 5-game minimum because its variance is lower with binary outcomes). Badges for cutthroat are not yet wired up — that comes in a separate release once we see a few weeks of data to design against. Existing partner-mode stats, badges, and leaderboard are bit-identical.'] },
     { version: '2.31.87', date: 'May 2026', changes: ['Cutthroat bidding fix — the "is the dealer on the opposing team?" check, which gates the desperation-mode "bag the dealer" branch (let the dealer get auto-forced into a doomed 15 instead of overbidding), was using partner-mode seat-parity arithmetic. In partner mode that returns the correct answer (binary teams). In cutthroat there are no teams, so the same arithmetic was effectively a coin flip on a seat-parity coincidence — it told only half the cutthroat seats that the dealer was an opponent (which they always are in cutthroat) and led the other half to instead push into doomed 20- and 25-bids when they should have passed-to-bag the dealer. The simulator now treats every non-self cutthroat seat as having an opponent dealer; symmetric A-vs-B tests show bidders set 1.21–1.30 points less often (replicated across primary 20k and held-out 30k seeds, z over 10), with the 20-bid level dropping 3.22pt and the 25-bid level dropping 5.76pt, and the total 25-bid count falling 44%. Partner-mode bidding bit-identical.'] },
@@ -10168,7 +10196,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                       <div key={val} onClick={() => { SoundManager.play('buttonClick'); setGameVariant(val); }} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '3px', border: selected ? '1px solid #ff8c00' : '1px solid rgba(0,229,255,0.25)', background: selected ? 'rgba(255,140,0,0.12)' : 'rgba(0,229,255,0.04)', boxShadow: selected ? '0 0 12px rgba(255,140,0,0.18)' : 'none', transition: 'all 0.15s' }}>
                         <span style={{ fontFamily: "'Orbitron',sans-serif", fontWeight: 700, fontSize: '12px', letterSpacing: '1.5px', color: selected ? '#ff8c00' : 'rgba(0,229,255,0.7)', textShadow: selected ? '0 0 8px rgba(255,140,0,0.6)' : 'none' }}>{label}</span>
                         {isBeta && (
-                          <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '2px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '1px', verticalAlign: 'super' }}>BETA</sup>
+                          <sup className="new-pill" style={{ fontFamily: "'Share Tech Mono',monospace" }}>NEW</sup>
                         )}
                       </div>
                     );
@@ -10177,7 +10205,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     <div key={val} onClick={() => { SoundManager.play('buttonClick'); setGameVariant(val); }} style={{ flex: 1, padding: '10px 6px', textAlign: 'center', cursor: 'pointer', borderRadius: '8px', border: selected ? '1px solid #c9a24a' : '1px solid rgba(201,162,74,0.25)', background: selected ? 'linear-gradient(180deg, rgba(246,215,120,0.18) 0%, rgba(201,162,74,0.12) 100%)' : 'rgba(0,0,0,0.35)', boxShadow: selected ? '0 0 10px rgba(201,162,74,0.25), inset 0 1px 0 rgba(255,245,200,0.18)' : 'none', transition: 'all 0.15s' }}>
                       <span style={{ fontFamily: "'Cinzel',serif", fontWeight: 700, fontSize: '13px', letterSpacing: '1.5px', color: selected ? '#f6d778' : 'rgba(201,162,74,0.65)' }}>{label}</span>
                       {isBeta && (
-                        <sup style={{ marginLeft: '4px', fontSize: '8px', padding: '1px 4px', borderRadius: '3px', background: 'rgba(255,140,0,0.2)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: "'Cinzel',serif", fontWeight: 700, letterSpacing: '1px', verticalAlign: 'super' }}>BETA</sup>
+                        <sup className="new-pill" style={{ fontFamily: "'Cinzel',serif" }}>NEW</sup>
                       )}
                     </div>
                   );
@@ -14193,10 +14221,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [showHouseRules, setShowHouseRules] = useState(false);
   const houseRulesShown = useRef(false);
 
-  // v2.31.71: Cutthroat beta disclaimer — one-shot modal at first bidding phase
-  // (renamed from showCutthroatAlpha at v2.31.85 promotion)
-  const [showCutthroatBeta, setShowCutthroatBeta] = useState(false);
-  const cutthroatBetaShown = useRef(false);
+  // v2.31.90: cutthroat disclaimer state removed (modal deleted). NEW pill
+  // in lobby selector replaces the modal as the variant-callout signal.
 
   // Per-game achievement tracking (reset each new game)
   const [gameTimesSet, setGameTimesSet] = useState(0);
@@ -17122,15 +17148,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     return () => clearTimeout(t);
   }, [phase, gameOptions]);
 
-  // v2.31.71: Cutthroat beta disclaimer — show once at first bidding phase of a cutthroat game.
-  // No timeout — user must dismiss explicitly because they're acknowledging a beta caveat.
-  useEffect(() => {
-    if (phase !== 'bidding') return;
-    if (!gameOptions?.cutthroat) return;
-    if (cutthroatBetaShown.current) return;
-    cutthroatBetaShown.current = true;
-    setShowCutthroatBeta(true);
-  }, [phase, gameOptions]);
+  // v2.31.90: cutthroat first-bidding-phase disclaimer modal REMOVED — the
+  // pulsing NEW pill in the lobby variant selector is enough. (Original
+  // alpha/beta caveat block formerly here.)
 
   // Handle rematch - create new game with same players
   const handleRematch = useCallback(async () => {
@@ -17949,71 +17969,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           </div>
         )}
 
-        {/* v2.31.71: Cutthroat beta disclaimer — first-bidding-phase one-shot */}
-        {showCutthroatBeta && (() => {
-          const isCp = currentThemeId === 'cyberpunk';
-          const isArab = currentThemeId === 'arabian';
-          const accentColor = isCp ? '#00e5ff' : '#f6d778';
-          const titleFont = isCp ? "'Orbitron', sans-serif" : "'Cinzel', serif";
-          const bodyFont = isCp ? "'Share Tech Mono', monospace" : "'Merriweather', serif";
-          const okBg = isCp
-            ? 'rgba(255,140,0,0.1)'
-            : 'linear-gradient(180deg, #f6d778 0%, #c9a24a 45%, #9a7630 100%)';
-          const okColor = isCp ? '#ff8c00' : '#1a0e03';
-          const okBorder = isCp ? '1px solid #ff8c00' : '1px solid rgba(0,0,0,0.6)';
-          const okShadow = isCp ? '0 0 12px rgba(255,140,0,0.4)' : '0 2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,245,200,0.4)';
-          return (
-            <div
-              onClick={() => setShowCutthroatBeta(false)}
-              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 600, pointerEvents: 'auto', padding: '16px' }}
-            >
-              <div
-                onClick={e => e.stopPropagation()}
-                style={{
-                  background: isCp ? 'rgba(2,5,10,0.97)' : isArab ? 'rgba(8,5,1,0.97)' : 'rgba(12,6,2,0.95)',
-                  border: isCp ? '1px solid rgba(0,229,255,0.4)' : '1px solid #c9a24a',
-                  borderRadius: isCp ? '4px' : '12px',
-                  padding: '20px 22px',
-                  maxWidth: '340px',
-                  width: '100%',
-                  textAlign: 'center',
-                  color: '#e8e4d9',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.7)'
-                }}
-              >
-                <div style={{ fontSize: '15px', fontFamily: titleFont, color: accentColor, fontWeight: 700, letterSpacing: isCp ? '2px' : '1px', marginBottom: '4px' }}>
-                  Cutthroat
-                  <sup style={{ marginLeft: '6px', fontSize: '9px', padding: '2px 5px', borderRadius: '3px', background: 'rgba(255,140,0,0.18)', border: '1px solid rgba(255,140,0,0.55)', color: '#ff8c00', fontFamily: bodyFont, letterSpacing: '1.5px', verticalAlign: 'super', fontWeight: 700 }}>BETA</sup>
-                </div>
-                <div style={{ height: '1px', background: isCp ? 'linear-gradient(90deg, #00e5ff 0%, #ff00cc 50%, transparent 100%)' : 'linear-gradient(90deg,transparent,#c9a24a 50%,transparent)', margin: '10px 0 14px' }} />
-                <div style={{ fontSize: '12px', lineHeight: 1.5, color: 'rgba(232,228,217,0.88)', fontFamily: bodyFont, textAlign: 'left' }}>
-                  AI now plays cutthroat-aware bidding and coordinated defender card-play. Some sub-optimality may still surface in real games — please flag any AI plays that look wrong so they can be mined into new rules.
-                  <div style={{ marginTop: '8px' }}>
-                    Stats, badges, and the leaderboard are not yet tracked for cutthroat games.
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowCutthroatBeta(false)}
-                  style={{
-                    marginTop: '16px',
-                    padding: '10px 28px',
-                    fontSize: '12px',
-                    letterSpacing: '1.5px',
-                    fontWeight: 700,
-                    fontFamily: titleFont,
-                    background: okBg,
-                    color: okColor,
-                    border: okBorder,
-                    borderRadius: isCp ? '3px' : '8px',
-                    cursor: 'pointer',
-                    boxShadow: okShadow,
-                    textShadow: isCp ? '0 0 8px rgba(255,140,0,0.6)' : 'none'
-                  }}
-                >OK</button>
-              </div>
-            </div>
-          );
-        })()}
+        {/* v2.31.90: cutthroat first-bidding disclaimer modal removed. */}
 
         {/* Button Area */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: phase === 'trump-select' ? '20px' : (phase === 'bidding' ? '12px' : '4px'), flexWrap: 'wrap', padding: '4px 0', minHeight: '36px' }}>
