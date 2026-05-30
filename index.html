@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.92';
+const VERSION = '2.31.93';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5789,18 +5789,31 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   // Quick check: is partner currently winning this trick?
   // v2.31.74: cutthroat — no partner concept, force to false so the bidder
   // is treated as "opp winning" for boss/cash branches.
+  // v2.31.93: also hoist `_currentWinnerSeat` (the seat currently winning
+  // the trick) so cutthroat boss-cash rules can guard against over-
+  // trumping a fellow defender. In partner mode partnerCurrentlyWinning
+  // serves that role; in cutthroat we need a separate seat-aware check.
   let partnerCurrentlyWinning = false;
+  let _currentWinnerSeat = leader;
   if (!isLeadingTrick && trick.length > 0) {
-    let currentWinner = leader;
     let winningCard = trick[0];
     for (let i = 1; i < trick.length; i++) {
       if (cardBeats(trick[i], winningCard, trumpSuit, trick[0].suit)) {
         winningCard = trick[i];
-        currentWinner = (leader + i) % 4;
+        _currentWinnerSeat = (leader + i) % 4;
       }
     }
-    partnerCurrentlyWinning = !cutthroat && ((currentWinner % 2) === (player % 2));
+    partnerCurrentlyWinning = !cutthroat && ((_currentWinnerSeat % 2) === (player % 2));
   }
+  // v2.31.93: cutthroat — "fellow defender currently winning" guard.
+  // Skip boss-cash branches (defender_cash_boss_ah, BOSS-CARD priority for
+  // boss-trump following) when the current winner is another defender,
+  // not the bidder — otherwise we over-trump a fellow defender, the exact
+  // C2 violation the user reported (W A♥ over Robr's 9♦ at trick 1 of
+  // game 5BPG5V). Bidder priority for boss-cashing remains intact.
+  const _ctFellowDefenderWinning = cutthroat && !isLeadingTrick && trick.length > 0
+    && _currentWinnerSeat !== bidWinner && _currentWinnerSeat !== player
+    && player !== bidWinner;
 
   // ========================================================================
   // DEFENDER CASH PROVABLY-BOSS A♥ (FIX v2.31.43)
@@ -5822,7 +5835,8 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   // Flag-gated (champion default-ON; off:defender_cash_boss_ah reverts).
   // v2.31.74: cutthroat — "defender" is anyone who is not the bidder.
   const _isDefenderNow = cutthroat ? (player !== bidWinner) : ((player % 2) !== (bidWinner % 2));
-  if (!isLeadingTrick && !partnerCurrentlyWinning && _isDefenderNow) {
+  if (!isLeadingTrick && !partnerCurrentlyWinning && _isDefenderNow
+      && !_ctFellowDefenderWinning) {
     const _ah = playable.find(c => c.rank === 'A' && c.suit === '♥');
     if (_ah) {
       const _testTrick = [...trick, _ah];
@@ -5861,7 +5875,10 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
 
   // Only play boss card if LEADING or OPPONENT is winning (save it if partner winning)
   // When following, also verify the boss card actually beats the current trick winner
-  if (!partnerCurrentlyWinning) {
+  // v2.31.93: also skip the FOLLOWING branch of this loop in cutthroat when
+  // a fellow defender is currently winning — same C2 rationale. Leading
+  // branch is unaffected (W is following here, isLeadingTrick=false).
+  if (!partnerCurrentlyWinning && !_ctFellowDefenderWinning) {
     for (const card of playable) {
       if (isCardBoss(card, cardsPlayed, trumpSuit)) {
         if (isLeadingTrick) {
@@ -7058,6 +7075,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.93', date: 'May 2026', changes: ['Cutthroat card-play bug fix — the C2 "don\'t overtake a fellow defender" rule was being silently bypassed by an earlier rule that cashes the A-of-hearts (or any boss trump) when the defender is following and can win the trick. That earlier rule was originally written for partner mode where it asked "is partner winning?" — a check that always returns false in cutthroat (no partner concept). So even when a fellow defender was winning the trick (which the C2 rule would have correctly told the AI to play cheap and concede), the boss-cash rule fired first and the AI over-trumped its own defender. Real-game example: West held A♥ in clubs trump; bidder North led offsuit, you (Robr) played a winning trump card, West then cashed the A♥ over your trump — handing West the trick. Now the boss-cash rules check, in cutthroat, whether a fellow defender (not the bidder) is the current trick winner. If so, the cash rule is skipped and play falls through to the C2 "play cheap" path. Partner mode is bit-identical (the new gate only activates when cutthroat=true).'] },
     { version: '2.31.92', date: 'May 2026', changes: ['Cutthroat win-resolution rule corrected. Before this release, when two or more defenders both ended a round at 120 or more, the winner was simply whoever had the higher final score. The actual rule of the variant is: the defender whose trick FIRST pushed them to 120 wins, even if another defender ended the round with a higher final total. Higher final score does not override an earlier crossing. The bidder reaching 120 still wins outright regardless of any defender — that part was already correct. The resolver now walks trick by trick at round end, applies the +5 high-trump bonus to the trick that earned it, and finds each tied defender\'s crossing-trick to determine the winner. The single most common case (only one player at 120 or above) is unaffected.'] },
     { version: '2.31.91', date: 'May 2026', changes: ['Cutthroat bug fix: rejoining a game in progress reset your score to zero. Root cause was in the next-round handler — when one round ended and the next was set up, the new Firebase game state was written with a full replace, and the per-player scores array was not included in that write. While you stayed on the page, your local React state kept the right scores so the bug was invisible. As soon as you left and rejoined, the page rebooted with empty local state and Firebase had nothing to restore from, so all four players appeared at zero. Now the per-player scores are explicitly preserved in the next-round write, so rejoining mid-game shows the correct standings.'] },
     { version: '2.31.90', date: 'May 2026', changes: ['Cutthroat: replaced the BETA pill in the lobby variant selector with a brighter, pulsing NEW pill, and removed the first-bidding-phase disclaimer modal that used to pop up at the start of every cutthroat game. The variant works well enough now (3 structural bidding fixes, coordinated defender play, separate stats + leaderboard) that the modal was just friction. The NEW pill stays loud as long as the variant is fresh; we will swap it back to a subtle indicator once enough people are playing it that the call-out is unnecessary.'] },
