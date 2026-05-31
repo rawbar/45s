@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.99';
+const VERSION = '2.31.100';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5853,6 +5853,34 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     && player !== bidWinner
     && !_ctOppAtGamePoint;
 
+  // v2.31.100: CT-HOLDUP (B+1 hold-up on bidder offsuit lead). Cutthroat,
+  // I'm seat (B+1) — clockwise-after bidder, plays 2nd. Bidder led offsuit.
+  // If a LATER defender (B+2 or B+3) plausibly has trump, hold up: play
+  // lowest OFFSUIT instead of ruffing. Letting the later defender take the
+  // trick puts the bidder in 4th seat next — bidder's best position. Ruffing
+  // here lands the lead on me with bidder still in 2nd next trick (worse).
+  // Trust-fix shipped on intuitive-play grounds per v2.31.30 / v2.31.97 /
+  // v2.31.98 precedent (rig is symmetric, will be neutral).
+  if (cutthroat && player !== bidWinner && trick.length === 1 &&
+      leader === bidWinner && getTrumpRank(trick[0], trumpSuit) < 0 &&
+      ((player - bidWinner + 4) % 4) === 1) {
+    const _huOff = playable.filter(c => getTrumpRank(c, trumpSuit) < 0);
+    const _huTrump = playable.filter(c => getTrumpRank(c, trumpSuit) >= 0);
+    if (_huOff.length > 0 && _huTrump.length > 0) {
+      const _b2 = (bidWinner + 2) % 4;
+      const _b3 = (bidWinner + 3) % 4;
+      const _laterDefHasTrump =
+        (intel.players[_b2]?.estimatedTrumpRemaining || 0) >= 1 ||
+        (intel.players[_b3]?.estimatedTrumpRemaining || 0) >= 1;
+      if (_laterDefHasTrump) {
+        const _lowOff = _huOff.reduce((lo, c) =>
+          getOffSuitRank(c) < getOffSuitRank(lo) ? c : lo);
+        console.log(`🛑 CT-HOLDUP: P${player + 1} (B+1) holding up offsuit lead — later def has trump est, play ${_lowOff.id}`);
+        return _lowOff;
+      }
+    }
+  }
+
   // ========================================================================
   // DEFENDER CASH PROVABLY-BOSS A♥ (FIX v2.31.43)
   // ========================================================================
@@ -6582,6 +6610,31 @@ if (trick.length > 0) {
         _t.db.ref(`games/${_t.gameId}/c2Debug`).push(_c2payload).catch(() => {});
       }
     } catch (_e) { /* diagnostic must never break play */ }
+    // v2.31.100: CT-B3-TAKE (B+3 take on bidder offsuit lead). Cutthroat, I'm
+    // seat (B+3) — clockwise-before bidder, plays 4th (last). Bidder led
+    // offsuit. If I can win the trick with any card, TAKE IT with cheapest
+    // winner (trump if needed). Winning puts the bidder in 2nd seat next
+    // trick (worst position for them, two defenders play after). Fires
+    // BEFORE C2 so a fellow defender ruff doesn't block the over-trump —
+    // taking the trick FOR the coalition is the goal here. Skip when set
+    // is locked (no point burning trump). User-reported game UMTB8N trick 1.
+    if (leader === bidWinner && getTrumpRank(trick[0], trumpSuit) < 0 &&
+        ((player - bidWinner + 4) % 4) === 3 && !_setLk) {
+      const _b3winners = playable.filter(c => {
+        const _tt = [...trick, c];
+        while (_tt.length < 4) _tt.push(dummyPadCard(trumpSuit));
+        return determineTrickWinner(_tt, trumpSuit, leader) === player;
+      });
+      if (_b3winners.length > 0) {
+        const _b3cheap = _b3winners.reduce((best, c) => {
+          const r1 = getTrumpRank(c, trumpSuit) >= 0 ? getTrumpRank(c, trumpSuit) : getOffSuitRank(c);
+          const r2 = getTrumpRank(best, trumpSuit) >= 0 ? getTrumpRank(best, trumpSuit) : getOffSuitRank(best);
+          return r1 < r2 ? c : best;
+        });
+        console.log(`🗡 CT-B3-TAKE: P${player + 1} (B+3) taking bidder offsuit with ${_b3cheap.id}`);
+        return _b3cheap;
+      }
+    }
     // C2 — don't overtake a fellow defender (bidder must have already played).
     // v2.31.98: SKIP C2 when any opp is at game-point (>=110) — denying
     // their trick at all costs trumps the don't-overtake-defender rule.
@@ -7115,6 +7168,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.100', date: 'May 2026', changes: ['Cutthroat card-play: defenders now play positionally when the bidder leads OFFSUIT, based on a simple seat-aware principle — whoever wins this trick leads the next one, so the coalition wants the trick to land on whichever defender puts the bidder in the worst seat next time around. Two new rules. (1) The defender clockwise-AFTER the bidder (plays 2nd) now HOLDS UP — plays low offsuit instead of ruffing — when at least one of the two later defenders is estimated to still hold trump. Ruffing here would land the lead on you with the bidder still in 2nd next trick; holding up lets a later defender take the trick, which puts the bidder in 4th seat (bidder\'s best seat) — but more importantly stops the bidder dragging the lead through your hand. (2) The defender clockwise-BEFORE the bidder (plays 4th, last) now TAKES the trick with the cheapest card that wins (trump if needed), even if a fellow defender is already winning by ruffing. Winning here puts the bidder in 2nd seat next trick (worst possible — two defenders play after the bidder). User-reported game UMTB8N trick 1: bidder led 5♠, West ruffed with 4♥ (wrong — now holds up), East discarded 10♣ instead of taking with 2♥ (wrong — now takes). The B+3-take rule fires before the C2 "don\'t overtake fellow defender" guard, since the whole point of taking the trick at B+3 is to grab the lead FOR the coalition. Partner mode is bit-identical (both rules are gated on cutthroat=true).'] },
     { version: '2.31.99', date: 'May 2026', changes: ['Cutthroat stats expanded. The cutthroat stats panel now tracks more than just placements: it records how often you bid and how often you make those bids (broken out by 15 / 20 / 25 / 30 / bagged 15), perfect 30-point rounds, how often you got set as bidder, and points scored above your bid. Defending side: how many tricks you took as a defender, how many times you captured the high-trump bonus, and how many bidders you helped set. Game-shape distinctions: comeback wins, clean wins (never set in the game), fast wins (≤8 rounds), slow wins (≥12 rounds), shutout wins (no opponent finished at 60+), and demolition wins (an opponent finished at -30 or below). All of these feed a composite cutthroat score that now also shows on the cutthroat leaderboard as a small secondary number next to the average placement — the leaderboard is still sorted by average placement (lower is better), the score is just a richer flavor stat. Partner-mode stats and writes are bit-identical (every new write is inside the cutthroat branch). Cutthroat badges still on the queue for a future release.'] },
     { version: '2.31.98', date: 'May 2026', changes: ['Cutthroat: defender AI now over-trumps a fellow defender when the fellow defender is about to win a trick that wins them the game. Specifically: when any opponent is at 110 or more (one made trick or one high-trump-bonus trick from 120), the rules that normally tell defenders not to over-trump each other (C2 and the boss-cash priority) are temporarily disabled. The threat of the game ending overrides team-of-convenience etiquette. User-reported game HPP4OF: West was at 110, played A♥ on trick 1 with the high-trump bonus pending → would push W to 120 and win. North held the 5♠ (highest trump) but the v2.31.93 fellow-defender guard blocked the over-trump, so North played a low spade and West took the trick to win the game. With this fix, North\'s 5♠ takes the trick, West stays at 110, the round (and game) continues. The v2.31.93 fix for the OTHER direction (don\'t over-trump a fellow defender on a meaningless mid-trick) is preserved — the override only fires when an opp is at game-point.'] },
     { version: '2.31.97', date: 'May 2026', changes: ['Cutthroat AI now bags a threatening dealer instead of bidding 15 in front of them. When the dealer is an opponent at 100 or more points (one made-bagged-15 away from winning the game) and your hand would otherwise open at 15, the AI now passes — forcing the dealer to bag the 15 themselves. Bagged 15s set much more often in cutthroat than in partners (three coordinated defenders versus one partner cushion), so a bagged dealer at 100 most often drops to 85 and the rest of the table banks defender trick points. Exception (selfish mode): if you are also at 100 or more yourself, the AI bids the 15 normally — your own round win takes priority. Sim measures the change as aggregate-neutral but the 20-bid level is significantly cleaner; shipped on the same trust-the-AI-logic principle as the v2.31.30 endgame-lead-boss rule, because the dealer-bag is the human-expected play and not making it erodes confidence in the AI at zero net cost.'] },
