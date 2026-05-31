@@ -44,6 +44,7 @@ class Policy:
     cutthroat_force_loose_open: bool = False
     cutthroat_opp_has_dealer_always: bool = True
     cutthroat_desp_rule4_tight: bool = False
+    cutthroat_bag_threatening_dealer: bool = True
 
     def __init__(self, cutthroat: bool = False, ai_flags: dict = None,
                  name: str = None,
@@ -53,7 +54,8 @@ class Policy:
                  cutthroat_desp_tight_20: bool = False,
                  cutthroat_force_loose_open: bool = False,
                  cutthroat_opp_has_dealer_always: bool = True,
-                 cutthroat_desp_rule4_tight: bool = False):
+                 cutthroat_desp_rule4_tight: bool = False,
+                 cutthroat_bag_threatening_dealer: bool = True):
         # All args default-None/False so existing zero-arg `Policy()` callers
         # stay bit-identical. Subclasses that don't call super still work
         # because the class attrs above provide the defaults.
@@ -72,6 +74,7 @@ class Policy:
         self.cutthroat_force_loose_open = cutthroat_force_loose_open
         self.cutthroat_opp_has_dealer_always = cutthroat_opp_has_dealer_always
         self.cutthroat_desp_rule4_tight = cutthroat_desp_rule4_tight
+        self.cutthroat_bag_threatening_dealer = cutthroat_bag_threatening_dealer
         if ai_flags is not None:
             self.ai_flags = dict(ai_flags)
         if name is not None:
@@ -87,7 +90,7 @@ class Policy:
 
     def decide_bid(self, hand: List[Card], current_high_bid: int, player_index: int,
                     dealer: int, team_scores: int, opp_scores: int,
-                    partner_bid: int) -> Tuple[int, Optional[Suit]]:
+                    partner_bid: int, dealer_score: int = -1) -> Tuple[int, Optional[Suit]]:
         return bidding.decide_bid(hand, current_high_bid, player_index, dealer,
                                   team_scores, opp_scores, partner_bid,
                                   cutthroat=self.cutthroat,
@@ -104,7 +107,10 @@ class Policy:
                                   cutthroat_opp_has_dealer_always=
                                       self.cutthroat_opp_has_dealer_always,
                                   cutthroat_desp_rule4_tight=
-                                      self.cutthroat_desp_rule4_tight)
+                                      self.cutthroat_desp_rule4_tight,
+                                  cutthroat_bag_threatening_dealer=
+                                      self.cutthroat_bag_threatening_dealer,
+                                  dealer_score=dealer_score)
 
     def choose_discards(self, hand: List[Card], trump: Suit, is_bid_winner: bool,
                         bid_amount: int) -> List[Card]:

@@ -103,7 +103,9 @@ def decide_bid(hand: List[Card],
                 cutthroat_desp_tight_20: bool = False,
                 cutthroat_force_loose_open: bool = False,
                 cutthroat_opp_has_dealer_always: bool = False,
-                cutthroat_desp_rule4_tight: bool = False) -> Tuple[int, Optional[Suit]]:
+                cutthroat_desp_rule4_tight: bool = False,
+                cutthroat_bag_threatening_dealer: bool = False,
+                dealer_score: int = -1) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
     DATA-DERIVED, held-out-validated trigger (commit d19be47: 12k deals/cell
@@ -509,6 +511,35 @@ def decide_bid(hand: List[Card],
                                  and not hasAT and trump_count <= 2)
                 if p_J_alone_T12 or p_5_alone_T12:
                     bid = 0
+
+            # CUTTHROAT BAG-THREATENING-DEALER (SHIPPED v2.31.97 as the
+            # human-expected play). When the DEALER is an opp at >=100 (5
+            # from winning a made bagged 15) AND my natural bid is 15,
+            # PASS so the dealer is forced to bag — bagged 15s set much
+            # more often in cutthroat than partner mode (3 coordinated
+            # defenders vs 1 partner cushion), and a set dealer at 100
+            # drops to 85 while I bank ~10 defender trick pts.
+            #
+            # Symmetric rig (v2.31.96 baseline): primary 20k Δ -0.11pt
+            # z=-0.86 / held-out 30k Δ -0.11pt z=-1.06 — aggregate
+            # RIG-NEUTRAL. 20-bid level replicated significant (-0.70 /
+            # -0.69 z=-2.5 / -3.0); 15-bid level slight +0.10 (forced
+            # bagged 15s bust more often than the voluntary 15s they
+            # replace). Shipped on the v2.31.30 trust-fix precedent: the
+            # rig measures self-vs-self symmetric play where everyone
+            # forces-the-bag, neutralizing the local EV; against humans
+            # the dealer-bag is the expected line and not making it
+            # erodes trust in the AI. zero measured net cost.
+            #
+            # Selfish exception: when we_need <= 20 (I'm at >=100 myself,
+            # trying to win the round), bid normally — at 105 a made 15
+            # wins me the game.
+            if (cutthroat and cutthroat_bag_threatening_dealer
+                    and bid == 15 and opp_has_dealer
+                    and dealer_score >= 100 and dealer_score < 120
+                    and we_need > 20 and current_high_bid == 0
+                    and player_index != dealer):
+                bid = 0
 
     # CUTTHROAT ALLOW 5+AH+AT-no-J → 25 (opt-in challenger flag, cutthroat-
     # only). Derived from a robr bidLogCutthroat divergence: he bid 25 on a

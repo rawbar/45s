@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.96';
+const VERSION = '2.31.97';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5079,7 +5079,7 @@ function chooseTrumpSuit(hand) {
 const AUTO15_PASS_PROB = 0.5;
 const DESP25_PASS_PROB = 0.5;
 
-function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid, _noSpoiler = false, partnerIsHuman = false, cutthroat = false, bidderScore = null) {
+function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppScores, partnerBid, _noSpoiler = false, partnerIsHuman = false, cutthroat = false, bidderScore = null, dealerScore = -1) {
   // v2.31.78: bidderScore = score of the player who CURRENTLY holds the bid.
   // In partner mode this equals oppScores (the bidder is on the opposing team).
   // In cutthroat this is the bidder's OWN score — a leader at 100 with the
@@ -5495,6 +5495,26 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
       else if (hasAH && hasAT && trumpCount >= 3) bid = 15; // AH + AT + 1 more
       else if (hasAH && hasKT && trumpCount >= 3) bid = 15; // AH + KT + 1 more
       else if (hasAT && hasKT && hasQT) bid = 15;           // AT + KT + QT (3 face cards)
+    }
+
+    // CUTTHROAT BAG-THREATENING-DEALER (v2.31.97). When DEALER is an opp
+    // at >=100 (5 from winning a made bagged 15), pass even on a natural
+    // 15-bid to force the dealer into bagging — bagged 15s set far more
+    // often in cutthroat (3 coordinated defenders) than partner mode,
+    // and a set dealer at 100 drops to 85 while I bank ~10 defender
+    // trick pts. Selfish exception: if I'm at >=100 myself (weNeed<=20)
+    // I might want this round's win — bid normally then.
+    //
+    // Rig measured aggregate-neutral (Δ -0.11pt z=-1.0 primary +
+    // held-out), 20-bid level significantly positive both runs
+    // (-0.70/-0.69 z=-2.5/-3.0). Shipped per v2.31.30 trust-fix
+    // precedent: the human-expected play in this regime is to bag the
+    // dealer; the AI not making the bag erodes trust at zero net cost.
+    if (cutthroat && bid === 15 && currentHighBid === 0
+        && playerIndex !== dealer && weNeed > 20
+        && typeof dealerScore === 'number' && dealerScore >= 100 && dealerScore < 120) {
+      console.log(`🪤 CUTTHROAT BAG-DEALER: dealer P${dealer + 1} at ${dealerScore}, passing my natural 15 to force the bag`);
+      bid = 0;
     }
   }
 
@@ -7075,6 +7095,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.97', date: 'May 2026', changes: ['Cutthroat AI now bags a threatening dealer instead of bidding 15 in front of them. When the dealer is an opponent at 100 or more points (one made-bagged-15 away from winning the game) and your hand would otherwise open at 15, the AI now passes — forcing the dealer to bag the 15 themselves. Bagged 15s set much more often in cutthroat than in partners (three coordinated defenders versus one partner cushion), so a bagged dealer at 100 most often drops to 85 and the rest of the table banks defender trick points. Exception (selfish mode): if you are also at 100 or more yourself, the AI bids the 15 normally — your own round win takes priority. Sim measures the change as aggregate-neutral but the 20-bid level is significantly cleaner; shipped on the same trust-the-AI-logic principle as the v2.31.30 endgame-lead-boss rule, because the dealer-bag is the human-expected play and not making it erodes confidence in the AI at zero net cost.'] },
     { version: '2.31.96', date: 'May 2026', changes: ['Clicking a player on the cutthroat leaderboard now opens a dedicated cutthroat stats panel instead of the partner-mode one. The cutthroat panel shows games played, average placement (1.00 best, 4.00 worst), the four placement counts with their percentages (1st through 4th), best 1st-place streak, and your highest single-game score. Partner-mode badges and bid-make breakdowns are not displayed because they would all read as zero for cutthroat games (the schemas are tracked separately). Dedicated cutthroat badges are still in the queue for a later release. Partner-mode leaderboard click is unchanged.'] },
     { version: '2.31.95', date: 'May 2026', changes: ['Bug fix: when reopening the browser onto a finished game and then starting a new game, the new game would sometimes launch with NONE of your saved house rules enabled, even though all three were checked in your preferences. Cause was a race between Firebase loading your saved prefs and the Create Game modal pre-fill: the pre-fill ran once when the modal opened and never re-ran when the prefs finally arrived, so the options stayed stuck at the initial all-false defaults. The pre-fill now also re-fires whenever the saved prefs change, so the modal catches up to the real settings as soon as they load. No effect on games already created with the right options.'] },
     { version: '2.31.94', date: 'May 2026', changes: ['Show Hands (Round Summary) modal now displays the game ID next to the version string in the title — e.g., "Round Summary · Cutthroat v2.31.94 · 5BPG5V". This is so when you screenshot a round and report a strange AI play, the game ID is captured in the same image and the saved Firebase diagnostic logs for that exact game can be looked up instantly. Cosmetic addition only — no gameplay change.'] },
@@ -15621,7 +15642,12 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         bidderScore = oppScores;
       }
 
-      const bidResult = decideBid(hand, highBid, currentPlayer, dealer, teamScores, oppScores, partnerBid, false, partnerIsHuman, isCutthroat, bidderScore);
+      // v2.31.97: pass dealer's per-seat score so the bag-threatening-
+      // dealer rule can fire in cutthroat. Partner mode unused (passes
+      // -1) — the new param is gated on cutthroat inside decideBid.
+      const dealerScore = (isCutthroat && playerScores && typeof playerScores[dealer] === 'number')
+        ? playerScores[dealer] : -1;
+      const bidResult = decideBid(hand, highBid, currentPlayer, dealer, teamScores, oppScores, partnerBid, false, partnerIsHuman, isCutthroat, bidderScore, dealerScore);
       let bid = bidResult.bid;
       console.log('🎲 AI decideBid result:', bidResult)
       

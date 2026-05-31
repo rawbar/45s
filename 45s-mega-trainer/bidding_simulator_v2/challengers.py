@@ -650,6 +650,57 @@ class CutthroatDespRule4Tight(Policy):
 REGISTRY["cutthroat-desp-rule4-tight"] = CutthroatDespRule4Tight()
 
 
+# CUTTHROAT BAG-THREATENING-DEALER (SHIPPED v2.31.97; now champion
+# default). User-derived from screenshot 2026-05-30: E at 100 +
+# dealer, W bid 15♣ on its own natural 15 hand instead of passing
+# to force E into a bagged 15.
+#
+# Rule: when cutthroat AND dealer is opp at >=100 AND natural bid
+# would be 15 AND we_need > 20 (do not pass if I myself am at >=100
+# and could win the round) AND current_high_bid == 0 → demote to PASS.
+#
+# Rig (the pre-ship measurement, A=champion-cutthroat with rule OFF
+# vs B=this challenger with rule ON):
+#   primary  20k seed-base=0       Δ=-0.11pt z=-0.86 not significant
+#                                  20-bid level Δ=-0.70pt z=-2.45
+#                                  15-bid level Δ=+0.10pt z=+0.68
+#   held-out 30k seed-base=5000000 Δ=-0.11pt z=-1.06 not significant
+#                                  20-bid level Δ=-0.69pt z=-2.99 (rep)
+#                                  15-bid level Δ=+0.10pt z=+0.81
+#
+# Aggregate rig-NEUTRAL but shipped per the v2.31.30 trust-fix
+# precedent — the human-expected play is to bag a threatening dealer;
+# not making the bag erodes AI-logic trust. Per-bid-level signal at
+# 20 is real and replicated; per-bid-level offset at 15 (forced
+# bagged-15s bust more than the voluntary 15s they replace) cancels
+# the 20 gain in aggregate but neither side is a measured loss.
+class CutthroatBagThreateningDealer(Policy):
+    name = "cutthroat-bag-threatening-dealer"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_bag_threatening_dealer=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-bag-threatening-dealer"] = CutthroatBagThreateningDealer()
+
+
+# ABLATION: champion-cutthroat WITHOUT the v2.31.97 bag-threatening-
+# dealer rule. Use this as the regression baseline if future cutthroat
+# work appears to change the rule's measured effect.
+class CutthroatBagThreateningDealerOff(Policy):
+    name = "cutthroat-bag-threatening-dealer-off"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_bag_threatening_dealer=False,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-bag-threatening-dealer-off"] = CutthroatBagThreateningDealerOff()
+
+
 # CUTTHROAT COALITION (opt-in challengers; champion-cutthroat default OFF).
 # Two coordinated defender rules — see improved_ai.py for the gates:
 #   C1 (cutthroat_c1_take_from_bidder): defender following, BIDDER currently

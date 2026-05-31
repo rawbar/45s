@@ -87,7 +87,8 @@ def play_game_cutthroat_with_per_seat_stats(seat_policy: List[Policy],
             os_ = max(scores[(p + 1) % 4], scores[(p + 2) % 4],
                       scores[(p + 3) % 4])
             b, s = seat_policy[p].decide_bid(hands[p], high_bid, p, dealer,
-                                             ts, os_, 0)
+                                             ts, os_, 0,
+                                             dealer_score=scores[dealer])
             bids[p] = b
             suits[p] = s
             if b > high_bid:
