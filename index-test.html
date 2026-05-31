@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.98';
+const VERSION = '2.31.99';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7115,6 +7115,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.99', date: 'May 2026', changes: ['Cutthroat stats expanded. The cutthroat stats panel now tracks more than just placements: it records how often you bid and how often you make those bids (broken out by 15 / 20 / 25 / 30 / bagged 15), perfect 30-point rounds, how often you got set as bidder, and points scored above your bid. Defending side: how many tricks you took as a defender, how many times you captured the high-trump bonus, and how many bidders you helped set. Game-shape distinctions: comeback wins, clean wins (never set in the game), fast wins (≤8 rounds), slow wins (≥12 rounds), shutout wins (no opponent finished at 60+), and demolition wins (an opponent finished at -30 or below). All of these feed a composite cutthroat score that now also shows on the cutthroat leaderboard as a small secondary number next to the average placement — the leaderboard is still sorted by average placement (lower is better), the score is just a richer flavor stat. Partner-mode stats and writes are bit-identical (every new write is inside the cutthroat branch). Cutthroat badges still on the queue for a future release.'] },
     { version: '2.31.98', date: 'May 2026', changes: ['Cutthroat: defender AI now over-trumps a fellow defender when the fellow defender is about to win a trick that wins them the game. Specifically: when any opponent is at 110 or more (one made trick or one high-trump-bonus trick from 120), the rules that normally tell defenders not to over-trump each other (C2 and the boss-cash priority) are temporarily disabled. The threat of the game ending overrides team-of-convenience etiquette. User-reported game HPP4OF: West was at 110, played A♥ on trick 1 with the high-trump bonus pending → would push W to 120 and win. North held the 5♠ (highest trump) but the v2.31.93 fellow-defender guard blocked the over-trump, so North played a low spade and West took the trick to win the game. With this fix, North\'s 5♠ takes the trick, West stays at 110, the round (and game) continues. The v2.31.93 fix for the OTHER direction (don\'t over-trump a fellow defender on a meaningless mid-trick) is preserved — the override only fires when an opp is at game-point.'] },
     { version: '2.31.97', date: 'May 2026', changes: ['Cutthroat AI now bags a threatening dealer instead of bidding 15 in front of them. When the dealer is an opponent at 100 or more points (one made-bagged-15 away from winning the game) and your hand would otherwise open at 15, the AI now passes — forcing the dealer to bag the 15 themselves. Bagged 15s set much more often in cutthroat than in partners (three coordinated defenders versus one partner cushion), so a bagged dealer at 100 most often drops to 85 and the rest of the table banks defender trick points. Exception (selfish mode): if you are also at 100 or more yourself, the AI bids the 15 normally — your own round win takes priority. Sim measures the change as aggregate-neutral but the 20-bid level is significantly cleaner; shipped on the same trust-the-AI-logic principle as the v2.31.30 endgame-lead-boss rule, because the dealer-bag is the human-expected play and not making it erodes confidence in the AI at zero net cost.'] },
     { version: '2.31.96', date: 'May 2026', changes: ['Clicking a player on the cutthroat leaderboard now opens a dedicated cutthroat stats panel instead of the partner-mode one. The cutthroat panel shows games played, average placement (1.00 best, 4.00 worst), the four placement counts with their percentages (1st through 4th), best 1st-place streak, and your highest single-game score. Partner-mode badges and bid-make breakdowns are not displayed because they would all read as zero for cutthroat games (the schemas are tracked separately). Dedicated cutthroat badges are still in the queue for a later release. Partner-mode leaderboard click is unchanged.'] },
@@ -9309,6 +9310,29 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       + (stats.badgeScore || 0);
   };
 
+  // v2.31.99 — cutthroat composite score. Placements drive most of the
+  // signal (1st = 100, 2nd = 30, 3rd = 10, 4th = -5); bidding success and
+  // game-shape distinctions add seasoning. Used as a secondary display
+  // number on the leaderboard (sort is still avg placement) and as the
+  // headline score in the cutthroat stats modal.
+  const computePlayerScoreCutthroat = (stats) => {
+    if (!stats) return 0;
+    return ((stats.firstPlace || 0) * 100)
+      + ((stats.secondPlace || 0) * 30)
+      + ((stats.thirdPlace || 0) * 10)
+      - ((stats.fourthPlace || 0) * 5)
+      + ((stats.bid30Made || 0) * 10)
+      + ((stats.bid25Made || 0) * 5)
+      + ((stats.bid20Made || 0) * 2)
+      + ((stats.baggedBidMade || 0) * 1)
+      + ((stats.perfect30s || 0) * 5)
+      + (stats.exceedBidPoints || 0)
+      + ((stats.comebackWins || 0) * 15)
+      + ((stats.cleanWins || 0) * 5)
+      + ((stats.bestStreakFirst || 0) * 5)
+      - ((stats.timesSet || 0) * 3);
+  };
+
   // Fetch leaderboard data (silent: just loads data, no modal)
   const fetchLeaderboardData = async () => {
     setLeaderboardLoading(true);
@@ -9366,6 +9390,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           fourthPlace: ct.fourthPlace || 0,
           bestStreakFirst: ct.bestStreakFirst || 0,
           highestScore: ct.highestScore || 0,
+          score: computePlayerScoreCutthroat(ct),    // v2.31.99 secondary display
           lastSeen: ct.lastPlayed || null,
         });
       }
@@ -10074,6 +10099,11 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               <span className={isCyberpunk ? 'cp-lb-score' : 'irlb-lb-score'}>{avgPlaceStr}</span>
               <span className={isCyberpunk ? 'cp-lb-pts-label' : 'irlb-lb-pts-label'}>avg</span>
             </div>
+            {typeof player.score === 'number' && (
+              <div style={{ fontSize: '10px', color: isCyberpunk ? 'rgba(0,229,255,0.6)' : 'rgba(201,162,74,0.7)', fontFamily: isCyberpunk ? "'Share Tech Mono',monospace" : "'Cinzel',serif", letterSpacing: '0.5px' }}>
+                · {player.score.toLocaleString()} pts
+              </div>
+            )}
           </div>
         </div>
       );
@@ -10581,6 +10611,29 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               <div style={{ fontSize: big ? '22px' : '16px', fontWeight: 800, color: big ? accent : '#e8e4d9', fontFamily: titleFont, lineHeight: 1 }}>{value}</div>
             </div>
           );
+          // v2.31.99 — section heading (small uppercase divider)
+          const sectionHeader = (label) => (
+            <div style={{ fontSize: '10px', color: accent2, fontFamily: bodyFont, letterSpacing: '2px', textTransform: 'uppercase', margin: '14px 0 6px', borderBottom: isCp ? '1px solid rgba(0,229,255,0.18)' : '1px solid rgba(201,162,74,0.18)', paddingBottom: '3px' }}>{label}</div>
+          );
+          // v2.31.99 — narrow stat-row (label left, value right). Only renders if cond is true.
+          const statRow = (label, value, cond = true) => cond ? (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '4px 2px', fontSize: '12px', fontFamily: bodyFont, color: '#e8e4d9' }}>
+              <span style={{ color: 'rgba(232,228,217,0.7)' }}>{label}</span>
+              <span style={{ fontFamily: titleFont, fontWeight: 700, color: accent }}>{value}</span>
+            </div>
+          ) : null;
+          const ctScoreVal = computePlayerScoreCutthroat(s);
+          const bidsAtt = s.bidsAttempted || 0;
+          const bidsMade = s.bidsMade || 0;
+          const bidsRatio = bidsAtt > 0 ? `${bidsMade} / ${bidsAtt} · ${Math.round((bidsMade / bidsAtt) * 100)}%` : `${bidsMade}`;
+          const distinctions = [
+            ['Comebacks', s.comebackWins || 0],
+            ['Clean Wins (never set)', s.cleanWins || 0],
+            ['Fast Wins (≤8 rounds)', s.fastWins || 0],
+            ['Slow Wins (≥12 rounds)', s.slowWins || 0],
+            ['Shutout Wins', s.shutoutWins || 0],
+            ['Demolitions', s.demolitionWins || 0],
+          ].filter(([, n]) => n > 0);
           return (
             <div onClick={() => setShowCtStatsModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, padding: '16px' }}>
               <div onClick={e => e.stopPropagation()} style={{ background: bg, border, borderRadius: isCp ? '4px' : '12px', padding: '20px', maxWidth: '380px', width: '100%', color: '#e8e4d9', boxShadow: '0 8px 32px rgba(0,0,0,0.7)' }}>
@@ -10615,6 +10668,30 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       {card('Best 1st Streak', s.bestStreakFirst || 0)}
                       {card('Highest Score', s.highestScore || 0)}
+                    </div>
+                    {/* v2.31.99 Phase 2 — Bidding */}
+                    {sectionHeader('Bidding')}
+                    {statRow('Bids Made', bidsRatio)}
+                    {statRow('Bid 15', s.bid15Made || 0, (s.bid15Made || 0) > 0)}
+                    {statRow('Bid 20', s.bid20Made || 0, (s.bid20Made || 0) > 0)}
+                    {statRow('Bid 25', s.bid25Made || 0, (s.bid25Made || 0) > 0)}
+                    {statRow('Bid 30', s.bid30Made || 0, (s.bid30Made || 0) > 0)}
+                    {statRow('Bagged 15s Made', s.baggedBidMade || 0, (s.baggedBidMade || 0) > 0)}
+                    {statRow('Perfect 30s', s.perfect30s || 0, (s.perfect30s || 0) > 0)}
+                    {statRow('Times Set', s.timesSet || 0, (s.timesSet || 0) > 0)}
+                    {/* v2.31.99 Phase 2 — Defending */}
+                    {sectionHeader('Defending')}
+                    {statRow('Defender Tricks', s.defenderTricks || 0)}
+                    {statRow('High-Trump Captured', s.defenderHighTrumpTaken || 0)}
+                    {statRow('Bidders Set', s.timesOppSet || 0)}
+                    {/* v2.31.99 Phase 2 — Distinctions (only nonzero rows) */}
+                    {distinctions.length > 0 && sectionHeader('Distinctions')}
+                    {distinctions.map(([lbl, n]) => statRow(lbl, n))}
+                    {/* v2.31.99 — Composite Score */}
+                    {sectionHeader('Score')}
+                    <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
+                      <span style={{ fontFamily: titleFont, fontSize: '26px', fontWeight: 800, color: accent }}>{ctScoreVal.toLocaleString()}</span>
+                      <span style={{ fontFamily: bodyFont, fontSize: '11px', color: accent2, marginLeft: '6px', letterSpacing: '1px' }}>pts</span>
                     </div>
                   </>
                 )}
@@ -14496,6 +14573,24 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   // Phase 3 (v2.31.61) — per-trick badges
   const gameTrumpDrainerRef = useRef(0);           // trump_drainer — bidder led trump 3+ tricks AND won all
   const gameSettersTouchRef = useRef(0);           // setters_touch — defender, took trick that locked set on 25+ bid
+  // v2.31.99 — cutthroat Phase 2 stat refs. Mirror partner-mode counters but
+  // increment only when gameOptions.cutthroat is true. Applied to
+  // statsCutthroat in the game-over cutthroat branch. Partner-mode write
+  // path is bit-identical (these never read in partner mode).
+  const wasSetThisGameCt = useRef(false);
+  const gameCtBidsAttemptedRef = useRef(false);    // I was ever bidder in this CT game
+  const gameCtBidsMadeRef = useRef(0);
+  const gameCtBid15MadeRef = useRef(0);
+  const gameCtBid20MadeRef = useRef(0);
+  const gameCtBid25MadeRef = useRef(0);
+  const gameCtBid30MadeRef = useRef(0);
+  const gameCtBaggedBidMadeRef = useRef(0);
+  const gameCtPerfect30sRef = useRef(0);
+  const gameCtExceedBidPtsRef = useRef(0);
+  const gameCtTimesSetRef = useRef(0);
+  const gameCtDefenderTricksRef = useRef(0);       // tricks I won as a defender
+  const gameCtDefenderHighTrumpTakenRef = useRef(0); // rounds I took +5 high-trump as defender
+  const gameCtTimesOppSetRef = useRef(0);          // rounds I was defender and bidder got set
   // Per-round refs (reset on phase==='playing' transition)
   const roundMyTrumpLeads = useRef(0);
   const roundMyTrumpWins = useRef(0);
@@ -14550,6 +14645,21 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     gameFinalStandRef.current = 0;
     gameTrumpDrainerRef.current = 0;
     gameSettersTouchRef.current = 0;
+    // v2.31.99 cutthroat Phase 2 resets
+    wasSetThisGameCt.current = false;
+    gameCtBidsAttemptedRef.current = false;
+    gameCtBidsMadeRef.current = 0;
+    gameCtBid15MadeRef.current = 0;
+    gameCtBid20MadeRef.current = 0;
+    gameCtBid25MadeRef.current = 0;
+    gameCtBid30MadeRef.current = 0;
+    gameCtBaggedBidMadeRef.current = 0;
+    gameCtPerfect30sRef.current = 0;
+    gameCtExceedBidPtsRef.current = 0;
+    gameCtTimesSetRef.current = 0;
+    gameCtDefenderTricksRef.current = 0;
+    gameCtDefenderHighTrumpTakenRef.current = 0;
+    gameCtTimesOppSetRef.current = 0;
     setGameTimesSet(0);
     setGamePerfect30s(0);
     setGameBid30Made(0);
@@ -14589,7 +14699,10 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         // users/{uid}/statsCutthroat for each human seat. Partner-mode
         // stats / badges remain untouched (their schema makes no sense
         // for a 4-way FFA — placements 1..4 vs a binary win/lose).
-        // Badges for cutthroat are Phase 2; this just lands the stats.
+        // v2.31.99 Phase 2: additionally write per-bidder, per-defender,
+        // and per-game-shape counters for the "me" seat (the seat refs
+        // were tracked against). Other human seats at the table still
+        // only get placement-based fields written.
         const pScores = (gameState.playerScores || [0, 0, 0, 0]).slice();
         // Placement: sort seat indices by score desc, ties broken by
         // seat-index asc (matches the game-over modal's existing
@@ -14598,6 +14711,23 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           .sort((a, b) => (pScores[b] || 0) - (pScores[a] || 0) || a - b);
         const placementBySeat = [0, 0, 0, 0];
         seatOrder.forEach((seat, idx) => { placementBySeat[seat] = idx + 1; });
+        // Game-shape stats for "me" — derived from history (per-round
+        // playerTotals arrays, stamped at round-end in cutthroat).
+        const ctHist = gameState.history || [];
+        const ctRoundsPlayed = ctHist.length;
+        let ctMyComebackEligible = false;
+        for (const h of ctHist) {
+          const totals = Array.isArray(h.playerTotals) ? h.playerTotals : null;
+          if (!totals) continue;
+          const myT = totals[mySeatIndex] || 0;
+          const oppMax = totals.reduce((mx, t, i) =>
+            (i === mySeatIndex ? mx : Math.max(mx, t || 0)), 0);
+          if (myT <= 55 && oppMax >= 90) { ctMyComebackEligible = true; break; }
+        }
+        const myFinalScoreCt = pScores[mySeatIndex] || 0;
+        const oppFinalsCt = [0, 1, 2, 3].filter(i => i !== mySeatIndex).map(i => pScores[i] || 0);
+        const oppMaxFinalCt = oppFinalsCt.reduce((mx, s) => Math.max(mx, s), Number.NEGATIVE_INFINITY);
+        const oppMinFinalCt = oppFinalsCt.reduce((mn, s) => Math.min(mn, s), Number.POSITIVE_INFINITY);
         console.log('🗡 CUTTHROAT stats — placements:', placementBySeat,
                     'scores:', pScores);
 
@@ -14606,6 +14736,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           const seatIdx = SEAT_TO_INDEX[seatKey];
           const placement = placementBySeat[seatIdx];
           const myFinalScore = pScores[seatIdx] || 0;
+          const isMeCt = player.userId === userId;
           const ctRef = database.ref(`users/${player.userId}/statsCutthroat`);
           ctRef.transaction((prev) => {
             const s = prev || {
@@ -14638,6 +14769,34 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               s.highestScore = myFinalScore;
             }
             s.lastPlayed = Date.now();
+            // v2.31.99 Phase 2 — extended counters only for "me" (the seat
+            // whose per-round refs we tracked). Other human seats at the
+            // table get their own ref-tracked values on their own clients.
+            if (isMeCt) {
+              if (gameCtBidsAttemptedRef.current) {
+                s.bidsAttempted = (s.bidsAttempted || 0) + 1;
+              }
+              if (gameCtBidsMadeRef.current > 0) s.bidsMade = (s.bidsMade || 0) + gameCtBidsMadeRef.current;
+              if (gameCtBid15MadeRef.current > 0) s.bid15Made = (s.bid15Made || 0) + gameCtBid15MadeRef.current;
+              if (gameCtBid20MadeRef.current > 0) s.bid20Made = (s.bid20Made || 0) + gameCtBid20MadeRef.current;
+              if (gameCtBid25MadeRef.current > 0) s.bid25Made = (s.bid25Made || 0) + gameCtBid25MadeRef.current;
+              if (gameCtBid30MadeRef.current > 0) s.bid30Made = (s.bid30Made || 0) + gameCtBid30MadeRef.current;
+              if (gameCtBaggedBidMadeRef.current > 0) s.baggedBidMade = (s.baggedBidMade || 0) + gameCtBaggedBidMadeRef.current;
+              if (gameCtPerfect30sRef.current > 0) s.perfect30s = (s.perfect30s || 0) + gameCtPerfect30sRef.current;
+              if (gameCtExceedBidPtsRef.current > 0) s.exceedBidPoints = (s.exceedBidPoints || 0) + gameCtExceedBidPtsRef.current;
+              if (gameCtTimesSetRef.current > 0) s.timesSet = (s.timesSet || 0) + gameCtTimesSetRef.current;
+              if (gameCtDefenderTricksRef.current > 0) s.defenderTricks = (s.defenderTricks || 0) + gameCtDefenderTricksRef.current;
+              if (gameCtDefenderHighTrumpTakenRef.current > 0) s.defenderHighTrumpTaken = (s.defenderHighTrumpTaken || 0) + gameCtDefenderHighTrumpTakenRef.current;
+              if (gameCtTimesOppSetRef.current > 0) s.timesOppSet = (s.timesOppSet || 0) + gameCtTimesOppSetRef.current;
+              if (placement === 1) {
+                if (ctMyComebackEligible) s.comebackWins = (s.comebackWins || 0) + 1;
+                if (!wasSetThisGameCt.current) s.cleanWins = (s.cleanWins || 0) + 1;
+                if (ctRoundsPlayed <= 8) s.fastWins = (s.fastWins || 0) + 1;
+                if (ctRoundsPlayed >= 12) s.slowWins = (s.slowWins || 0) + 1;
+                if (Number.isFinite(oppMaxFinalCt) && oppMaxFinalCt < 60) s.shutoutWins = (s.shutoutWins || 0) + 1;
+                if (Number.isFinite(oppMinFinalCt) && oppMinFinalCt <= -30) s.demolitionWins = (s.demolitionWins || 0) + 1;
+              }
+            }
             return s;
           }).catch(err => console.warn('statsCutthroat write failed:', err));
         });
@@ -15394,6 +15553,14 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
     }
     
     console.log(`✅ P${mySeatIndex + 1} (${getPlayerName(mySeatIndex)}) bids ${bidAmount}`);
+
+    // v2.31.99 cutthroat — mark seat as having bid this game (non-pass only),
+    // so statsCutthroat.bidsAttempted increments at game-over only when the
+    // seat actually attempted at least one bid (mirrors how bidsMade is
+    // counted). Passes don't count as attempts.
+    if (gameOptions?.cutthroat && bidAmount > 0) {
+      gameCtBidsAttemptedRef.current = true;
+    }
 
     // Per-player BID decision logging (fire-and-forget, fully guarded — must
     // NEVER affect gameplay). Captures the exact PRE-bid state + game-context
@@ -16300,9 +16467,14 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       
       const newPlayerTricks = [...playerTricks];
       newPlayerTricks[winner]++;
-      
+
       const newRoundPts = [...roundPts];
       newRoundPts[winnerTeam] += 5;
+
+      // v2.31.99 cutthroat Phase 2 — defender-trick tally (per-trick).
+      if (gameOptions?.cutthroat && winner === mySeatIndex && mySeatIndex !== bidWinner) {
+        gameCtDefenderTricksRef.current += 1;
+      }
 
       // Phase 3 per-trick badge increments (host's POV)
       {
@@ -16540,6 +16712,40 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           }
           console.log('🗡 CUTTHROAT scores after round:', newPlayerScores,
             'roundPts:', playerRoundPts, 'bidder:', bidWinner, 'made:', playerRoundPts[bidWinner] >= highBid);
+        }
+
+        // v2.31.99 cutthroat Phase 2 — per-round stat tracking. Mirrors the
+        // partner-mode bidder/defender increments above but resolves "I am
+        // bidder" / "I am defender" via seat identity (no team concept).
+        if (gameOptions.cutthroat) {
+          const bidderMadeCt = playerRoundPts[bidWinner] >= highBid;
+          const iAmBidderCt = bidWinner === mySeatIndex;
+          const iAmDefenderCt = !iAmBidderCt;
+          if (iAmBidderCt) {
+            if (bidderMadeCt) {
+              gameCtBidsMadeRef.current += 1;
+              const myRoundPts = playerRoundPts[mySeatIndex];
+              const excessCt = myRoundPts - highBid;
+              if (excessCt > 0) gameCtExceedBidPtsRef.current += excessCt;
+              if (highBid === 30) gameCtBid30MadeRef.current += 1;
+              else if (highBid === 25) gameCtBid25MadeRef.current += 1;
+              else if (highBid === 20) gameCtBid20MadeRef.current += 1;
+              else if (highBid === 15) {
+                if (wasBagged) gameCtBaggedBidMadeRef.current += 1;
+                else gameCtBid15MadeRef.current += 1;
+              }
+              if (myRoundPts >= 30 && highBid < 30) gameCtPerfect30sRef.current += 1;
+            } else {
+              gameCtTimesSetRef.current += 1;
+              wasSetThisGameCt.current = true;
+            }
+          }
+          if (iAmDefenderCt) {
+            if (!bidderMadeCt) gameCtTimesOppSetRef.current += 1;
+            if (newHighTrumpInfo.rank >= 0 && newHighTrumpInfo.player === mySeatIndex) {
+              gameCtDefenderHighTrumpTakenRef.current += 1;
+            }
+          }
         }
 
         // Build new history array (will sync to Firebase, then to local state).
@@ -17072,10 +17278,15 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         
         const newPlayerTricks = [...playerTricks];
         newPlayerTricks[winner]++;
-        
+
         const newRoundPts = [...roundPts];
         newRoundPts[winnerTeam] += 5;
-        
+
+        // v2.31.99 cutthroat Phase 2 — defender-trick tally (AI-last-card path).
+        if (gameOptions?.cutthroat && winner === mySeatIndex && mySeatIndex !== bidWinner) {
+          gameCtDefenderTricksRef.current += 1;
+        }
+
         if (trickNum + 1 >= 5) {
           console.log('🎮 AI: Round complete!');
           
@@ -17165,6 +17376,40 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 playerScoreDeltas[p] = playerRoundPts[p];
               }
               newPlayerScores[p] += playerScoreDeltas[p];
+            }
+          }
+
+          // v2.31.99 cutthroat Phase 2 — per-round stat tracking (mirror of
+          // human-completes-last-card path; fires here when AI plays the
+          // final card of the round).
+          if (gameOptions.cutthroat) {
+            const bidderMadeCt = playerRoundPts[bidWinner] >= highBid;
+            const iAmBidderCt = bidWinner === mySeatIndex;
+            const iAmDefenderCt = !iAmBidderCt;
+            if (iAmBidderCt) {
+              if (bidderMadeCt) {
+                gameCtBidsMadeRef.current += 1;
+                const myRoundPts = playerRoundPts[mySeatIndex];
+                const excessCt = myRoundPts - highBid;
+                if (excessCt > 0) gameCtExceedBidPtsRef.current += excessCt;
+                if (highBid === 30) gameCtBid30MadeRef.current += 1;
+                else if (highBid === 25) gameCtBid25MadeRef.current += 1;
+                else if (highBid === 20) gameCtBid20MadeRef.current += 1;
+                else if (highBid === 15) {
+                  if (wasBagged) gameCtBaggedBidMadeRef.current += 1;
+                  else gameCtBid15MadeRef.current += 1;
+                }
+                if (myRoundPts >= 30 && highBid < 30) gameCtPerfect30sRef.current += 1;
+              } else {
+                gameCtTimesSetRef.current += 1;
+                wasSetThisGameCt.current = true;
+              }
+            }
+            if (iAmDefenderCt) {
+              if (!bidderMadeCt) gameCtTimesOppSetRef.current += 1;
+              if (newHighTrumpInfo.rank >= 0 && newHighTrumpInfo.player === mySeatIndex) {
+                gameCtDefenderHighTrumpTakenRef.current += 1;
+              }
             }
           }
 
