@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.97';
+const VERSION = '2.31.98';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5768,7 +5768,7 @@ function _ctMadeLocked(playerTricks, highTrumpPlayer, bidWinner, highBid) {
   return _ctBidderRoundPts(playerTricks, highTrumpPlayer, bidWinner) >= highBid;
 }
 
-function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, highBid, cardsDrawn, knownOutOfTrump, trickNum, bidderHasLostTrick, cardsPlayed, playHistory, knownVoids, gameOptions, playerTricks, highTrumpPlayer) {
+function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, highBid, cardsDrawn, knownOutOfTrump, trickNum, bidderHasLostTrick, cardsPlayed, playHistory, knownVoids, gameOptions, playerTricks, highTrumpPlayer, playerScores = null) {
   const led = trick[0] || null;
   const ledSuit = led?.suit;
   const playable = getPlayableCards(hand, trumpSuit, led, ledSuit);
@@ -5831,9 +5831,27 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   // not the bidder — otherwise we over-trump a fellow defender, the exact
   // C2 violation the user reported (W A♥ over Robr's 9♦ at trick 1 of
   // game 5BPG5V). Bidder priority for boss-cashing remains intact.
+  //
+  // v2.31.98: EXCEPTION — when any non-self opp is at game-point
+  // (score >= 110 → can win the round by taking any +5 trick OR a
+  // +10 high-trump trick), the guard is overridden. Letting the
+  // threatening opp win the trick hands them the game. Take it.
+  // User-reported game HPP4OF: W at 110, N held 5♠ but C2 / boss-cash
+  // guard blocked the over-trump. Trust-fix precedent (v2.31.30 /
+  // v2.31.97) — also the human-expected play.
+  let _ctOppAtGamePoint = false;
+  if (cutthroat && Array.isArray(playerScores)) {
+    for (let _i = 0; _i < 4; _i++) {
+      if (_i !== player && (playerScores[_i] || 0) >= 110) {
+        _ctOppAtGamePoint = true;
+        break;
+      }
+    }
+  }
   const _ctFellowDefenderWinning = cutthroat && !isLeadingTrick && trick.length > 0
     && _currentWinnerSeat !== bidWinner && _currentWinnerSeat !== player
-    && player !== bidWinner;
+    && player !== bidWinner
+    && !_ctOppAtGamePoint;
 
   // ========================================================================
   // DEFENDER CASH PROVABLY-BOSS A♥ (FIX v2.31.43)
@@ -6565,8 +6583,10 @@ if (trick.length > 0) {
       }
     } catch (_e) { /* diagnostic must never break play */ }
     // C2 — don't overtake a fellow defender (bidder must have already played).
+    // v2.31.98: SKIP C2 when any opp is at game-point (>=110) — denying
+    // their trick at all costs trumps the don't-overtake-defender rule.
     if (currentWinner !== bidWinner && currentWinner !== player &&
-        _bidderHasPlayed && !_setLk) {
+        _bidderHasPlayed && !_setLk && !_ctOppAtGamePoint) {
       console.log(`🤝 CUTTHROAT C2: P${player + 1} (defender) not overtaking defender P${currentWinner + 1} — cheap-low`);
       return playable.reduce((lowest, card) => {
         const r1 = isTrump(lowest) ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
@@ -7095,6 +7115,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.98', date: 'May 2026', changes: ['Cutthroat: defender AI now over-trumps a fellow defender when the fellow defender is about to win a trick that wins them the game. Specifically: when any opponent is at 110 or more (one made trick or one high-trump-bonus trick from 120), the rules that normally tell defenders not to over-trump each other (C2 and the boss-cash priority) are temporarily disabled. The threat of the game ending overrides team-of-convenience etiquette. User-reported game HPP4OF: West was at 110, played A♥ on trick 1 with the high-trump bonus pending → would push W to 120 and win. North held the 5♠ (highest trump) but the v2.31.93 fellow-defender guard blocked the over-trump, so North played a low spade and West took the trick to win the game. With this fix, North\'s 5♠ takes the trick, West stays at 110, the round (and game) continues. The v2.31.93 fix for the OTHER direction (don\'t over-trump a fellow defender on a meaningless mid-trick) is preserved — the override only fires when an opp is at game-point.'] },
     { version: '2.31.97', date: 'May 2026', changes: ['Cutthroat AI now bags a threatening dealer instead of bidding 15 in front of them. When the dealer is an opponent at 100 or more points (one made-bagged-15 away from winning the game) and your hand would otherwise open at 15, the AI now passes — forcing the dealer to bag the 15 themselves. Bagged 15s set much more often in cutthroat than in partners (three coordinated defenders versus one partner cushion), so a bagged dealer at 100 most often drops to 85 and the rest of the table banks defender trick points. Exception (selfish mode): if you are also at 100 or more yourself, the AI bids the 15 normally — your own round win takes priority. Sim measures the change as aggregate-neutral but the 20-bid level is significantly cleaner; shipped on the same trust-the-AI-logic principle as the v2.31.30 endgame-lead-boss rule, because the dealer-bag is the human-expected play and not making it erodes confidence in the AI at zero net cost.'] },
     { version: '2.31.96', date: 'May 2026', changes: ['Clicking a player on the cutthroat leaderboard now opens a dedicated cutthroat stats panel instead of the partner-mode one. The cutthroat panel shows games played, average placement (1.00 best, 4.00 worst), the four placement counts with their percentages (1st through 4th), best 1st-place streak, and your highest single-game score. Partner-mode badges and bid-make breakdowns are not displayed because they would all read as zero for cutthroat games (the schemas are tracked separately). Dedicated cutthroat badges are still in the queue for a later release. Partner-mode leaderboard click is unchanged.'] },
     { version: '2.31.95', date: 'May 2026', changes: ['Bug fix: when reopening the browser onto a finished game and then starting a new game, the new game would sometimes launch with NONE of your saved house rules enabled, even though all three were checked in your preferences. Cause was a race between Firebase loading your saved prefs and the Create Game modal pre-fill: the pre-fill ran once when the modal opened and never re-ran when the prefs finally arrived, so the options stayed stuck at the initial all-false defaults. The pre-fill now also re-fires whenever the saved prefs change, so the modal catches up to the real settings as soon as they load. No effect on games already created with the right options.'] },
@@ -16884,7 +16905,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         knownVoids,
         gameOptions,
         playerTricks,
-        (highTrumpInfo && typeof highTrumpInfo.player === 'number') ? highTrumpInfo.player : -1
+        (highTrumpInfo && typeof highTrumpInfo.player === 'number') ? highTrumpInfo.player : -1,
+        playerScores
       );
       
       const cardIndex = hand.findIndex(c => c.id === card.id);
