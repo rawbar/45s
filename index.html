@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.100';
+const VERSION = '2.31.101';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5861,9 +5861,17 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   // here lands the lead on me with bidder still in 2nd next trick (worse).
   // Trust-fix shipped on intuitive-play grounds per v2.31.30 / v2.31.97 /
   // v2.31.98 precedent (rig is symmetric, will be neutral).
+  //
+  // v2.31.101: SCORE-AWARE EXCEPTION. Don't hold up if ANY seat (me OR any
+  // opp, including the (B+3) defender we'd be deferring to) is at >=110.
+  // In that regime, every defender goes full-aggression: take any trick
+  // you can. Letting (B+3) take when (B+3) is at game-point hands them
+  // the game; me at game-point means my own +5 progresses toward my win.
+  const _ctSelfAtGamePoint = cutthroat && Array.isArray(playerScores) && (playerScores[player] || 0) >= 110;
   if (cutthroat && player !== bidWinner && trick.length === 1 &&
       leader === bidWinner && getTrumpRank(trick[0], trumpSuit) < 0 &&
-      ((player - bidWinner + 4) % 4) === 1) {
+      ((player - bidWinner + 4) % 4) === 1 &&
+      !_ctOppAtGamePoint && !_ctSelfAtGamePoint) {
     const _huOff = playable.filter(c => getTrumpRank(c, trumpSuit) < 0);
     const _huTrump = playable.filter(c => getTrumpRank(c, trumpSuit) >= 0);
     if (_huOff.length > 0 && _huTrump.length > 0) {
@@ -7168,6 +7176,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.101', date: 'May 2026', changes: ['Cutthroat card-play follow-up: the v2.31.100 hold-up rule now also stands down when anyone at the table is at 110 or more. Holding up means letting a later defender take the trick — fine in normal mid-game, but catastrophic when that later defender is one trick from winning the game (they take, they lead, they bank more, they win). Now if any seat (including yourself) is at 110+, every defender goes full-aggression and ruffs to take the trick they can. The trick-1 positional principle still applies in all other cases.'] },
     { version: '2.31.100', date: 'May 2026', changes: ['Cutthroat card-play: defenders now play positionally when the bidder leads OFFSUIT, based on a simple seat-aware principle — whoever wins this trick leads the next one, so the coalition wants the trick to land on whichever defender puts the bidder in the worst seat next time around. Two new rules. (1) The defender clockwise-AFTER the bidder (plays 2nd) now HOLDS UP — plays low offsuit instead of ruffing — when at least one of the two later defenders is estimated to still hold trump. Ruffing here would land the lead on you with the bidder still in 2nd next trick; holding up lets a later defender take the trick, which puts the bidder in 4th seat (bidder\'s best seat) — but more importantly stops the bidder dragging the lead through your hand. (2) The defender clockwise-BEFORE the bidder (plays 4th, last) now TAKES the trick with the cheapest card that wins (trump if needed), even if a fellow defender is already winning by ruffing. Winning here puts the bidder in 2nd seat next trick (worst possible — two defenders play after the bidder). User-reported game UMTB8N trick 1: bidder led 5♠, West ruffed with 4♥ (wrong — now holds up), East discarded 10♣ instead of taking with 2♥ (wrong — now takes). The B+3-take rule fires before the C2 "don\'t overtake fellow defender" guard, since the whole point of taking the trick at B+3 is to grab the lead FOR the coalition. Partner mode is bit-identical (both rules are gated on cutthroat=true).'] },
     { version: '2.31.99', date: 'May 2026', changes: ['Cutthroat stats expanded. The cutthroat stats panel now tracks more than just placements: it records how often you bid and how often you make those bids (broken out by 15 / 20 / 25 / 30 / bagged 15), perfect 30-point rounds, how often you got set as bidder, and points scored above your bid. Defending side: how many tricks you took as a defender, how many times you captured the high-trump bonus, and how many bidders you helped set. Game-shape distinctions: comeback wins, clean wins (never set in the game), fast wins (≤8 rounds), slow wins (≥12 rounds), shutout wins (no opponent finished at 60+), and demolition wins (an opponent finished at -30 or below). All of these feed a composite cutthroat score that now also shows on the cutthroat leaderboard as a small secondary number next to the average placement — the leaderboard is still sorted by average placement (lower is better), the score is just a richer flavor stat. Partner-mode stats and writes are bit-identical (every new write is inside the cutthroat branch). Cutthroat badges still on the queue for a future release.'] },
     { version: '2.31.98', date: 'May 2026', changes: ['Cutthroat: defender AI now over-trumps a fellow defender when the fellow defender is about to win a trick that wins them the game. Specifically: when any opponent is at 110 or more (one made trick or one high-trump-bonus trick from 120), the rules that normally tell defenders not to over-trump each other (C2 and the boss-cash priority) are temporarily disabled. The threat of the game ending overrides team-of-convenience etiquette. User-reported game HPP4OF: West was at 110, played A♥ on trick 1 with the high-trump bonus pending → would push W to 120 and win. North held the 5♠ (highest trump) but the v2.31.93 fellow-defender guard blocked the over-trump, so North played a low spade and West took the trick to win the game. With this fix, North\'s 5♠ takes the trick, West stays at 110, the round (and game) continues. The v2.31.93 fix for the OTHER direction (don\'t over-trump a fellow defender on a meaningless mid-trick) is preserved — the override only fires when an opp is at game-point.'] },
