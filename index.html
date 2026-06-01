@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.101';
+const VERSION = '2.31.102';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7176,6 +7176,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.102', date: 'Jun 2026', changes: ['Cutthroat stats modal (the one that opens when you click a player on the cutthroat leaderboard) now scrolls and stays closable on phone. Before this fix, the modal had no max-height and no scroll: on a small screen the body was taller than the viewport, the close × button at the top was pushed off-screen, and you could not dismiss the modal — tapping the dim overlay outside it also did nothing because the modal filled the screen. Restructured the modal as a flex column capped at 85% of viewport height, with the header (name + close ×) pinned outside the scroll area as a sticky top, and the stats body in a scrollable region below. The × button is always reachable, the dim overlay around the edges is always tap-to-close, and the body scrolls naturally for long stat lists.'] },
     { version: '2.31.101', date: 'May 2026', changes: ['Cutthroat card-play follow-up: the v2.31.100 hold-up rule now also stands down when anyone at the table is at 110 or more. Holding up means letting a later defender take the trick — fine in normal mid-game, but catastrophic when that later defender is one trick from winning the game (they take, they lead, they bank more, they win). Now if any seat (including yourself) is at 110+, every defender goes full-aggression and ruffs to take the trick they can. The trick-1 positional principle still applies in all other cases.'] },
     { version: '2.31.100', date: 'May 2026', changes: ['Cutthroat card-play: defenders now play positionally when the bidder leads OFFSUIT, based on a simple seat-aware principle — whoever wins this trick leads the next one, so the coalition wants the trick to land on whichever defender puts the bidder in the worst seat next time around. Two new rules. (1) The defender clockwise-AFTER the bidder (plays 2nd) now HOLDS UP — plays low offsuit instead of ruffing — when at least one of the two later defenders is estimated to still hold trump. Ruffing here would land the lead on you with the bidder still in 2nd next trick; holding up lets a later defender take the trick, which puts the bidder in 4th seat (bidder\'s best seat) — but more importantly stops the bidder dragging the lead through your hand. (2) The defender clockwise-BEFORE the bidder (plays 4th, last) now TAKES the trick with the cheapest card that wins (trump if needed), even if a fellow defender is already winning by ruffing. Winning here puts the bidder in 2nd seat next trick (worst possible — two defenders play after the bidder). User-reported game UMTB8N trick 1: bidder led 5♠, West ruffed with 4♥ (wrong — now holds up), East discarded 10♣ instead of taking with 2♥ (wrong — now takes). The B+3-take rule fires before the C2 "don\'t overtake fellow defender" guard, since the whole point of taking the trick at B+3 is to grab the lead FOR the coalition. Partner mode is bit-identical (both rules are gated on cutthroat=true).'] },
     { version: '2.31.99', date: 'May 2026', changes: ['Cutthroat stats expanded. The cutthroat stats panel now tracks more than just placements: it records how often you bid and how often you make those bids (broken out by 15 / 20 / 25 / 30 / bagged 15), perfect 30-point rounds, how often you got set as bidder, and points scored above your bid. Defending side: how many tricks you took as a defender, how many times you captured the high-trump bonus, and how many bidders you helped set. Game-shape distinctions: comeback wins, clean wins (never set in the game), fast wins (≤8 rounds), slow wins (≥12 rounds), shutout wins (no opponent finished at 60+), and demolition wins (an opponent finished at -30 or below). All of these feed a composite cutthroat score that now also shows on the cutthroat leaderboard as a small secondary number next to the average placement — the leaderboard is still sorted by average placement (lower is better), the score is just a richer flavor stat. Partner-mode stats and writes are bit-identical (every new write is inside the cutthroat branch). Cutthroat badges still on the queue for a future release.'] },
@@ -10699,8 +10700,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           ].filter(([, n]) => n > 0);
           return (
             <div onClick={() => setShowCtStatsModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 700, padding: '16px' }}>
-              <div onClick={e => e.stopPropagation()} style={{ background: bg, border, borderRadius: isCp ? '4px' : '12px', padding: '20px', maxWidth: '380px', width: '100%', color: '#e8e4d9', boxShadow: '0 8px 32px rgba(0,0,0,0.7)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div onClick={e => e.stopPropagation()} style={{ background: bg, border, borderRadius: isCp ? '4px' : '12px', maxWidth: '380px', width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', color: '#e8e4d9', boxShadow: '0 8px 32px rgba(0,0,0,0.7)' }}>
+                {/* v2.31.102 — sticky header (outside scroll area) so close × stays reachable on mobile */}
+                <div style={{ flex: '0 0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 20px 10px' }}>
                   <div>
                     <div style={{ fontFamily: titleFont, fontSize: '16px', fontWeight: 700, color: accent, letterSpacing: isCp ? '2px' : '1px' }}>
                       {(ctStatsPlayer && ctStatsPlayer.username) || 'Player'}
@@ -10709,6 +10711,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   </div>
                   <button onClick={() => setShowCtStatsModal(false)} style={{ background: 'transparent', border: 'none', color: accent2, fontSize: '22px', cursor: 'pointer', padding: '0 4px' }}>×</button>
                 </div>
+                {/* v2.31.102 — scrollable body */}
+                <div style={{ flex: '1 1 auto', overflowY: 'auto', padding: '0 20px 20px' }}>
                 {ctStatsLoading ? (
                   <div style={{ textAlign: 'center', padding: '24px 0', color: accent2, fontFamily: bodyFont, fontSize: '12px' }}>Loading…</div>
                 ) : gp === 0 ? (
@@ -10760,6 +10764,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                 )}
                 <div style={{ marginTop: '14px', fontSize: '10px', color: 'rgba(232,228,217,0.4)', textAlign: 'center', fontFamily: bodyFont }}>
                   Badges for cutthroat coming in a later release.
+                </div>
                 </div>
               </div>
             </div>
