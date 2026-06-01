@@ -40,6 +40,7 @@ class Policy:
     cutthroat_surgical_tight_20: bool = True
     cutthroat_allow_5ahat_25: bool = True
     cutthroat_force_upbid15: bool = False
+    cutthroat_force_upbid15_with_5: bool = False
     cutthroat_desp_tight_20: bool = False
     cutthroat_force_loose_open: bool = False
     cutthroat_opp_has_dealer_always: bool = True
@@ -51,6 +52,7 @@ class Policy:
                  cutthroat_surgical_tight_20: bool = True,
                  cutthroat_allow_5ahat_25: bool = True,
                  cutthroat_force_upbid15: bool = False,
+                 cutthroat_force_upbid15_with_5: bool = False,
                  cutthroat_desp_tight_20: bool = False,
                  cutthroat_force_loose_open: bool = False,
                  cutthroat_opp_has_dealer_always: bool = True,
@@ -70,6 +72,7 @@ class Policy:
         self.cutthroat_surgical_tight_20 = cutthroat_surgical_tight_20
         self.cutthroat_allow_5ahat_25 = cutthroat_allow_5ahat_25
         self.cutthroat_force_upbid15 = cutthroat_force_upbid15
+        self.cutthroat_force_upbid15_with_5 = cutthroat_force_upbid15_with_5
         self.cutthroat_desp_tight_20 = cutthroat_desp_tight_20
         self.cutthroat_force_loose_open = cutthroat_force_loose_open
         self.cutthroat_opp_has_dealer_always = cutthroat_opp_has_dealer_always
@@ -100,6 +103,8 @@ class Policy:
                                       self.cutthroat_allow_5ahat_25,
                                   cutthroat_force_upbid15=
                                       self.cutthroat_force_upbid15,
+                                  cutthroat_force_upbid15_with_5=
+                                      self.cutthroat_force_upbid15_with_5,
                                   cutthroat_desp_tight_20=
                                       self.cutthroat_desp_tight_20,
                                   cutthroat_force_loose_open=

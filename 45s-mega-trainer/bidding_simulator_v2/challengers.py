@@ -350,15 +350,35 @@ REGISTRY["no-surgical-tight-20"]          = NoSurgicalTight20()
 # auctions to opps who then make them. The bidder's bag at 15 with a
 # weak hand still nets some EV (~20% of made-bid value) which the
 # surgical-tight-15 seat forfeits. Kept as opt-in challenger.
+#
+# RE-TEST POST-COALITION (2026-06-01, against current champion with C1+C2
+# coalition + bag-threatening-dealer + ohd-always + open-15-gate, etc.):
+# Symmetric set-rate (cutthroat-tight-15-surgical vs champion-cutthroat):
+#   primary  20k seed 0   Δ=+2.93pt z=+22.83 SIGNIFICANT NEGATIVE
+#   held-out 30k seed 5M  Δ=+2.92pt z=+27.90 SIGNIFICANT NEGATIVE (rep)
+# 1-vs-3 win rate:
+#   primary  20k seed 0   win=21.78% z=-21.02 SIGNIFICANT NEGATIVE
+#   held-out 30k seed 5M  win=21.66% z=-26.73 SIGNIFICANT NEGATIVE (rep)
+# Worse than the original measurement on every metric — the layered
+# cutthroat improvements (coalition card-play, etc.) MAGNIFY the EV the
+# rule forfeits (the bidder's bagged-15 EV is now larger because the
+# bidder gets better card-play too). Still NO SHIP. Updated also to
+# include C1+C2 ai_flags in the policy so the re-test matched the rest
+# of the cutthroat lineup (the original test pre-dated those flags).
+# Original decide_bid signature was missing dealer_score; harness passes
+# that kwarg now (added 2026-06-01 along with the re-test).
 class CutthroatSurgicalTight15(Policy):
     name = "cutthroat-tight-15-surgical"
     def __init__(self):
-        super().__init__(cutthroat=True)
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        super().__init__(cutthroat=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb, dealer_score=-1):
         return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
                                   cutthroat=True,
                                   cutthroat_surgical_tight_20=True,
-                                  cutthroat_surgical_tight_15=True)
+                                  cutthroat_surgical_tight_15=True,
+                                  dealer_score=dealer_score)
 
 
 REGISTRY["cutthroat-tight-15-surgical"]   = CutthroatSurgicalTight15()
@@ -453,6 +473,40 @@ class CutthroatUpBid15On(Policy):
 
 
 REGISTRY["cutthroat-upbid15-on"] = CutthroatUpBid15On()
+
+
+# CUTTHROAT FORCE-UPBID15-WITH-5 (opt-in challenger; champion-cutthroat
+# default OFF). DOCUMENTED NO-SHIP. Surgical tight gate on the cutthroat-
+# disabled UPBID15 rule: fires ONLY when we hold the 5 of trump. v2.31.83
+# killed broad UPBID15 in cutthroat (+14pt set-rate, catastrophic). The
+# tight variant was motivated by bid_divergence_miner_cutthroat.py against
+# robr's score-clean bidLogCutthroat (12/12 of his upbid-15→20 hands had
+# the 5 of trump, 0 without). Hypothesis: the 5 alone guarantees 10 points
+# solo (1 trick + highest-trump bonus) so the tight version might be +EV
+# where the broad rule wasn't.
+#
+# Implementation: runs as a SEPARATE block in bidding.decide_bid after the
+# cutthroat normalization, so it fires regardless of enable_upbid15 (which
+# is force-off in cutthroat). Gate: cutthroat AND bid==15 AND chb==15 AND
+# player_index != dealer AND has5.
+#
+# Symmetric set-rate (cutthroat-force-upbid15-with-5 vs champion-cutthroat):
+#   primary  20k seed 0   Δ=+6.43pt z=+51.19 SIGNIFICANT NEGATIVE
+#   held-out 30k seed 5M  Δ=+6.49pt z=+63.27 SIGNIFICANT NEGATIVE (rep)
+# Direction: positive Δ = challenger sets MORE = bad rule. Even gated to
+# has5, the rule still hands 3 coordinated defenders too many wins. Less
+# catastrophic than broad UPBID15 (+14pt) but still emphatically negative.
+# Kept as opt-in challenger; no JS port.
+class CutthroatForceUpbid15With5(Policy):
+    name = "cutthroat-force-upbid15-with-5"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_force_upbid15_with_5=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-force-upbid15-with-5"] = CutthroatForceUpbid15With5()
 
 
 # CUTTHROAT DESPERATION-TIGHT-20 (candidate challenger). Two robr screenshots

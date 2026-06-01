@@ -100,6 +100,7 @@ def decide_bid(hand: List[Card],
                 cutthroat_surgical_tight_15: bool = False,
                 cutthroat_allow_5ahat_25: bool = False,
                 cutthroat_force_upbid15: bool = False,
+                cutthroat_force_upbid15_with_5: bool = False,
                 cutthroat_desp_tight_20: bool = False,
                 cutthroat_force_loose_open: bool = False,
                 cutthroat_opp_has_dealer_always: bool = False,
@@ -566,6 +567,21 @@ def decide_bid(hand: List[Card],
     # `cutthroat_force_upbid15=True` is passed for opt-in measurement.
     if (enable_upbid15 and bid == 15 and current_high_bid == 15
             and player_index != dealer and partner_bid != 15):
+        bid = 20
+
+    # CUTTHROAT FORCE-UPBID15-WITH-5 (opt-in challenger flag, cutthroat-only).
+    # Tight gate that runs INDEPENDENTLY of the cutthroat enable_upbid15 force-
+    # off. When the auction stands at 15 AND our natural bid is 15 AND we hold
+    # the 5 of trump AND we are not the dealer → overbid to 20. The 5 alone
+    # guarantees 10 points solo (1 trick + bonus); paired with the natural
+    # 15-strength hand the math gets to make-rate territory. Derived from
+    # bid_divergence_miner_cutthroat.py against robr's score-clean cutthroat
+    # bids: 12/12 of his upbid-15→20 hands had the 5 of trump, 0 without.
+    # Broad UPBID15 was rig-tested catastrophic in cutthroat (v2.31.83 gate);
+    # this is the tight surgical variant.
+    if (cutthroat and cutthroat_force_upbid15_with_5
+            and bid == 15 and current_high_bid == 15
+            and player_index != dealer and has5):
         bid = 20
 
     # Dealer clamp (only bid the minimum needed)
