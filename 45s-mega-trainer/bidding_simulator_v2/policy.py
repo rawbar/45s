@@ -46,6 +46,9 @@ class Policy:
     cutthroat_opp_has_dealer_always: bool = True
     cutthroat_desp_rule4_tight: bool = False
     cutthroat_bag_threatening_dealer: bool = True
+    # CT-SETLOCKED-SAVE-LAST-TRUMP (challenger; default False until rig
+    # validates). Threaded into ai_flags so improved_ai.py reads via Fon().
+    ct_setlocked_save_last_trump: bool = False
 
     def __init__(self, cutthroat: bool = False, ai_flags: dict = None,
                  name: str = None,
@@ -57,7 +60,8 @@ class Policy:
                  cutthroat_force_loose_open: bool = False,
                  cutthroat_opp_has_dealer_always: bool = True,
                  cutthroat_desp_rule4_tight: bool = False,
-                 cutthroat_bag_threatening_dealer: bool = True):
+                 cutthroat_bag_threatening_dealer: bool = True,
+                 ct_setlocked_save_last_trump: bool = False):
         # All args default-None/False so existing zero-arg `Policy()` callers
         # stay bit-identical. Subclasses that don't call super still work
         # because the class attrs above provide the defaults.
@@ -78,6 +82,7 @@ class Policy:
         self.cutthroat_opp_has_dealer_always = cutthroat_opp_has_dealer_always
         self.cutthroat_desp_rule4_tight = cutthroat_desp_rule4_tight
         self.cutthroat_bag_threatening_dealer = cutthroat_bag_threatening_dealer
+        self.ct_setlocked_save_last_trump = ct_setlocked_save_last_trump
         if ai_flags is not None:
             self.ai_flags = dict(ai_flags)
         if name is not None:
@@ -89,6 +94,12 @@ class Policy:
         f = dict(self.ai_flags) if self.ai_flags else {}
         if self.cutthroat:
             f['cutthroat'] = True
+        # CT-SETLOCKED-SAVE-LAST-TRUMP: thread Policy attr into ai_flags so
+        # improved_ai.py reads via Fon('ct_setlocked_save_last_trump'). Only
+        # set when True so champion bit-identity is preserved (Fon default
+        # False).
+        if self.ct_setlocked_save_last_trump:
+            f['ct_setlocked_save_last_trump'] = True
         return f or None
 
     def decide_bid(self, hand: List[Card], current_high_bid: int, player_index: int,

@@ -589,6 +589,50 @@ class ImprovedAI:
                 if Fon('cutthroat_save_5_t12hi') and trick_num <= 2:
                     return max(_ct_nt, key=get_offsuit_rank)
 
+        # ── CT-SETLOCKED-SAVE-LAST-TRUMP ──────────────────────────────────────
+        # SET-LOCKED bidder last-trump preservation (cutthroat). When ALL hold:
+        #   - cutthroat mode
+        #   - I am the bidder
+        #   - I am set-locked this round (bid mathematically unreachable)
+        #   - I have EXACTLY one trump card remaining
+        #   - Current trick was led with non-trump
+        #   - Current trick is being won by a non-self defender with non-trump
+        #   - I have at least one legal non-trump play
+        # → play lowest non-trump and PRESERVE the last trump. Rationale: the
+        # bidder is mathematically set; winning this trick adds 5 to the
+        # set-locked column (worth 0 toward bid). Saving the trump to over-
+        # trump the defenders' expected ruff next trick denies 5 pts to a
+        # defender (typically the game leader). +5 denial > +5 vanity trick.
+        # MUST sit BEFORE the BOSS CARD priority loop below — otherwise a
+        # last-trump that is the 5/J of trump (boss) returns from the loop
+        # and the rule never fires.
+        if (Fon('ct_setlocked_save_last_trump')
+                and self.flags.get('cutthroat')
+                and player == bid_winner
+                and not is_leading
+                and trick):
+            _pt = state.player_tricks
+            _hp = state.high_trump_player
+            _hb = state.high_bid
+            _set_lk = _ct_set_locked(_hb, bid_winner, _pt, _hp, trick_num)
+            if _set_lk:
+                _my_trumps = [c for c in playable if _is_trump(c, trump)]
+                _my_nt    = [c for c in playable if not _is_trump(c, trump)]
+                _led_nt = not _is_trump(trick[0], trump)
+                if (len(_my_trumps) == 1 and _my_nt and _led_nt):
+                    # current winner seat + their card (must be non-self,
+                    # non-trump winner — i.e. a defender holding the trick
+                    # with offsuit). Compute mirroring later block.
+                    _cw = leader
+                    _wc = trick[0]
+                    for _i in range(1, len(trick)):
+                        if card_beats(trick[_i], _wc, trump, trick[0].suit):
+                            _wc = trick[_i]
+                            _cw = (leader + _i) % 4
+                    _winner_non_trump = not _is_trump(_wc, trump)
+                    if _cw != player and _winner_non_trump:
+                        return min(_my_nt, key=get_offsuit_rank)
+
         # ── STRATEGIC PRIORITY #1: BOSS CARD ─────────────────────────────────
         if not partner_winning_now:
             for card in playable:

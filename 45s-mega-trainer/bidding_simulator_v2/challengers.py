@@ -987,6 +987,29 @@ CUTTHROAT_D1_RUFF_LATE.name = "cutthroat-d1-ruff-defender-offsuit-late"
 REGISTRY["cutthroat-d1-ruff-defender-offsuit-late"] = CUTTHROAT_D1_RUFF_LATE
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# CT-SETLOCKED-SAVE-LAST-TRUMP (challenger)
+# ─────────────────────────────────────────────────────────────────────────
+# When the bidder is mathematically SET-LOCKED for the round and holds
+# EXACTLY one trump remaining, and the current trick was led non-trump and
+# is being won by a non-self defender with a non-trump → play lowest non-
+# trump instead of the last trump. Rationale: winning this trick adds 5 to
+# the set-locked column (worth 0 toward the bid). Saving the trump to
+# over-trump the defenders' expected ruff next trick denies 5 pts to a
+# defender (typically the game leader). Net: +5 denial > +5 vanity trick.
+#
+# Built on top of the current champion-cutthroat coalition (C1+C2 + bag-
+# threatening-dealer default-on; cutthroat_bag_threatening_dealer reads
+# the Policy attr, no flag plumbing needed).
+CT_SETLOCKED_SAVE_LAST_TRUMP = Policy(
+    cutthroat=True,
+    ct_setlocked_save_last_trump=True,
+    ai_flags={'cutthroat_c1_take_from_bidder': True,
+              'cutthroat_c2_dont_overtake': True})
+CT_SETLOCKED_SAVE_LAST_TRUMP.name = "ct-setlocked-save-last-trump"
+REGISTRY["ct-setlocked-save-last-trump"] = CT_SETLOCKED_SAVE_LAST_TRUMP
+
+
 # FORCE-EXTRACT challenger variants (opt-in rule, default absent in champion).
 # Each enables the rule + one partner-trump-rich proxy; data picks the proxy.
 def _fx(proxy: str):

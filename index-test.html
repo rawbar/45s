@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.102';
+const VERSION = '2.31.103';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5889,6 +5889,47 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     }
   }
 
+  // v2.31.103: CT-SETLOCKED-SAVE-LAST-TRUMP. Cutthroat, I'm the bidder
+  // and I'm mathematically set-locked this round (cannot reach the bid
+  // even by winning every remaining trick). I have EXACTLY one trump
+  // left; the current trick was led non-trump and is being won by a
+  // defender with a non-trump card. Save the last trump — play lowest
+  // offsuit instead. Rationale: winning this trick adds +5 to my set-
+  // locked column (worth 0 toward the bid). Saving the trump to over-
+  // trump the defenders' expected ruff next trick denies 5 points to a
+  // defender (typically the game leader). +5 denial > +5 vanity trick.
+  // MUST sit BEFORE the BOSS CARD priority loop below — otherwise a
+  // last-trump that is the 5/J of trump (boss) returns from that loop
+  // and the rule never fires. Trust-fix ship per v2.31.30 / v2.31.97 /
+  // v2.31.98 / v2.31.100 / v2.31.101 precedent (rig measures exactly
+  // neutral, all four cells |z|<0.10 replicated — explicit human-
+  // expected play).
+  if (cutthroat && player === bidWinner && !isLeadingTrick && trick.length > 0) {
+    const _slSet = _ctSetLocked(playerTricks, highTrumpPlayer, bidWinner, highBid, trickNum);
+    if (_slSet) {
+      const _slTrumps = playable.filter(c => getTrumpRank(c, trumpSuit) >= 0);
+      const _slOff    = playable.filter(c => getTrumpRank(c, trumpSuit) < 0);
+      const _slLedNT  = getTrumpRank(trick[0], trumpSuit) < 0;
+      if (_slTrumps.length === 1 && _slOff.length > 0 && _slLedNT) {
+        const _slWinnerCard = (() => {
+          // _currentWinnerSeat was set above; recompute the winning card.
+          let wc = trick[0];
+          for (let i = 1; i < trick.length; i++) {
+            if (cardBeats(trick[i], wc, trumpSuit, trick[0].suit)) wc = trick[i];
+          }
+          return wc;
+        })();
+        const _slWinnerNonTrump = getTrumpRank(_slWinnerCard, trumpSuit) < 0;
+        if (_currentWinnerSeat !== player && _slWinnerNonTrump) {
+          const _slLow = _slOff.reduce((lo, c) =>
+            getOffSuitRank(c) < getOffSuitRank(lo) ? c : lo);
+          console.log(`🔒 CT-SETLOCKED-SAVE-LAST-TRUMP: P${player + 1} (bidder, set-locked) saving last trump ${_slTrumps[0].id} — play ${_slLow.id} instead`);
+          return _slLow;
+        }
+      }
+    }
+  }
+
   // ========================================================================
   // DEFENDER CASH PROVABLY-BOSS A♥ (FIX v2.31.43)
   // ========================================================================
@@ -7176,6 +7217,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.103', date: 'Jun 2026', changes: ['Cutthroat card-play: when the bidder is mathematically SET-LOCKED for the round (the bid can no longer be made even by winning every remaining trick) and is down to exactly one trump left, on a non-trump-led trick where a defender is currently winning with a non-trump card, the bidder now saves the last trump and plays the lowest offsuit instead. Winning that trick is worth +5 to the bidder\'s set-locked column — which is worth 0 toward the bid since the contract is already failed — while the saved trump can over-trump the defenders\' expected next-trick ruff and deny them 5 points (typically the game leader). Net: the same trump can either bank a useless vanity trick now or deny a defender a real game-scoring trick next turn — denial wins. Trust-fix ship: rig measures it as exactly neutral (all four cells |z|<0.10, replicated), but it is the explicit human-expected play and matches the v2.31.30 / v2.31.97 / v2.31.98 / v2.31.100 / v2.31.101 ship-on-intuitive-play-at-zero-cost pattern. Partner mode is bit-identical (gated on cutthroat=true).'] },
     { version: '2.31.102', date: 'Jun 2026', changes: ['Cutthroat stats modal (the one that opens when you click a player on the cutthroat leaderboard) now scrolls and stays closable on phone. Before this fix, the modal had no max-height and no scroll: on a small screen the body was taller than the viewport, the close × button at the top was pushed off-screen, and you could not dismiss the modal — tapping the dim overlay outside it also did nothing because the modal filled the screen. Restructured the modal as a flex column capped at 85% of viewport height, with the header (name + close ×) pinned outside the scroll area as a sticky top, and the stats body in a scrollable region below. The × button is always reachable, the dim overlay around the edges is always tap-to-close, and the body scrolls naturally for long stat lists.'] },
     { version: '2.31.101', date: 'May 2026', changes: ['Cutthroat card-play follow-up: the v2.31.100 hold-up rule now also stands down when anyone at the table is at 110 or more. Holding up means letting a later defender take the trick — fine in normal mid-game, but catastrophic when that later defender is one trick from winning the game (they take, they lead, they bank more, they win). Now if any seat (including yourself) is at 110+, every defender goes full-aggression and ruffs to take the trick they can. The trick-1 positional principle still applies in all other cases.'] },
     { version: '2.31.100', date: 'May 2026', changes: ['Cutthroat card-play: defenders now play positionally when the bidder leads OFFSUIT, based on a simple seat-aware principle — whoever wins this trick leads the next one, so the coalition wants the trick to land on whichever defender puts the bidder in the worst seat next time around. Two new rules. (1) The defender clockwise-AFTER the bidder (plays 2nd) now HOLDS UP — plays low offsuit instead of ruffing — when at least one of the two later defenders is estimated to still hold trump. Ruffing here would land the lead on you with the bidder still in 2nd next trick; holding up lets a later defender take the trick, which puts the bidder in 4th seat (bidder\'s best seat) — but more importantly stops the bidder dragging the lead through your hand. (2) The defender clockwise-BEFORE the bidder (plays 4th, last) now TAKES the trick with the cheapest card that wins (trump if needed), even if a fellow defender is already winning by ruffing. Winning here puts the bidder in 2nd seat next trick (worst possible — two defenders play after the bidder). User-reported game UMTB8N trick 1: bidder led 5♠, West ruffed with 4♥ (wrong — now holds up), East discarded 10♣ instead of taking with 2♥ (wrong — now takes). The B+3-take rule fires before the C2 "don\'t overtake fellow defender" guard, since the whole point of taking the trick at B+3 is to grab the lead FOR the coalition. Partner mode is bit-identical (both rules are gated on cutthroat=true).'] },
