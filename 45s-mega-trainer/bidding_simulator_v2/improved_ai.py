@@ -1231,6 +1231,38 @@ class ImprovedAI:
                         if _d1_winners:
                             return min(_d1_winners,
                                        key=lambda c: _tr(c, trump))
+                # CT-B3-TAKE-OVER-FELLOW (challenger; opt-in flag, default
+                # OFF in champion). Replays the ORIGINAL v2.31.100 JS
+                # behavior where B+3 (defender clockwise-before bidder,
+                # plays 4th) UNCONDITIONALLY takes the trick with the
+                # cheapest winner on a bidder offsuit lead, EVEN when a
+                # fellow defender is already winning. v2.31.104 JS adds
+                # a "!_ctFellowDefenderWinning" gate (which in Python is
+                # already the natural behavior — C2 below fires when a
+                # fellow defender is winning and bidder has played, so
+                # B+3 just plays_lowest). To MEASURE the cost of the OLD
+                # over-trumping behavior we add this rule as opt-in: when
+                # the flag is ON, B+3 takes-over-fellow; when OFF (champion)
+                # the existing C2/C1 flow handles it correctly. A neutral
+                # rig result confirms the JS gate is zero-cost (trust-fix
+                # ship); a negative rig (B3-OVER-FELLOW worse than champion)
+                # confirms the JS gate is a real improvement.
+                if (Fon('cutthroat_b3_take_over_fellow')
+                        and my_position == 3
+                        and leader == _bw
+                        and not _is_trump(trick[0], trump)
+                        and cw != player
+                        and not _set_lk):
+                    _b3_winners = [c for c in playable
+                                   if trick_winner(
+                                       _pad4(trick + [c],
+                                             trump if F('safe_pad4') else None),
+                                       trump, leader) == player]
+                    if _b3_winners:
+                        return min(_b3_winners,
+                                   key=lambda c: _tr(c, trump)
+                                   if _is_trump(c, trump)
+                                   else get_offsuit_rank(c))
                 # C2 — don't overtake a fellow defender (opt-in).
                 # PASS-2 GATE: only fires if the bidder has already played
                 # in this trick. Otherwise the bidder is downstream and

@@ -49,6 +49,15 @@ class Policy:
     # CT-SETLOCKED-SAVE-LAST-TRUMP (challenger; default False until rig
     # validates). Threaded into ai_flags so improved_ai.py reads via Fon().
     ct_setlocked_save_last_trump: bool = False
+    # CT-B3-TAKE-OVER-FELLOW (challenger that REPLAYS the OLD pre-v2.31.104
+    # JS behavior — B+3 takes the trick on bidder offsuit lead even when a
+    # fellow defender has already won the trick). Champion default False
+    # (matches v2.31.104+ JS: B+3 stands down when a fellow defender
+    # already has it). When True the rule fires unconditionally per the
+    # original v2.31.100 behavior. Used to MEASURE the cost of the OLD
+    # over-trumping behavior — significant rig regression for True means
+    # the new gate is an improvement; neutral means trust-fix territory.
+    cutthroat_b3_take_over_fellow: bool = False
 
     def __init__(self, cutthroat: bool = False, ai_flags: dict = None,
                  name: str = None,
@@ -61,7 +70,8 @@ class Policy:
                  cutthroat_opp_has_dealer_always: bool = True,
                  cutthroat_desp_rule4_tight: bool = False,
                  cutthroat_bag_threatening_dealer: bool = True,
-                 ct_setlocked_save_last_trump: bool = False):
+                 ct_setlocked_save_last_trump: bool = False,
+                 cutthroat_b3_take_over_fellow: bool = False):
         # All args default-None/False so existing zero-arg `Policy()` callers
         # stay bit-identical. Subclasses that don't call super still work
         # because the class attrs above provide the defaults.
@@ -83,6 +93,7 @@ class Policy:
         self.cutthroat_desp_rule4_tight = cutthroat_desp_rule4_tight
         self.cutthroat_bag_threatening_dealer = cutthroat_bag_threatening_dealer
         self.ct_setlocked_save_last_trump = ct_setlocked_save_last_trump
+        self.cutthroat_b3_take_over_fellow = cutthroat_b3_take_over_fellow
         if ai_flags is not None:
             self.ai_flags = dict(ai_flags)
         if name is not None:
@@ -100,6 +111,12 @@ class Policy:
         # False).
         if self.ct_setlocked_save_last_trump:
             f['ct_setlocked_save_last_trump'] = True
+        # CT-B3-TAKE-OVER-FELLOW: thread Policy attr into ai_flags so
+        # improved_ai.py reads via Fon('cutthroat_b3_take_over_fellow').
+        # Only set when True so champion (v2.31.104+ JS default) is bit-
+        # identical to the no-flag baseline.
+        if self.cutthroat_b3_take_over_fellow:
+            f['cutthroat_b3_take_over_fellow'] = True
         return f or None
 
     def decide_bid(self, hand: List[Card], current_high_bid: int, player_index: int,

@@ -1010,6 +1010,40 @@ CT_SETLOCKED_SAVE_LAST_TRUMP.name = "ct-setlocked-save-last-trump"
 REGISTRY["ct-setlocked-save-last-trump"] = CT_SETLOCKED_SAVE_LAST_TRUMP
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# CT-B3-TAKE-OVER-FELLOW — replay of the OLD v2.31.100 JS behavior
+# ─────────────────────────────────────────────────────────────────────────
+# Original v2.31.100 rule: defender clockwise-BEFORE bidder (plays 4th)
+# takes the trick with the cheapest winner on a bidder offsuit lead, even
+# when a fellow defender has already ruffed in to win the trick. Rationale
+# at the time: "grab the lead FOR the coalition" — over-trumping ensures
+# the lead lands on me (B+3) and the bidder is in 2nd seat next trick.
+#
+# v2.31.104 JS adds a `!_ctFellowDefenderWinning` gate (skip when a fellow
+# defender already has the trick locked). Rationale: bidder played first
+# as leader, so once a defender has trumped in to win, the coalition has
+# already won the lead — over-trumping a fellow defender burns a higher
+# trump for zero coalition benefit. The Python champion-cutthroat C2 rule
+# already handles this correctly (fires when cw != bidder, cw != player,
+# bidder has played — all true at B+3 in this scenario), so the v2.31.104
+# JS gate makes JS match Python champion's existing behavior.
+#
+# This challenger inverts that: enables `cutthroat_b3_take_over_fellow` so
+# B+3 over-trumps a fellow defender every time (= OLD JS pre-v2.31.104).
+# Negative rig vs champion would mean the v2.31.104 JS gate is a real win;
+# neutral rig confirms trust-fix ship territory.
+#
+# Built on top of the current champion-cutthroat coalition (C1+C2 + bag-
+# threatening-dealer + ct_setlocked default-on).
+CT_B3_TAKE_OVER_FELLOW = Policy(
+    cutthroat=True,
+    cutthroat_b3_take_over_fellow=True,
+    ai_flags={'cutthroat_c1_take_from_bidder': True,
+              'cutthroat_c2_dont_overtake': True})
+CT_B3_TAKE_OVER_FELLOW.name = "ct-b3-take-over-fellow"
+REGISTRY["ct-b3-take-over-fellow"] = CT_B3_TAKE_OVER_FELLOW
+
+
 # FORCE-EXTRACT challenger variants (opt-in rule, default absent in champion).
 # Each enables the rule + one partner-trump-rich proxy; data picks the proxy.
 def _fx(proxy: str):
