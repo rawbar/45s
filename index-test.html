@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.104';
+const VERSION = '2.31.105';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5176,7 +5176,17 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     // RULE 1: If opponent bid 15 and they can win with 15, MUST overbid to
     // 20 (aggressive sacrifice — gated for a human partner; the human owns
     // this overbid decision since the AI cannot know their hand).
+    // CUTTHROAT GATE (v2.31.105): in cutthroat, gate the forced overbid on
+    // can20At60Pct. Without this, a human can open 15 on garbage at game
+    // point knowing the AI is coerced into a doomed 20/25. Rig:
+    // champion vs ct-desp-fix-gate-forced-20: primary 20k Δ=-0.80pt z=-6.31
+    // / held-out 30k Δ=-0.82pt z=-7.95 (replicated). Bait-vs-fixed: -1.91pt
+    // z=-18.38. Partner mode bit-identical (cutthroat guard).
     if (oppBidIs15 && bidderCanWinWith15 && !partnerIsHuman) {
+      if (cutthroat && !can20At60Pct) {
+        console.log(`🚨 Opponent bid 15 (cutthroat) - hand too weak to force-20, passing to set`);
+        return { bid: 0, suit: null };
+      }
       console.log(`🚨 Opponent bid 15 and can win - MUST bid 20`);
       return { bid: 20, suit };
     }
@@ -7227,6 +7237,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.105', date: 'Jun 2026', changes: ['Cutthroat bidding: the forced 15→20 desperation overbid is now gated on hand strength. Previously, any AI in desperation mode would always overbid a game-winning opponent 15-bid to 20, regardless of its own hand — a deterministic rule that humans could exploit by bidding 15 on garbage at game point, coercing a doomed AI into 20 (and often then 25). The AI now only makes the forced overbid when its hand can realistically make 20 (has 5 of trump, Jack, or equivalent strength). With a weak hand it passes instead and tries to set the junk 15 from the defender seat. Rig: −0.80pt set-rate improvement vs champion (z=−6.31 primary / z=−7.95 held-out, replicated). Bait-vs-fixed confirms the exploit is fully neutralized (−1.91pt, z=−18.38). Partner mode is bit-identical.'] },
     { version: '2.31.104', date: 'Jun 2026', changes: ['Cutthroat card-play refinement to the v2.31.100 CT-B3-TAKE rule. Previously, the defender clockwise-BEFORE the bidder (plays 4th, last) took the trick with the cheapest winner on a bidder offsuit lead even when a fellow defender had already trumped in to win the trick — the rule fired before the C2 "don\'t overtake a fellow defender" guard so that the coalition could "grab the lead." That over-trumped a fellow defender for zero coalition benefit: once a defender has the trick locked, the coalition has already won the lead, and burning a higher trump to bank the same trick is pure waste. The rule now stands down whenever a fellow defender is already winning. It still fires whenever NO defender has the trick yet (bidder offsuit lead still winning, or led-suit followers haven\'t beaten the bidder) — that case is unchanged. User-reported game DQQDLG trick 3: N bid 20♥ led J♣, E followed 8♣, S (Robr) trumped 10♥ to take the trick, W (B+3) over-trumped with K♥ for no gain — that exact over-trump no longer happens. Trust-fix ship: rig measures it as exactly neutral (all four cells |z|<0.10, replicated), but it is the explicit human-expected play and matches the v2.31.30 / v2.31.97 / v2.31.98 / v2.31.100 / v2.31.101 / v2.31.103 ship-on-intuitive-play-at-zero-cost pattern. Partner mode is bit-identical (gated on cutthroat=true).'] },
     { version: '2.31.103', date: 'Jun 2026', changes: ['Cutthroat card-play: when the bidder is mathematically SET-LOCKED for the round (the bid can no longer be made even by winning every remaining trick) and is down to exactly one trump left, on a non-trump-led trick where a defender is currently winning with a non-trump card, the bidder now saves the last trump and plays the lowest offsuit instead. Winning that trick is worth +5 to the bidder\'s set-locked column — which is worth 0 toward the bid since the contract is already failed — while the saved trump can over-trump the defenders\' expected next-trick ruff and deny them 5 points (typically the game leader). Net: the same trump can either bank a useless vanity trick now or deny a defender a real game-scoring trick next turn — denial wins. Trust-fix ship: rig measures it as exactly neutral (all four cells |z|<0.10, replicated), but it is the explicit human-expected play and matches the v2.31.30 / v2.31.97 / v2.31.98 / v2.31.100 / v2.31.101 ship-on-intuitive-play-at-zero-cost pattern. Partner mode is bit-identical (gated on cutthroat=true).'] },
     { version: '2.31.102', date: 'Jun 2026', changes: ['Cutthroat stats modal (the one that opens when you click a player on the cutthroat leaderboard) now scrolls and stays closable on phone. Before this fix, the modal had no max-height and no scroll: on a small screen the body was taller than the viewport, the close × button at the top was pushed off-screen, and you could not dismiss the modal — tapping the dim overlay outside it also did nothing because the modal filled the screen. Restructured the modal as a flex column capped at 85% of viewport height, with the header (name + close ×) pinned outside the scroll area as a sticky top, and the stats body in a scrollable region below. The × button is always reachable, the dim overlay around the edges is always tap-to-close, and the body scrolls naturally for long stat lists.'] },

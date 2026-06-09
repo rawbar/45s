@@ -1591,3 +1591,89 @@ class DespGuardedOpen(Policy):
 
 REGISTRY["open:ndloose"] = DespGuardedOpen(False)
 REGISTRY["open:nd"]      = DespGuardedOpen(True)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# CT-GAMEPOINT-BAIT15 — bait-the-AI exploit challenger
+# ─────────────────────────────────────────────────────────────────────────
+# Hypothesis: the human exploit of opening 15 on garbage at own game-point
+# (score >= 105) forces the AI into a mandatory desperation overbid to 20
+# on any hand — the AI cannot refuse because the plain champion code at
+# bidding.py line 197 returns 20 unconditionally when (opp_bid_15 AND
+# they_can_win_15). The human then defends against a coerced, probably-
+# doomed 20-bid. This challenger measures the EXPLOIT SEVERITY: does a
+# seat that always opens 15 on garbage when it is at game-point (we_need
+# <= 15 and no bid yet) beat the champion?
+#
+# Implementation: when cutthroat AND we_need <= 15 AND current_high_bid
+# == 0, open 15 on the best-suit regardless of hand strength. Otherwise
+# fall through to champion decide_bid. In the sim, team_scores == the
+# individual player's score (cutthroat: no partner), so we_need =
+# 120 - team_scores measures how far THAT SEAT is from winning.
+#
+# C1+C2 coalition defaults ON (same as all other cutthroat challengers —
+# required for the re-test to match the current champion baseline).
+# dealer_score kwarg threaded through to champion decide_bid.
+class CutthroatGamepointBait15(Policy):
+    name = "ct-gamepoint-bait15"
+
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb, dealer_score=-1):
+        we_need = 120 - ts
+        if we_need <= 15 and chb == 0:
+            # At game point with no prior bid: open 15 on garbage to bait
+            # the AI into a forced-20 overbid via the desperation block.
+            fb = bidding.find_best_trump_suit(hand)
+            return 15, fb['suit']
+        # Otherwise use champion-cutthroat bidding (all defaults apply).
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True,
+                                  cutthroat_surgical_tight_20=True,
+                                  cutthroat_allow_5ahat_25=True,
+                                  cutthroat_opp_has_dealer_always=True,
+                                  cutthroat_bag_threatening_dealer=True,
+                                  dealer_score=dealer_score)
+
+
+REGISTRY["ct-gamepoint-bait15"] = CutthroatGamepointBait15()
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# CT-DESP-FIX-GATE-FORCED-20 — fix for the desperation forced-20 exploit
+# ─────────────────────────────────────────────────────────────────────────
+# Hypothesis: gating the forced-20 overbid on can20_60 (the standard
+# hand-quality gate) neutralizes the human bait-15 exploit without
+# harming the non-exploit case. When an opp bids 15 at game-point but
+# the defending AI's hand genuinely justifies 20, it still overbids.
+# When the hand is junk (can20_60 == False), it passes and defends the
+# garbage 15-bid instead of being coerced into a doomed 20.
+#
+# Partner mode bit-identical: the flag is forced False in the `else`
+# branch of bidding.decide_bid for non-cutthroat callers.
+# C1+C2 coalition defaults ON (same as champion-cutthroat baseline).
+# dealer_score kwarg threaded through.
+class CutthroatDespFixGateForced20(Policy):
+    name = "ct-desp-fix-gate-forced-20"
+
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_desp_fix_gate_forced_20=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb, dealer_score=-1):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True,
+                                  cutthroat_surgical_tight_20=True,
+                                  cutthroat_allow_5ahat_25=True,
+                                  cutthroat_opp_has_dealer_always=True,
+                                  cutthroat_bag_threatening_dealer=True,
+                                  cutthroat_desp_fix_gate_forced_20=True,
+                                  dealer_score=dealer_score)
+
+
+REGISTRY["ct-desp-fix-gate-forced-20"] = CutthroatDespFixGateForced20()

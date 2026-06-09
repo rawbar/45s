@@ -58,6 +58,11 @@ class Policy:
     # over-trumping behavior — significant rig regression for True means
     # the new gate is an improvement; neutral means trust-fix territory.
     cutthroat_b3_take_over_fellow: bool = False
+    # CT-DESP-FIX-GATE-FORCED-20 (challenger; default False = champion-
+    # identical). When True and cutthroat: gates the desperation forced-20
+    # overbid on can20_60 instead of always firing. Partner mode bit-
+    # identical (forced False in the else branch of decide_bid).
+    cutthroat_desp_fix_gate_forced_20: bool = False
 
     def __init__(self, cutthroat: bool = False, ai_flags: dict = None,
                  name: str = None,
@@ -71,7 +76,8 @@ class Policy:
                  cutthroat_desp_rule4_tight: bool = False,
                  cutthroat_bag_threatening_dealer: bool = True,
                  ct_setlocked_save_last_trump: bool = False,
-                 cutthroat_b3_take_over_fellow: bool = False):
+                 cutthroat_b3_take_over_fellow: bool = False,
+                 cutthroat_desp_fix_gate_forced_20: bool = False):
         # All args default-None/False so existing zero-arg `Policy()` callers
         # stay bit-identical. Subclasses that don't call super still work
         # because the class attrs above provide the defaults.
@@ -94,6 +100,7 @@ class Policy:
         self.cutthroat_bag_threatening_dealer = cutthroat_bag_threatening_dealer
         self.ct_setlocked_save_last_trump = ct_setlocked_save_last_trump
         self.cutthroat_b3_take_over_fellow = cutthroat_b3_take_over_fellow
+        self.cutthroat_desp_fix_gate_forced_20 = cutthroat_desp_fix_gate_forced_20
         if ai_flags is not None:
             self.ai_flags = dict(ai_flags)
         if name is not None:
@@ -143,6 +150,8 @@ class Policy:
                                       self.cutthroat_desp_rule4_tight,
                                   cutthroat_bag_threatening_dealer=
                                       self.cutthroat_bag_threatening_dealer,
+                                  cutthroat_desp_fix_gate_forced_20=
+                                      self.cutthroat_desp_fix_gate_forced_20,
                                   dealer_score=dealer_score)
 
     def choose_discards(self, hand: List[Card], trump: Suit, is_bid_winner: bool,

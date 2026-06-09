@@ -106,6 +106,7 @@ def decide_bid(hand: List[Card],
                 cutthroat_opp_has_dealer_always: bool = False,
                 cutthroat_desp_rule4_tight: bool = False,
                 cutthroat_bag_threatening_dealer: bool = False,
+                cutthroat_desp_fix_gate_forced_20: bool = False,
                 dealer_score: int = -1) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
@@ -181,6 +182,7 @@ def decide_bid(hand: List[Card],
         cutthroat_aggressive_tight_20 = False
         cutthroat_surgical_tight_15 = False
         cutthroat_allow_5ahat_25 = False
+        cutthroat_desp_fix_gate_forced_20 = False
 
     opp_bid_15 = current_high_bid == 15 and partner_bid != 15
     opp_bid_20 = current_high_bid == 20 and partner_bid != 20
@@ -195,6 +197,19 @@ def decide_bid(hand: List[Card],
     # ── DESPERATION ──────────────────────────────────────────────────────────
     if desperation and enable_desperation:
         if opp_bid_15 and they_can_win_15:
+            # CUTTHROAT DESP-FIX-GATE-FORCED-20 (opt-in challenger, cutthroat-
+            # only). The baseline forces 20 unconditionally here — no hand check.
+            # Human exploit: bid 15 on garbage at game point (own score >=105),
+            # knowing AI is forced to overbid to 20 and then defends against a
+            # coerced, probably-doomed 20-bid. Fix: when this flag is ON and we
+            # are in cutthroat, gate the forced-20 on can20_60. If hand doesn't
+            # justify 20, pass instead and try to set the garbage 15-bid.
+            # Partner mode bit-identical: flag is forced False in the `else`
+            # block below (alongside other cutthroat-only flags).
+            if cutthroat and cutthroat_desp_fix_gate_forced_20:
+                if can20_60:
+                    return 20, suit
+                return 0, None
             return 20, suit
         if opp_bid_20 and they_can_win_20 and player_index == dealer:
             return 25, suit
