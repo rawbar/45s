@@ -1677,3 +1677,167 @@ class CutthroatDespFixGateForced20(Policy):
 
 
 REGISTRY["ct-desp-fix-gate-forced-20"] = CutthroatDespFixGateForced20()
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# OPEN-15 MINIMUM TRUMP FLOOR — PARTNER MODE CHALLENGERS
+# ─────────────────────────────────────────────────────────────────────────
+# OPEN-15 (v2.31.37, open:nd) unconditionally opens 15 on any clean opening
+# auction in partner mode, regardless of hand strength. The current champion
+# Policy() is bit-identical to open:nd (confirmed: open:nd vs champion =
+# exactly 50.00%, z=0.00 at 20k deals). Concern: open:nd fires on genuinely
+# weak hands like pure-low tc=2 (no 5/J/AH/AT/K/Q of trump).
+#
+# DB analysis (bidding_sim_v2.db, 15-bid subcategories, no 5/J/AH):
+#
+#   sub-category          n          make%    EV     verdict
+#   ──────────────────── ────────   ──────   ─────  ───────
+#   K-or-better  tc=2    220,284    68.6%   +5.59   +EV
+#   K-or-better  tc=3+   194,625    74.7%   +7.41   +EV
+#   Q-only       tc=2    197,246    66.0%   +4.81   +EV
+#   Q-only       tc=3+   149,635    70.9%   +6.28   +EV (aggregated)
+#   AT-only      tc=2    124,576    68.3%   +5.48   +EV
+#   AT-only      tc=3+    91,342    73.0%   +6.90   +EV (aggregated)
+#   pure-low     tc=2    639,454    60.3%   +3.08   +EV  ← WORST CASE
+#   pure-low     tc=3+   235,244    64.8%   +4.45   +EV
+#
+# NAÏVE EV FINDING: every sub-category is positive EV at 15-bid, including
+# the worst case (pure-low tc=2: 60.3% make-rate, +3.08 EV). Break-even is
+# 50%. There is no EV-negative sub-category in the data. A simple per-hand
+# EV analysis says "no floor needed."
+#
+# HOWEVER, the rig told a different story. Because the quality gate causes
+# pure-low hands to PASS instead of opening, the contract shifts to the
+# DEALER (forced-bag at 15). The dealer's hand quality is random (averages
+# 63.5% make-rate vs the pure-low opener's 60.3%). More importantly, in
+# many open-15 scenarios the dealer IS on the opposing team. Suppressing
+# the pure-low open denies a weak contract from our team and bags the
+# dealer (opposing-team bidder) instead — a positive-EV exchange that
+# the per-hand analysis misses because it ignores game dynamics.
+#
+# Three challenger gates tested (each built on the DespGuardedOpen base
+# identical to the champion, so the delta isolates ONLY the quality gate):
+#
+#   open:min-qt  — gate on hasQT (Q of trump) or better. Suppresses 17.6%
+#                  of open:nd clean-open decisions (pure-low tc>=2 hands).
+#   open:min-kt  — gate on hasKT (K of trump) or better. Suppresses 23.7%
+#                  of open:nd clean-open decisions (also blocks Q-only).
+#   open:3trump  — gate on trumpCount >= 3. Suppresses 24.2%.
+#
+# RIG RESULTS (partner mode, symmetric A-vs-B vs Policy() champion):
+# NOTE: positive Δ = challenger wins MORE games than champion.
+#
+#   challenger    primary 20k          held-out 30k        direction
+#   ──────────── ──────────────────── ──────────────────  ─────────
+#   open:min-qt  +0.64pt z=+2.56 SIG  +0.50pt z=+2.43 SIG  REPLICATED
+#   open:min-kt  +0.71pt z=+2.84 SIG  +0.64pt z=+3.13 SIG  REPLICATED
+#   open:3trump  +0.46pt z=+1.83 n.s. (no held-out needed)  NEUTRAL
+#   open:nd      +0.00pt z=0.00 (self-test confirm: bit-identical to champ)
+#
+# INTERPRETATION: open:min-kt is the DOMINANT floor: more restrictive than
+# min-qt (suppresses Q-only opens as well), and held-out z=+3.13 is the
+# strongest signal. open:min-qt is also significant but weaker. open:3trump
+# does not clear z=2. The honor-based gate (K or better) is the sweet spot:
+# it targets the specific hands where the dealer-bag-dynamics are most
+# favorable.
+#
+# NOTE ON DIRECTION: "challenger wins MORE" means the quality-gated version
+# is BETTER than the open:nd champion. This is counter-intuitive given per-
+# hand EV analysis — pure-low hands individually make 60% — but makes sense
+# at the game level: passing pure-low forces the dealer to bag with a random
+# (slightly stronger on average) hand, and in roughly half those situations
+# the dealer is an opponent, converting a weak own-contract to an opponent-
+# bag opportunity. The game-level EV swamps the per-hand raw make-rate.
+class OpenMinQT(Policy):
+    """open:min-qt — OPEN-15 only fires if hand has Q of trump or higher.
+    Rig vs champion: primary 20k +0.64pt z=+2.56 SIGNIFICANT /
+    held-out 30k +0.50pt z=+2.43 SIGNIFICANT (replicated)."""
+    name = "open:min-qt"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        # Get base decision without loose open
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_loose_open=False)
+        if b != 0:
+            return b, s                       # standard bidding already acts
+        if chb != 0 or pb > 0:
+            return b, s                       # not a clean open spot
+        we_need, they_need = 120 - ts, 120 - os
+        if we_need <= 15 and os <= 85:        # cruise / ahead-protection
+            return b, s
+        if they_need <= 15 and we_need > 0:   # desperation owns this regime
+            return b, s
+        fb = bidding.find_best_trump_suit(hand)
+        suit, tc = fb['suit'], fb['trumpCount']
+        # Gate: must have Q of trump or better (K, AT, AH, J, 5 already
+        # handled by standard bidding). Use has_card to check Q and K.
+        hasQT = bidding.has_card(hand, 'Q', suit)
+        hasKT = bidding.has_card(hand, 'K', suit)
+        hasAT = bidding.has_ace_trump(hand, suit)
+        hasAH = bidding.has_ace_hearts(hand)
+        if hasQT or hasKT or hasAT or hasAH:
+            return 15, suit
+        return b, s
+
+
+class OpenMinKT(Policy):
+    """open:min-kt — OPEN-15 only fires if hand has K of trump or higher.
+    DOMINANT floor: rig vs champion: primary 20k +0.71pt z=+2.84 SIGNIFICANT /
+    held-out 30k +0.64pt z=+3.13 SIGNIFICANT (replicated, comeback +0.69pt
+    z=+2.02 SIGNIFICANT). Strongest signal of the three floor variants tested.
+    Suppress 23.7% of open:nd clean-open decisions (pure-low + Q-only hands)."""
+    name = "open:min-kt"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_loose_open=False)
+        if b != 0:
+            return b, s
+        if chb != 0 or pb > 0:
+            return b, s
+        we_need, they_need = 120 - ts, 120 - os
+        if we_need <= 15 and os <= 85:
+            return b, s
+        if they_need <= 15 and we_need > 0:
+            return b, s
+        fb = bidding.find_best_trump_suit(hand)
+        suit, tc = fb['suit'], fb['trumpCount']
+        # Gate: must have K of trump or better
+        hasKT = bidding.has_card(hand, 'K', suit)
+        hasAT = bidding.has_ace_trump(hand, suit)
+        hasAH = bidding.has_ace_hearts(hand)
+        if hasKT or hasAT or hasAH:
+            return 15, suit
+        return b, s
+
+
+class Open3Trump(Policy):
+    """open:3trump — OPEN-15 only fires if trumpCount >= 3.
+    Rig vs champion: primary 20k +0.46pt z=+1.83 NOT significant.
+    Suppresses 24.2% of open:nd clean-open decisions. Does not clear z=2
+    ship gate; depth gate less powerful than honor gate (open:min-kt)."""
+    name = "open:3trump"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_loose_open=False)
+        if b != 0:
+            return b, s
+        if chb != 0 or pb > 0:
+            return b, s
+        we_need, they_need = 120 - ts, 120 - os
+        if we_need <= 15 and os <= 85:
+            return b, s
+        if they_need <= 15 and we_need > 0:
+            return b, s
+        fb = bidding.find_best_trump_suit(hand)
+        suit, tc = fb['suit'], fb['trumpCount']
+        # Gate: must have at least 3 trump cards
+        if tc >= 3:
+            return 15, suit
+        return b, s
+
+
+REGISTRY["open:min-qt"] = OpenMinQT()
+REGISTRY["open:min-kt"] = OpenMinKT()
+REGISTRY["open:3trump"] = Open3Trump()

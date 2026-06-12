@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.106';
+const VERSION = '2.31.107';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5092,6 +5092,7 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   if (bidderScore === null || bidderScore === undefined) bidderScore = oppScores;
   const { suit, trumpCount, has5, hasJ } = findBestTrumpSuit(hand);
   const hasAH = hasAceHearts(hand), hasAT = hasAceTrump(hand, suit);
+  const hasKT = hasCard(hand, 'K', suit);
   const highT = countHighTrumps(hand, suit);
 
   console.log(`🎲 BIDDING P${playerIndex}:`, {
@@ -5498,7 +5499,6 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     // 15 bid - tightened threshold (removed junk 3-trump bids)
     // Must have at least one top-tier trump or specific face-card combo
     if (bid === 0) {
-      const hasKT = hasCard(hand, 'K', suit);
       const hasQT = hasCard(hand, 'Q', suit);
       if (has5) bid = 15;                                    // lone 5 — highest trump, guarantees 10pts
       else if (hasJ) bid = 15;                              // J alone or with anything (2nd highest)
@@ -5594,10 +5594,22 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     // matches the failure pattern. The Python sim has had OPEN-15 force-off
     // in cutthroat since chunk A (bidding.py line 151) — this gate makes
     // the JS match.
+    // OPEN-15 hand floor (v2.31.107, open:min-kt): require K of trump or
+    // better (hasKT || hasAH || hasAT) to fire the unconditional open.
+    // Q-only and pure-low hands (e.g. 8♦+4♦, 3♥+4♥) now pass instead,
+    // forcing the dealer to bag ~50% of the time — a game-level +EV
+    // transfer even though the per-hand make-rate is above break-even.
+    // Rig vs champion (partner mode):
+    //   primary  20k Δ=+0.71pt z=+2.84 SIGNIFICANT
+    //   held-out 30k Δ=+0.64pt z=+3.13 SIGNIFICANT (replicated)
+    //   comeback    Δ=+0.69pt z=+2.02 SIGNIFICANT
+    // Suppresses 23.7% of prior opens (Q-only + pure-low). Partner mode
+    // only; cutthroat OPEN-15 already gated off entirely (v2.31.86).
     if (currentHighBid === 0 && !(partnerBid > 0)
         && !(weNeed <= 15 && oppScores <= 85)
         && !(theyNeed <= 15 && weNeed > 0)
-        && !partnerIsHuman && !cutthroat) {
+        && !partnerIsHuman && !cutthroat
+        && (hasKT || hasAH || hasAT)) {
       // (B v2.31.44) Residual bad-hand auto-15 is +EV but deterministic →
       // predictable/exploitable + frustrating. AI opponents pass it with
       // AUTO15_PASS_PROB (mixed strategy). True Math.random() so a live
@@ -7263,6 +7275,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.107', date: 'Jun 2026', changes: ['AI bidding: the unconditional open-15 rule now requires at least K of trump, A♥, or A of trump to fire. Previously the AI opened 15 on any hand in a clean auction regardless of trump quality — including hands like 8♦+4♦ or 3♥+4♥ with no face cards. Those hands now pass instead, forcing the dealer to bag roughly half the time. Although the per-hand make-rate on weak opens is above the mathematical break-even (60%), passing is better at the game level because transferring the contract to a bagged dealer is +EV. Rig (partner mode): −0.71pt set-rate improvement (z=2.84 primary / z=3.13 held-out, replicated; comeback equity also significant z=2.02). Suppresses 23.7% of prior opens. Partner mode only — cutthroat open-15 was already gated off entirely at v2.31.86.'] },
     { version: '2.31.106', date: 'Jun 2026', changes: ['AI card-play: when the bidder holds exactly the 5 and J of trump (no other trump) on a 20+ bid, the AI now leads offsuit on tricks 1 and 2 instead of immediately playing the 5 then J. The 5+J are a guaranteed 15 points that can be played at any time — spending them first forces partner to follow trump on both tricks, draining their ruffing power. Leading offsuit first preserves partner\'s trump so they can ruff and contribute the one extra trick needed to make 20. The floor is identical either way: if all offsuit tricks are lost, the 5+J still make 15 as a backstop. The upside is real: a single partner ruff converts to a made 20 bid. Only applies in partner mode (not cutthroat); stands down if the partner is estimated to be trump-void.'] },
     { version: '2.31.105', date: 'Jun 2026', changes: ['Cutthroat bidding: the forced 15→20 desperation overbid is now gated on hand strength. Previously, any AI in desperation mode would always overbid a game-winning opponent 15-bid to 20, regardless of its own hand — a deterministic rule that humans could exploit by bidding 15 on garbage at game point, coercing a doomed AI into 20 (and often then 25). The AI now only makes the forced overbid when its hand can realistically make 20 (has 5 of trump, Jack, or equivalent strength). With a weak hand it passes instead and tries to set the junk 15 from the defender seat. Rig: −0.80pt set-rate improvement vs champion (z=−6.31 primary / z=−7.95 held-out, replicated). Bait-vs-fixed confirms the exploit is fully neutralized (−1.91pt, z=−18.38). Partner mode is bit-identical.'] },
     { version: '2.31.104', date: 'Jun 2026', changes: ['Cutthroat card-play refinement to the v2.31.100 CT-B3-TAKE rule. Previously, the defender clockwise-BEFORE the bidder (plays 4th, last) took the trick with the cheapest winner on a bidder offsuit lead even when a fellow defender had already trumped in to win the trick — the rule fired before the C2 "don\'t overtake a fellow defender" guard so that the coalition could "grab the lead." That over-trumped a fellow defender for zero coalition benefit: once a defender has the trick locked, the coalition has already won the lead, and burning a higher trump to bank the same trick is pure waste. The rule now stands down whenever a fellow defender is already winning. It still fires whenever NO defender has the trick yet (bidder offsuit lead still winning, or led-suit followers haven\'t beaten the bidder) — that case is unchanged. User-reported game DQQDLG trick 3: N bid 20♥ led J♣, E followed 8♣, S (Robr) trumped 10♥ to take the trick, W (B+3) over-trumped with K♥ for no gain — that exact over-trump no longer happens. Trust-fix ship: rig measures it as exactly neutral (all four cells |z|<0.10, replicated), but it is the explicit human-expected play and matches the v2.31.30 / v2.31.97 / v2.31.98 / v2.31.100 / v2.31.101 / v2.31.103 ship-on-intuitive-play-at-zero-cost pattern. Partner mode is bit-identical (gated on cutthroat=true).'] },
