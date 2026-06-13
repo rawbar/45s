@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.107';
+const VERSION = '2.31.108';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6422,22 +6422,46 @@ if (trick.length > 0) {
   const signalDetected = !cutthroat && bidderLed && isBidderSignaling(ledCard, trumpSuit, cardsPlayed, bidWinner, trickNum);
 
   // If bidder is signaling for 3rd man high, play trump aggressively even if partner "winning"
-  // But only if our highest trump can actually beat the current trick winner
+  // But only if our highest trump can actually beat the current trick winner.
+  // Exception (v2.31.108): if every player after me is KNOWN trump-void (hard
+  // deduction), no one can overtrump \u2014 play the cheapest winning trump and save
+  // the Jack/5 for a later trick or the +5 high-trump bonus.
   if (signalDetected && myPosition === 2 && myTrumps.length > 0) {
-    const highTrump = myTrumps.reduce((best, card) => {
-      const r1 = getTrumpRank(best, trumpSuit);
-      const r2 = getTrumpRank(card, trumpSuit);
-      return r2 > r1 ? card : best;
-    });
-    // Verify our highest trump can actually win before committing it
-    const testTrick = [...trick, highTrump];
+    // Check if all remaining seats are hard-void in trump
+    const _afterSeats = [];
+    for (let _pos = myPosition + 1; _pos < 4; _pos++) _afterSeats.push((leader + _pos) % 4);
+    const _allAfterTrumpVoid = _afterSeats.length > 0 && _afterSeats.every(idx =>
+      knownVoids && knownVoids[idx] && knownVoids[idx].trump === true);
+    let trumpToPlay = null;
+    if (_allAfterTrumpVoid) {
+      // Cheapest trump that wins suffices \u2014 conserve the high trump
+      let _cheapRank = 999;
+      for (const _c of myTrumps) {
+        const _tt = [...trick, _c];
+        while (_tt.length < 4) _tt.push(dummyPadCard(trumpSuit));
+        if (determineTrickWinner(_tt, trumpSuit, leader) === player) {
+          const _cr = getTrumpRank(_c, trumpSuit);
+          if (_cr < _cheapRank) { trumpToPlay = _c; _cheapRank = _cr; }
+        }
+      }
+    }
+    if (!trumpToPlay) {
+      trumpToPlay = myTrumps.reduce((best, card) => {
+        const r1 = getTrumpRank(best, trumpSuit);
+        const r2 = getTrumpRank(card, trumpSuit);
+        return r2 > r1 ? card : best;
+      });
+    }
+    // Verify chosen trump can actually win before committing it
+    const testTrick = [...trick, trumpToPlay];
     while (testTrick.length < 4) testTrick.push(dummyPadCard(trumpSuit));
     const testWinner = determineTrickWinner(testTrick, trumpSuit, leader);
     if (testWinner === player) {
-      console.log(`\uD83D\uDCE2 BIDDER SIGNAL: P${player} (3rd pos) playing ${highTrump.id} trump in response to bidder's signal`);
-      return highTrump;
+      const _note = _allAfterTrumpVoid ? ' (all-after void \u2192 min-win)' : '';
+      console.log(`\uD83D\uDCE2 BIDDER SIGNAL: P${player} (3rd pos) playing ${trumpToPlay.id} trump in response to bidder's signal${_note}`);
+      return trumpToPlay;
     } else {
-      console.log(`\uD83D\uDCE2 BIDDER SIGNAL: P${player} detected signal but ${highTrump.id} can't beat current trick - falling through`);
+      console.log(`\uD83D\uDCE2 BIDDER SIGNAL: P${player} detected signal but ${trumpToPlay.id} can't beat current trick - falling through`);
     }
   }
   
@@ -7275,6 +7299,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.108', date: 'Jun 2026', changes: ['AI card-play: partner (3rd man) responding to a bidder offsuit signal now plays the cheapest winning trump when all remaining players are confirmed trump-void, instead of always playing the highest trump. The bidder-signal path (any offsuit bidder lead triggers 3rd-man-high) was correctly spending trump to secure the trick, but when every seat after the partner is deductibly trump-void, the Jack is no more likely to hold the trick than the Queen or King — no one can overtrump. Previously this wasted the J on an already-secured trick and exposed it to future loss; now the cheapest trump wins the trick and the J/5 are saved for later. Only fires on strict deduction (knownVoids.trump===true), never on estimates. Trust-fix ship (same pattern as v2.31.27 min-win).'] },
     { version: '2.31.107', date: 'Jun 2026', changes: ['AI bidding: the unconditional open-15 rule now requires at least K of trump, A♥, or A of trump to fire. Previously the AI opened 15 on any hand in a clean auction regardless of trump quality — including hands like 8♦+4♦ or 3♥+4♥ with no face cards. Those hands now pass instead, forcing the dealer to bag roughly half the time. Although the per-hand make-rate on weak opens is above the mathematical break-even (60%), passing is better at the game level because transferring the contract to a bagged dealer is +EV. Rig (partner mode): −0.71pt set-rate improvement (z=2.84 primary / z=3.13 held-out, replicated; comeback equity also significant z=2.02). Suppresses 23.7% of prior opens. Partner mode only — cutthroat open-15 was already gated off entirely at v2.31.86.'] },
     { version: '2.31.106', date: 'Jun 2026', changes: ['AI card-play: when the bidder holds exactly the 5 and J of trump (no other trump) on a 20+ bid, the AI now leads offsuit on tricks 1 and 2 instead of immediately playing the 5 then J. The 5+J are a guaranteed 15 points that can be played at any time — spending them first forces partner to follow trump on both tricks, draining their ruffing power. Leading offsuit first preserves partner\'s trump so they can ruff and contribute the one extra trick needed to make 20. The floor is identical either way: if all offsuit tricks are lost, the 5+J still make 15 as a backstop. The upside is real: a single partner ruff converts to a made 20 bid. Only applies in partner mode (not cutthroat); stands down if the partner is estimated to be trump-void.'] },
     { version: '2.31.105', date: 'Jun 2026', changes: ['Cutthroat bidding: the forced 15→20 desperation overbid is now gated on hand strength. Previously, any AI in desperation mode would always overbid a game-winning opponent 15-bid to 20, regardless of its own hand — a deterministic rule that humans could exploit by bidding 15 on garbage at game point, coercing a doomed AI into 20 (and often then 25). The AI now only makes the forced overbid when its hand can realistically make 20 (has 5 of trump, Jack, or equivalent strength). With a weak hand it passes instead and tries to set the junk 15 from the defender seat. Rig: −0.80pt set-rate improvement vs champion (z=−6.31 primary / z=−7.95 held-out, replicated). Bait-vs-fixed confirms the exploit is fully neutralized (−1.91pt, z=−18.38). Partner mode is bit-identical.'] },
