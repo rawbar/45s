@@ -1182,6 +1182,92 @@ class UpBid15Can20Gate(Policy):
 REGISTRY["upbid15:can20-gate"] = UpBid15Can20Gate()
 
 
+# UPBID15 sub-pattern isolators — each fires UPBID15 ONLY for one specific
+# hand composition, with all others suppressed. This answers: "is this
+# sub-pattern individually sufficient to justify upbidding to 20?"
+# The base conditions (bid==15, chb==15, not-dealer, partner!=15) are
+# replicated in each challenger. Cutthroat is not applicable (partner mode).
+#
+# Sub-patterns mirror the can20At60Pct components (from 5M-sim calibration):
+#   J+A♥+T2:  66.3%   → upbid15:j-ah
+#   J+AT+T2:  62.69%  → upbid15:j-at
+#   J+T3:     63.5%   → upbid15:j-t3
+#   5+any:    62.44%  → upbid15:5
+#
+# These patterns overlap (e.g., J+A♥+T3 matches both j-ah and j-t3) but
+# each challenger tests ONLY its named pattern in isolation.
+
+# Design note: enable_upbid15 must be set BEFORE decide_bid runs, because
+# decide_bid demotes bid=15 to bid=0 (pass) inside the bid<=chb block when
+# upbid15 is disabled — by then the natural-15 signal is gone and any post-
+# call check on bid==15 never fires. Correct approach: check the hand pattern
+# upfront, then pass enable_upbid15 accordingly so decide_bid fires it
+# internally at the right point (before the bid<=chb demotion).
+
+class UpBid15JAh(Policy):
+    """upbid15:j-ah — UPBID15 fires ONLY on J + A♥ hands (no 5 required)."""
+    name = "upbid15:j-ah"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        fb = bidding.find_best_trump_suit(hand)
+        enable = fb['hasJ'] and bidding.has_ace_hearts(hand)
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_upbid15=enable)
+
+
+class UpBid15JAt(Policy):
+    """upbid15:j-at — UPBID15 fires ONLY on J + A-trump hands."""
+    name = "upbid15:j-at"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        fb = bidding.find_best_trump_suit(hand)
+        enable = fb['hasJ'] and bidding.has_ace_trump(hand, fb['suit'])
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_upbid15=enable)
+
+
+class UpBid15JT3(Policy):
+    """upbid15:j-t3 — UPBID15 fires ONLY on J + 3+ trump hands."""
+    name = "upbid15:j-t3"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        fb = bidding.find_best_trump_suit(hand)
+        enable = fb['hasJ'] and fb['trumpCount'] >= 3
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_upbid15=enable)
+
+
+class UpBid15Has5(Policy):
+    """upbid15:5 — UPBID15 fires ONLY when hand has the 5 of trump."""
+    name = "upbid15:5"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        fb = bidding.find_best_trump_suit(hand)
+        enable = fb['has5']
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_upbid15=enable)
+
+
+REGISTRY["upbid15:j-ah"] = UpBid15JAh()
+REGISTRY["upbid15:j-at"] = UpBid15JAt()
+REGISTRY["upbid15:j-t3"] = UpBid15JT3()
+REGISTRY["upbid15:5"]    = UpBid15Has5()
+
+
+# UPBID15 TIGHT GATE (candidate v2.31.110): sub-pattern analysis shows the
+# 5 does most of the work (-1.36pt vs full) and J+T3 has modest value
+# (+0.83pt vs no-upbid15). J+A♥ and J+AT are ~neutral in isolation. This
+# challenger narrows the can20 gate to ONLY (has5 OR J+T3), dropping J+A♥
+# and J+AT from the upbid15 trigger. Tests whether tightening further helps.
+class UpBid15TightGate(Policy):
+    """upbid15:tight-gate — UPBID15 only fires on has5 OR (hasJ + 3+ trump)."""
+    name = "upbid15:tight-gate"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        fb = bidding.find_best_trump_suit(hand)
+        enable = fb['has5'] or (fb['hasJ'] and fb['trumpCount'] >= 3)
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_upbid15=enable)
+
+
+REGISTRY["upbid15:tight-gate"] = UpBid15TightGate()
+
+
 # ENDGAME_DENY (opt-in challenger; dormant rule already in improved_ai.py).
 # Bidder side, opp at 110+ (one bid from winning):
 #   Leading  → max trump (or max playable if no trump)

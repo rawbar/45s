@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.109';
+const VERSION = '2.31.110';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5273,6 +5273,14 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
         // Let partner handle it if we have nothing
         if (trumpCount < 2 && !hasJ && !hasAH) {
           console.log(`🚨 Terrible hand - passing for partner to overbid`);
+          return { bid: 0, suit: null };
+        }
+        // (v2.31.110) Human partner hasn't bid yet — defer. Mirrors RULE 1's
+        // !partnerIsHuman gate: the human owns overbid/sacrifice decisions
+        // when they have the information and haven't acted. AI only fires
+        // without checking partner when it holds the 5 (strong enough alone).
+        if (partnerIsHuman) {
+          console.log(`🚨 They bid 15 (can win) - deferring to human partner`);
           return { bid: 0, suit: null };
         }
         // Overbid anyway to block
@@ -7313,6 +7321,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.110', date: 'Jun 2026', changes: ['AI bidding: desperation RULE 5 (overbid an opponent\'s game-winning 15 when our team has the dealer) now respects the human-partner gate. Previously the rule fired unconditionally on any hand with 2+ trump — including total junk like 7♠+8♠ — even when the human partner had not yet bid and might hold a much stronger hand. The AI now defers to the human in that case, passing and allowing the human to decide whether to block. Exception: if the AI holds the 5 of trump (guaranteed 10-point trick, strong enough to justify the sacrifice alone), it still bids 20 regardless. Mirrors the existing RULE 1 !partnerIsHuman gate (v2.31.47): \'the human owns overbid/sacrifice decisions.\' Trust-fix ship: rig is all-AI so partnerIsHuman never fires there — no rig delta, but the human-visible behavior change is unambiguously correct.'] },
     { version: '2.31.109', date: 'Jun 2026', changes: ['AI bidding: the UPBID15 rule (overbid a standing 15 to 20 when your own hand qualifies as a 15-bid) now requires a minimum hand quality floor to fire. Previously it promoted any 15-quality hand — including just J of trump + one low trump with nothing else — to a 20 bid. J alone is only a reliable 15 (one guaranteed trick); the extra low trump doesn\'t materially change the 20-make probability. The rule now requires the same can-make-20-at-60% floor already used by the cutthroat desperation gate: has the 5 of trump, or J+A♥, or J+A-trump, or J+3 total trump, or A♥+4 trump, or A-trump+4 trump. Without any of those, the hand passes instead of upbidding. Rig: neutral overall (primary 20k −0.25pt z=−0.98 n.s. / held-out 30k +0.13pt z=+0.62 n.s.); comeback equity held-out +1.36pt z=+3.85 SIGNIFICANT — the gate prevents costly failed-20 bids exactly when the team is already behind and can least afford the set.'] },
     { version: '2.31.108', date: 'Jun 2026', changes: ['AI card-play: partner (3rd man) responding to a bidder offsuit signal now plays the cheapest winning trump when all remaining players are confirmed trump-void, instead of always playing the highest trump. The bidder-signal path (any offsuit bidder lead triggers 3rd-man-high) was correctly spending trump to secure the trick, but when every seat after the partner is deductibly trump-void, the Jack is no more likely to hold the trick than the Queen or King — no one can overtrump. Previously this wasted the J on an already-secured trick and exposed it to future loss; now the cheapest trump wins the trick and the J/5 are saved for later. Only fires on strict deduction (knownVoids.trump===true), never on estimates. Trust-fix ship (same pattern as v2.31.27 min-win).'] },
     { version: '2.31.107', date: 'Jun 2026', changes: ['AI bidding: the unconditional open-15 rule now requires at least K of trump, A♥, or A of trump to fire. Previously the AI opened 15 on any hand in a clean auction regardless of trump quality — including hands like 8♦+4♦ or 3♥+4♥ with no face cards. Those hands now pass instead, forcing the dealer to bag roughly half the time. Although the per-hand make-rate on weak opens is above the mathematical break-even (60%), passing is better at the game level because transferring the contract to a bagged dealer is +EV. Rig (partner mode): −0.71pt set-rate improvement (z=2.84 primary / z=3.13 held-out, replicated; comeback equity also significant z=2.02). Suppresses 23.7% of prior opens. Partner mode only — cutthroat open-15 was already gated off entirely at v2.31.86.'] },
