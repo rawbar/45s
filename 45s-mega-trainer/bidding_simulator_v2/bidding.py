@@ -107,6 +107,7 @@ def decide_bid(hand: List[Card],
                 cutthroat_desp_rule4_tight: bool = False,
                 cutthroat_bag_threatening_dealer: bool = False,
                 cutthroat_desp_fix_gate_forced_20: bool = False,
+                upbid15_can20_gate: bool = False,
                 dealer_score: int = -1) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
@@ -580,8 +581,17 @@ def decide_bid(hand: List[Card],
     # z=25.96 held-out 30k (jack2112-derived). In cutthroat this is gated
     # off by default (see cutthroat normalization above) — only fires when
     # `cutthroat_force_upbid15=True` is passed for opt-in measurement.
+    # can20_at_60pct mirrors the JS gate of the same name: hands that make
+    # 20 at ≥60% from the 5M-sim calibration data. Used by upbid15_can20_gate.
+    can20_at_60pct = (has5 or
+                      (hasJ and hasAH and trump_count >= 2) or
+                      (hasJ and hasAT and trump_count >= 2) or
+                      (hasJ and trump_count >= 3) or
+                      (hasAH and trump_count >= 4) or
+                      (hasAT and trump_count >= 4))
     if (enable_upbid15 and bid == 15 and current_high_bid == 15
-            and player_index != dealer and partner_bid != 15):
+            and player_index != dealer and partner_bid != 15
+            and (not upbid15_can20_gate or can20_at_60pct)):
         bid = 20
 
     # CUTTHROAT FORCE-UPBID15-WITH-5 (opt-in challenger flag, cutthroat-only).

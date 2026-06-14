@@ -1166,6 +1166,22 @@ class NoUpBid15(Policy):
 REGISTRY["bid:no-upbid15"] = NoUpBid15()
 
 
+# UPBID15-CAN20-GATE (challenger for v2.31.109 hypothesis). Screenshots show
+# UPBID15 promoting J+10♦ (trumpCount=2, no 5/A♥/A-trump) to 20, which is
+# very unlikely to succeed. The current gate is only `bid==15 && chb==15`.
+# This challenger adds can20_at_60pct as a floor: J alone (T2 only) fails
+# the gate and passes instead of upbidding. J+A♥, J+A-trump, J+3+trump,
+# any-5 all still fire. Mirrors the cutthroat forced-20 gate (v2.31.105).
+class UpBid15Can20Gate(Policy):
+    name = "upbid15:can20-gate"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  upbid15_can20_gate=True)
+
+
+REGISTRY["upbid15:can20-gate"] = UpBid15Can20Gate()
+
+
 # ENDGAME_DENY (opt-in challenger; dormant rule already in improved_ai.py).
 # Bidder side, opp at 110+ (one bid from winning):
 #   Leading  → max trump (or max playable if no trump)

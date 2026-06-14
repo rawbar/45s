@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.108';
+const VERSION = '2.31.109';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5550,8 +5550,22 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   // 10♠+10♦+6♣ bid 20♠ exactly matches the failure pattern. The Python
   // sim has had UPBID15 force-off in cutthroat since chunk A (bidding.py
   // line 145) — this gate makes the JS match.
+  //
+  // CAN20 FLOOR (v2.31.109): UPBID15 now also requires can20At60Pct. The
+  // original rule promoted ANY hand with bid=15, including J+one_low_trump
+  // (J+T2 only), which has no realistic path to 20. The gate mirrors the
+  // one already used for the cutthroat forced-overbid (v2.31.105) and the
+  // desperation-block logic. Effect: J alone (trumpCount=2, no 5/A♥/A-trump)
+  // no longer upbids; J+A♥, J+A-trump, J+3-trump, or any-5 still fire.
+  // Rig: primary 20k −0.25pt z=−0.98 (n.s.) / held-out 30k +0.13pt z=+0.62
+  // (n.s.) — neutral overall. Comeback equity held-out: +1.36pt z=+3.85
+  // SIGNIFICANT — the gate prevents costly failed-20 bids exactly when the
+  // team is behind and can least afford the extra loss. User-reported: AI
+  // Player 4 bid 20♦ on J♦+10♦+3-low-spades (YOP8IP), got set, gave away
+  // 5 pts in a game where N/S was ahead 65–5.
   if (bid === 15 && currentHighBid === 15 && playerIndex !== dealer
-      && partnerBid !== 15 && !partnerIsHuman && !cutthroat) {
+      && partnerBid !== 15 && !partnerIsHuman && !cutthroat
+      && can20At60Pct) {
     console.log(`📈 UPBID15: ${playerIndex} overbidding 15→20${suit}`);
     bid = 20;
   }
@@ -7299,6 +7313,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.109', date: 'Jun 2026', changes: ['AI bidding: the UPBID15 rule (overbid a standing 15 to 20 when your own hand qualifies as a 15-bid) now requires a minimum hand quality floor to fire. Previously it promoted any 15-quality hand — including just J of trump + one low trump with nothing else — to a 20 bid. J alone is only a reliable 15 (one guaranteed trick); the extra low trump doesn\'t materially change the 20-make probability. The rule now requires the same can-make-20-at-60% floor already used by the cutthroat desperation gate: has the 5 of trump, or J+A♥, or J+A-trump, or J+3 total trump, or A♥+4 trump, or A-trump+4 trump. Without any of those, the hand passes instead of upbidding. Rig: neutral overall (primary 20k −0.25pt z=−0.98 n.s. / held-out 30k +0.13pt z=+0.62 n.s.); comeback equity held-out +1.36pt z=+3.85 SIGNIFICANT — the gate prevents costly failed-20 bids exactly when the team is already behind and can least afford the set.'] },
     { version: '2.31.108', date: 'Jun 2026', changes: ['AI card-play: partner (3rd man) responding to a bidder offsuit signal now plays the cheapest winning trump when all remaining players are confirmed trump-void, instead of always playing the highest trump. The bidder-signal path (any offsuit bidder lead triggers 3rd-man-high) was correctly spending trump to secure the trick, but when every seat after the partner is deductibly trump-void, the Jack is no more likely to hold the trick than the Queen or King — no one can overtrump. Previously this wasted the J on an already-secured trick and exposed it to future loss; now the cheapest trump wins the trick and the J/5 are saved for later. Only fires on strict deduction (knownVoids.trump===true), never on estimates. Trust-fix ship (same pattern as v2.31.27 min-win).'] },
     { version: '2.31.107', date: 'Jun 2026', changes: ['AI bidding: the unconditional open-15 rule now requires at least K of trump, A♥, or A of trump to fire. Previously the AI opened 15 on any hand in a clean auction regardless of trump quality — including hands like 8♦+4♦ or 3♥+4♥ with no face cards. Those hands now pass instead, forcing the dealer to bag roughly half the time. Although the per-hand make-rate on weak opens is above the mathematical break-even (60%), passing is better at the game level because transferring the contract to a bagged dealer is +EV. Rig (partner mode): −0.71pt set-rate improvement (z=2.84 primary / z=3.13 held-out, replicated; comeback equity also significant z=2.02). Suppresses 23.7% of prior opens. Partner mode only — cutthroat open-15 was already gated off entirely at v2.31.86.'] },
     { version: '2.31.106', date: 'Jun 2026', changes: ['AI card-play: when the bidder holds exactly the 5 and J of trump (no other trump) on a 20+ bid, the AI now leads offsuit on tricks 1 and 2 instead of immediately playing the 5 then J. The 5+J are a guaranteed 15 points that can be played at any time — spending them first forces partner to follow trump on both tricks, draining their ruffing power. Leading offsuit first preserves partner\'s trump so they can ruff and contribute the one extra trick needed to make 20. The floor is identical either way: if all offsuit tricks are lost, the 5+J still make 15 as a backstop. The upside is real: a single partner ruff converts to a made 20 bid. Only applies in partner mode (not cutthroat); stands down if the partner is estimated to be trump-void.'] },
