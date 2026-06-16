@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.110';
+const VERSION = '2.31.112';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5974,6 +5974,29 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     }
   }
 
+  // BIDDER_5J_T3_OFF_T1LO (v2.31.112): bidder trick 1, <=3 trump including
+  // 5+J, partner drew >=3 cards (partner weak/moderate). Leading the 5
+  // (always boss -- intercepted below) forces a weak partner to spend
+  // their only trump on an already-won trick. Lead lowest offsuit first
+  // to preserve partner trump for a later ruff.
+  // MUST be placed BEFORE the BOSS CARD priority loop.
+  // Gate: partner_drew >=3 per targeted rig (5j-only: +9.6% z=+10.7;
+  // 5j+1: +7.4% z=+12.5). Not applied in cutthroat (no partner).
+  if (!cutthroat && isLeadingTrick && player === bidWinner && trickNum === 0) {
+    const _b5Trumps = playable.filter(c => getTrumpRank(c, trumpSuit) >= 0);
+    const _b5NonTrumps = playable.filter(c => getTrumpRank(c, trumpSuit) < 0);
+    const _b5Has5 = _b5Trumps.some(c => c.rank === '5');
+    const _b5HasJ = _b5Trumps.some(c => c.rank === 'J' && c.suit === trumpSuit);
+    const _b5PartnerIdx = (player + 2) % 4;
+    const _b5PartnerDrew = cardsDrawn ? (cardsDrawn[_b5PartnerIdx] || 0) : 0;
+    if (_b5Has5 && _b5HasJ && _b5Trumps.length <= 3 && _b5NonTrumps.length > 0 && _b5PartnerDrew >= 3) {
+      const _b5Low = _b5NonTrumps.reduce((lo, c) =>
+        getOffSuitRank(c) < getOffSuitRank(lo) ? c : lo);
+      console.log('BIDDER_5J_T3_OFF_T1LO: P' + (player + 1) + ' has 5+J <=3 trump, partner drew ' + _b5PartnerDrew + ' -- lead ' + _b5Low.id + ' (lowest offsuit trick 1)');
+      return _b5Low;
+    }
+  }
+
   // ========================================================================
   // DEFENDER CASH PROVABLY-BOSS A♥ (FIX v2.31.43)
   // ========================================================================
@@ -7321,6 +7344,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.112', date: 'Jun 2026', changes: ['AI card-play: when the bidder holds 5+J of trump plus at most one other trump (3 trump total) and partner drew 3 or more cards (weak or moderate hand), trick 1 now leads lowest offsuit instead of the 5 of trump. The 5 is always the highest card in the game -- playing it trick 1 forces a weak partner to follow trump on a trick already won, draining their only trump before they can ruff. Leading offsuit first preserves that ruff: even one partner ruff converts to a made 20. Gate confirmed by stratified targeted rig (5+J-only: +9.6pt z=+10.7; 5+J+1-trump: +7.4pt z=+12.5). When partner drew 0-2 cards the standard 5-of-trump lead is unchanged -- partner has spare trump. Cutthroat mode unaffected (no partner).'] },
     { version: '2.31.110', date: 'Jun 2026', changes: ['AI bidding: desperation RULE 5 (overbid an opponent\'s game-winning 15 when our team has the dealer) now respects the human-partner gate. Previously the rule fired unconditionally on any hand with 2+ trump — including total junk like 7♠+8♠ — even when the human partner had not yet bid and might hold a much stronger hand. The AI now defers to the human in that case, passing and allowing the human to decide whether to block. Exception: if the AI holds the 5 of trump (guaranteed 10-point trick, strong enough to justify the sacrifice alone), it still bids 20 regardless. Mirrors the existing RULE 1 !partnerIsHuman gate (v2.31.47): \'the human owns overbid/sacrifice decisions.\' Trust-fix ship: rig is all-AI so partnerIsHuman never fires there — no rig delta, but the human-visible behavior change is unambiguously correct.'] },
     { version: '2.31.109', date: 'Jun 2026', changes: ['AI bidding: the UPBID15 rule (overbid a standing 15 to 20 when your own hand qualifies as a 15-bid) now requires a minimum hand quality floor to fire. Previously it promoted any 15-quality hand — including just J of trump + one low trump with nothing else — to a 20 bid. J alone is only a reliable 15 (one guaranteed trick); the extra low trump doesn\'t materially change the 20-make probability. The rule now requires the same can-make-20-at-60% floor already used by the cutthroat desperation gate: has the 5 of trump, or J+A♥, or J+A-trump, or J+3 total trump, or A♥+4 trump, or A-trump+4 trump. Without any of those, the hand passes instead of upbidding. Rig: neutral overall (primary 20k −0.25pt z=−0.98 n.s. / held-out 30k +0.13pt z=+0.62 n.s.); comeback equity held-out +1.36pt z=+3.85 SIGNIFICANT — the gate prevents costly failed-20 bids exactly when the team is already behind and can least afford the set.'] },
     { version: '2.31.108', date: 'Jun 2026', changes: ['AI card-play: partner (3rd man) responding to a bidder offsuit signal now plays the cheapest winning trump when all remaining players are confirmed trump-void, instead of always playing the highest trump. The bidder-signal path (any offsuit bidder lead triggers 3rd-man-high) was correctly spending trump to secure the trick, but when every seat after the partner is deductibly trump-void, the Jack is no more likely to hold the trick than the Queen or King — no one can overtrump. Previously this wasted the J on an already-secured trick and exposed it to future loss; now the cheapest trump wins the trick and the J/5 are saved for later. Only fires on strict deduction (knownVoids.trump===true), never on estimates. Trust-fix ship (same pattern as v2.31.27 min-win).'] },
