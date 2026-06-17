@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.113';
+const VERSION = '2.31.114';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7344,6 +7344,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.114', date: 'Jun 2026', changes: ['Cutthroat leaderboard redesigned to match partners style. Score is now the primary number (large, gold, sorted descending) with avg placement as a small secondary line below it. The "% 1st" stat in the sub-line is highlighted in gold as the key placement metric. Previously avg placement was the big number and score was a dim secondary -- that buried the richer composite stat.'] },
     { version: '2.31.113', date: 'Jun 2026', changes: ['Leaderboard "Online now" now matches the top bar exactly. Previously it used a 5-minute lastSeen window, so a player who had just disconnected could still show as "Online now" on the leaderboard while already absent from the online players bar. Both displays now use the same real-time presence source -- if you appear in the top bar you show Online now in the leaderboard, if not you show the time-ago string.'] },
     { version: '2.31.112', date: 'Jun 2026', changes: ['AI card-play: when the bidder holds 5+J of trump plus at most one other trump (3 trump total) and partner drew 3 or more cards (weak or moderate hand), trick 1 now leads lowest offsuit instead of the 5 of trump. The 5 is always the highest card in the game -- playing it trick 1 forces a weak partner to follow trump on a trick already won, draining their only trump before they can ruff. Leading offsuit first preserves that ruff: even one partner ruff converts to a made 20. Gate confirmed by stratified targeted rig (5+J-only: +9.6pt z=+10.7; 5+J+1-trump: +7.4pt z=+12.5). When partner drew 0-2 cards the standard 5-of-trump lead is unchanged -- partner has spare trump. Cutthroat mode unaffected (no partner).'] },
     { version: '2.31.110', date: 'Jun 2026', changes: ['AI bidding: desperation RULE 5 (overbid an opponent\'s game-winning 15 when our team has the dealer) now respects the human-partner gate. Previously the rule fired unconditionally on any hand with 2+ trump — including total junk like 7♠+8♠ — even when the human partner had not yet bid and might hold a much stronger hand. The AI now defers to the human in that case, passing and allowing the human to decide whether to block. Exception: if the AI holds the 5 of trump (guaranteed 10-point trick, strong enough to justify the sacrifice alone), it still bids 20 regardless. Mirrors the existing RULE 1 !partnerIsHuman gate (v2.31.47): \'the human owns overbid/sacrifice decisions.\' Trust-fix ship: rig is all-AI so partnerIsHuman never fires there — no rig delta, but the human-visible behavior change is unambiguously correct.'] },
@@ -9637,9 +9638,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
         });
       }
       lb.sort((a, b) =>
-        a.avgPlace !== b.avgPlace
-          ? a.avgPlace - b.avgPlace
-          : b.gamesPlayed - a.gamesPlayed);
+        b.score !== a.score
+          ? b.score - a.score
+          : a.avgPlace - b.avgPlace);
       setLeaderboardDataCutthroat(lb.slice(0, 10));
     } catch (err) {
       console.error('Error fetching cutthroat leaderboard:', err);
@@ -10329,7 +10330,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           <div className={isCyberpunk ? 'cp-lb-avatar' : isArabian ? 'an-lb-avatar' : 'irlb-lb-avatar'}>{getAvatarById(player.avatar).emoji}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className={isCyberpunk ? 'cp-lb-username' : 'irlb-lb-username'}>{player.username}</div>
-            <div className="irlb-lb-stats">{player.gamesPlayed} games · {player.firstRate}% 1st</div>
+            <div className="irlb-lb-stats">{player.gamesPlayed} games · <span style={{ color: isCyberpunk ? 'rgba(0,255,136,0.8)' : 'rgba(201,162,39,0.9)' }}>{player.firstRate}% 1st</span></div>
             {(lbIsOnline || lbLastSeenStr) && (
               <div style={{ fontSize: '10px', color: lbIsOnline ? (isCyberpunk ? 'rgba(0,255,136,0.7)' : 'rgba(93,208,132,0.6)') : (isCyberpunk ? 'rgba(0,229,255,0.3)' : 'rgba(251,246,228,0.35)'), marginTop: '1px' }}>
                 {lbIsOnline ? 'Online now' : lbLastSeenStr}
@@ -10338,14 +10339,12 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', marginLeft: 'auto', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'baseline' }}>
-              <span className={isCyberpunk ? 'cp-lb-score' : 'irlb-lb-score'}>{avgPlaceStr}</span>
-              <span className={isCyberpunk ? 'cp-lb-pts-label' : 'irlb-lb-pts-label'}>avg</span>
+              <span className={isCyberpunk ? 'cp-lb-score' : 'irlb-lb-score'}>{typeof player.score === 'number' ? player.score.toLocaleString() : '0'}</span>
+              <span className={isCyberpunk ? 'cp-lb-pts-label' : 'irlb-lb-pts-label'}>pts</span>
             </div>
-            {typeof player.score === 'number' && (
-              <div style={{ fontSize: '10px', color: isCyberpunk ? 'rgba(0,229,255,0.6)' : 'rgba(201,162,74,0.7)', fontFamily: isCyberpunk ? "'Share Tech Mono',monospace" : "'Cinzel',serif", letterSpacing: '0.5px' }}>
-                · {player.score.toLocaleString()} pts
-              </div>
-            )}
+            <div style={{ fontSize: '10px', color: isCyberpunk ? 'rgba(0,229,255,0.4)' : 'rgba(201,162,74,0.45)', fontFamily: isCyberpunk ? "'Share Tech Mono',monospace" : "'Cinzel',serif", letterSpacing: '0.5px' }}>
+              {avgPlaceStr} avg
+            </div>
           </div>
         </div>
       );
