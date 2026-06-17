@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.114';
+const VERSION = '2.31.115';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7344,6 +7344,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.115', date: 'Jun 2026', changes: ['Cutthroat game cards now color each player score label by seat (North/South = green, East/West = red), matching the name colors shown below the game ID and matching how partners colors its team scores. Previously all cutthroat score labels were gold with only the leader getting a brighter shade. The leader/winner still gets bold text.'] },
     { version: '2.31.114', date: 'Jun 2026', changes: ['Cutthroat leaderboard redesigned to match partners style. Score is now the primary number (large, gold, sorted descending) with avg placement as a small secondary line below it. The "% 1st" stat in the sub-line is highlighted in gold as the key placement metric. Previously avg placement was the big number and score was a dim secondary -- that buried the richer composite stat.'] },
     { version: '2.31.113', date: 'Jun 2026', changes: ['Leaderboard "Online now" now matches the top bar exactly. Previously it used a 5-minute lastSeen window, so a player who had just disconnected could still show as "Online now" on the leaderboard while already absent from the online players bar. Both displays now use the same real-time presence source -- if you appear in the top bar you show Online now in the leaderboard, if not you show the time-ago string.'] },
     { version: '2.31.112', date: 'Jun 2026', changes: ['AI card-play: when the bidder holds 5+J of trump plus at most one other trump (3 trump total) and partner drew 3 or more cards (weak or moderate hand), trick 1 now leads lowest offsuit instead of the 5 of trump. The 5 is always the highest card in the game -- playing it trick 1 forces a weak partner to follow trump on a trick already won, draining their only trump before they can ruff. Leading offsuit first preserves that ruff: even one partner ruff converts to a made 20. Gate confirmed by stratified targeted rig (5+J-only: +9.6pt z=+10.7; 5+J+1-trump: +7.4pt z=+12.5). When partner drew 0-2 cards the standard 5-of-trump lead is unchanged -- partner has spare trump. Cutthroat mode unaffected (no partner).'] },
@@ -10261,7 +10262,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     const pl = players[seat];
                     const label = (pl && !pl.isAI && pl.username) ? pl.username.slice(0, 2).toUpperCase() : seat[0];
                     const isLeader = pScores[i] === maxScore && maxScore > 0;
-                    const color = isLeader ? '#f6d778' : 'rgba(201,162,74,0.7)';
+                    const isNS = seat === 'North' || seat === 'South';
+                    const color = isNS ? '#5dd084' : '#ef7c74';
                     return (
                       <React.Fragment key={seat}>
                         {i > 0 && <span style={{ color: 'rgba(201,162,74,0.5)', margin: '0 3px' }}>·</span>}
