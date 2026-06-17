@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.115';
+const VERSION = '2.31.116';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7344,6 +7344,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.116', date: 'Jun 2026', changes: ['Cutthroat game card score labels: only human players get seat-based color (NS=green, EW=red). AI players always show red regardless of seat. Previously an AI in a North/South seat incorrectly inherited the green human color.'] },
     { version: '2.31.115', date: 'Jun 2026', changes: ['Cutthroat game cards now color each player score label by seat (North/South = green, East/West = red), matching the name colors shown below the game ID and matching how partners colors its team scores. Previously all cutthroat score labels were gold with only the leader getting a brighter shade. The leader/winner still gets bold text.'] },
     { version: '2.31.114', date: 'Jun 2026', changes: ['Cutthroat leaderboard redesigned to match partners style. Score is now the primary number (large, gold, sorted descending) with avg placement as a small secondary line below it. The "% 1st" stat in the sub-line is highlighted in gold as the key placement metric. Previously avg placement was the big number and score was a dim secondary -- that buried the richer composite stat.'] },
     { version: '2.31.113', date: 'Jun 2026', changes: ['Leaderboard "Online now" now matches the top bar exactly. Previously it used a 5-minute lastSeen window, so a player who had just disconnected could still show as "Online now" on the leaderboard while already absent from the online players bar. Both displays now use the same real-time presence source -- if you appear in the top bar you show Online now in the leaderboard, if not you show the time-ago string.'] },
@@ -10262,8 +10263,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     const pl = players[seat];
                     const label = (pl && !pl.isAI && pl.username) ? pl.username.slice(0, 2).toUpperCase() : seat[0];
                     const isLeader = pScores[i] === maxScore && maxScore > 0;
+                    const isHuman = pl && !pl.isAI;
                     const isNS = seat === 'North' || seat === 'South';
-                    const color = isNS ? '#5dd084' : '#ef7c74';
+                    const color = isHuman ? (isNS ? '#5dd084' : '#ef7c74') : '#ef7c74';
                     return (
                       <React.Fragment key={seat}>
                         {i > 0 && <span style={{ color: 'rgba(201,162,74,0.5)', margin: '0 3px' }}>·</span>}
