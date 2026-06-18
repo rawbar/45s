@@ -3107,6 +3107,10 @@
   }
   .irlb-lb-row:hover { background: rgba(19,87,42,0.28); }
   .irlb-lb-row.top3 { background: rgba(19,87,42,0.28); border-color: rgba(201,162,74,0.3); }
+  /* Cutthroat rows use a blue tint instead of green felt */
+  .irlb-lb-row-ct { background: rgba(12,40,90,0.28); border-color: rgba(80,140,220,0.18); }
+  .irlb-lb-row-ct:hover { background: rgba(12,40,90,0.42); }
+  .irlb-lb-row-ct.top3 { background: rgba(12,40,90,0.42); border-color: rgba(80,140,220,0.35); }
   .irlb-lb-row.top3::before {
     content: ''; position: absolute; inset: 0;
     background: linear-gradient(90deg, rgba(201,162,74,0.06) 0%, transparent 50%);
@@ -3458,7 +3462,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.116';
+const VERSION = '2.31.121';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -3656,6 +3660,85 @@ function getBadgeIds(stats) {
   if ((s.cardSharkStreak||0)>=10)     ids.push('untouchable_streak');
   if ((s.gamesWon||0)>=100)           ids.push('grandmaster');
   if ((s.cleanGameWins||0)>=50)       ids.push('the_untouchable');
+  return ids;
+}
+
+// ─── Cutthroat Badge Definitions ─────────────────────────────────────────────
+const BADGES_CUTTHROAT = [
+  // Placement
+  { id:'ct_first_win', name:'First Blood',     desc:'Win your first cutthroat game',                  pts:5,   sym:'🥇', color:'#909090' },
+  { id:'ct_wins_5',    name:'Vicious',          desc:'Win 5 cutthroat games',                          pts:10,  sym:'🎯', color:'#1565c0' },
+  { id:'ct_wins_15',   name:'Predator',         desc:'Win 15 cutthroat games',                         pts:25,  sym:'🗡️', color:'#d4af37' },
+  { id:'ct_wins_30',   name:'Apex',             desc:'Win 30 cutthroat games',                         pts:60,  sym:'👑', color:'#e5e4e2', tier:'legendary' },
+  // Streaks
+  { id:'ct_streak_3',  name:'On a Roll',        desc:'Win 3 cutthroat games in a row',                 pts:15,  sym:'⚡', color:'#1565c0' },
+  { id:'ct_streak_5',  name:'Unstoppable',      desc:'Win 5 cutthroat games in a row',                 pts:35,  sym:'🔥', color:'#d4af37' },
+  { id:'ct_streak_10', name:'Unbreakable',      desc:'Win 10 cutthroat games in a row',                pts:100, sym:'💥', color:'#e5e4e2', tier:'legendary' },
+  // Games Played
+  { id:'ct_games_10',  name:'Getting Started',  desc:'Play 10 cutthroat games',                        pts:5,   sym:'🎮', color:'#909090' },
+  { id:'ct_games_25',  name:'Regular',          desc:'Play 25 cutthroat games',                        pts:10,  sym:'🎪', color:'#1565c0' },
+  { id:'ct_games_50',  name:'Veteran',          desc:'Play 50 cutthroat games',                        pts:20,  sym:'🏅', color:'#1565c0' },
+  { id:'ct_games_100', name:'Legend',           desc:'Play 100 cutthroat games',                       pts:40,  sym:'🌙', color:'#d4af37' },
+  { id:'ct_games_250', name:'Centurion',        desc:'Play 250 cutthroat games',                       pts:75,  sym:'🌟', color:'#e5e4e2', tier:'legendary' },
+  // Bidding
+  { id:'ct_bid20_25',  name:'Brave',            desc:'Make 25 twenty-bids in cutthroat',               pts:10,  sym:'🦁', color:'#1565c0' },
+  { id:'ct_bid25_5',   name:'High Roller',      desc:'Make 5 twenty-five-bids in cutthroat',           pts:15,  sym:'🎰', color:'#d4af37' },
+  { id:'ct_bid30_1',   name:'All or Nothing',   desc:'Bid 30 and make it in cutthroat',                pts:25,  sym:'💎', color:'#d4af37' },
+  { id:'ct_bid30_3',   name:'Card Shark',       desc:'Make 3 thirty-bids in cutthroat',                pts:50,  sym:'🃏', color:'#e5e4e2', tier:'legendary' },
+  // Defense
+  { id:'ct_set_5',     name:'Spoiler',          desc:'Set 5 bidders in cutthroat',                     pts:5,   sym:'⚔️', color:'#909090' },
+  { id:'ct_set_25',    name:'Coalition Builder',desc:'Set 25 bidders in cutthroat',                    pts:15,  sym:'🛡️', color:'#1565c0' },
+  { id:'ct_set_60',    name:'Table Enforcer',   desc:'Set 60 bidders in cutthroat',                    pts:30,  sym:'🗡️', color:'#d4af37' },
+  // Perfect Rounds
+  { id:'ct_perfect_1', name:'Perfect',          desc:'Score all 30 points in a cutthroat round',       pts:10,  sym:'⭐', color:'#1565c0' },
+  { id:'ct_perfect_5', name:'Flawless',         desc:'Score 5 perfect 30-point rounds in cutthroat',   pts:25,  sym:'🌟', color:'#d4af37' },
+  // Win Types
+  { id:'ct_clean_1',   name:'Iceman',           desc:'Win a cutthroat game without ever being set',    pts:10,  sym:'🧊', color:'#1565c0' },
+  { id:'ct_clean_5',   name:'Glacier',          desc:'Win 5 cutthroat games without being set',        pts:25,  sym:'❄️', color:'#d4af37' },
+  { id:'ct_fast_1',    name:'Lightning Win',    desc:'Win a cutthroat game in 8 rounds or fewer',      pts:10,  sym:'⚡', color:'#1565c0' },
+  { id:'ct_fast_3',    name:'Speed Demon',      desc:'Win 3 cutthroat games in 8 rounds or fewer',     pts:20,  sym:'🚀', color:'#d4af37' },
+  { id:'ct_shutout_1', name:'Lockdown',         desc:'Win when no opponent reaches 60 points',         pts:15,  sym:'🏰', color:'#d4af37' },
+  { id:'ct_comeback_1',name:'Phoenix',          desc:'Win a cutthroat game from behind',               pts:15,  sym:'🦅', color:'#1565c0' },
+  { id:'ct_comeback_2',name:'Comeback Kid',     desc:'Win 2 cutthroat games from behind',              pts:30,  sym:'🔮', color:'#d4af37' },
+  // Bagged Bid
+  { id:'ct_bag_1',     name:'Baggage Claim',    desc:'Make a bagged (forced 15) bid in cutthroat',     pts:15,  sym:'🧳', color:'#1565c0' },
+  { id:'ct_bag_3',     name:'Bag of Tricks',    desc:'Make 3 bagged bids in cutthroat',                pts:35,  sym:'🎩', color:'#d4af37' },
+];
+
+function getBadgeCutthroatIds(stats) {
+  const s = stats || {};
+  const gp = (s.gamesPlayed || 0);
+  const ids = [];
+  if ((s.firstPlace||0)>=1)       ids.push('ct_first_win');
+  if ((s.firstPlace||0)>=5)       ids.push('ct_wins_5');
+  if ((s.firstPlace||0)>=15)      ids.push('ct_wins_15');
+  if ((s.firstPlace||0)>=30)      ids.push('ct_wins_30');
+  if ((s.bestStreakFirst||0)>=3)  ids.push('ct_streak_3');
+  if ((s.bestStreakFirst||0)>=5)  ids.push('ct_streak_5');
+  if ((s.bestStreakFirst||0)>=10) ids.push('ct_streak_10');
+  if (gp>=10)                     ids.push('ct_games_10');
+  if (gp>=25)                     ids.push('ct_games_25');
+  if (gp>=50)                     ids.push('ct_games_50');
+  if (gp>=100)                    ids.push('ct_games_100');
+  if (gp>=250)                    ids.push('ct_games_250');
+  if ((s.bid20Made||0)>=25)       ids.push('ct_bid20_25');
+  if ((s.bid25Made||0)>=5)        ids.push('ct_bid25_5');
+  if ((s.bid30Made||0)>=1)        ids.push('ct_bid30_1');
+  if ((s.bid30Made||0)>=3)        ids.push('ct_bid30_3');
+  if ((s.timesOppSet||0)>=5)      ids.push('ct_set_5');
+  if ((s.timesOppSet||0)>=25)     ids.push('ct_set_25');
+  if ((s.timesOppSet||0)>=60)     ids.push('ct_set_60');
+  if ((s.perfect30s||0)>=1)       ids.push('ct_perfect_1');
+  if ((s.perfect30s||0)>=5)       ids.push('ct_perfect_5');
+  if ((s.cleanWins||0)>=1)        ids.push('ct_clean_1');
+  if ((s.cleanWins||0)>=5)        ids.push('ct_clean_5');
+  if ((s.fastWins||0)>=1)         ids.push('ct_fast_1');
+  if ((s.fastWins||0)>=3)         ids.push('ct_fast_3');
+  if ((s.shutoutWins||0)>=1)      ids.push('ct_shutout_1');
+  if ((s.comebackWins||0)>=1)     ids.push('ct_comeback_1');
+  if ((s.comebackWins||0)>=2)     ids.push('ct_comeback_2');
+  if ((s.baggedBidMade||0)>=1)    ids.push('ct_bag_1');
+  if ((s.baggedBidMade||0)>=3)    ids.push('ct_bag_3');
   return ids;
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -7344,6 +7427,11 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.121', date: 'Jun 2026', changes: ['Cutthroat leaderboard rows now use a deep-blue panel tint instead of the green felt used for partner-mode rows, making the two variants visually distinct at a glance.'] },
+    { version: '2.31.120', date: 'Jun 2026', changes: ['Cutthroat leaderboard now shows all players with at least 1 game played (down from the prior 10-game minimum), and splits into Active / Inactive sections at the 30-day mark, matching the partners leaderboard. Previously only players with 10+ games qualified and no active/inactive split existed.'] },
+    { version: '2.31.119', date: 'Jun 2026', changes: ['Cutthroat badge tooltips no longer overflow the screen edges. Column-0 badges pin their tooltip to the left edge; column-4 badges pin to the right edge; center columns stay centered.'] },
+    { version: '2.31.118', date: 'Jun 2026', changes: ['Cutthroat stats panel now shows a score breakdown just like the partners panel. Each component of the composite score is listed with its count and multiplier (e.g. "1st Place 3 × 100 = +300", "Times Set 2 × −3 = −6"), with zero-contribution rows hidden. Badge points are the final line. The breakdown appears above the headline score total. Also fixed: computePlayerScoreCutthroat now includes badge points (badgeScore) in the total — previously badges were written to Firebase but not reflected in the composite score or leaderboard secondary number.'] },
+    { version: '2.31.117', date: 'Jun 2026', changes: ['Cutthroat badges: 30 badges are now tracked for the cutthroat variant, with their own badge grid visible in the cutthroat stats panel. Categories: Placement (4 badges — win 1/5/15/30 games), Streaks (3 — consecutive wins), Games Played (5 — 10/25/50/100/250 games), Bidding (4 — 25 bids at 20, 5 at 25, 1 at 30, 3 at 30), Defense (3 — set 5/25/60 bidders), Perfect Rounds (2), Win Types (7 — clean/fast/shutout/comeback variants), and Bagged Bid (2). Badges are awarded at game-end via the same bootstrap-and-notify pattern as partner-mode. Clicking any player on the cutthroat leaderboard shows their badge grid. Badge score stored under statsCutthroat/badgeScore and shown as a composite number in the cutthroat stats panel.'] },
     { version: '2.31.116', date: 'Jun 2026', changes: ['Cutthroat game card score labels: only human players get seat-based color (NS=green, EW=red). AI players always show red regardless of seat. Previously an AI in a North/South seat incorrectly inherited the green human color.'] },
     { version: '2.31.115', date: 'Jun 2026', changes: ['Cutthroat game cards now color each player score label by seat (North/South = green, East/West = red), matching the name colors shown below the game ID and matching how partners colors its team scores. Previously all cutthroat score labels were gold with only the leader getting a brighter shade. The leader/winner still gets bold text.'] },
     { version: '2.31.114', date: 'Jun 2026', changes: ['Cutthroat leaderboard redesigned to match partners style. Score is now the primary number (large, gold, sorted descending) with avg placement as a small secondary line below it. The "% 1st" stat in the sub-line is highlighted in gold as the key placement metric. Previously avg placement was the big number and score was a dim secondary -- that buried the richer composite stat.'] },
@@ -9510,6 +9598,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
   const [ctStatsPlayer, setCtStatsPlayer] = useState(null);
   const [ctStatsData, setCtStatsData] = useState(null);
   const [ctStatsLoading, setCtStatsLoading] = useState(false);
+  const [ctStatsPlayerBadges, setCtStatsPlayerBadges] = useState({});
+  const [ctActiveBadge, setCtActiveBadge] = useState(null);
 
   // Leaderboard modal state
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -9575,7 +9665,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       + ((stats.comebackWins || 0) * 15)
       + ((stats.cleanWins || 0) * 5)
       + ((stats.bestStreakFirst || 0) * 5)
-      - ((stats.timesSet || 0) * 3);
+      - ((stats.timesSet || 0) * 3)
+      + (stats.badgeScore || 0);
   };
 
   // Fetch leaderboard data (silent: just loads data, no modal)
@@ -9606,10 +9697,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
   };
 
   // v2.31.88: cutthroat leaderboard fetcher. Parallels fetchLeaderboardData
-  // but reads users/*/statsCutthroat and ranks by AVG PLACEMENT (1.00 best,
-  // 4.00 worst). Min-games gate is 10 (vs partner's 5) since per-game
-  // variance is higher with 4 outcomes per game. Tie-break by more games
-  // (more proven). Top 10 only.
+  // but reads users/*/statsCutthroat and ranks by composite score desc
+  // (tie-break avg placement asc). Min 1 game to appear; active/inactive
+  // split at 30 days matches partner-mode behaviour.
   const fetchLeaderboardDataCutthroat = async () => {
     setLeaderboardLoading(true);
     try {
@@ -9619,7 +9709,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       for (const [uid, user] of Object.entries(users)) {
         const ct = user.statsCutthroat;
         const gp = (ct && ct.gamesPlayed) || 0;
-        if (!ct || gp < 10) continue;
+        if (!ct || gp < 1) continue;
         const placementSum = ct.placementSum || 0;
         const avgPlace = placementSum / gp;
         const firstPlace = ct.firstPlace || 0;
@@ -9643,7 +9733,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
         b.score !== a.score
           ? b.score - a.score
           : a.avgPlace - b.avgPlace);
-      setLeaderboardDataCutthroat(lb.slice(0, 10));
+      setLeaderboardDataCutthroat(lb);
     } catch (err) {
       console.error('Error fetching cutthroat leaderboard:', err);
       setLeaderboardDataCutthroat([]);
@@ -9741,16 +9831,22 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
     setCtStatsLoading(true);
     setCtStatsPlayer(playerInfo);
     setShowCtStatsModal(true);
+    setCtActiveBadge(null);
     try {
-      const snap = await database.ref(`users/${playerId}/statsCutthroat`).once('value');
+      const [snap, badgeSnap] = await Promise.all([
+        database.ref(`users/${playerId}/statsCutthroat`).once('value'),
+        database.ref(`users/${playerId}/badgesCutthroat`).once('value'),
+      ]);
       setCtStatsData(snap.val() || {
         gamesPlayed: 0, firstPlace: 0, secondPlace: 0, thirdPlace: 0, fourthPlace: 0,
         placementSum: 0, currentStreakFirst: 0, bestStreakFirst: 0,
         highestScore: 0, lastPlayed: 0,
       });
+      setCtStatsPlayerBadges(badgeSnap.val() || {});
     } catch (err) {
       console.error('Error fetching cutthroat stats:', err);
       setCtStatsData(null);
+      setCtStatsPlayerBadges({});
     } finally {
       setCtStatsLoading(false);
     }
@@ -10325,7 +10421,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       return (
         <div
           key={player.uid}
-          className={isCyberpunk ? `cp-leaderboard-row ${rank < 3 ? 'top3 ' + rankClass : ''}` : `irlb-lb-row ${rank < 3 ? 'top3 ' + rankClass : ''}`}
+          className={isCyberpunk ? `cp-leaderboard-row ${rank < 3 ? 'top3 ' + rankClass : ''}` : `irlb-lb-row irlb-lb-row-ct ${rank < 3 ? 'top3 ' + rankClass : ''}`}
           style={{ opacity: dimmed ? 0.5 : 1 }}
           onClick={() => fetchCtPlayerStats(player.uid, { username: player.username, avatar: player.avatar })}
         >
@@ -10598,7 +10694,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     <div className="irlb-empty">
                       <div className="irlb-empty-icon">🏆</div>
                       <div className={isCyberpunk ? 'cp-empty-title' : 'irlb-empty-title'}>No Players Yet</div>
-                      <div className={isCyberpunk ? 'cp-empty-sub' : 'irlb-empty-sub'}>{ctMode ? 'Play 10+ cutthroat games to appear on the leaderboard.' : 'Play some games to appear on the leaderboard.'}</div>
+                      <div className={isCyberpunk ? 'cp-empty-sub' : 'irlb-empty-sub'}>{ctMode ? 'Play a cutthroat game to appear on the leaderboard.' : 'Play some games to appear on the leaderboard.'}</div>
                     </div>
                   ) : (() => {
                     const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -10868,6 +10964,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
             </div>
           ) : null;
           const ctScoreVal = computePlayerScoreCutthroat(s);
+          const ctEarnedIds = Object.keys(ctStatsPlayerBadges);
           const bidsAtt = s.bidsAttempted || 0;
           const bidsMade = s.bidsMade || 0;
           const bidsRatio = bidsAtt > 0 ? `${bidsMade} / ${bidsAtt} · ${Math.round((bidsMade / bidsAtt) * 100)}%` : `${bidsMade}`;
@@ -10935,17 +11032,96 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     {/* v2.31.99 Phase 2 — Distinctions (only nonzero rows) */}
                     {distinctions.length > 0 && sectionHeader('Distinctions')}
                     {distinctions.map(([lbl, n]) => statRow(lbl, n))}
-                    {/* v2.31.99 — Composite Score */}
+                    {/* v2.31.117 — Composite Score with breakdown */}
                     {sectionHeader('Score')}
+                    {(() => {
+                      const ctBreakdown = [
+                        { label: '1st Place ' + fp + ' × 100',            pts: fp * 100 },
+                        { label: '2nd Place ' + sp + ' × 30',             pts: sp * 30 },
+                        { label: '3rd Place ' + tp + ' × 10',             pts: tp * 10 },
+                        { label: '4th Place ' + fop + ' × −5',       pts: -fop * 5 },
+                        { label: 'Best Streak ' + (s.bestStreakFirst || 0) + ' × 5', pts: (s.bestStreakFirst || 0) * 5 },
+                        { label: 'Bid 30 Made ' + (s.bid30Made || 0) + ' × 10', pts: (s.bid30Made || 0) * 10 },
+                        { label: 'Bid 25 Made ' + (s.bid25Made || 0) + ' × 5',  pts: (s.bid25Made || 0) * 5 },
+                        { label: 'Bid 20 Made ' + (s.bid20Made || 0) + ' × 2',  pts: (s.bid20Made || 0) * 2 },
+                        { label: 'Bagged Bids ' + (s.baggedBidMade || 0) + ' × 1', pts: s.baggedBidMade || 0 },
+                        { label: 'Perfect 30s ' + (s.perfect30s || 0) + ' × 5', pts: (s.perfect30s || 0) * 5 },
+                        { label: 'Exceed Bid Pts',                              pts: s.exceedBidPoints || 0 },
+                        { label: 'Comeback Wins ' + (s.comebackWins || 0) + ' × 15', pts: (s.comebackWins || 0) * 15 },
+                        { label: 'Clean Wins ' + (s.cleanWins || 0) + ' × 5',  pts: (s.cleanWins || 0) * 5 },
+                        { label: 'Times Set ' + (s.timesSet || 0) + ' × −3', pts: -(s.timesSet || 0) * 3 },
+                        { label: 'Badges (' + ctEarnedIds.length + ')',         pts: s.badgeScore || 0 },
+                      ].filter(i => i.pts !== 0);
+                      if (ctBreakdown.length === 0) return null;
+                      return (
+                        <div style={{ background: isCp ? 'rgba(0,229,255,0.04)' : 'rgba(10,40,20,0.4)', border: isCp ? '1px solid rgba(0,229,255,0.15)' : '1px solid rgba(201,162,74,0.18)', borderRadius: '8px', padding: '8px 12px', marginBottom: '6px' }}>
+                          {ctBreakdown.map((it, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderTop: i === 0 ? 'none' : ('1px solid ' + (isCp ? 'rgba(0,229,255,0.08)' : 'rgba(201,162,74,0.08)')), fontSize: '12px', fontFamily: bodyFont }}>
+                              <span style={{ color: 'rgba(232,228,217,0.7)' }}>{it.label}</span>
+                              <span style={{ fontFamily: titleFont, fontWeight: 700, color: it.pts < 0 ? '#ef7c74' : accent }}>{it.pts > 0 ? '+' : ''}{it.pts}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                     <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
                       <span style={{ fontFamily: titleFont, fontSize: '26px', fontWeight: 800, color: accent }}>{ctScoreVal.toLocaleString()}</span>
                       <span style={{ fontFamily: bodyFont, fontSize: '11px', color: accent2, marginLeft: '6px', letterSpacing: '1px' }}>pts</span>
                     </div>
+                    {/* v2.31.117 — Cutthroat Badges */}
+                    {(() => {
+                      return (
+                        <>
+                          {sectionHeader('Badges')}
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '6px', fontSize: '10px', color: 'rgba(232,228,217,0.45)', fontFamily: bodyFont }}>
+                            {ctEarnedIds.length} earned &middot; {BADGES_CUTTHROAT.length - ctEarnedIds.length} locked
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,minmax(0,1fr))', gap: '8px 4px', marginBottom: '8px' }}>
+                            {BADGES_CUTTHROAT.map((badge, _bIdx) => {
+                              const earned = ctEarnedIds.includes(badge.id);
+                              const isActive = ctActiveBadge === badge.id;
+                              const isLegendary = badge.tier === 'legendary' && earned;
+                              const col = _bIdx % 5;
+                              const ttPos = col === 0
+                                ? { left: '0', right: 'auto', transform: 'none' }
+                                : col === 4
+                                  ? { right: '0', left: 'auto', transform: 'none' }
+                                  : { left: '50%', transform: 'translateX(-50%)' };
+                              return (
+                                <div key={badge.id} onClick={() => setCtActiveBadge(isActive ? null : badge.id)} title={badge.name}
+                                     style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', position: 'relative' }}>
+                                  <div className={isLegendary ? 'legendary-badge-earned' : ''}
+                                       style={{ width: '44px', height: '44px', flexShrink: 0, borderRadius: '50%', aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
+                                                background: earned ? (isCp ? 'rgba(2,5,10,0.8)' : 'rgba(10,40,20,0.8)') : 'rgba(18,14,10,0.7)',
+                                                border: isLegendary ? undefined : (isActive ? ('2.5px solid ' + accent) : ('2px solid ' + (earned ? (badge.color || accent) : 'rgba(255,255,255,0.1)'))),
+                                                boxShadow: isLegendary ? undefined : (isActive ? ('0 0 16px ' + accent + '99') : (earned ? ('0 0 8px ' + (badge.color || accent) + '55') : 'none')) }}>
+                                    <span style={{ opacity: earned ? 1 : 0.25, lineHeight: 1, fontSize: '20px' }}>{badge.sym}</span>
+                                    {!earned && <span style={{ position: 'absolute', bottom: '-1px', right: '-1px', fontSize: '10px', lineHeight: 1 }}>🔒</span>}
+                                  </div>
+                                  <div style={{ fontFamily: bodyFont, fontSize: '9px', color: 'rgba(232,228,217,0.45)', textAlign: 'center', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>{badge.name}</div>
+                                  {isActive && (
+                                    <div style={{ position: 'absolute', top: '110%', ...ttPos, background: 'rgba(2,5,10,0.97)', border: ('1px solid ' + accent2 + '55'), borderRadius: '6px', padding: '8px 10px', zIndex: 50, minWidth: '140px', maxWidth: '180px', pointerEvents: 'none' }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                                        <div style={{ fontFamily: titleFont, fontSize: '11px', color: accent }}>{badge.name}</div>
+                                        <div style={{ fontFamily: bodyFont, fontSize: '10px', color: badge.color, fontWeight: 700 }}>+{badge.pts}</div>
+                                      </div>
+                                      <div style={{ fontFamily: bodyFont, fontSize: '10px', color: 'rgba(232,228,217,0.65)' }}>{badge.desc}</div>
+                                      {earned && ctStatsPlayerBadges[badge.id]?.earnedAt && (
+                                        <div style={{ fontFamily: bodyFont, fontSize: '9px', color: accent2, marginTop: '4px' }}>
+                                          Earned {new Date(ctStatsPlayerBadges[badge.id].earnedAt).toLocaleDateString()}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </>
                 )}
-                <div style={{ marginTop: '14px', fontSize: '10px', color: 'rgba(232,228,217,0.4)', textAlign: 'center', fontFamily: bodyFont }}>
-                  Badges for cutthroat coming in a later release.
-                </div>
                 </div>
               </div>
             </div>
@@ -14987,7 +15163,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           const myFinalScore = pScores[seatIdx] || 0;
           const isMeCt = player.userId === userId;
           const ctRef = database.ref(`users/${player.userId}/statsCutthroat`);
+          let _preCTBadgeIds = new Set();
           ctRef.transaction((prev) => {
+            if (prev) _preCTBadgeIds = new Set(getBadgeCutthroatIds(prev));
             const s = prev || {
               gamesPlayed: 0,
               firstPlace: 0, secondPlace: 0, thirdPlace: 0, fourthPlace: 0,
@@ -15047,6 +15225,32 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               }
             }
             return s;
+          }).then(result => {
+            if (!isMeCt) return;
+            const updatedCtStats = result.snapshot.val();
+            if (!updatedCtStats) return;
+            const postCTBadgeIds = getBadgeCutthroatIds(updatedCtStats);
+            const thisGameCtBadges = postCTBadgeIds.filter(id => !_preCTBadgeIds.has(id));
+            database.ref(`users/${userId}/badgesCutthroat`).once('value').then(badgeSnap => {
+              const existingBadges = badgeSnap.val() || {};
+              const toWrite = postCTBadgeIds.filter(id => !existingBadges[id]);
+              if (toWrite.length === 0) return;
+              const badgeUpdates = {};
+              toWrite.forEach(id => {
+                badgeUpdates[`users/${userId}/badgesCutthroat/${id}`] = { earnedAt: Date.now() };
+              });
+              const totalBadgeScore = postCTBadgeIds.reduce(
+                (sum, id) => sum + (BADGES_CUTTHROAT.find(b => b.id === id)?.pts || 0), 0);
+              return database.ref().update(badgeUpdates).then(() => {
+                console.log('🏅 CT: Wrote ' + toWrite.length + ' ct-badges (' + thisGameCtBadges.length + ' new this game)');
+                return database.ref(`users/${userId}/statsCutthroat/badgeScore`).set(totalBadgeScore);
+              }).then(() => {
+                if (thisGameCtBadges.length === 0) return;
+                const earned = thisGameCtBadges.map(id => BADGES_CUTTHROAT.find(b => b.id === id)).filter(Boolean);
+                setNewlyEarnedBadges(earned);
+                console.log('🏅 CT: New badges:', earned.map(b => b.name).join(', '));
+              });
+            }).catch(err => console.error('CT badge award error:', err));
           }).catch(err => console.warn('statsCutthroat write failed:', err));
         });
         return; // partner-mode block doesn't apply
