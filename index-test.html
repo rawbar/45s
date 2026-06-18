@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.117';
+const VERSION = '2.31.118';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7423,6 +7423,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.118', date: 'Jun 2026', changes: ['Cutthroat stats panel now shows a score breakdown just like the partners panel. Each component of the composite score is listed with its count and multiplier (e.g. "1st Place 3 × 100 = +300", "Times Set 2 × −3 = −6"), with zero-contribution rows hidden. Badge points are the final line. The breakdown appears above the headline score total. Also fixed: computePlayerScoreCutthroat now includes badge points (badgeScore) in the total — previously badges were written to Firebase but not reflected in the composite score or leaderboard secondary number.'] },
     { version: '2.31.117', date: 'Jun 2026', changes: ['Cutthroat badges: 30 badges are now tracked for the cutthroat variant, with their own badge grid visible in the cutthroat stats panel. Categories: Placement (4 badges — win 1/5/15/30 games), Streaks (3 — consecutive wins), Games Played (5 — 10/25/50/100/250 games), Bidding (4 — 25 bids at 20, 5 at 25, 1 at 30, 3 at 30), Defense (3 — set 5/25/60 bidders), Perfect Rounds (2), Win Types (7 — clean/fast/shutout/comeback variants), and Bagged Bid (2). Badges are awarded at game-end via the same bootstrap-and-notify pattern as partner-mode. Clicking any player on the cutthroat leaderboard shows their badge grid. Badge score stored under statsCutthroat/badgeScore and shown as a composite number in the cutthroat stats panel.'] },
     { version: '2.31.116', date: 'Jun 2026', changes: ['Cutthroat game card score labels: only human players get seat-based color (NS=green, EW=red). AI players always show red regardless of seat. Previously an AI in a North/South seat incorrectly inherited the green human color.'] },
     { version: '2.31.115', date: 'Jun 2026', changes: ['Cutthroat game cards now color each player score label by seat (North/South = green, East/West = red), matching the name colors shown below the game ID and matching how partners colors its team scores. Previously all cutthroat score labels were gold with only the leader getting a brighter shade. The leader/winner still gets bold text.'] },
@@ -9657,7 +9658,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       + ((stats.comebackWins || 0) * 15)
       + ((stats.cleanWins || 0) * 5)
       + ((stats.bestStreakFirst || 0) * 5)
-      - ((stats.timesSet || 0) * 3);
+      - ((stats.timesSet || 0) * 3)
+      + (stats.badgeScore || 0);
   };
 
   // Fetch leaderboard data (silent: just loads data, no modal)
@@ -10956,6 +10958,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
             </div>
           ) : null;
           const ctScoreVal = computePlayerScoreCutthroat(s);
+          const ctEarnedIds = Object.keys(ctStatsPlayerBadges);
           const bidsAtt = s.bidsAttempted || 0;
           const bidsMade = s.bidsMade || 0;
           const bidsRatio = bidsAtt > 0 ? `${bidsMade} / ${bidsAtt} · ${Math.round((bidsMade / bidsAtt) * 100)}%` : `${bidsMade}`;
@@ -11023,15 +11026,44 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     {/* v2.31.99 Phase 2 — Distinctions (only nonzero rows) */}
                     {distinctions.length > 0 && sectionHeader('Distinctions')}
                     {distinctions.map(([lbl, n]) => statRow(lbl, n))}
-                    {/* v2.31.99 — Composite Score */}
+                    {/* v2.31.117 — Composite Score with breakdown */}
                     {sectionHeader('Score')}
+                    {(() => {
+                      const ctBreakdown = [
+                        { label: '1st Place ' + fp + ' × 100',            pts: fp * 100 },
+                        { label: '2nd Place ' + sp + ' × 30',             pts: sp * 30 },
+                        { label: '3rd Place ' + tp + ' × 10',             pts: tp * 10 },
+                        { label: '4th Place ' + fop + ' × −5',       pts: -fop * 5 },
+                        { label: 'Best Streak ' + (s.bestStreakFirst || 0) + ' × 5', pts: (s.bestStreakFirst || 0) * 5 },
+                        { label: 'Bid 30 Made ' + (s.bid30Made || 0) + ' × 10', pts: (s.bid30Made || 0) * 10 },
+                        { label: 'Bid 25 Made ' + (s.bid25Made || 0) + ' × 5',  pts: (s.bid25Made || 0) * 5 },
+                        { label: 'Bid 20 Made ' + (s.bid20Made || 0) + ' × 2',  pts: (s.bid20Made || 0) * 2 },
+                        { label: 'Bagged Bids ' + (s.baggedBidMade || 0) + ' × 1', pts: s.baggedBidMade || 0 },
+                        { label: 'Perfect 30s ' + (s.perfect30s || 0) + ' × 5', pts: (s.perfect30s || 0) * 5 },
+                        { label: 'Exceed Bid Pts',                              pts: s.exceedBidPoints || 0 },
+                        { label: 'Comeback Wins ' + (s.comebackWins || 0) + ' × 15', pts: (s.comebackWins || 0) * 15 },
+                        { label: 'Clean Wins ' + (s.cleanWins || 0) + ' × 5',  pts: (s.cleanWins || 0) * 5 },
+                        { label: 'Times Set ' + (s.timesSet || 0) + ' × −3', pts: -(s.timesSet || 0) * 3 },
+                        { label: 'Badges (' + ctEarnedIds.length + ')',         pts: s.badgeScore || 0 },
+                      ].filter(i => i.pts !== 0);
+                      if (ctBreakdown.length === 0) return null;
+                      return (
+                        <div style={{ background: isCp ? 'rgba(0,229,255,0.04)' : 'rgba(10,40,20,0.4)', border: isCp ? '1px solid rgba(0,229,255,0.15)' : '1px solid rgba(201,162,74,0.18)', borderRadius: '8px', padding: '8px 12px', marginBottom: '6px' }}>
+                          {ctBreakdown.map((it, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderTop: i === 0 ? 'none' : ('1px solid ' + (isCp ? 'rgba(0,229,255,0.08)' : 'rgba(201,162,74,0.08)')), fontSize: '12px', fontFamily: bodyFont }}>
+                              <span style={{ color: 'rgba(232,228,217,0.7)' }}>{it.label}</span>
+                              <span style={{ fontFamily: titleFont, fontWeight: 700, color: it.pts < 0 ? '#ef7c74' : accent }}>{it.pts > 0 ? '+' : ''}{it.pts}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                     <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
                       <span style={{ fontFamily: titleFont, fontSize: '26px', fontWeight: 800, color: accent }}>{ctScoreVal.toLocaleString()}</span>
                       <span style={{ fontFamily: bodyFont, fontSize: '11px', color: accent2, marginLeft: '6px', letterSpacing: '1px' }}>pts</span>
                     </div>
                     {/* v2.31.117 — Cutthroat Badges */}
                     {(() => {
-                      const ctEarnedIds = Object.keys(ctStatsPlayerBadges);
                       return (
                         <>
                           {sectionHeader('Badges')}
