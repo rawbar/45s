@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.119';
+const VERSION = '2.31.120';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7423,6 +7423,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.120', date: 'Jun 2026', changes: ['Cutthroat leaderboard now shows all players with at least 1 game played (down from the prior 10-game minimum), and splits into Active / Inactive sections at the 30-day mark, matching the partners leaderboard. Previously only players with 10+ games qualified and no active/inactive split existed.'] },
     { version: '2.31.119', date: 'Jun 2026', changes: ['Cutthroat badge tooltips no longer overflow the screen edges. Column-0 badges pin their tooltip to the left edge; column-4 badges pin to the right edge; center columns stay centered.'] },
     { version: '2.31.118', date: 'Jun 2026', changes: ['Cutthroat stats panel now shows a score breakdown just like the partners panel. Each component of the composite score is listed with its count and multiplier (e.g. "1st Place 3 × 100 = +300", "Times Set 2 × −3 = −6"), with zero-contribution rows hidden. Badge points are the final line. The breakdown appears above the headline score total. Also fixed: computePlayerScoreCutthroat now includes badge points (badgeScore) in the total — previously badges were written to Firebase but not reflected in the composite score or leaderboard secondary number.'] },
     { version: '2.31.117', date: 'Jun 2026', changes: ['Cutthroat badges: 30 badges are now tracked for the cutthroat variant, with their own badge grid visible in the cutthroat stats panel. Categories: Placement (4 badges — win 1/5/15/30 games), Streaks (3 — consecutive wins), Games Played (5 — 10/25/50/100/250 games), Bidding (4 — 25 bids at 20, 5 at 25, 1 at 30, 3 at 30), Defense (3 — set 5/25/60 bidders), Perfect Rounds (2), Win Types (7 — clean/fast/shutout/comeback variants), and Bagged Bid (2). Badges are awarded at game-end via the same bootstrap-and-notify pattern as partner-mode. Clicking any player on the cutthroat leaderboard shows their badge grid. Badge score stored under statsCutthroat/badgeScore and shown as a composite number in the cutthroat stats panel.'] },
@@ -9691,10 +9692,9 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
   };
 
   // v2.31.88: cutthroat leaderboard fetcher. Parallels fetchLeaderboardData
-  // but reads users/*/statsCutthroat and ranks by AVG PLACEMENT (1.00 best,
-  // 4.00 worst). Min-games gate is 10 (vs partner's 5) since per-game
-  // variance is higher with 4 outcomes per game. Tie-break by more games
-  // (more proven). Top 10 only.
+  // but reads users/*/statsCutthroat and ranks by composite score desc
+  // (tie-break avg placement asc). Min 1 game to appear; active/inactive
+  // split at 30 days matches partner-mode behaviour.
   const fetchLeaderboardDataCutthroat = async () => {
     setLeaderboardLoading(true);
     try {
@@ -9704,7 +9704,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       for (const [uid, user] of Object.entries(users)) {
         const ct = user.statsCutthroat;
         const gp = (ct && ct.gamesPlayed) || 0;
-        if (!ct || gp < 10) continue;
+        if (!ct || gp < 1) continue;
         const placementSum = ct.placementSum || 0;
         const avgPlace = placementSum / gp;
         const firstPlace = ct.firstPlace || 0;
@@ -9728,7 +9728,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
         b.score !== a.score
           ? b.score - a.score
           : a.avgPlace - b.avgPlace);
-      setLeaderboardDataCutthroat(lb.slice(0, 10));
+      setLeaderboardDataCutthroat(lb);
     } catch (err) {
       console.error('Error fetching cutthroat leaderboard:', err);
       setLeaderboardDataCutthroat([]);
@@ -10689,7 +10689,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     <div className="irlb-empty">
                       <div className="irlb-empty-icon">🏆</div>
                       <div className={isCyberpunk ? 'cp-empty-title' : 'irlb-empty-title'}>No Players Yet</div>
-                      <div className={isCyberpunk ? 'cp-empty-sub' : 'irlb-empty-sub'}>{ctMode ? 'Play 10+ cutthroat games to appear on the leaderboard.' : 'Play some games to appear on the leaderboard.'}</div>
+                      <div className={isCyberpunk ? 'cp-empty-sub' : 'irlb-empty-sub'}>{ctMode ? 'Play a cutthroat game to appear on the leaderboard.' : 'Play some games to appear on the leaderboard.'}</div>
                     </div>
                   ) : (() => {
                     const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
