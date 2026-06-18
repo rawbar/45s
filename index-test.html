@@ -3107,6 +3107,10 @@
   }
   .irlb-lb-row:hover { background: rgba(19,87,42,0.28); }
   .irlb-lb-row.top3 { background: rgba(19,87,42,0.28); border-color: rgba(201,162,74,0.3); }
+  /* Cutthroat rows use a blue tint instead of green felt */
+  .irlb-lb-row-ct { background: rgba(12,40,90,0.28); border-color: rgba(80,140,220,0.18); }
+  .irlb-lb-row-ct:hover { background: rgba(12,40,90,0.42); }
+  .irlb-lb-row-ct.top3 { background: rgba(12,40,90,0.42); border-color: rgba(80,140,220,0.35); }
   .irlb-lb-row.top3::before {
     content: ''; position: absolute; inset: 0;
     background: linear-gradient(90deg, rgba(201,162,74,0.06) 0%, transparent 50%);
@@ -3458,7 +3462,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.120';
+const VERSION = '2.31.121';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7423,6 +7427,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.121', date: 'Jun 2026', changes: ['Cutthroat leaderboard rows now use a deep-blue panel tint instead of the green felt used for partner-mode rows, making the two variants visually distinct at a glance.'] },
     { version: '2.31.120', date: 'Jun 2026', changes: ['Cutthroat leaderboard now shows all players with at least 1 game played (down from the prior 10-game minimum), and splits into Active / Inactive sections at the 30-day mark, matching the partners leaderboard. Previously only players with 10+ games qualified and no active/inactive split existed.'] },
     { version: '2.31.119', date: 'Jun 2026', changes: ['Cutthroat badge tooltips no longer overflow the screen edges. Column-0 badges pin their tooltip to the left edge; column-4 badges pin to the right edge; center columns stay centered.'] },
     { version: '2.31.118', date: 'Jun 2026', changes: ['Cutthroat stats panel now shows a score breakdown just like the partners panel. Each component of the composite score is listed with its count and multiplier (e.g. "1st Place 3 × 100 = +300", "Times Set 2 × −3 = −6"), with zero-contribution rows hidden. Badge points are the final line. The breakdown appears above the headline score total. Also fixed: computePlayerScoreCutthroat now includes badge points (badgeScore) in the total — previously badges were written to Firebase but not reflected in the composite score or leaderboard secondary number.'] },
@@ -10416,7 +10421,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
       return (
         <div
           key={player.uid}
-          className={isCyberpunk ? `cp-leaderboard-row ${rank < 3 ? 'top3 ' + rankClass : ''}` : `irlb-lb-row ${rank < 3 ? 'top3 ' + rankClass : ''}`}
+          className={isCyberpunk ? `cp-leaderboard-row ${rank < 3 ? 'top3 ' + rankClass : ''}` : `irlb-lb-row irlb-lb-row-ct ${rank < 3 ? 'top3 ' + rankClass : ''}`}
           style={{ opacity: dimmed ? 0.5 : 1 }}
           onClick={() => fetchCtPlayerStats(player.uid, { username: player.username, avatar: player.avatar })}
         >
