@@ -3458,7 +3458,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.118';
+const VERSION = '2.31.119';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7423,6 +7423,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.119', date: 'Jun 2026', changes: ['Cutthroat badge tooltips no longer overflow the screen edges. Column-0 badges pin their tooltip to the left edge; column-4 badges pin to the right edge; center columns stay centered.'] },
     { version: '2.31.118', date: 'Jun 2026', changes: ['Cutthroat stats panel now shows a score breakdown just like the partners panel. Each component of the composite score is listed with its count and multiplier (e.g. "1st Place 3 × 100 = +300", "Times Set 2 × −3 = −6"), with zero-contribution rows hidden. Badge points are the final line. The breakdown appears above the headline score total. Also fixed: computePlayerScoreCutthroat now includes badge points (badgeScore) in the total — previously badges were written to Firebase but not reflected in the composite score or leaderboard secondary number.'] },
     { version: '2.31.117', date: 'Jun 2026', changes: ['Cutthroat badges: 30 badges are now tracked for the cutthroat variant, with their own badge grid visible in the cutthroat stats panel. Categories: Placement (4 badges — win 1/5/15/30 games), Streaks (3 — consecutive wins), Games Played (5 — 10/25/50/100/250 games), Bidding (4 — 25 bids at 20, 5 at 25, 1 at 30, 3 at 30), Defense (3 — set 5/25/60 bidders), Perfect Rounds (2), Win Types (7 — clean/fast/shutout/comeback variants), and Bagged Bid (2). Badges are awarded at game-end via the same bootstrap-and-notify pattern as partner-mode. Clicking any player on the cutthroat leaderboard shows their badge grid. Badge score stored under statsCutthroat/badgeScore and shown as a composite number in the cutthroat stats panel.'] },
     { version: '2.31.116', date: 'Jun 2026', changes: ['Cutthroat game card score labels: only human players get seat-based color (NS=green, EW=red). AI players always show red regardless of seat. Previously an AI in a North/South seat incorrectly inherited the green human color.'] },
@@ -11071,10 +11072,16 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                             {ctEarnedIds.length} earned &middot; {BADGES_CUTTHROAT.length - ctEarnedIds.length} locked
                           </div>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,minmax(0,1fr))', gap: '8px 4px', marginBottom: '8px' }}>
-                            {BADGES_CUTTHROAT.map(badge => {
+                            {BADGES_CUTTHROAT.map((badge, _bIdx) => {
                               const earned = ctEarnedIds.includes(badge.id);
                               const isActive = ctActiveBadge === badge.id;
                               const isLegendary = badge.tier === 'legendary' && earned;
+                              const col = _bIdx % 5;
+                              const ttPos = col === 0
+                                ? { left: '0', right: 'auto', transform: 'none' }
+                                : col === 4
+                                  ? { right: '0', left: 'auto', transform: 'none' }
+                                  : { left: '50%', transform: 'translateX(-50%)' };
                               return (
                                 <div key={badge.id} onClick={() => setCtActiveBadge(isActive ? null : badge.id)} title={badge.name}
                                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', position: 'relative' }}>
@@ -11088,7 +11095,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                                   </div>
                                   <div style={{ fontFamily: bodyFont, fontSize: '9px', color: 'rgba(232,228,217,0.45)', textAlign: 'center', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>{badge.name}</div>
                                   {isActive && (
-                                    <div style={{ position: 'absolute', top: '110%', left: '50%', transform: 'translateX(-50%)', background: 'rgba(2,5,10,0.97)', border: ('1px solid ' + accent2 + '55'), borderRadius: '6px', padding: '8px 10px', zIndex: 50, minWidth: '140px', maxWidth: '180px', pointerEvents: 'none' }}>
+                                    <div style={{ position: 'absolute', top: '110%', ...ttPos, background: 'rgba(2,5,10,0.97)', border: ('1px solid ' + accent2 + '55'), borderRadius: '6px', padding: '8px 10px', zIndex: 50, minWidth: '140px', maxWidth: '180px', pointerEvents: 'none' }}>
                                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
                                         <div style={{ fontFamily: titleFont, fontSize: '11px', color: accent }}>{badge.name}</div>
                                         <div style={{ fontFamily: bodyFont, fontSize: '10px', color: badge.color, fontWeight: 700 }}>+{badge.pts}</div>
