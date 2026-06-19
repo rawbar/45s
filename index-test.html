@@ -3462,7 +3462,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.121';
+const VERSION = '2.31.122';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7427,6 +7427,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.122', date: 'Jun 2026', changes: ['Trump suit buttons now have a 700ms arm delay when your trump-select phase begins. Buttons fade in from dim to full opacity over that window and are non-clickable until armed, preventing accidental suit selection for players who tap quickly before the screen transitions.'] },
     { version: '2.31.121', date: 'Jun 2026', changes: ['Cutthroat leaderboard rows now use a deep-blue panel tint instead of the green felt used for partner-mode rows, making the two variants visually distinct at a glance.'] },
     { version: '2.31.120', date: 'Jun 2026', changes: ['Cutthroat leaderboard now shows all players with at least 1 game played (down from the prior 10-game minimum), and splits into Active / Inactive sections at the 30-day mark, matching the partners leaderboard. Previously only players with 10+ games qualified and no active/inactive split existed.'] },
     { version: '2.31.119', date: 'Jun 2026', changes: ['Cutthroat badge tooltips no longer overflow the screen edges. Column-0 badges pin their tooltip to the left edge; column-4 badges pin to the right edge; center columns stay centered.'] },
@@ -14864,6 +14865,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   const [highBid, setHighBid] = useState(0);
   const [bidWinner, setBidWinner] = useState(-1);
   const [trumpSuit, setTrumpSuit] = useState(null);
+  const [trumpSelectArmed, setTrumpSelectArmed] = useState(false);
+  const _trumpArmTimer = useRef(null);
   const [bidFlash, setBidFlash] = useState(null);
   const [diamondAnim, setDiamondAnim] = useState(null);
   const bidFlashPrevRef = useRef([-1,-1,-1,-1]);
@@ -15451,6 +15454,18 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       }
     }
   }, [phase, currentPlayer, mySeatIndex, trumpSuit, hands]);
+
+  // Trump-select arm delay: prevent accidental suit selection on phase entry
+  useEffect(() => {
+    if (phase === 'trump-select' && bidWinner === mySeatIndex) {
+      setTrumpSelectArmed(false);
+      _trumpArmTimer.current = setTimeout(() => setTrumpSelectArmed(true), 700);
+    } else {
+      setTrumpSelectArmed(false);
+      if (_trumpArmTimer.current) clearTimeout(_trumpArmTimer.current);
+    }
+    return () => { if (_trumpArmTimer.current) clearTimeout(_trumpArmTimer.current); };
+  }, [phase, bidWinner, mySeatIndex]);
 
   // Sound effects: react to state changes (works for all players via Firebase sync)
   const prevTrickCardsLen = useRef(0);
@@ -19006,6 +19021,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           {phase === 'trump-select' && bidWinner === mySeatIndex && SUITS.map(s => (
             <button
               key={s}
+              disabled={!trumpSelectArmed}
               onClick={() => handleSelectTrump(s)}
               style={ currentThemeId === 'cyberpunk' ? (
                 (s === '♥' || s === '♦') ? {
@@ -19017,7 +19033,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   color: '#ff1a75',
                   textShadow: '0 0 10px rgba(255,26,117,0.7)',
                   borderRadius: '3px',
-                  cursor: 'pointer',
+                  cursor: trumpSelectArmed ? 'pointer' : 'not-allowed',
+                  opacity: trumpSelectArmed ? 1 : 0.35,
+                  transition: 'opacity 0.7s ease',
                 } : {
                   padding: '8px 16px',
                   fontSize: '20px',
@@ -19027,7 +19045,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   color: '#00e5ff',
                   textShadow: '0 0 10px rgba(0,229,255,0.7)',
                   borderRadius: '3px',
-                  cursor: 'pointer',
+                  cursor: trumpSelectArmed ? 'pointer' : 'not-allowed',
+                  opacity: trumpSelectArmed ? 1 : 0.35,
+                  transition: 'opacity 0.7s ease',
                 }
               ) : currentThemeId === 'irish' ? {
                 padding: '8px 16px',
@@ -19038,9 +19058,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 color: (s === '♥' || s === '♦') ? '#7a0e14' : '#1a0e03',
                 border: '1px solid rgba(0,0,0,0.6)',
                 borderRadius: '4px',
-                cursor: 'pointer',
+                cursor: trumpSelectArmed ? 'pointer' : 'not-allowed',
                 boxShadow: '0 2px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,245,200,0.5)',
                 textShadow: (s === '♥' || s === '♦') ? '0 1px 0 rgba(120,14,20,0.2)' : '0 1px 0 rgba(255,220,100,0.4)',
+                opacity: trumpSelectArmed ? 1 : 0.35,
+                transition: 'opacity 0.7s ease',
               } : {
                 padding: '8px 16px',
                 fontSize: '20px',
@@ -19048,9 +19070,11 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                 color: (s === '♥' || s === '♦') ? '#a81824' : '#fbf6e4',
                 border: '1px solid rgba(201,162,74,0.5)',
                 borderRadius: '4px',
-                cursor: 'pointer',
+                cursor: trumpSelectArmed ? 'pointer' : 'not-allowed',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(201,162,74,0.15)',
                 textShadow: (s === '♥' || s === '♦') ? '0 0 8px rgba(168,24,36,0.4)' : 'none',
+                opacity: trumpSelectArmed ? 1 : 0.35,
+                transition: 'opacity 0.7s ease',
               }}
             >
               {s}
