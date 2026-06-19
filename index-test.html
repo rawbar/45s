@@ -3462,7 +3462,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.122';
+const VERSION = '2.31.123';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7427,6 +7427,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.123', date: 'Jun 2026', changes: ['Fixed cutthroat badge notification not showing at game completion. The notification is now triggered as soon as new-this-game badges are identified, before the Firebase write step — previously a stale Firebase state could cause an early-exit that silenced the notification. Also added 🏅 CT: trace logs to the browser console to make the badge award pipeline inspectable.'] },
     { version: '2.31.122', date: 'Jun 2026', changes: ['Trump suit buttons now have a 700ms arm delay when your trump-select phase begins. Buttons fade in from dim to full opacity over that window and are non-clickable until armed, preventing accidental suit selection for players who tap quickly before the screen transitions.'] },
     { version: '2.31.121', date: 'Jun 2026', changes: ['Cutthroat leaderboard rows now use a deep-blue panel tint instead of the green felt used for partner-mode rows, making the two variants visually distinct at a glance.'] },
     { version: '2.31.120', date: 'Jun 2026', changes: ['Cutthroat leaderboard now shows all players with at least 1 game played (down from the prior 10-game minimum), and splits into Active / Inactive sections at the 30-day mark, matching the partners leaderboard. Previously only players with 10+ games qualified and no active/inactive split existed.'] },
@@ -15231,12 +15232,21 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           }).then(result => {
             if (!isMeCt) return;
             const updatedCtStats = result.snapshot.val();
+            console.log('🏅 CT badge check: committed=', result.committed, 'stats=', updatedCtStats ? 'ok' : 'null');
             if (!updatedCtStats) return;
             const postCTBadgeIds = getBadgeCutthroatIds(updatedCtStats);
             const thisGameCtBadges = postCTBadgeIds.filter(id => !_preCTBadgeIds.has(id));
+            console.log('🏅 CT: pre=', [..._preCTBadgeIds], 'post=', postCTBadgeIds, 'new this game=', thisGameCtBadges);
             database.ref(`users/${userId}/badgesCutthroat`).once('value').then(badgeSnap => {
               const existingBadges = badgeSnap.val() || {};
               const toWrite = postCTBadgeIds.filter(id => !existingBadges[id]);
+              console.log('🏅 CT: toWrite=', toWrite, 'existing=', Object.keys(existingBadges));
+              // Notify about this-game badges regardless of whether there's anything to write
+              if (thisGameCtBadges.length > 0) {
+                const earned = thisGameCtBadges.map(id => BADGES_CUTTHROAT.find(b => b.id === id)).filter(Boolean);
+                setNewlyEarnedBadges(earned);
+                console.log('🏅 CT: New badges this game:', earned.map(b => b.name).join(', '));
+              }
               if (toWrite.length === 0) return;
               const badgeUpdates = {};
               toWrite.forEach(id => {
@@ -15245,13 +15255,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               const totalBadgeScore = postCTBadgeIds.reduce(
                 (sum, id) => sum + (BADGES_CUTTHROAT.find(b => b.id === id)?.pts || 0), 0);
               return database.ref().update(badgeUpdates).then(() => {
-                console.log('🏅 CT: Wrote ' + toWrite.length + ' ct-badges (' + thisGameCtBadges.length + ' new this game)');
+                console.log('🏅 CT: Wrote ' + toWrite.length + ' ct-badges to Firebase');
                 return database.ref(`users/${userId}/statsCutthroat/badgeScore`).set(totalBadgeScore);
-              }).then(() => {
-                if (thisGameCtBadges.length === 0) return;
-                const earned = thisGameCtBadges.map(id => BADGES_CUTTHROAT.find(b => b.id === id)).filter(Boolean);
-                setNewlyEarnedBadges(earned);
-                console.log('🏅 CT: New badges:', earned.map(b => b.name).join(', '));
               });
             }).catch(err => console.error('CT badge award error:', err));
           }).catch(err => console.warn('statsCutthroat write failed:', err));
