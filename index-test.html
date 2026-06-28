@@ -3462,7 +3462,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.123';
+const VERSION = '2.31.124';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5278,15 +5278,16 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     // RULE 2: If opponent bid 20 and they can win with 20, bid 25 if we're
     // last chance (aggressive sacrifice — gated for a human partner).
     if (oppBidIs20 && bidderCanWinWith20 && playerIndex === dealer && !partnerIsHuman) {
-      // (C v2.31.44) The 25-sacrifice is exploitable: a human bids 20 on
-      // air knowing the AI always overbids into a doomed 25. 20-overbids
-      // stay always-on. Here, ONLY when the hand is crap for 25 (can't
-      // even make 20 → pure sacrifice), pass with DESP25_PASS_PROB ("you
-      // might be bluffing — try to make your 20"). Real (can20At60Pct)
-      // hands still always sacrifice. True Math.random() (genuine
-      // unpredictability for a live human).
-      if (!can20At60Pct && Math.random() < DESP25_PASS_PROB) {
-        console.log(`🎲 DESP-25 crap hand — randomized pass (let opp try their 20)`);
+      // (v2.31.124) Gate changed from can20At60Pct → can25desp. Prior gate
+      // was exploitable: hands like J+AH+T2 qualify for 20 at 60% but only
+      // make 25 at ~30% — expert bid 20 knowing unconditional overbid would
+      // get set AND gift trick points to clinch the game. can25desp mirrors
+      // normal 25-bid thresholds (relaxed slightly for desperation context).
+      const can25desp = (has5 && hasJ && hasAH) ||           // 85.88%+
+                        (has5 && hasJ && trumpCount >= 4) ||   // ~80%
+                        (has5 && hasAH && trumpCount >= 5);    // 90.33%
+      if (!can25desp && Math.random() < DESP25_PASS_PROB) {
+        console.log(`🎲 DESP-25 weak hand — randomized pass (let opp try their 20)`);
         return { bid: 0, suit: null };
       }
       console.log(`🚨 Opponent bid 20 and can win - bidding 25 to stay alive`);
@@ -7427,6 +7428,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.124', date: 'Jun 2026', changes: ['Fixed desperation overbid exploit: when an opponent bid 20 at game point, the AI dealer was unconditionally overbidding to 25 even on hands only strong enough for 20. Expert players could bait this to guarantee trick points and win. The 25-sacrifice now requires a genuine 25-strength hand (5+J+AH, 5+J+4T, or 5+AH+5T); weaker hands pass 50% of the time to let the opponent try their 20.'] },
     { version: '2.31.123', date: 'Jun 2026', changes: ['Fixed cutthroat badge notification not showing at game completion. The notification is now triggered as soon as new-this-game badges are identified, before the Firebase write step — previously a stale Firebase state could cause an early-exit that silenced the notification. Also added 🏅 CT: trace logs to the browser console to make the badge award pipeline inspectable.'] },
     { version: '2.31.122', date: 'Jun 2026', changes: ['Trump suit buttons now have a 700ms arm delay when your trump-select phase begins. Buttons fade in from dim to full opacity over that window and are non-clickable until armed, preventing accidental suit selection for players who tap quickly before the screen transitions.'] },
     { version: '2.31.121', date: 'Jun 2026', changes: ['Cutthroat leaderboard rows now use a deep-blue panel tint instead of the green felt used for partner-mode rows, making the two variants visually distinct at a glance.'] },
