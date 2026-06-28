@@ -3462,7 +3462,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.124';
+const VERSION = '2.31.125';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5415,6 +5415,20 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
                     (currentHighBid === 25 && bidderNeeds <= 25);
     const spoilTo = currentHighBid + 5;
     if (oppHolds && danger && spoilTo <= 30) {
+      // (v2.31.125) 25→30 spoiler gate: same exploit as DESP-25 Rule 2.
+      // The spoiler fires specifically for WEAK hands (strong hands already
+      // bid 30 via champion and don't reach here). An expert can bait the
+      // unconditional 30-sacrifice: bid 25 near game point, AI spoils to 30
+      // with a weak hand, gets set, expert scores trick points and wins.
+      // Gate: require genuine 30-strength hand; weak hands pass 50% instead.
+      if (currentHighBid === 25) {
+        const can30desp = (has5 && hasJ && hasAH && trumpCount >= 4) ||  // 80.62%
+                          (has5 && hasJ && trumpCount >= 5);               // 75.4%
+        if (!can30desp && Math.random() < DESP25_PASS_PROB) {
+          console.log(`🎲 SPOI-30 weak hand — randomized pass (let opp try their 25)`);
+          return { bid: 0, suit: null };
+        }
+      }
       const champ = decideBid(hand, currentHighBid, playerIndex, dealer,
                               teamScores, oppScores, partnerBid, true, partnerIsHuman, cutthroat, bidderScore);
       if (champ.bid < spoilTo) {
@@ -7428,6 +7442,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.125', date: 'Jun 2026', changes: ['Fixed 30-overbid exploit: when an expert bids 25 near game point, the spoiler block was unconditionally sacrificing to 30 on weak hands (the spoiler fires specifically for hands too weak to bid 30 normally). Gate added: require genuine 30-strength hand (5+J+AH+T4 or 5+J+T5); weaker hands pass 50% of the time instead.'] },
     { version: '2.31.124', date: 'Jun 2026', changes: ['Fixed desperation overbid exploit: when an opponent bid 20 at game point, the AI dealer was unconditionally overbidding to 25 even on hands only strong enough for 20. Expert players could bait this to guarantee trick points and win. The 25-sacrifice now requires a genuine 25-strength hand (5+J+AH, 5+J+4T, or 5+AH+5T); weaker hands pass 50% of the time to let the opponent try their 20.'] },
     { version: '2.31.123', date: 'Jun 2026', changes: ['Fixed cutthroat badge notification not showing at game completion. The notification is now triggered as soon as new-this-game badges are identified, before the Firebase write step — previously a stale Firebase state could cause an early-exit that silenced the notification. Also added 🏅 CT: trace logs to the browser console to make the badge award pipeline inspectable.'] },
     { version: '2.31.122', date: 'Jun 2026', changes: ['Trump suit buttons now have a 700ms arm delay when your trump-select phase begins. Buttons fade in from dim to full opacity over that window and are non-clickable until armed, preventing accidental suit selection for players who tap quickly before the screen transitions.'] },
