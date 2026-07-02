@@ -3462,7 +3462,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.126';
+const VERSION = '2.31.127';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7282,9 +7282,10 @@ function ScoreTable({ roundHistory, mySeatIndex, gameOptions, players, playerSco
       : ['#00ff88', '#00e5ff', '#ff8c00', '#ff00cc'];
     const seatColor = {};
     orderedSeats.forEach((s, i) => { seatColor[s] = colorPalette[i]; });
+    const useNames = localStorage.getItem('45s_scoreNames') === 'true';
     const headerLabels = orderedSeats.map(s => {
       const pl = players ? players[seatNames[s]] : null;
-      if (pl && pl.isAI) return seatNames[s][0];
+      if (pl && pl.isAI) return useNames ? pl.username.replace('Player ', '') : seatNames[s][0];
       if (pl && pl.username) return pl.username.slice(0, 3).toUpperCase();
       return seatNames[s][0];
     });
@@ -7452,6 +7453,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.127', date: 'Jul 2026', changes: ['Score Labels preference: toggle in Settings (⚙) to show player names (AI 1, AI 2…) instead of N/E/S/W seat labels in the score history table, round summary, and score chips. Off by default.'] },
     { version: '2.31.126', date: 'Jun 2026', changes: ['Fixed 20→25 spoiler exploit for non-dealer AI seats. The v2.31.124 fix only covered the dealer path (desperation Rule 2). Non-dealer AI players hit the spoiler block instead, which had no hand-strength gate for the 20→25 case. Added matching can25desp gate to the spoiler: same thresholds (5+J+AH, 5+J+T4, 5+AH+T5), weak hands pass 50%.'] },
     { version: '2.31.125', date: 'Jun 2026', changes: ['Fixed 30-overbid exploit: when an expert bids 25 near game point, the spoiler block was unconditionally sacrificing to 30 on weak hands (the spoiler fires specifically for hands too weak to bid 30 normally). Gate added: require genuine 30-strength hand (5+J+AH+T4 or 5+J+T5); weaker hands pass 50% of the time instead.'] },
     { version: '2.31.124', date: 'Jun 2026', changes: ['Fixed desperation overbid exploit: when an opponent bid 20 at game point, the AI dealer was unconditionally overbidding to 25 even on hands only strong enough for 20. Expert players could bait this to guarantee trick points and win. The 25-sacrifice now requires a genuine 25-strength hand (5+J+AH, 5+J+4T, or 5+AH+5T); weaker hands pass 50% of the time to let the opponent try their 20.'] },
@@ -8264,9 +8266,23 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
   const ctLabel = (seat) => {
     const seatNames = ['North', 'East', 'South', 'West'];
     const player = players && players[seatNames[seat]];
-    if (player && player.isAI) return seatNames[seat][0];
+    const useNames = localStorage.getItem('45s_scoreNames') === 'true';
+    if (player && player.isAI) return useNames ? player.username.replace('Player ', '') : seatNames[seat][0];
     if (player && player.username) return player.username.slice(0, 3).toUpperCase();
     return seatNames[seat][0];
+  };
+
+  const partnerTeamLabel = (seats) => {
+    const useNames = localStorage.getItem('45s_scoreNames') === 'true';
+    const letters = ['N','E','S','W'];
+    if (!useNames) return seats.map(s => letters[s]).join('/');
+    const seatNames = ['North', 'East', 'South', 'West'];
+    return seats.map(s => {
+      const pl = players && players[seatNames[s]];
+      if (!pl) return letters[s];
+      if (pl.isAI) return pl.username.replace('Player ', '');
+      return pl.username.slice(0, 3).toUpperCase();
+    }).join('/');
   };
 
   const getAvatar = (playerIdx) => {
@@ -8394,8 +8410,8 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
                     ))}
                   </div>
                 : (scores && <div style={{ display: 'flex', gap: '12px', fontSize: '11px' }}>
-                    <span className="cp-score-us">N/S <strong>{scores[0]}</strong></span>
-                    <span className="cp-score-them">E/W <strong>{scores[1]}</strong></span>
+                    <span className="cp-score-us">{partnerTeamLabel([0,2])} <strong>{scores[0]}</strong></span>
+                    <span className="cp-score-them">{partnerTeamLabel([1,3])} <strong>{scores[1]}</strong></span>
                   </div>)}
             </div>
 
@@ -8470,8 +8486,8 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
                     ))}
                   </div>
                 : (scores && <div style={{ display: 'flex', gap: '12px', fontSize: '11px' }}>
-                    <span style={{ fontFamily: "'Cinzel',serif", color: '#5dd084' }}>N/S <strong>{scores[0]}</strong></span>
-                    <span style={{ fontFamily: "'Cinzel',serif", color: '#ef7c74' }}>E/W <strong>{scores[1]}</strong></span>
+                    <span style={{ fontFamily: "'Cinzel',serif", color: '#5dd084' }}>{partnerTeamLabel([0,2])} <strong>{scores[0]}</strong></span>
+                    <span style={{ fontFamily: "'Cinzel',serif", color: '#ef7c74' }}>{partnerTeamLabel([1,3])} <strong>{scores[1]}</strong></span>
                   </div>)}
             </div>
 
@@ -8544,8 +8560,8 @@ function ShowHandsModal({ isOpen, onClose, hands, dealer, bidWinner, highBid, tr
                 ))}
               </div>
             : (scores && <div style={{ display: 'flex', gap: '12px', fontSize: '11px' }}>
-                <span style={{ fontFamily: "'Cinzel', serif", color: '#6ec97a' }}>N/S <strong>{scores[0]}</strong></span>
-                <span style={{ fontFamily: "'Cinzel', serif", color: '#6bb6ff' }}>E/W <strong>{scores[1]}</strong></span>
+                <span style={{ fontFamily: "'Cinzel', serif", color: '#6ec97a' }}>{partnerTeamLabel([0,2])} <strong>{scores[0]}</strong></span>
+                <span style={{ fontFamily: "'Cinzel', serif", color: '#6bb6ff' }}>{partnerTeamLabel([1,3])} <strong>{scores[1]}</strong></span>
               </div>)}
         </div>
 
@@ -9650,6 +9666,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
   // Preferences state (persistent per-user: trick speed + house rules)
   const [showPreferences, setShowPreferences] = useState(false);
   const [prefTrickSpeed, setPrefTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'medium');
+  const [prefScoreNames, setPrefScoreNames] = useState(localStorage.getItem('45s_scoreNames') === 'true');
+  const [editPrefScoreNames, setEditPrefScoreNames] = useState(false);
   const [prefHouseRules, setPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false });
   const [editTrickSpeed, setEditTrickSpeed] = useState(localStorage.getItem('45s_trickSpeed') || 'medium');
   const [editPrefHouseRules, setEditPrefHouseRules] = useState({ fiveCardDraw: false, followAHearts: false, thirtyFor60: false });
@@ -10251,8 +10269,10 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
         houseRules: { fiveCardDraw: editPrefHouseRules.fiveCardDraw, followAHearts: editPrefHouseRules.followAHearts, thirtyFor60: editPrefHouseRules.thirtyFor60 }
       });
       localStorage.setItem('45s_trickSpeed', editTrickSpeed);
+      localStorage.setItem('45s_scoreNames', String(editPrefScoreNames));
       setPrefTrickSpeed(editTrickSpeed);
       setPrefHouseRules({ ...editPrefHouseRules });
+      setPrefScoreNames(editPrefScoreNames);
       setShowPreferences(false);
     } catch (err) {
       alert('Failed to save preferences: ' + err.message);
@@ -10578,7 +10598,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
           <button
             className={isCyberpunk ? 'cp-gear-btn' : 'irlb-gear-btn'}
             title="Preferences"
-            onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
+            onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setEditPrefScoreNames(prefScoreNames); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
           >⚙</button>
         </div>
 
@@ -11865,6 +11885,19 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     </div>
                   ))}
                 </div>
+                {/* Score Labels */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div className="cp-pref-section-title">Score Labels</div>
+                  <div className="cp-checkbox-row" onClick={() => setEditPrefScoreNames(v => !v)}>
+                    <div style={{ width: '18px', height: '18px', borderRadius: '3px', border: editPrefScoreNames ? '2px solid #ff8c00' : '2px solid rgba(0,229,255,0.25)', background: editPrefScoreNames ? 'rgba(255,140,0,0.15)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                      {editPrefScoreNames && <span style={{ color: '#ff8c00', fontSize: '12px', fontWeight: 700, lineHeight: 1 }}>✓</span>}
+                    </div>
+                    <span>
+                      <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '13px', fontWeight: 700, color: '#00e5ff' }}>Player names</span>
+                      <span style={{ fontSize: '11px', color: '#3a5f78', display: 'block', marginTop: '2px', fontFamily: "'Share Tech Mono', monospace" }}>Show "AI 1", "AI 2" etc. instead of N/E/S/W seat labels in the score table</span>
+                    </span>
+                  </div>
+                </div>
                 {/* Theme (reuse existing tile logic) */}
                 <div style={{ marginBottom: '20px' }}>
                   <div className="cp-pref-section-title">Theme</div>
@@ -11938,6 +11971,20 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     </span>
                   </label>
                 ))}
+              </div>
+
+              {/* Score Labels */}
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1.5px', color: 'rgba(201,162,74,0.6)', textTransform: 'uppercase', marginBottom: '10px', fontFamily: "'Cinzel', serif" }}>Score Labels</div>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', marginBottom: '14px' }}>
+                  <div onClick={() => setEditPrefScoreNames(v => !v)} style={{ marginTop: '2px', width: '18px', height: '18px', borderRadius: '3px', border: editPrefScoreNames ? '2px solid #c9a24a' : '2px solid rgba(201,162,74,0.35)', background: editPrefScoreNames ? 'rgba(201,162,74,0.2)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    {editPrefScoreNames && <span style={{ color: '#f6d778', fontSize: '12px', fontWeight: 'bold', lineHeight: 1 }}>✓</span>}
+                  </div>
+                  <span>
+                    <span style={{ fontFamily: "'Cinzel', serif", fontSize: '13px', fontWeight: '700', color: '#e8e4d9' }}>Player names</span>
+                    <span style={{ fontSize: '11px', color: 'rgba(232,228,217,0.5)', display: 'block', marginTop: '2px', fontFamily: "'Merriweather', serif", fontStyle: 'italic' }}>Show "AI 1", "AI 2" etc. instead of N/E/S/W seat labels</span>
+                  </span>
+                </label>
               </div>
 
               {/* Theme */}
@@ -12206,7 +12253,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
                 <span
-                  onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
+                  onClick={() => { SoundManager.play('modalOpen'); setEditTrickSpeed(prefTrickSpeed); setEditPrefHouseRules({ ...prefHouseRules }); setEditPrefScoreNames(prefScoreNames); setShowPreferences(true); database.ref(`users/${userId}/stats`).once('value', snap => { setMyStats(snap.val() || {}); }); }}
                   style={{ fontSize: '13px', cursor: 'pointer', opacity: 0.6, userSelect: 'none' }}
                   title="Preferences"
                 >⚙️</span>
