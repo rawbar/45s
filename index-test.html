@@ -3462,7 +3462,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.127';
+const VERSION = '2.31.128';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7453,6 +7453,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.128', date: 'Jul 2026', changes: ['Score Labels: fixed top score plaques (the ROB/W/N/E chips in the game header) — now show AI 1, AI 2 etc. when "Player names" is on in Settings.'] },
     { version: '2.31.127', date: 'Jul 2026', changes: ['Score Labels preference: toggle in Settings (⚙) to show player names (AI 1, AI 2…) instead of N/E/S/W seat labels in the score history table, round summary, and score chips. Off by default.'] },
     { version: '2.31.126', date: 'Jun 2026', changes: ['Fixed 20→25 spoiler exploit for non-dealer AI seats. The v2.31.124 fix only covered the dealer path (desperation Rule 2). Non-dealer AI players hit the spoiler block instead, which had no hand-strength gate for the 20→25 case. Added matching can25desp gate to the spoiler: same thresholds (5+J+AH, 5+J+T4, 5+AH+T5), weak hands pass 50%.'] },
     { version: '2.31.125', date: 'Jun 2026', changes: ['Fixed 30-overbid exploit: when an expert bids 25 near game point, the spoiler block was unconditionally sacrificing to 30 on weak hands (the spoiler fires specifically for hands too weak to bid 30 normally). Gate added: require genuine 30-strength hand (5+J+AH+T4 or 5+J+T5); weaker hands pass 50% of the time instead.'] },
@@ -18328,7 +18329,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                   const player = players[SEAT_NAMES[seat]];
                   let label;
                   if (player && player.isAI) {
-                    label = SEAT_NAMES[seat][0];
+                    label = prefScoreNames ? player.username.replace('Player ', '') : SEAT_NAMES[seat][0];
                   } else if (player && player.username) {
                     label = player.username.slice(0, 3).toUpperCase();
                   } else {
