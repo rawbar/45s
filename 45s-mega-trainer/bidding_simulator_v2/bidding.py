@@ -108,7 +108,10 @@ def decide_bid(hand: List[Card],
                 cutthroat_bag_threatening_dealer: bool = False,
                 cutthroat_desp_fix_gate_forced_20: bool = False,
                 upbid15_can20_gate: bool = False,
-                dealer_score: int = -1) -> Tuple[int, Optional[Suit]]:
+                upbid15_weneed_gate: bool = False,
+                dealer_score: int = -1,
+                enable_open20: bool = False,
+                enable_overbid25_pb15: bool = False) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
     DATA-DERIVED, held-out-validated trigger (commit d19be47: 12k deals/cell
@@ -589,9 +592,42 @@ def decide_bid(hand: List[Card],
                       (hasJ and trump_count >= 3) or
                       (hasAH and trump_count >= 4) or
                       (hasAT and trump_count >= 4))
+    # UPBID15-WENEED-GATE (opt-in challenger, robr screenshot d3bf8cc1
+    # 2026-07-19). CRUISE CONTROL above only vets the hand at the 15-bid
+    # tier (has5 alone = ~96% safe at 15) before letting bidding continue;
+    # UPBID15 then unconditionally escalates that SAME hand to a 20-bid,
+    # which the has5-alone pattern only makes ~62% of the time
+    # (can20_at_60pct's own 5_T1 rate). When we_need<=5 the team wins the
+    # game on ANY made bid — the extra 5 points bought by escalating to 20
+    # add nothing, they only add the ~38% chance of a costly set. Live case:
+    # E/W at 115 (we_need=5), holds 5♥+7♥+2♥ (natural 15), UPBID15 pushed to
+    # 20♥, set, -20 dropped them 115→95 — turned a near-certain win into a
+    # deficit. Gate suppresses the escalation (falls back to the safe 15)
+    # whenever we_need<=5, regardless of opponent score.
     if (enable_upbid15 and bid == 15 and current_high_bid == 15
             and player_index != dealer and partner_bid != 15
-            and (not upbid15_can20_gate or can20_at_60pct)):
+            and (not upbid15_can20_gate or can20_at_60pct)
+            and not (upbid15_weneed_gate and we_need <= 5)):
+        bid = 20
+
+    # OVERBID25-PB15 (opt-in challenger). Partner bid 15, opponent is at 20,
+    # we hold the 5 of trump → bid 25. Derived from jack2112 mining (Cluster C,
+    # 10x hb=20, pb=15, has5, ai=0). Logic: partner's 15 implies ~15pt hand;
+    # our 5 guarantees 10pt solo (highest-trump trick + bonus); combined ~25pt.
+    # Default OFF; partner-mode only (cutthroat has no partner_bid).
+    if (enable_overbid25_pb15 and bid < 25 and current_high_bid == 20
+            and has5 and partner_bid == 15):
+        bid = 25
+
+    # OPEN20-WITH-5 (opt-in challenger). Clean auction (hb=0), natural bid=15,
+    # holds the 5 of trump → open at 20. Derived from jack2112 bid mining:
+    # 37 early-game cases where jack opens 20 vs AI's 15 in a clean auction,
+    # all with has5. The 5 guarantees 10 pts (highest-trump trick + bonus);
+    # partner-mode bidding absorbs some set risk. Default OFF (partner-mode only,
+    # cutthroat gated out by the normalization block above setting enable_open20
+    # back to False — not implemented yet, caller should not pass True in CT).
+    if (enable_open20 and bid == 15 and current_high_bid == 0
+            and player_index != dealer and has5):
         bid = 20
 
     # CUTTHROAT FORCE-UPBID15-WITH-5 (opt-in challenger flag, cutthroat-only).

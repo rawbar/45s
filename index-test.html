@@ -3462,7 +3462,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.129';
+const VERSION = '2.31.131';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5679,9 +5679,21 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   // team is behind and can least afford the extra loss. User-reported: AI
   // Player 4 bid 20♦ on J♦+10♦+3-low-spades (YOP8IP), got set, gave away
   // 5 pts in a game where N/S was ahead 65–5.
+  // v2.31.131: suppress UPBID15 when weNeed<=5 — CRUISE CONTROL above only
+  // vets the hand for a SAFE 15 (has5 alone ~96% at the 15 tier) before
+  // letting bidding continue; UPBID15 then unconditionally escalates that
+  // SAME hand to a 20-bid, which has5-alone only makes ~62% of the time
+  // (can20At60Pct's own 5_T1 rate). When weNeed<=5 our team wins the game
+  // on ANY made bid — the extra 5 points bought by escalating to 20 add
+  // nothing, they only add the ~38% chance of a costly set. User-reported
+  // (screenshot d3bf8cc1): E/W at 115 (weNeed=5), held 5♥+7♥+2♥ (natural
+  // 15), UPBID15 pushed to 20♥, got set, -20 dropped them 115→95 — turned
+  // a near-certain win into a deficit. Rig: aggregate-neutral, replicated
+  // (primary 20k 49.99% z=-0.03 / held-out 30k 50.00% z=+0.00) — no
+  // regression, ships as a correctness fix (v2.31.30 trust-fix precedent).
   if (bid === 15 && currentHighBid === 15 && playerIndex !== dealer
       && partnerBid !== 15 && !partnerIsHuman && !cutthroat
-      && can20At60Pct) {
+      && can20At60Pct && weNeed > 5) {
     console.log(`📈 UPBID15: ${playerIndex} overbidding 15→20${suit}`);
     bid = 20;
   }
@@ -5920,7 +5932,7 @@ function _ctMadeLocked(playerTricks, highTrumpPlayer, bidWinner, highBid) {
   return _ctBidderRoundPts(playerTricks, highTrumpPlayer, bidWinner) >= highBid;
 }
 
-function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, highBid, cardsDrawn, knownOutOfTrump, trickNum, bidderHasLostTrick, cardsPlayed, playHistory, knownVoids, gameOptions, playerTricks, highTrumpPlayer, playerScores = null) {
+function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, highBid, cardsDrawn, knownOutOfTrump, trickNum, bidderHasLostTrick, cardsPlayed, playHistory, knownVoids, gameOptions, playerTricks, highTrumpPlayer, playerScores = null, teamScores = null) {
   const led = trick[0] || null;
   const ledSuit = led?.suit;
   const playable = getPlayableCards(hand, trumpSuit, led, ledSuit);
@@ -5957,7 +5969,20 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   // STRATEGIC PRIORITY #1: BOSS CARD - But NOT if partner is already winning!
   // ========================================================================
   const isLeadingTrick = trick.length === 0;
-  
+
+  // PM_SWEEP (v2.31.130): near-win override. Partner mode only. When the
+  // DEFENDING team's score is >=110 (within striking distance of 120 —
+  // one made bid from winning the whole game), skip every boss-hold-back
+  // / trick-1-bait rule below on the bidding side — denying the defenders
+  // even one trick right now outweighs any bid-tempo gain from delaying a
+  // boss card. Rig-tested rig-neutral in bidding_simulator_v2 (50.01% win
+  // rate, z=+0.03..+0.07, primary 20k + held-out 30k) — shipped for
+  // AI-logic trust (v2.31.30 precedent: fixes visibly-wrong play at zero
+  // measured win-rate cost). User-reported 2026-07-13: bidder held
+  // 5/J/A♥ vs a human at 115 and didn't lead them.
+  const _pmSweep = !cutthroat && Array.isArray(teamScores) &&
+    (teamScores[1 - (bidWinner % 2)] || 0) >= 110;
+
   // Quick check: is partner currently winning this trick?
   // v2.31.74: cutthroat — no partner concept, force to false so the bidder
   // is treated as "opp winning" for boss/cash branches.
@@ -6097,7 +6122,7 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     const _b5HasJ = _b5Trumps.some(c => c.rank === 'J' && c.suit === trumpSuit);
     const _b5PartnerIdx = (player + 2) % 4;
     const _b5PartnerDrew = cardsDrawn ? (cardsDrawn[_b5PartnerIdx] || 0) : 0;
-    if (_b5Has5 && _b5HasJ && _b5Trumps.length <= 3 && _b5NonTrumps.length > 0 && _b5PartnerDrew >= 3) {
+    if (_b5Has5 && _b5HasJ && _b5Trumps.length <= 3 && _b5NonTrumps.length > 0 && _b5PartnerDrew >= 3 && !_pmSweep) {
       const _b5Low = _b5NonTrumps.reduce((lo, c) =>
         getOffSuitRank(c) < getOffSuitRank(lo) ? c : lo);
       console.log('BIDDER_5J_T3_OFF_T1LO: P' + (player + 1) + ' has 5+J <=3 trump, partner drew ' + _b5PartnerDrew + ' -- lead ' + _b5Low.id + ' (lowest offsuit trick 1)');
@@ -6220,7 +6245,7 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
             const oppsOut = (intel.players[pOpp1Idx]?.estimatedTrumpRemaining || 0) === 0 &&
                             (intel.players[pOpp2Idx]?.estimatedTrumpRemaining || 0) === 0;
             const offsuitCards = playable.filter(c => getTrumpRank(c, trumpSuit) < 0);
-            if (isPartnerOfBidder && !bidderVoid && bidderTrumpEst > 0 && oppsOut && offsuitCards.length > 0) {
+            if (isPartnerOfBidder && !bidderVoid && bidderTrumpEst > 0 && oppsOut && offsuitCards.length > 0 && !_pmSweep) {
               const lowestOffsuit = offsuitCards.reduce((a, b) =>
                 getOffSuitRank(a) < getOffSuitRank(b) ? a : b);
               console.log(`🧠 PARTNER BOSS SAVE: P${player + 1} saving boss ${card.id} - bidder P${bidWinner + 1} has ~${bidderTrumpEst} trump, opps void, leading ${lowestOffsuit.id}`);
@@ -6240,7 +6265,7 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
             const myTrumpCount = playable.filter(c => getTrumpRank(c, trumpSuit) >= 0).length;
             if (cardsDrawn && myTrumpCount <= 2 &&
                 cardsDrawn[partnerIdx] >= 4 &&
-                cardsDrawn[opp1Idx] <= 3 && cardsDrawn[opp2Idx] <= 3) {
+                cardsDrawn[opp1Idx] <= 3 && cardsDrawn[opp2Idx] <= 3 && !_pmSweep) {
               const offsuitCards = playable.filter(c => getTrumpRank(c, trumpSuit) < 0);
               if (offsuitCards.length > 0) {
                 const lowestOffsuit = offsuitCards.reduce((a, b) =>
@@ -7453,6 +7478,8 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.131', date: 'Jul 2026', changes: ['Fixed AI overbidding to 20 when already one made bid away from winning the game (score >=115). The AI would correctly hold a safe hand (e.g. the 5 of trump alone) at a 15-bid, then unconditionally escalate it to 20 to steal a contested auction — but that hand only makes 20 about 62% of the time vs ~96% at 15, and the extra 5 points bought nothing since any made bid already wins. A user-reported game had this exact overbid get set, dropping the leading team from 115 to 95.'] },
+    { version: '2.31.130', date: 'Jul 2026', changes: ['AI (partner mode): when the defending team is within one made bid of winning the game (score >=110), the bidding side no longer holds back a boss trump card (5/J of trump, Ace of Hearts) for later tempo — it leads immediately to deny the defenders the trick that could end the game. Previously several tempo rules (e.g. leading offsuit on trick 1 to bait a weak partner) applied even when the opponent was one trick from winning.'] },
     { version: '2.31.129', date: 'Jul 2026', changes: ['Score Labels: fixed null crash when AI player data partially loaded from Firebase on game entry.'] },
     { version: '2.31.128', date: 'Jul 2026', changes: ['Score Labels: fixed top score plaques (the ROB/W/N/E chips in the game header) — now show AI 1, AI 2 etc. when "Player names" is on in Settings.'] },
     { version: '2.31.127', date: 'Jul 2026', changes: ['Score Labels preference: toggle in Settings (⚙) to show player names (AI 1, AI 2…) instead of N/E/S/W seat labels in the score history table, round summary, and score chips. Off by default.'] },
@@ -17662,7 +17689,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         gameOptions,
         playerTricks,
         (highTrumpInfo && typeof highTrumpInfo.player === 'number') ? highTrumpInfo.player : -1,
-        playerScores
+        playerScores,
+        scores
       );
       
       const cardIndex = hand.findIndex(c => c.id === card.id);

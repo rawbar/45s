@@ -1182,6 +1182,23 @@ class UpBid15Can20Gate(Policy):
 REGISTRY["upbid15:can20-gate"] = UpBid15Can20Gate()
 
 
+# UPBID15-WENEED-GATE (challenger, robr screenshot d3bf8cc1 2026-07-19).
+# CRUISE CONTROL vets the hand for a SAFE 15 (has5 alone ~96%) before
+# letting bidding continue, but UPBID15 then unconditionally escalates to a
+# 20-bid, which has5-alone only makes ~62% of the time. When we_need<=5 the
+# team already wins the game on any made bid, so the escalation buys nothing
+# and only adds set risk. Live case: E/W at 115 (we_need=5) with 5♥+7♥+2♥
+# (natural 15), UPBID15 pushed to 20♥, got set, -20 dropped them 115→95.
+class UpBid15WeNeedGate(Policy):
+    name = "upbid15:weneed-gate"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  upbid15_weneed_gate=True)
+
+
+REGISTRY["upbid15:weneed-gate"] = UpBid15WeNeedGate()
+
+
 # UPBID15 sub-pattern isolators — each fires UPBID15 ONLY for one specific
 # hand composition, with all others suppressed. This answers: "is this
 # sub-pattern individually sufficient to justify upbidding to 20?"
@@ -1287,6 +1304,25 @@ def _endgame_deny():
 REGISTRY["egd:on"] = _endgame_deny()
 
 
+# PM_SWEEP — SHIPPED v2.31.130 (2026-07-13, user-derived). Partner mode,
+# every bidder-side boss-hold-back rule (bidder_5j_t3_off_t1lo,
+# bidder_boss_partner_save, bidder_boss_weak_partner_save) is skipped
+# whenever the DEFENDING team's score is >=110 (one made bid from
+# winning at 120) — lead the boss now instead of saving it for tempo.
+# Tested at both >=110 and >=115 thresholds: rig-neutral both ways
+# (50.01-50.02%, z<0.1, primary 20k + held-out 30k) — shipped for
+# AI-logic trust (v2.31.30 precedent), 110 kept as champion (broader,
+# superset of 115). Meaningful re-test = disabling it below.
+def _off_pm_sweep_lead():
+    p = Policy()
+    p.name = "off:pm_sweep_lead"
+    p.ai_flags = {'pm_sweep_lead': False}
+    return p
+
+
+REGISTRY["off:pm_sweep_lead"] = _off_pm_sweep_lead()
+
+
 # off2:beat_bidlead promoted to champion v2.31.66 (default-ON; rig-NEUTRAL
 # +0.01pt z=+0.05 primary 20k, v2.31.30 trust-fix precedent). Meaningful
 # test now = off:off2_beat_off_bidlead (auto from CARD_RULES, reverts to
@@ -1301,6 +1337,114 @@ def _off2_beat_anyopp():
 
 
 REGISTRY["off2:beat_anyopp"]  = _off2_beat_anyopp()
+
+
+# BIDDER_5J_T3_OFF_T1LO — SHIPPED v2.31.112 (2026-06-15).
+# Bidder trick 1, ≤3 trump (5+J+≤1 low), partner drew ≥3 cards.
+# Leading 5 (boss) forces weak/moderate partner to follow trump on an
+# already-won trick. Leading lowest offsuit first preserves partner's
+# trump for a later ruff. Targeted rig (5k deals/category):
+#   partner drew 3: +12.3% make rate z=+8.7
+#   partner drew 4+: +9.6% make rate z=+7.9
+#   partner drew 0-2: ≤+2% not sig → gated out
+# Global rig: +0.12pt / +0.21pt (positive, diluted by rarity).
+# t1lo = lead lowest offsuit (SHIPPED, now default F); t1hi = dead-end.
+# Ablation challenger: set bidder_5j_t3_off_t1lo=False to revert.
+def _5j3_t1lo():
+    # challenger form still useful as an explicit opt-in regression test
+    p = Policy()
+    p.name = "card:5j3-t1lo"
+    p.ai_flags = {'bidder_5j_t3_off_t1lo': True}
+    return p
+
+def _5j3_t1hi():
+    # dead-end: must also disable now-default t1lo
+    p = Policy()
+    p.name = "card:5j3-t1hi"
+    p.ai_flags = {'bidder_5j_t3_off_t1lo': False, 'bidder_5j_t3_off_t1hi': True}
+    return p
+
+def _5j3_ablate():
+    # ablation: revert shipped t1lo rule to measure regression
+    p = Policy()
+    p.name = "card:5j3-ablate"
+    p.ai_flags = {'bidder_5j_t3_off_t1lo': False}
+    return p
+
+REGISTRY["card:5j3-t1lo"]    = _5j3_t1lo()
+REGISTRY["card:5j3-t1hi"]    = _5j3_t1hi()
+REGISTRY["card:5j3-ablate"]  = _5j3_ablate()
+
+
+# OPEN20-WITH-5 (candidate challengers; derived from jack2112 bid mining).
+# jack2112 opens 20 in a clean auction (hb=0) 37x in early game when holding
+# the 5 of trump — champion bids 15. Two variants:
+#
+#   open20:has5      — fires on ANY has5 hand (5+T1 through 5+T5). The broad
+#                      form. Matches all 37 jack2112 cluster-A hands.
+#
+#   open20:has5-t3   — fires ONLY on has5 AND trump_count >= 3. The filtered
+#                      form. Targets the solid 20-bid hands (5+T3 or better)
+#                      and excludes the bare 5+T2 hands that may win only 15.
+#
+# Both are partner-mode only. Cutthroat is NOT applicable — the 5M-sim showed
+# cutthroat-force-upbid15-with-5 catastrophic (+6.43pt set-rate, no-ship);
+# the open-auction analogue likely carries the same 3-defender penalty.
+# Gate: enable_open20 fires inside bidding.decide_bid when bid==15, hb==0,
+# player!=dealer, and has5.
+#
+# Rig results (2026-06-14, partner-mode symmetric A-vs-B):
+#   open20:has5    primary 20k: +0.77pt z=+2.18 / held-out 30k: +1.23pt z=+4.25
+#   open20:has5-t3 primary 20k: +0.74pt z=+2.09 / held-out 30k: +1.09pt z=+3.79
+# Both replicated; broad version (has5 alone) slightly stronger.
+# NO SHIP (backlog). Signal modest (~+1pt vs UPBID15's +5.4pt). Lone 5+T2
+# hands make 20 unreliably in practice; the rig EV doesn't overcome the
+# human-frustration cost of watching the AI get set on bare-5 opens.
+# Comeback equity neutral (ns) on both variants.
+class Open20Has5(Policy):
+    """open20:has5 — open at 20 in clean auction when has5, AI would bid 15."""
+    name = "open20:has5"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_open20=True)
+
+
+class Open20Has5T3(Policy):
+    """open20:has5-t3 — open at 20 in clean auction when has5 AND T>=3."""
+    name = "open20:has5-t3"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        fb = bidding.find_best_trump_suit(hand)
+        enable = fb['has5'] and fb['trumpCount'] >= 3
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_open20=enable)
+
+
+REGISTRY["open20:has5"]    = Open20Has5()
+REGISTRY["open20:has5-t3"] = Open20Has5T3()
+
+
+# OVERBID25-PB15 (candidate challenger; derived from jack2112 bid mining).
+# Cluster C (10x early-game): partner bid 15, opponent at hb=20, jack holds
+# the 5 of trump and bids 25 — champion passes. Combined hand strength:
+# partner's 15-bid hand + jack's 5 (guaranteed 10pt) = ~25pt potential.
+# Partner-mode only; cutthroat has no partner_bid concept.
+#
+# Rig results (2026-06-14, partner-mode symmetric A-vs-B):
+#   overbid25:pb15-has5  primary 20k: -2.30pt z=-9.20 / held-out 30k: -2.42pt z=-11.83
+#   Comeback equity: -2.75pt primary / -3.35pt held-out. Both SIGNIFICANT NEGATIVE.
+# NO SHIP. Jack's 10 instances have specific game-context reasons that don't
+# generalize. Blindly overbidding to 25 against an opp who already bid 20
+# (strong hand) with only 5+pb15 support loses ~2.4pt. The opp's 20-bid
+# strength means they can take enough tricks to set the 25 bid reliably.
+class Overbid25Pb15(Policy):
+    """overbid25:pb15-has5 — bid 25 at hb=20 when partner bid 15 and has5."""
+    name = "overbid25:pb15-has5"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_overbid25_pb15=True)
+
+
+REGISTRY["overbid25:pb15-has5"] = Overbid25Pb15()
 
 
 # BIDDER-LOWTRUMP-DUMP #38 (opt-in; champion default off). User-reported
