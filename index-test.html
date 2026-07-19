@@ -3462,7 +3462,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.131';
+const VERSION = '2.31.132';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5679,21 +5679,28 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
   // team is behind and can least afford the extra loss. User-reported: AI
   // Player 4 bid 20♦ on J♦+10♦+3-low-spades (YOP8IP), got set, gave away
   // 5 pts in a game where N/S was ahead 65–5.
-  // v2.31.131: suppress UPBID15 when weNeed<=5 — CRUISE CONTROL above only
-  // vets the hand for a SAFE 15 (has5 alone ~96% at the 15 tier) before
-  // letting bidding continue; UPBID15 then unconditionally escalates that
-  // SAME hand to a 20-bid, which has5-alone only makes ~62% of the time
-  // (can20At60Pct's own 5_T1 rate). When weNeed<=5 our team wins the game
-  // on ANY made bid — the extra 5 points bought by escalating to 20 add
-  // nothing, they only add the ~38% chance of a costly set. User-reported
-  // (screenshot d3bf8cc1): E/W at 115 (weNeed=5), held 5♥+7♥+2♥ (natural
-  // 15), UPBID15 pushed to 20♥, got set, -20 dropped them 115→95 — turned
-  // a near-certain win into a deficit. Rig: aggregate-neutral, replicated
-  // (primary 20k 49.99% z=-0.03 / held-out 30k 50.00% z=+0.00) — no
-  // regression, ships as a correctness fix (v2.31.30 trust-fix precedent).
+  // v2.31.131/132: suppress UPBID15 when weNeed<=15 — CRUISE CONTROL above
+  // only vets the hand for a SAFE 15 (has5 alone ~96% at the 15 tier)
+  // before letting bidding continue; UPBID15 then unconditionally escalates
+  // that SAME hand to a 20-bid, which has5-alone only makes ~62% of the
+  // time (can20At60Pct's own 5_T1 rate). Whenever weNeed<=15, simply MAKING
+  // our own natural 15 (becoming bidder) already reaches 120 — escalating
+  // to 20 buys no additional win condition, only the ~38% chance of a
+  // costly set. User-reported (screenshot d3bf8cc1): E/W at 115 (weNeed=5),
+  // held 5♥+7♥+2♥ (natural 15), UPBID15 pushed to 20♥, got set, -20 dropped
+  // them 115→95. v2.31.131 shipped weNeed<=5 only; user pushback ("you only
+  // applied this to 115 — we always need to look at similar scenarios like
+  // 110") led to a threshold sweep (5/10/15/20) in bidding_simulator_v2:
+  // 5/10/15 all rig-neutral and replicated (15: primary 49.97% z=-0.11 /
+  // held-out 49.99% z=-0.04); 20 consistently regresses (primary -0.30pt
+  // z=-1.18 / held-out -0.28pt z=-1.36, same direction both runs) because
+  // weNeed=16-20 does NOT already win on a bare 15-make, so suppressing
+  // there throws away a genuinely useful escalation. 15 is the correct,
+  // theoretically-grounded boundary (bare 15-make nets >=15 real points,
+  // enough to reach 120 iff weNeed<=15) — widened from 5 to 15.
   if (bid === 15 && currentHighBid === 15 && playerIndex !== dealer
       && partnerBid !== 15 && !partnerIsHuman && !cutthroat
-      && can20At60Pct && weNeed > 5) {
+      && can20At60Pct && weNeed > 15) {
     console.log(`📈 UPBID15: ${playerIndex} overbidding 15→20${suit}`);
     bid = 20;
   }
@@ -7477,6 +7484,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.132', date: 'Jul 2026', changes: ['Widened the v2.31.131 UPBID15 fix from weNeed<=5 to weNeed<=15. The team already wins on a bare made-15 whenever they need 15 or fewer points, not just 5 or fewer — a bidding simulator sweep confirmed 5/10/15 are all safe (no regression) while 20 measurably costs games (a bare 15-make no longer guarantees the win at that distance, so suppressing the escalation there was wrong).'] },
     { version: '2.31.131', date: 'Jul 2026', changes: ['Fixed AI overbidding to 20 when already one made bid away from winning the game (score >=115). The AI would correctly hold a safe hand (e.g. the 5 of trump alone) at a 15-bid, then unconditionally escalate it to 20 to steal a contested auction — but that hand only makes 20 about 62% of the time vs ~96% at 15, and the extra 5 points bought nothing since any made bid already wins. A user-reported game had this exact overbid get set, dropping the leading team from 115 to 95.'] },
     { version: '2.31.130', date: 'Jul 2026', changes: ['AI (partner mode): when the defending team is within one made bid of winning the game (score >=110), the bidding side no longer holds back a boss trump card (5/J of trump, Ace of Hearts) for later tempo — it leads immediately to deny the defenders the trick that could end the game. Previously several tempo rules (e.g. leading offsuit on trick 1 to bait a weak partner) applied even when the opponent was one trick from winning.'] },
     { version: '2.31.126', date: 'Jun 2026', changes: ['Fixed 20→25 spoiler exploit for non-dealer AI seats. The v2.31.124 fix only covered the dealer path (desperation Rule 2). Non-dealer AI players hit the spoiler block instead, which had no hand-strength gate for the 20→25 case. Added matching can25desp gate to the spoiler: same thresholds (5+J+AH, 5+J+T4, 5+AH+T5), weak hands pass 50%.'] },

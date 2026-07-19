@@ -1185,18 +1185,55 @@ REGISTRY["upbid15:can20-gate"] = UpBid15Can20Gate()
 # UPBID15-WENEED-GATE (challenger, robr screenshot d3bf8cc1 2026-07-19).
 # CRUISE CONTROL vets the hand for a SAFE 15 (has5 alone ~96%) before
 # letting bidding continue, but UPBID15 then unconditionally escalates to a
-# 20-bid, which has5-alone only makes ~62% of the time. When we_need<=5 the
-# team already wins the game on any made bid, so the escalation buys nothing
-# and only adds set risk. Live case: E/W at 115 (we_need=5) with 5♥+7♥+2♥
-# (natural 15), UPBID15 pushed to 20♥, got set, -20 dropped them 115→95.
-class UpBid15WeNeedGate(Policy):
-    name = "upbid15:weneed-gate"
+# 20-bid, which has5-alone only makes ~62% of the time. Whenever we_need is
+# already <= the threshold, simply MAKING our own natural 15 (becoming
+# bidder) already reaches 120 — escalating to 20 buys nothing, only set
+# risk. Live case: E/W at 115 (we_need=5) with 5♥+7♥+2♥ (natural 15),
+# UPBID15 pushed to 20♥, got set, -20 dropped them 115→95.
+#
+# THRESHOLD SWEEP (2026-07-19, user pushback: "you only applied this to
+# 115[we_need=5] — we always need to look at similar scenarios like 110
+# [we_need=10]"). The "already-won-on-15" argument is not specific to
+# we_need=5 — it holds for ANY we_need<=15 (making a bare 15 always nets
+# >=15 real points, which is enough once we_need<=15). Sweep 5/10/15/20 to
+# find where the effect actually stops paying off before shipping a wider
+# gate than the single reported screenshot justifies.
+class UpBid15WeNeedGate5(Policy):
+    name = "upbid15:weneed-5"
     def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
         return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  upbid15_weneed_gate=True)
+                                  upbid15_weneed_gate=True,
+                                  upbid15_weneed_threshold=5)
 
 
-REGISTRY["upbid15:weneed-gate"] = UpBid15WeNeedGate()
+class UpBid15WeNeedGate10(Policy):
+    name = "upbid15:weneed-10"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  upbid15_weneed_gate=True,
+                                  upbid15_weneed_threshold=10)
+
+
+class UpBid15WeNeedGate15(Policy):
+    name = "upbid15:weneed-15"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  upbid15_weneed_gate=True,
+                                  upbid15_weneed_threshold=15)
+
+
+class UpBid15WeNeedGate20(Policy):
+    name = "upbid15:weneed-20"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  upbid15_weneed_gate=True,
+                                  upbid15_weneed_threshold=20)
+
+
+REGISTRY["upbid15:weneed-5"]  = UpBid15WeNeedGate5()
+REGISTRY["upbid15:weneed-10"] = UpBid15WeNeedGate10()
+REGISTRY["upbid15:weneed-15"] = UpBid15WeNeedGate15()
+REGISTRY["upbid15:weneed-20"] = UpBid15WeNeedGate20()
 
 
 # UPBID15 sub-pattern isolators — each fires UPBID15 ONLY for one specific

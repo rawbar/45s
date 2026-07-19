@@ -109,6 +109,7 @@ def decide_bid(hand: List[Card],
                 cutthroat_desp_fix_gate_forced_20: bool = False,
                 upbid15_can20_gate: bool = False,
                 upbid15_weneed_gate: bool = False,
+                upbid15_weneed_threshold: int = 15,
                 dealer_score: int = -1,
                 enable_open20: bool = False,
                 enable_overbid25_pb15: bool = False) -> Tuple[int, Optional[Suit]]:
@@ -597,17 +598,18 @@ def decide_bid(hand: List[Card],
     # tier (has5 alone = ~96% safe at 15) before letting bidding continue;
     # UPBID15 then unconditionally escalates that SAME hand to a 20-bid,
     # which the has5-alone pattern only makes ~62% of the time
-    # (can20_at_60pct's own 5_T1 rate). When we_need<=5 the team wins the
-    # game on ANY made bid — the extra 5 points bought by escalating to 20
-    # add nothing, they only add the ~38% chance of a costly set. Live case:
-    # E/W at 115 (we_need=5), holds 5♥+7♥+2♥ (natural 15), UPBID15 pushed to
-    # 20♥, set, -20 dropped them 115→95 — turned a near-certain win into a
-    # deficit. Gate suppresses the escalation (falls back to the safe 15)
-    # whenever we_need<=5, regardless of opponent score.
+    # (can20_at_60pct's own 5_T1 rate). Whenever we_need <= the threshold,
+    # simply MAKING our own natural 15 (becoming bidder) already reaches
+    # 120 — escalating to 20 buys no additional win condition, only the
+    # ~38% chance of a costly set. Live case (we_need=5): E/W at 115, held
+    # 5♥+7♥+2♥ (natural 15), UPBID15 pushed to 20♥, set, -20 dropped them
+    # 115→95. threshold is swept (5/10/15/20) via upbid15_weneed_threshold
+    # to find how far the "already-won-on-15" argument actually extends —
+    # see challengers.py upbid15:weneed-* for the sweep registry.
     if (enable_upbid15 and bid == 15 and current_high_bid == 15
             and player_index != dealer and partner_bid != 15
             and (not upbid15_can20_gate or can20_at_60pct)
-            and not (upbid15_weneed_gate and we_need <= 5)):
+            and not (upbid15_weneed_gate and we_need <= upbid15_weneed_threshold)):
         bid = 20
 
     # OVERBID25-PB15 (opt-in challenger). Partner bid 15, opponent is at 20,
