@@ -461,6 +461,24 @@ class ImprovedAI:
 
         is_leading = len(trick) == 0
 
+        # PM_SWEEP (SHIPPED v2.31.130): near-win override, default-ON
+        # (off:pm_sweep_lead reverts). Partner mode only. When the
+        # DEFENDING team's score is >=110 (within striking distance of
+        # 120 — one made bid from winning the whole game), every
+        # bidder-side boss-hold-back rule below is skipped — denying the
+        # defenders even one trick right now outweighs any bid-tempo gain
+        # from delaying a boss card. Computed once here so it can gate both
+        # the trick-1 5+J-off-lead rule and the boss-card-loop hold-backs.
+        # Rig-tested rig-neutral at both >=110 and >=115 thresholds
+        # (50.01-50.02%, z<0.1, primary 20k + held-out 30k) — shipped for
+        # AI-logic trust (v2.31.30 precedent), threshold 110 chosen as the
+        # broader/superset trigger. User-derived 2026-07-13: bidder side
+        # held 5/J/A♥ vs a human at 115 and didn't lead them.
+        _pm_sweep = (F('pm_sweep_lead')
+                     and not self.flags.get('cutthroat')
+                     and state.team_scores is not None
+                     and state.team_scores[1 - (bid_winner % 2)] >= 110)
+
         # ── Endgame point-budget DENY mode ───────────────────────────────
         # OPT-IN ('endgame_deny', default off → champion bit-identical).
         # Bidder-side: when the opponent is so close that any trick they win
@@ -633,6 +651,34 @@ class ImprovedAI:
                     if _cw != player and _winner_non_trump:
                         return min(_my_nt, key=get_offsuit_rank)
 
+        # BIDDER_5J_T3_OFF_T1LO (shipped): bidder trick 1, ≤3 trump, holds both
+        # 5 and J of trump, partner drew ≥3 cards. Leading the 5 (always boss
+        # → intercepted by the loop below unless placed here) forces a weak/
+        # moderate partner to spend their only trump following an unbeatable
+        # lead. Leading lowest offsuit first preserves partner's trump for a
+        # later ruff. MUST sit BEFORE the BOSS CARD loop.
+        # Gate: partner_drew ≥3 confirmed by targeted rig (5k deals/category):
+        #   partner 0-1: champ 100%, rule -2% not sig → no fire (already made)
+        #   partner 2:   champ 95%, rule +2% not sig  → no fire
+        #   partner 3:   champ 77%, rule +12% z=+8.7  → fire
+        #   partner 4+:  champ 58%, rule +10% z=+7.9  → fire
+        # Cutthroat: no partner concept → skip.
+        if (is_leading and player == bid_winner
+                and trick_num == 1
+                and not self.flags.get('cutthroat')):
+            _b5_trumps = [c for c in playable if _is_trump(c, trump)]
+            _b5_nt = [c for c in playable if not _is_trump(c, trump)]
+            _b5_partner = (player + 2) % 4
+            _b5_partner_drew = cards_drawn[_b5_partner] if cards_drawn else 0
+            if (len(_b5_trumps) <= 3 and _b5_nt
+                    and _b5_partner_drew >= 3
+                    and any(c.rank == '5' for c in _b5_trumps)
+                    and any(c.rank == 'J' and c.suit == trump for c in _b5_trumps)):
+                if F('bidder_5j_t3_off_t1lo') and not _pm_sweep:  # SHIPPED default-ON
+                    return min(_b5_nt, key=get_offsuit_rank)
+                if Fon('bidder_5j_t3_off_t1hi') and not _pm_sweep:  # dead-end opt-in
+                    return max(_b5_nt, key=get_offsuit_rank)
+
         # ── STRATEGIC PRIORITY #1: BOSS CARD ─────────────────────────────────
         if not partner_winning_now:
             for card in playable:
@@ -664,6 +710,22 @@ class ImprovedAI:
                             return (not _strict) and est(s) == 0
                         if all(_elv(s) for s in _opps):
                             return card   # lead the boss now (endgame)
+                    # CT-DEFENDER-LEAD-BOSS-ALWAYS (opt-in challenger, robr
+                    # session 2026-07-24). jack2112's cutthroat card-play
+                    # mining showed he commits boss trump as a defender far
+                    # more readily than the shipped save-it-for-later rule
+                    # allows (roughly 2x a comparison player's rate on the
+                    # divergences where this applied) — sample too small in
+                    # real games to validate directly, but it mirrors the
+                    # bidder's own rule, which IS already unconditional in
+                    # cutthroat (no gate at all — see below). Hypothesis: with
+                    # no partner to split the "drain trump" benefit with,
+                    # immediately denying the bidder (the only real scoring
+                    # threat) outweighs saving the boss for a later trick.
+                    # Default False = champion-identical (still gated by the
+                    # endgame_lead_boss check above first).
+                    if self.flags.get('cutthroat') and self.flags.get('ct_defender_lead_boss_always') and _eg_is_def:
+                        return card
                     # defender → don't lead boss, fall to defender-leading
                     if _eg_is_def:
                         break
@@ -678,7 +740,8 @@ class ImprovedAI:
                     if (not self.flags.get('cutthroat')
                             and F('bidder_boss_partner_save')
                             and is_partner_of_bidder and not bidder_void
-                            and bidder_trump_est > 0 and opps_out and offs):
+                            and bidder_trump_est > 0 and opps_out and offs
+                            and not _pm_sweep):
                         return min(offs, key=get_offsuit_rank)
                     # partner weak (drew 4) + enemies stronger (drew ≤3)
                     partner_idx = (bid_winner + 2) % 4
@@ -688,7 +751,8 @@ class ImprovedAI:
                     if (not self.flags.get('cutthroat')
                             and F('bidder_boss_weak_partner_save')
                             and cards_drawn and my_tc <= 2 and cards_drawn[partner_idx] >= 4
-                            and cards_drawn[opp1] <= 3 and cards_drawn[opp2] <= 3):
+                            and cards_drawn[opp1] <= 3 and cards_drawn[opp2] <= 3
+                            and not _pm_sweep):
                         offs2 = [c for c in playable if _tr(c, trump) < 0]
                         if offs2:
                             return min(offs2, key=get_offsuit_rank)

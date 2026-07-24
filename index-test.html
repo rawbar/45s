@@ -3462,7 +3462,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.132';
+const VERSION = '2.31.133';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6231,6 +6231,24 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
               return card;
             }
           }
+          // CT-DEFENDER-LEAD-BOSS-ALWAYS (v2.31.133, jack2112 cutthroat
+          // card-play mining 2026-07-24). Real-game mining showed jack2112
+          // (52.9% first-place / 17 games, vs 32.1% for the next-best
+          // logged players) commits his boss trump as a defender far more
+          // readily than the partner-mode "save it, drain trump first" rule
+          // below allows. That rule was validated in PARTNER MODE (550k
+          // games) where draining benefits a partner who shares the credit;
+          // in cutthroat there's no partner, so immediately denying the
+          // sole bidder a trick right now outweighs delaying — this mirrors
+          // the bidder's own boss-lead, which is already unconditional in
+          // cutthroat (no save-it exception exists for the bidder). Rig
+          // (cutthroat_evaluator, 1-vs-3 first-place rate): +0.61pt z=+2.82
+          // primary 10k / +0.52pt z=+2.96 held-out 15k (replicated). Partner
+          // mode is untouched — this branch only fires when cutthroat.
+          if (cutthroat && _elbIsDef) {
+            console.log(`🎯 CT DEFENDER LEAD-BOSS: P${player + 1} leading boss ${card.id} immediately — no partner to drain trump for`);
+            return card;
+          }
           // Defenders: don't lead boss trump - save it, prefer offsuit to drain bidder team first
           // Simulation (550k games): defender boss trump leading → offsuit = 70-85% improvement
           if (_elbIsDef) {
@@ -7484,6 +7502,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.133', date: 'Jul 2026', changes: ['Cutthroat AI: defenders now lead their boss trump (5/J/Ace of Hearts/Ace of trump) immediately when they hold it, instead of saving it to drain the bidder\'s trump first the way partner-mode defenders do. Found by mining a top cutthroat player\'s real games (52.9% first-place rate over 17 games, nearly double the next-best logged player) — he commits boss trump as a defender far more often than the AI did. With no partner in cutthroat to share the benefit of draining, denying the sole bidder a trick right away tested better: +0.6pt first-place rate, confirmed on two independent simulation runs (10k and 15k games) and by reverting the change and seeing the same loss in reverse. Partner mode is unaffected.'] },
     { version: '2.31.132', date: 'Jul 2026', changes: ['Widened the v2.31.131 UPBID15 fix from weNeed<=5 to weNeed<=15. The team already wins on a bare made-15 whenever they need 15 or fewer points, not just 5 or fewer — a bidding simulator sweep confirmed 5/10/15 are all safe (no regression) while 20 measurably costs games (a bare 15-make no longer guarantees the win at that distance, so suppressing the escalation there was wrong).'] },
     { version: '2.31.131', date: 'Jul 2026', changes: ['Fixed AI overbidding to 20 when already one made bid away from winning the game (score >=115). The AI would correctly hold a safe hand (e.g. the 5 of trump alone) at a 15-bid, then unconditionally escalate it to 20 to steal a contested auction — but that hand only makes 20 about 62% of the time vs ~96% at 15, and the extra 5 points bought nothing since any made bid already wins. A user-reported game had this exact overbid get set, dropping the leading team from 115 to 95.'] },
     { version: '2.31.130', date: 'Jul 2026', changes: ['AI (partner mode): when the defending team is within one made bid of winning the game (score >=110), the bidding side no longer holds back a boss trump card (5/J of trump, Ace of Hearts) for later tempo — it leads immediately to deny the defenders the trick that could end the game. Previously several tempo rules (e.g. leading offsuit on trick 1 to bait a weak partner) applied even when the opponent was one trick from winning.'] },

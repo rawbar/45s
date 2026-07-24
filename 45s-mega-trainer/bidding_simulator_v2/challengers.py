@@ -184,9 +184,35 @@ REGISTRY = {
     # still win ~25% each (all seats run the same policy, symmetric).
     "champion-cutthroat": Policy(cutthroat=True,
                                  ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                           'cutthroat_c2_dont_overtake': True}),
+                                           'cutthroat_c2_dont_overtake': True,
+                                           'ct_defender_lead_boss_always': True}),
 }
 CHAMPION_CUTTHROAT = REGISTRY["champion-cutthroat"]
+
+# CT-DEFENDER-LEAD-BOSS-ALWAYS — SHIPPED v2.31.133 (jack2112 card-play
+# mining 2026-07-24; default-ON in champion-cutthroat above since
+# 2026-07-24). jack2112's cutthroat first-place rate (52.9%/17 games) is
+# nearly double the next-best logged player (32.1%). Card-play divergence
+# mining found his SIGNATURE move (stealing a contested 15-bid to 20) is
+# actually a leak (~21% make rate empirically). The one candidate that
+# held up: as a DEFENDER, he commits his boss trump (leads it) far more
+# readily than the shipped "save it, lead offsuit to drain" rule allows —
+# roughly double a comparison player's rate on the divergences where this
+# applied (small real-game sample, not independently outcome-tested there).
+# This mirrors the BIDDER's own rule, which is already fully unconditional
+# in cutthroat (zero exceptions — see improved_ai.py boss-card block).
+# Hypothesis: with no partner to split the "drain trump first" benefit,
+# immediately denying the sole bidder a trick outweighs saving the boss for
+# later. Rig (cutthroat_evaluator, 1-vs-3 first-place rate): +0.61pt
+# z=+2.82 primary 10k / +0.52pt z=+2.96 held-out 15k (replicated). Real-game
+# data was the hypothesis generator, not the validation, per the standard
+# workflow. Ablation (revert to pre-ship behavior) kept for reference:
+REGISTRY["ct-defboss-off"] = Policy(
+    cutthroat=True,
+    ai_flags={'cutthroat_c1_take_from_bidder': True,
+              'cutthroat_c2_dont_overtake': True,
+              'ct_defender_lead_boss_always': False},
+    name="ct-defboss-off")
 
 # BASELINE-PARTNER-IN-CUTTHROAT (chunk B measurement policy): partner-mode
 # champion (cutthroat=False — partner rules ON, partner_bid honored, spoiler
