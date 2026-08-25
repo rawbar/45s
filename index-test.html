@@ -3462,7 +3462,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.134';
+const VERSION = '2.31.135';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6406,6 +6406,34 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
               }
             }
           }
+          // CT-2ND-MAN-BOSS-RENEGE (v2.31.135): cutthroat analog of the
+          // partner-mode renege above. When the BIDDER themself led a low
+          // trump (draining), the two seats still to act (3rd, 4th) are
+          // GUARANTEED non-bidders — there's exactly one bidder and they
+          // already played as leader, so this trick can never go to them no
+          // matter what I do. Reneging (holding my top-3 trump back) costs
+          // nothing: whichever fellow defender wins it with their own
+          // smaller trump is exactly as good for the defense as me winning
+          // it, and I keep my boss for a trick that isn't already covered.
+          // Provably safe by construction (leader===bidWinner check), not
+          // an estimate. User hand-traced a real round where the old
+          // behavior (no cutthroat path here at all) burned A♥ to beat a
+          // fellow defender's own K♣ that would have won regardless,
+          // turning 10 defensive points into 5 for nothing.
+          // Rig (cutthroat_evaluator, 1-vs-3 first-place rate): net-neutral,
+          // replicated (10k wr -0.08pt z=-0.35; 15k wr -0.03pt z=-0.18) —
+          // expected, since the single-seat metric can't see value that
+          // redistributes to a DIFFERENT defender's seat. Shipped on the
+          // same trust-fix basis as v2.31.30/v2.31.103 (logic is airtight;
+          // rig shows no harm, not proof of harm-free is proof of gain).
+          if (cutthroat) {
+            const ledRankCheck = getTrumpRank(trick[0], trumpSuit);
+            const ledIsLowTrump = ledRankCheck >= 0 && ledRankCheck < 90;
+            if (trick.length === 1 && ledIsLowTrump && leader === bidWinner) {
+              console.log(`🎯 CT 2ND-MAN BOSS RENEGE: P${player + 1} saving boss ${card.id} — bidder led low trump ${trick[0].id}, remaining actors are guaranteed non-bidders`);
+              break;
+            }
+          }
           console.log(`🎯 BOSS CARD: P${player} playing ${card.id} (beats current trick & guaranteed winner)`);
           return card;
         } else {
@@ -7510,6 +7538,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.135', date: 'Jul 2026', changes: ['Cutthroat AI: added the 2nd-man boss-trump renege that partner mode already had, adapted for cutthroat. When the bidder themself leads a low trump, the two players still to act after me are guaranteed to be fellow non-bidders (there is only one bidder, and they already played). So if I hold a big trump (5/J/Ace of Hearts) that beats that low lead, I can safely hold it back and let one of them win it with their own smaller trump instead -- costs nothing since the bidder can no longer win this trick either way, and I keep my big trump for later. Found by a user hand-tracing a real round where the AI burned its Ace of Hearts beating a fellow defender\'s own King of trump that would have won the trick anyway, needlessly cutting the defense\'s trick total in half. Rig-neutral (as expected -- the win shows up on a different seat than the one deciding, which a single-seat metric can\'t detect) but logically airtight, shipped on the same trust-fix basis as two earlier rules.'] },
     { version: '2.31.134', date: 'Jul 2026', changes: ['Narrowed v2.31.133: cutthroat defenders leading their boss trump immediately now only fires from trick 3 onward, not trick 1 or 2. The unconditional version could lead the Ace of Hearts (or 5/J of trump) as early as trick 2, which read as a clear misplay to an expert player -- leading trump that early as a defender just hands the bidder tempo for no benefit. Rig-swept by trick number: gating to trick 3+ tested statistically identical to firing on every trick (both well under significance on 10k and 15k independent runs), meaning the early firings were contributing zero measured value either way, while a full revert to always-save loses significantly. So the rule keeps its validated value and drops the specific early-trick pattern that prompted this fix.'] },
     { version: '2.31.133', date: 'Jul 2026', changes: ['Cutthroat AI: defenders now lead their boss trump (5/J/Ace of Hearts/Ace of trump) immediately when they hold it, instead of saving it to drain the bidder\'s trump first the way partner-mode defenders do. Found by mining a top cutthroat player\'s real games (52.9% first-place rate over 17 games, nearly double the next-best logged player) — he commits boss trump as a defender far more often than the AI did. With no partner in cutthroat to share the benefit of draining, denying the sole bidder a trick right away tested better: +0.6pt first-place rate, confirmed on two independent simulation runs (10k and 15k games) and by reverting the change and seeing the same loss in reverse. Partner mode is unaffected.'] },
     { version: '2.31.132', date: 'Jul 2026', changes: ['Widened the v2.31.131 UPBID15 fix from weNeed<=5 to weNeed<=15. The team already wins on a bare made-15 whenever they need 15 or fewer points, not just 5 or fewer — a bidding simulator sweep confirmed 5/10/15 are all safe (no regression) while 20 measurably costs games (a bare 15-make no longer guarantees the win at that distance, so suppressing the escalation there was wrong).'] },
