@@ -3462,7 +3462,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.139';
+const VERSION = '2.31.140';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7605,6 +7605,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.140', date: 'Oct 2026', changes: ['Diagnostic infrastructure: AI card-play decisions are now logged to Firebase (decisionLog/decisionLogCutthroat) the same way the human player\'s own plays already were -- previously only your own card choices were saved server-side, so a weird AI play could only ever be traced through console.log, which is useless on mobile (same reasoning as the v2.31.89 c2Debug fix). No gameplay change, same per-player logging toggle.'] },
     { version: '2.31.139', date: 'Oct 2026', changes: ['Widened the v2.31.138 fix from 25-bids to also cover 30-bids: the bidder\'s trick-1 "save partner\'s trump" offsuit lead now skips for any genuine, non-desperation 25 or 30 (not just 25) -- the same "floor of 15 is actually a SET" flaw applies at either bid level, 25 was just the reported instance, not the real boundary.'] },
     { version: '2.31.138', date: 'Oct 2026', changes: ['Fixed the bidder\'s trick-1 "save partner\'s trump" lead-offsuit rule: when the bidder holds the 5 and Jack of trump (plus at most one more) and their partner drew 3+ replacement cards, the AI was leading a weak offsuit card on the first trick instead of its boss trump, to avoid forcing a weak partner to spend their only trump early. The rule\'s own safety argument -- "worst case we still make 15 with 5+J" -- only holds when the actual bid IS 15; on a genuine, non-desperation 25-bid (hand strong enough to earn it on its own, no score pressure forcing a sacrifice), falling back to 15 is a SET, not a safe floor. User traced a real hand (25-bid on 5+Jack+Ace of Hearts) where this led to an offsuit open that lost the first trick and nearly cost the contract on the next. The rule now only fires on 15/20/30 bids and genuine desperation 25s (opponent near game point, forced sacrifice) -- a confident non-desperation 25 now leads and keeps leading trump like the hand earned.'] },
     { version: '2.31.137', date: 'Jul 2026', changes: ['Fixed the bidder\'s "lead my dying trump" logic (both cutthroat and partner mode -- shared code): the AI estimates how much trump each opponent has left from how many cards they drew, but that estimate is capped at a maximum of 3 starting trump -- so an opponent who actually held 4 or more real trump cards could get wrongly estimated as fully out once they\'d played just 3 of them, even though a genuine trump card (like an Ace of trump) was still sitting in their hand. That wrong "opponents are void" signal let the bidder confidently lead its own last weak trump straight into it, losing the trick for nothing when leading its offsuit card first would have been safe. Now the AI double-checks that guess against the actual cards played so far -- if a specific higher trump card is provably still unaccounted for, the guess is overruled and the AI leads offsuit instead. Found by the user tracing a real cutthroat round where a 25-bid holding 5+Jack+Ace of Hearts led its last 9 of trump into an opponent\'s uncounted Ace of trump. Confirmed as a general bug (not cutthroat-specific) and validated with simulations in both modes: cutthroat +0.65 to +0.75 points, partner mode +0.40 to +0.52 points, both replicated with no regression.'] },
@@ -17781,9 +17782,50 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
       );
       
       const cardIndex = hand.findIndex(c => c.id === card.id);
-      
+
       console.log(`AI plays ${card.id}`);
-      
+
+      // AI-seat decision logging (v2.31.140, fire-and-forget, fully guarded
+      // — must NEVER affect gameplay). Mirrors the human decisionLog block
+      // above but for the AI's own card choice. Previously only the human's
+      // OWN plays were ever logged server-side; AI decisions only existed as
+      // console.log, invisible on mobile (the user has no dev console,
+      // ever — see feedback_no_mobile_debug_console memory). Without this,
+      // a reported "AI made a weird play" screenshot could never be
+      // diagnosed past what the static code read implies. Same per-player
+      // toggle, same path/schema as the human record (seat distinguishes
+      // who played) so existing log tooling keeps working unchanged.
+      if (loggingOnRef.current) {
+        try {
+          const _aiId = c => c && c.id;
+          const _aiUname = playerName.toLowerCase();
+          const _aiRec = {
+            username: _aiUname,
+            seat: currentPlayer,
+            aiSeat: true,
+            trickNum: trickNum,
+            trump: trumpSuit,
+            leader: trickLeader,
+            bidWinner: bidWinner,
+            highBid: highBid,
+            hand: hand.map(_aiId),                       // BEFORE removal
+            trick: trickCards.map(tc => _aiId(tc.card)),  // faced (pre-play)
+            legal: playable.map(_aiId),
+            chosen: _aiId(card),
+            cardsDrawn: Array.isArray(drawn) ? drawn.slice() : null,
+            knownOutOfTrump: Array.isArray(knownOutOfTrump) ? knownOutOfTrump.slice() : null,
+            knownVoids: JSON.stringify(knownVoids || null),
+            cardsPlayed: (cardsPlayed || []).map(_aiId),
+            playHistory: (playHistory || []).map(h => ({ p: h.player, c: _aiId(h.card), t: h.trick })),
+            bidderLostTrick: !!bidderLostTrick,
+            version: VERSION,
+            ts: Date.now(),
+          };
+          const _aiDecLogPath = gameOptions?.cutthroat ? `decisionLogCutthroat/${_aiUname}/${gameId}` : `decisionLog/${_aiUname}/${gameId}`;
+          database.ref(_aiDecLogPath).push(_aiRec).catch(() => {});
+        } catch (_e) { /* logging must never break play */ }
+      }
+
       // Safety: ensure hands is an array
     if (!Array.isArray(hands)) {
       console.error('❌ hands is not an array:', hands);
