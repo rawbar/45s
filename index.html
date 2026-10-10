@@ -3480,7 +3480,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.141';
+const VERSION = '2.31.142';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6578,6 +6578,28 @@ if (isBidder && isLeading) {
     }
   }
 
+  // BIDDER_LASTTRUMP_PARTNER_RUFF (v2.31.142, user-derived 2026-10-10): early
+  // in the hand (tricks 1-2), bidder has EXACTLY 1 trump left, it is NOT the
+  // boss (a higher trump is still unaccounted for, so an opponent can take it),
+  // and partner is estimated to still hold trump. Leading the lone trump just
+  // feeds it to the higher opposing trump AND burns partner's trump on the
+  // follow. Lead the highest offsuit instead so partner can ruff / contribute
+  // a trick, and keep the trump for later. User-reported: bidder (bid 20) led
+  // 5, then K of trump into an opponent's unaccounted Ace, dragging partner's
+  // 9 out. Logic-derivation ship (same precedent as 5J-OFFSUIT-FIRST).
+  if (!cutthroat && trumps.length === 1 && nonTrumps.length > 0
+      && trickNum <= 1 && highBid >= 20) {
+    const myTrumpRank = getTrumpRank(trumps[0], trumpSuit);
+    const highestRemaining = getHighestRemainingTrump(cardsPlayed || [], trumpSuit);
+    const partnerEstTrump = intel.players[(player + 2) % 4]?.estimatedTrumpRemaining || 0;
+    if (myTrumpRank < highestRemaining && partnerEstTrump > 0) {
+      const bestOff = nonTrumps.reduce((best, c) =>
+        getOffSuitRank(c) > getOffSuitRank(best) ? c : best);
+      console.log(`♟️ LASTTRUMP-PARTNER-RUFF: P${player + 1} lone trump ${trumps[0].id} not boss (higher remaining ${highestRemaining}), partner est ${partnerEstTrump} trump — leading ${bestOff.id} instead`);
+      return bestOff;
+    }
+  }
+
   // ========================================================================
   // ENDGAME TRUMP TIMING (Rounds 4-5)
   // ========================================================================
@@ -7623,6 +7645,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.142', date: 'Oct 2026', changes: ['AI bidder with one non-boss trump left early in the hand now leads offsuit when partner still has trump, instead of leading the trump into a higher one and pulling partner's trump out.'] },
     { version: '2.31.141', date: 'Oct 2026', changes: ['Create Account screen now fits on small phones: compact layout on short screens, and the screen scrolls if it still overflows so the confirm button is always reachable.'] },
     { version: '2.31.140', date: 'Oct 2026', changes: ['Diagnostic infrastructure: AI card-play decisions are now logged to Firebase (decisionLog/decisionLogCutthroat) the same way the human player\'s own plays already were -- previously only your own card choices were saved server-side, so a weird AI play could only ever be traced through console.log, which is useless on mobile (same reasoning as the v2.31.89 c2Debug fix). No gameplay change, same per-player logging toggle.'] },
     { version: '2.31.139', date: 'Oct 2026', changes: ['Widened the v2.31.138 fix from 25-bids to also cover 30-bids: the bidder\'s trick-1 "save partner\'s trump" offsuit lead now skips for any genuine, non-desperation 25 or 30 (not just 25) -- the same "floor of 15 is actually a SET" flaw applies at either bid level, 25 was just the reported instance, not the real boundary.'] },
