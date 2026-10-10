@@ -7645,7 +7645,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
-    { version: '2.31.142', date: 'Oct 2026', changes: ['AI bidder with one non-boss trump left early in the hand now leads offsuit when partner still has trump, instead of leading the trump into a higher one and pulling partner's trump out.'] },
+    { version: '2.31.142', date: 'Oct 2026', changes: ['AI bidder with one non-boss trump left early in the hand now leads offsuit when partner still has trump, instead of leading the trump into a higher one and pulling partner\'s trump out.'] },
     { version: '2.31.141', date: 'Oct 2026', changes: ['Create Account screen now fits on small phones: compact layout on short screens, and the screen scrolls if it still overflows so the confirm button is always reachable.'] },
     { version: '2.31.140', date: 'Oct 2026', changes: ['Diagnostic infrastructure: AI card-play decisions are now logged to Firebase (decisionLog/decisionLogCutthroat) the same way the human player\'s own plays already were -- previously only your own card choices were saved server-side, so a weird AI play could only ever be traced through console.log, which is useless on mobile (same reasoning as the v2.31.89 c2Debug fix). No gameplay change, same per-player logging toggle.'] },
     { version: '2.31.139', date: 'Oct 2026', changes: ['Widened the v2.31.138 fix from 25-bids to also cover 30-bids: the bidder\'s trick-1 "save partner\'s trump" offsuit lead now skips for any genuine, non-desperation 25 or 30 (not just 25) -- the same "floor of 15 is actually a SET" flaw applies at either bid level, 25 was just the reported instance, not the real boundary.'] },
