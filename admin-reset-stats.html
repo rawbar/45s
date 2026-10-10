@@ -63,6 +63,21 @@
   </table>
 
   <hr>
+  <h2 style="color:#4caf50;">Create New User</h2>
+  <div style="background:#10201a;border:1px solid #4caf50;border-radius:6px;padding:14px 16px;max-width:420px;">
+    <label style="display:block;font-size:12px;color:#aaa;margin-bottom:4px;">Username</label>
+    <input id="newUsername" type="text" autocomplete="off" maxlength="24" style="display:block;width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px;background:#111;color:#eee;border:1px solid #444;border-radius:4px;font-family:monospace;">
+    <label style="display:block;font-size:12px;color:#aaa;margin-bottom:4px;">4-digit PIN</label>
+    <input id="newPin" type="text" inputmode="numeric" autocomplete="off" maxlength="4" style="display:block;width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px;background:#111;color:#eee;border:1px solid #444;border-radius:4px;font-family:monospace;">
+    <label style="display:block;font-size:12px;color:#aaa;margin-bottom:4px;">Avatar</label>
+    <select id="newAvatar" style="display:block;width:100%;box-sizing:border-box;margin-bottom:10px;padding:8px;background:#111;color:#eee;border:1px solid #444;border-radius:4px;font-family:monospace;"><option value="wizard">🧙 Wizard</option><option value="warrior">⚔️ Warrior</option><option value="archer">🏹 Archer</option><option value="knight">🛡️ Knight</option><option value="rogue">🗡️ Rogue</option><option value="king">👑 King</option><option value="queen">👸 Queen</option><option value="elf">🧝 Elf</option><option value="fairy">🧚 Fairy</option><option value="vampire">🧛 Vampire</option><option value="troll">🧌 Troll</option><option value="dragon">🐉 Dragon</option><option value="eagle">🦅 Eagle</option><option value="wolf">🐺 Wolf</option><option value="lion">🦁 Lion</option><option value="bear">🐻 Bear</option><option value="owl">🦉 Owl</option><option value="bat">🦇 Bat</option><option value="crystal">🔮 Crystal Ball</option><option value="fire">🔥 Fire Mage</option><option value="lightning">⚡ Storm Mage</option><option value="star">🌟 Cleric</option><option value="skull">💀 Necromancer</option><option value="moon">🌙 Moon Knight</option></select>
+    <label style="display:block;font-size:12px;color:#aaa;margin-bottom:4px;">Email (optional)</label>
+    <input id="newEmail" type="email" autocomplete="off" style="display:block;width:100%;box-sizing:border-box;margin-bottom:14px;padding:8px;background:#111;color:#eee;border:1px solid #444;border-radius:4px;font-family:monospace;">
+    <button class="section-btn" id="createUserBtn" onclick="createUser()" style="background:#4caf50;color:#111;margin:0;">Create User</button>
+    <div id="createUserMsg" style="font-size:12px;margin-top:10px;min-height:14px;"></div>
+  </div>
+
+  <hr>
   <h2 style="color:#f44336;">Bulk: Reset All Ragequitters</h2>
   <div class="warn" id="warnBox" style="display:none">
     ⚠️ Zeros ALL stats for <span id="userCount">0</span> ragequitter(s) above. Cannot be undone.
@@ -97,6 +112,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-check-compat.js"></script>
   <script>
     const firebaseConfig = {
@@ -481,6 +497,84 @@
         log(`  ✗ Failed to delete ${username}: ${e.message}`, 'err');
         document.getElementById('log').style.display = 'block';
       }
+    }
+
+    // Create a user the same way the app's own registration does:
+    // claim /usernames/{name}, set the PIN server-side via registerPin,
+    // then write /users/{uid}. Rolls back the reservation on failure.
+    const functionsApp = firebase.app().functions('us-central1');
+    const registerPinFn = functionsApp.httpsCallable('registerPin');
+    function generateUserId() {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      let result = 'user_';
+      for (let i = 0; i < 12; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+      return result;
+    }
+    function setCreateMsg(text, cls) {
+      const el = document.getElementById('createUserMsg');
+      el.className = cls || '';
+      el.textContent = text;
+    }
+    async function createUser() {
+      const btn = document.getElementById('createUserBtn');
+      const name = document.getElementById('newUsername').value.trim().toLowerCase();
+      const pin = document.getElementById('newPin').value.trim();
+      const avatar = document.getElementById('newAvatar').value;
+      const email = document.getElementById('newEmail').value.trim().toLowerCase();
+      if (!name || !/^[a-z0-9 _.\-]+$/.test(name)) { setCreateMsg('Username required (letters, numbers, space, _ . -).', 'err'); return; }
+      if (!/^\d{4}$/.test(pin)) { setCreateMsg('PIN must be exactly 4 digits.', 'err'); return; }
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setCreateMsg('Invalid email address.', 'err'); return; }
+      btn.disabled = true;
+      setCreateMsg('Creating...', '');
+      const uid = generateUserId();
+      const nameRef = db.ref(`usernames/${name}`);
+      try {
+        const result = await nameRef.transaction(cur => (cur === null ? uid : undefined));
+        if (!result.committed) {
+          const claimedBy = result.snapshot.val();
+          const exists = claimedBy ? (await db.ref(`users/${claimedBy}`).once('value')).exists() : true;
+          if (exists) { setCreateMsg(`Username "${name}" is already taken.`, 'err'); btn.disabled = false; return; }
+          await nameRef.set(uid); // orphaned reservation: reclaim
+        }
+        try {
+          await registerPinFn({ username: name, pin, uid });
+        } catch (e) {
+          try { await nameRef.remove(); } catch (_) {}
+          const taken = e && e.code === 'functions/already-exists';
+          setCreateMsg(taken ? `Username "${name}" is already taken.` : `PIN setup failed: ${e.message || e}`, 'err');
+          btn.disabled = false;
+          return;
+        }
+        try {
+          await db.ref(`users/${uid}`).set({
+            username: name,
+            avatar,
+            email: email || null,
+            emailPromptShown: email ? true : false,
+            createdAt: Date.now(),
+            lastLogin: Date.now(),
+            currentGame: null,
+            stats: {
+              gamesPlayed: 0, gamesPlayedVsAI: 0, gamesPlayedVsHumans: 0,
+              wins: 0, winsVsAI: 0, winsVsHumans: 0, winPercentage: 0,
+              currentStreak: 0, streakType: 'W'
+            }
+          });
+        } catch (e) {
+          try { await nameRef.remove(); } catch (_) {}
+          setCreateMsg(`User record write failed: ${e.message || e}`, 'err');
+          btn.disabled = false;
+          return;
+        }
+        setCreateMsg(`Created "${name}" (${uid}). They can log in with the PIN you set.`, 'ok');
+        document.getElementById('newUsername').value = '';
+        document.getElementById('newPin').value = '';
+        document.getElementById('newEmail').value = '';
+        loadUsers();
+      } catch (e) {
+        setCreateMsg(`Failed: ${e.message || e}`, 'err');
+      }
+      btn.disabled = false;
     }
 
     // loadUsers() is invoked by auth.onAuthStateChanged once the admin
