@@ -170,12 +170,21 @@ const drawn = [0, 0, 0, 0];
 - Defender Robr (human) took trick 4 with A♥ (trump) over the 6♦, then led K♣ on trick 5.
 - **User's call:** bidder should have led the offsuit 2♣ on trick 4 and would have scored 25 instead of 20.
 
-**My unverified analysis (check before acting):**
-- On trick 4 the bidder had exactly 1 trump (6♦, not boss: A♥ still unaccounted) + 1 offsuit. This is the case the existing "ENDGAME TRUMP TIMING" block in `chooseCardToPlay` is meant to handle (lead offsuit to force out an opponent's trump when an opponent is likely to still hold one).
-- **Suspected off-by-one:** that block is gated `trickNum >= 4 && trumps.length === 1 && nonTrumps.length === 1`. In the JS, `trickNum` is 0-indexed (the INTEL log prints `trick ${trickNum + 1}`), so a hand with 2 cards left is `trickNum === 3`. The gate can then never be true (with `trickNum >= 4` the hand has 1 card). The Python simulator (`improved_ai.py`, `round_runner.py`) uses a 1-indexed `trick_num`, so there the same rule works as intended. If confirmed, this rule is dead code in the live game and the rig results for it do not apply to what players see.
-- It is not obvious how the 2♣ lead scores 25 (Robr held both K♣ and A♥; with 2♣ led he can win with K♣ and still hold A♥ for trick 5). Replay the exact hands in the simulator before deciding what the right rule is.
+**Root cause (found 2026-10-10 by reading the code; confirmed by the user's hunch that Robr's renege was counted as "out of trump"):**
+- Robr reneged with the A♥ on trick 2 (played 4♣ on the bidder's A♦ lead) and again on trick 3 (7♥ on the 9♦ lead). The trump-tracking code (`index.html` ~17040-17075 and ~17905-17925, the two trick-resolution blocks) correctly notes he "may hold A♥" (`knownVoids[p].trump = 'reneging'`) but ALSO sets `knownOutOfTrump[p] = true` ("backward compat").
+- Robr's partner AI Player 1 was likewise flagged on trick 3 (threw 10♠ on a trump lead while A♥ was still unaccounted for).
+- On trick 4, `_allVoidHardFlag` in the bidder-lead block (`chooseCardToPlay`, ~6513) treats `knownOutOfTrump` as a HARD void for every opponent, so the ALL-VOID rule fired: "opponents are out of trump, lead the lowest trump, guaranteed win" -> bidder led 6♦ into Robr's A♥.
+- The v2.31.137 ALLVOID-DEDUCTION-GUARD (`_estimateContradicted`) does not help here: it only runs when `!_allVoidHardFlag`, on the assumption that the hard flag is "already reliable". It is not reliable when the flag came from a renege.
+- This pre-empts the ENDGAME TRUMP TIMING rule, so that rule never got a chance on this hand.
+
+**Proposed fix (needs rig test first):** make the hard flag count only genuine voids (`knownVoids[i].trump === true`), not `'reneging'`. A renege flag means "has at most the unplayed 5 / J / A♥", so while any of those is unaccounted for the ALL-VOID shortcut must not fire. Check the Python simulator (`improved_ai.py` `known_oot`) for the same shortcut; if it sets the flag the same way, rig results for ALL-VOID already include this bug.
+
+**Secondary suspect (separate, lower priority):**
+- The ENDGAME TRUMP TIMING gate is `trickNum >= 4 && trumps.length === 1 && nonTrumps.length === 1`. JS `trickNum` is 0-indexed, so with 2 cards in hand `trickNum === 3` and the gate is never true. The Python rig uses a 1-indexed `trick_num`, where it works. Verify, then fix the index (rig-test first).
+
+**Open question:** it is still not clear the 2♣ lead scores 25 on this exact deal (Robr held both K♣ and A♥, so he can win with K♣ and keep the A♥). Replay the deal in the rig for lead-6♦ vs lead-2♣ before treating "25" as the target.
 
 **Next steps:**
-1. Confirm the 0- vs 1-index mismatch in `chooseCardToPlay` and any other rules ported from the Python rig (`trickNum` gates in `index.html` vs `trick_num` in the rig).
-2. Replay this exact deal in the rig, comparing "lead 6♦" vs "lead 2♣" on trick 4.
-3. If the endgame rule is dead, fix the index (rig-test first), then re-check this hand.
+1. Replay this deal and confirm the ALL-VOID shortcut fires on trick 4 (the decision log or the "ALL-VOID: P.. leading" console line will show it).
+2. Add a rig challenger that restricts the hard flag to true voids, and run primary 20k + held-out.
+3. Fix the 0/1-index gate on the endgame rule separately, with its own rig run.
