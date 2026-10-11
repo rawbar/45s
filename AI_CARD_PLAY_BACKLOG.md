@@ -157,3 +157,25 @@ const drawn = [0, 0, 0, 0];
 - Positional awareness is key - who plays after you matters
 - Save high trump when partner can win without your help
 - This builds on existing `drawn[]` and `knownOutOfTrump[]` infrastructure
+
+---
+
+## BACKLOG: Bidder leads last trump on trick 4 instead of offsuit (reported 2026-10-10)
+
+**Status:** Not started. To be picked up after the v2.31.141/142 rollout settles.
+
+**Screenshot hand** (Round Summary, v2.31.142, hand 1 of the game; screenshot saved by the user, not in repo):
+- Trump ♦, bid 20 by AI Player 2 (dealer, "D"). Final: bidder's team 20, defenders 10.
+- Bidder led trump on tricks 1-4: 5♦, A♦, 9♦, then 6♦ on trick 4. He still held 2♣ as his last card.
+- Defender Robr (human) took trick 4 with A♥ (trump) over the 6♦, then led K♣ on trick 5.
+- **User's call:** bidder should have led the offsuit 2♣ on trick 4 and would have scored 25 instead of 20.
+
+**My unverified analysis (check before acting):**
+- On trick 4 the bidder had exactly 1 trump (6♦, not boss: A♥ still unaccounted) + 1 offsuit. This is the case the existing "ENDGAME TRUMP TIMING" block in `chooseCardToPlay` is meant to handle (lead offsuit to force out an opponent's trump when an opponent is likely to still hold one).
+- **Suspected off-by-one:** that block is gated `trickNum >= 4 && trumps.length === 1 && nonTrumps.length === 1`. In the JS, `trickNum` is 0-indexed (the INTEL log prints `trick ${trickNum + 1}`), so a hand with 2 cards left is `trickNum === 3`. The gate can then never be true (with `trickNum >= 4` the hand has 1 card). The Python simulator (`improved_ai.py`, `round_runner.py`) uses a 1-indexed `trick_num`, so there the same rule works as intended. If confirmed, this rule is dead code in the live game and the rig results for it do not apply to what players see.
+- It is not obvious how the 2♣ lead scores 25 (Robr held both K♣ and A♥; with 2♣ led he can win with K♣ and still hold A♥ for trick 5). Replay the exact hands in the simulator before deciding what the right rule is.
+
+**Next steps:**
+1. Confirm the 0- vs 1-index mismatch in `chooseCardToPlay` and any other rules ported from the Python rig (`trickNum` gates in `index.html` vs `trick_num` in the rig).
+2. Replay this exact deal in the rig, comparing "lead 6♦" vs "lead 2♣" on trick 4.
+3. If the endgame rule is dead, fix the index (rig-test first), then re-check this hand.
