@@ -36,6 +36,24 @@
     html { height: 100%; height: -webkit-fill-available; }
     body { font-family: 'Palatino Linotype', Palatino, Georgia, serif; overflow: hidden; width: 100%; height: 100%; height: -webkit-fill-available; }
     #root { height: 100%; overflow: hidden; }
+    /* Short phones: compact the login/register screen so it fits without scrolling */
+    @media (max-height: 780px) {
+      .login-screen { padding: 8px !important; }
+      .login-screen .login-hint,
+      .login-screen .irish-login-title-rule > div:nth-child(n+2),
+      .login-screen .login-title-block > div:nth-child(n+2),
+      .login-screen > div > div p { display: none !important; }
+      .login-screen .login-title-block { margin-bottom: 6px !important; }
+      .login-screen .irish-login-title-rule { margin-bottom: 6px !important; }
+      .login-screen div:has(> label) { margin-bottom: 8px !important; }
+      .login-screen label { margin-bottom: 2px !important; }
+      .login-screen input { padding-top: 6px !important; padding-bottom: 6px !important; font-size: 16px !important; }
+      .login-screen .irish-login-felt, .login-screen .an-login-felt { padding: 14px 18px 14px !important; }
+      .login-screen .cp-login-title { margin-bottom: 4px !important; }
+      .login-screen .cp-login-card { padding: 16px !important; }
+      .login-screen > div[style*="border-radius: 12px"] { padding: 18px !important; }
+      .login-screen div[style*="display: flex"]:has(> button) { margin-bottom: 10px !important; }
+    }
     .fs-screen { height: 100vh; height: -webkit-fill-available; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -3462,7 +3480,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.141';
+const VERSION = '2.31.142';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7626,6 +7644,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.142', date: 'Oct 2026', changes: ['Create Account screen now fits on small phones: compact layout on short screens, and the screen scrolls if it still overflows so the confirm button is always reachable.'] },
     { version: '2.31.141', date: 'Oct 2026', changes: ['AI bidder with one non-boss trump left early in the hand now leads offsuit when partner still has trump, instead of leading the trump into a higher one and pulling partner\'s trump out.'] },
     { version: '2.31.140', date: 'Oct 2026', changes: ['Diagnostic infrastructure: AI card-play decisions are now logged to Firebase (decisionLog/decisionLogCutthroat) the same way the human player\'s own plays already were -- previously only your own card choices were saved server-side, so a weird AI play could only ever be traced through console.log, which is useless on mobile (same reasoning as the v2.31.89 c2Debug fix). No gameplay change, same per-player logging toggle.'] },
     { version: '2.31.139', date: 'Oct 2026', changes: ['Widened the v2.31.138 fix from 25-bids to also cover 30-bids: the bidder\'s trick-1 "save partner\'s trump" offsuit lead now skips for any genuine, non-desperation 25 or 30 (not just 25) -- the same "floor of 15 is actually a SET" flaw applies at either bid level, 25 was just the reported instance, not the real boundary.'] },
@@ -9057,37 +9076,41 @@ function LoginScreen({ onLogin }) {
   const isArabian = currentThemeId === 'arabian';
   return (
     <div
-      className={isIrish ? 'theme-irish irish-login-bg' : isCyberpunk ? 'cp-login-bg' : isArabian ? 'an-lobby-bg' : ''}
+      className={'login-screen ' + (isIrish ? 'theme-irish irish-login-bg' : isCyberpunk ? 'cp-login-bg' : isArabian ? 'an-lobby-bg' : '')}
       style={isIrish ? {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
+        justifyContent: 'safe center',
+        height: '100dvh',
+        overflowY: 'auto',
         padding: '20px',
         position: 'relative'
       } : isCyberpunk ? {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
+        justifyContent: 'safe center',
+        height: '100dvh',
+        overflowY: 'auto',
         padding: '20px',
         position: 'relative'
       } : isArabian ? {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
+        justifyContent: 'safe center',
+        height: '100dvh',
+        overflowY: 'auto',
         padding: '20px',
         position: 'relative'
       } : {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
+        justifyContent: 'safe center',
+        height: '100dvh',
+        overflowY: 'auto',
         padding: '20px',
         background: 'linear-gradient(135deg, #1a5f3f 0%, #2d8f5f 100%)',
         position: 'relative'
@@ -9183,7 +9206,7 @@ function LoginScreen({ onLogin }) {
         ) : isCyberpunk ? (
           <div className="cp-login-title">45s</div>
         ) : isArabian ? (
-          <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+          <div className="login-title-block" style={{ textAlign: 'center', marginBottom: '12px' }}>
             <div style={{
               fontFamily: 'Cinzel, serif',
               fontWeight: 900,
@@ -9213,7 +9236,7 @@ function LoginScreen({ onLogin }) {
             </div>
           </div>
         ) : (
-          <h1 style={{ marginBottom: '16px', textAlign: 'center', color: '#1a5f3f', fontSize: '22px' }}>
+          <h1 className="login-title-block" style={{ marginBottom: '16px', textAlign: 'center', color: '#1a5f3f', fontSize: '22px' }}>
             45s Card Game
           </h1>
         )}
@@ -9536,7 +9559,7 @@ function LoginScreen({ onLogin }) {
               }}
               disabled={loading}
             />
-            <div style={(isIrish || isArabian) ? {
+            <div className="login-hint" style={(isIrish || isArabian) ? {
               fontSize: '10px',
               color: 'rgba(201,162,39,0.4)',
               marginTop: '3px',
