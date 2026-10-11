@@ -3480,7 +3480,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.142';
+const VERSION = '2.31.143';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6528,7 +6528,14 @@ if (isBidder && isLeading) {
   const oppsEstimatedOutOfTrump =
     (intel.players[opp1Idx]?.estimatedTrumpRemaining || 0) === 0 &&
     (intel.players[opp2Idx]?.estimatedTrumpRemaining || 0) === 0;
-  const _allVoidHardFlag = knownOutOfTrump && [0,1,2,3].filter(i => i !== player).every(i => knownOutOfTrump[i]);
+  // ALLVOID-TRUE-VOIDS-ONLY (v2.31.143, user-derived 2026-10-10): knownOutOfTrump
+  // is ALSO set when a player reneges ("may still hold 5/J/A-hearts"), which is
+  // not a void. Count only genuine voids (knownVoids[i].trump === true) so a
+  // renege can't trigger the all-void low-trump lead. User-reported: bidder led
+  // 6 of trump into a reneging opponent's A-hearts. Rig: primary 20k +0.03pt
+  // z=+0.14, held-out 100k +0.09pt z=+0.81 (neutral/positive).
+  const _allVoidHardFlag = knownOutOfTrump && [0,1,2,3].filter(i => i !== player).every(i =>
+    knownOutOfTrump[i] && !(knownVoids && knownVoids[i] && knownVoids[i].trump === 'reneging'));
   if (trumps.length > 0 && (_allVoidHardFlag || oppsEstimatedOutOfTrump)) {
     const lowestTrump = trumps.reduce((a, b) =>
       getTrumpRank(a, trumpSuit) < getTrumpRank(b, trumpSuit) ? a : b);
@@ -7644,6 +7651,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.143', date: 'Oct 2026', changes: ['AI bidder no longer assumes an opponent is out of trump just because they reneged (played off-suit on a trump lead while the 5, Jack or Ace of Hearts was still unaccounted for), so it stops leading a low trump into a reneging opponent\'s Ace of Hearts.'] },
     { version: '2.31.142', date: 'Oct 2026', changes: ['Create Account screen now fits on small phones: compact layout on short screens, and the screen scrolls if it still overflows so the confirm button is always reachable.'] },
     { version: '2.31.141', date: 'Oct 2026', changes: ['AI bidder with one non-boss trump left early in the hand now leads offsuit when partner still has trump, instead of leading the trump into a higher one and pulling partner\'s trump out.'] },
     { version: '2.31.140', date: 'Oct 2026', changes: ['Diagnostic infrastructure: AI card-play decisions are now logged to Firebase (decisionLog/decisionLogCutthroat) the same way the human player\'s own plays already were -- previously only your own card choices were saved server-side, so a weird AI play could only ever be traced through console.log, which is useless on mobile (same reasoning as the v2.31.89 c2Debug fix). No gameplay change, same per-player logging toggle.'] },

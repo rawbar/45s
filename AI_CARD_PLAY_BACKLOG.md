@@ -162,7 +162,7 @@ const drawn = [0, 0, 0, 0];
 
 ## BACKLOG: Bidder leads last trump on trick 4 instead of offsuit (reported 2026-10-10)
 
-**Status:** Not started. To be picked up after the v2.31.141/142 rollout settles.
+**Status:** Renege-as-void fix SHIPPED in v2.31.143 (rig +0.09pt z=+0.81 held-out 100k). Still open: endgame-rule 0/1-index gate (below) and the unverified "25" claim.
 
 **Screenshot hand** (Round Summary, v2.31.142, hand 1 of the game; screenshot saved by the user, not in repo):
 - Trump ♦, bid 20 by AI Player 2 (dealer, "D"). Final: bidder's team 20, defenders 10.
