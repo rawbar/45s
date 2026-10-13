@@ -3480,7 +3480,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.143';
+const VERSION = '2.31.144';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6173,6 +6173,31 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     }
   }
 
+  // BIDDER_J_NO5_OFFSUIT_FIRST (v2.31.144, user-derived 2026-10-13): bidder holds
+  // the J of trump WITHOUT the 5 (<=3 trumps), bid is the minimum 15 (the
+  // dealer's bag), partner drew 3+ cards, trick 1. Lead the lowest offsuit
+  // first instead of the J: the J is worth more held back to beat the A of
+  // trump when partner's K is overtaken, and partner gets a chance to ruff.
+  // Mirrors BIDDER_5J_T3_OFF_T1LO for a J-only hand. Gated to bid 15: at bid 20
+  // the J+1-trump hand got worse in the rig. Rig (targeted, 20k deals/cell,
+  // bid 15): J-only +1.3/+1.8, J+1 +2.3/+2.7, J+2 +1.6/+1.3 pts make-rate
+  // (primary/held-out).
+  if (!cutthroat && isLeadingTrick && player === bidWinner && trickNum === 0
+      && highBid <= 15 && !_pmSweep) {
+    const _bjTrumps = playable.filter(c => getTrumpRank(c, trumpSuit) >= 0);
+    const _bjNonTrumps = playable.filter(c => getTrumpRank(c, trumpSuit) < 0);
+    const _bjPartnerDrew = cardsDrawn ? (cardsDrawn[(player + 2) % 4] || 0) : 0;
+    if (_bjTrumps.length >= 1 && _bjTrumps.length <= 3 && _bjNonTrumps.length > 0
+        && _bjTrumps.some(c => c.rank === 'J' && c.suit === trumpSuit)
+        && !_bjTrumps.some(c => c.rank === '5')
+        && _bjPartnerDrew >= 3) {
+      const _bjLow = _bjNonTrumps.reduce((lo, c) =>
+        getOffSuitRank(c) < getOffSuitRank(lo) ? c : lo);
+      console.log('BIDDER_J_NO5_OFFSUIT_FIRST: P' + (player + 1) + ' has J of trump (no 5), bid ' + highBid + ', partner drew ' + _bjPartnerDrew + ' -- lead ' + _bjLow.id + ' (lowest offsuit trick 1)');
+      return _bjLow;
+    }
+  }
+
   // ========================================================================
   // DEFENDER CASH PROVABLY-BOSS A♥ (FIX v2.31.43)
   // ========================================================================
@@ -7651,6 +7676,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.144', date: 'Oct 2026', changes: ['AI bidder on a minimum 15 bid (including the dealer\'s bag) holding the Jack of trump without the 5, with a partner who drew 3 or more cards, now leads its lowest off-suit card on trick 1 instead of the Jack, saving the Jack to beat the Ace of trump later and giving partner a chance to help.'] },
     { version: '2.31.143', date: 'Oct 2026', changes: ['AI bidder no longer assumes an opponent is out of trump just because they reneged (played off-suit on a trump lead while the 5, Jack or Ace of Hearts was still unaccounted for), so it stops leading a low trump into a reneging opponent\'s Ace of Hearts.'] },
     { version: '2.31.142', date: 'Oct 2026', changes: ['Create Account screen now fits on small phones: compact layout on short screens, and the screen scrolls if it still overflows so the confirm button is always reachable.'] },
     { version: '2.31.141', date: 'Oct 2026', changes: ['AI bidder with one non-boss trump left early in the hand now leads offsuit when partner still has trump, instead of leading the trump into a higher one and pulling partner\'s trump out.'] },
