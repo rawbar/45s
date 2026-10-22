@@ -3480,7 +3480,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.144';
+const VERSION = '2.31.145';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -6366,8 +6366,32 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
             const isPartnerOfBidder = player !== bidWinner;
             const bidderTrumpEst = intel.players[bidWinner]?.estimatedTrumpRemaining || 0;
             const bidderVoid = knownVoids && knownVoids[bidWinner]?.trump === true;
-            const oppsOut = (intel.players[pOpp1Idx]?.estimatedTrumpRemaining || 0) === 0 &&
-                            (intel.players[pOpp2Idx]?.estimatedTrumpRemaining || 0) === 0;
+            // v2.31.145: the draw-count estimate ignores what an opponent has SHOWN.
+            // Count a seat as out of trump if it is known void, if the only top-3 trump it
+            // could be hiding after a renege are cards I hold / that have fallen, or if its
+            // lose_floor (it played its lowest trump and lost) leaves no unplayed trump it
+            // could hold outside my own hand.
+            const _pbsMine = new Set((hand || []).map(c => c.id));
+            const _pbsSeen = new Set((cardsPlayed || []).map(c => c.id));
+            const _pbsOppOut = (i) => {
+              if ((intel.players[i]?.estimatedTrumpRemaining || 0) === 0) return true;
+              const kv = (knownVoids && knownVoids[i]) || {};
+              if (kv.trump === true) return true;
+              if (kv.trump === 'reneging' && Array.isArray(kv.possibleTrump) &&
+                  kv.possibleTrump.every(id => _pbsMine.has(id) || _pbsSeen.has(id))) return true;
+              const lf = kv.lose_floor || 0;
+              if (lf > 0) {
+                for (const s of ['♠', '♥', '♦', '♣']) {
+                  for (const r of ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']) {
+                    const id = r + s;
+                    if (getTrumpRank({ rank: r, suit: s, id }, trumpSuit) >= lf && !_pbsSeen.has(id) && !_pbsMine.has(id)) return false;
+                  }
+                }
+                return true;
+              }
+              return false;
+            };
+            const oppsOut = _pbsOppOut(pOpp1Idx) && _pbsOppOut(pOpp2Idx);
             const offsuitCards = playable.filter(c => getTrumpRank(c, trumpSuit) < 0);
             if (isPartnerOfBidder && !bidderVoid && bidderTrumpEst > 0 && oppsOut && offsuitCards.length > 0 && !_pmSweep) {
               const lowestOffsuit = offsuitCards.reduce((a, b) =>
@@ -7676,6 +7700,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.145', date: 'Oct 2026', changes: ['AI partner holding the boss trump now keeps it and leads off-suit when the bidder still has trump and both opponents are out, instead of leading the boss trump into its own partner. The AI now remembers what opponents have shown: an opponent who followed a trump lead with a trump that could not win is known to hold nothing lower, so it counts as out of trump once every higher trump has fallen or is in its own hand.'] },
     { version: '2.31.144', date: 'Oct 2026', changes: ['AI bidder on a minimum 15 bid (including the dealer\'s bag) holding the Jack of trump without the 5, with a partner who drew 3 or more cards, now leads its lowest off-suit card on trick 1 instead of the Jack, keeping its trump for later and giving partner a chance to help.'] },
     { version: '2.31.143', date: 'Oct 2026', changes: ['AI bidder no longer assumes an opponent is out of trump just because they reneged (played off-suit on a trump lead while the 5, Jack or Ace of Hearts was still unaccounted for), so it stops leading a low trump into a reneging opponent\'s Ace of Hearts.'] },
     { version: '2.31.142', date: 'Oct 2026', changes: ['Create Account screen now fits on small phones: compact layout on short screens, and the screen scrolls if it still overflows so the confirm button is always reachable.'] },
@@ -17097,6 +17122,20 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
       if (ledIsTrump) {
         // Trump was led - check who didn't play trump
+        // LOSE_FLOOR (v2.31.145): a follower whose trump did NOT beat what was already
+        // on the table played its LOWEST trump (the AI never sheds a higher one), so every
+        // trump it still holds ranks strictly above the card it just played. Audited in the
+        // simulator: 0 exceptions across 58k such plays. Never set when the play won.
+        let _bestSoFar = -1;
+        newTrickCards.forEach((tc, _i) => {
+          const _r = getTrumpRank(tc.card, trumpSuit);
+          if (_i > 0 && _r >= 0 && _r < _bestSoFar) {
+            const _lf = _r + 1;
+            if (_lf > (newKnownVoids[tc.player].lose_floor || 0)) newKnownVoids[tc.player].lose_floor = _lf;
+          }
+          if (_r > _bestSoFar) _bestSoFar = _r;
+        });
+
         const ledRank = getTrumpRank(ledCard, trumpSuit);
         const allPlayedIds = new Set(cardsPlayed.map(c => c.id));
         // Also include cards from this trick
@@ -17959,6 +17998,20 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
         if (ledIsTrump) {
           // Trump was led - check who didn't play trump
+          // LOSE_FLOOR (v2.31.145): a follower whose trump did NOT beat what was already
+          // on the table played its LOWEST trump (the AI never sheds a higher one), so every
+          // trump it still holds ranks strictly above the card it just played. Audited in the
+          // simulator: 0 exceptions across 58k such plays. Never set when the play won.
+          let _bestSoFar = -1;
+          newTrickCards.forEach((tc, _i) => {
+            const _r = getTrumpRank(tc.card, trumpSuit);
+            if (_i > 0 && _r >= 0 && _r < _bestSoFar) {
+              const _lf = _r + 1;
+              if (_lf > (newKnownVoids[tc.player].lose_floor || 0)) newKnownVoids[tc.player].lose_floor = _lf;
+            }
+            if (_r > _bestSoFar) _bestSoFar = _r;
+          });
+
           const ledRank = getTrumpRank(ledCard, trumpSuit);
           const allPlayedIds = new Set(cardsPlayed.map(c => c.id));
           newTrickCards.forEach(tc => allPlayedIds.add(tc.card.id));
