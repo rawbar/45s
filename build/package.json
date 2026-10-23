@@ -1,0 +1,11 @@
+{
+  "name": "45s-build",
+  "private": true,
+  "description": "Precompiles app.src.html into index.html + app.js",
+  "devDependencies": {
+    "@babel/core": "7.23.9",
+    "@babel/preset-env": "7.23.9",
+    "@babel/preset-react": "7.23.3",
+    "esbuild": "0.21.5"
+  }
+}
