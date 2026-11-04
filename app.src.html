@@ -3480,7 +3480,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.145';
+const VERSION = '2.31.146';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7700,6 +7700,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.146', date: 'Nov 2026', changes: ['New accounts now default to diagnostic logging ON (the same per-player toggle that lets us trace a weird bid or play from a Firebase record instead of needing console access). Existing accounts were just switched on manually; this keeps future signups the same way.'] },
     { version: '2.31.145', date: 'Oct 2026', changes: ['AI partner holding the boss trump now keeps it and leads off-suit when the bidder still has trump and both opponents are out, instead of leading the boss trump into its own partner. The AI now remembers what opponents have shown: an opponent who followed a trump lead with a trump that could not win is known to hold nothing lower, so it counts as out of trump once every higher trump has fallen or is in its own hand.'] },
     { version: '2.31.144', date: 'Oct 2026', changes: ['AI bidder on a minimum 15 bid (including the dealer\'s bag) holding the Jack of trump without the 5, with a partner who drew 3 or more cards, now leads its lowest off-suit card on trick 1 instead of the Jack, keeping its trump for later and giving partner a chance to help.'] },
     { version: '2.31.143', date: 'Oct 2026', changes: ['AI bidder no longer assumes an opponent is out of trump just because they reneged (played off-suit on a trump lead while the 5, Jack or Ace of Hearts was still unaccounted for), so it stops leading a low trump into a reneging opponent\'s Ace of Hearts.'] },
@@ -9040,7 +9041,11 @@ function LoginScreen({ onLogin }) {
       }
       debug.auth('User created:', userId);
       debug.stats('Initialized stats for:', userId);
-      
+
+      // Default new accounts to diagnostic logging ON (bidLog/decisionLog),
+      // same per-player toggle an admin sets manually at loggingEnabled/{user}.
+      database.ref(`loggingEnabled/${usernameLower}`).set(true).catch(() => {});
+
       // Save credentials
       localStorage.setItem('45s_username', username.trim());
       localStorage.setItem('45s_userId', userId);
