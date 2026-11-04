@@ -3480,7 +3480,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.146';
+const VERSION = '2.31.147';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7700,6 +7700,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.147', date: 'Nov 2026', changes: ['Fixed discard phase resetting your card selection: any background sync re-selected all non-trump cards, so some cards (e.g. A of diamonds while keeping Q of hearts) could not be toggled for discard. Auto-select now happens once per hand. Also adds discard-selection diagnostic logging (discardLog) under the existing per-player logging toggle.'] },
     { version: '2.31.146', date: 'Nov 2026', changes: ['New accounts now default to diagnostic logging ON (the same per-player toggle that lets us trace a weird bid or play from a Firebase record instead of needing console access). Existing accounts were just switched on manually; this keeps future signups the same way.'] },
     { version: '2.31.145', date: 'Oct 2026', changes: ['AI partner holding the boss trump now keeps it and leads off-suit when the bidder still has trump and both opponents are out, instead of leading the boss trump into its own partner. The AI now remembers what opponents have shown: an opponent who followed a trump lead with a trump that could not win is known to hold nothing lower, so it counts as out of trump once every higher trump has fallen or is in its own hand.'] },
     { version: '2.31.144', date: 'Oct 2026', changes: ['AI bidder on a minimum 15 bid (including the dealer\'s bag) holding the Jack of trump without the 5, with a partner who drew 3 or more cards, now leads its lowest off-suit card on trick 1 instead of the Jack, keeping its trump for later and giving partner a chance to help.'] },
@@ -15745,9 +15746,35 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
   }, [phase, gameState?.winner, players, userId]);
 
   // Auto-select non-trump cards during discard phase
+  // v2.31.147: only auto-select once per distinct hand. Previously this re-ran on
+  // every Firebase sync (new `hands` array identity), wiping the player's manual
+  // card toggles back to "all non-trump" (user could not discard A♦ / keep Q♥).
+  const discardAutoSelKeyRef = useRef(null);
+  // Diagnostic only (same per-player loggingEnabled toggle): records discard-phase
+  // selection events so a "can't select card X" report can be traced from Firebase.
+  const logDiscardEvent = (type, extra) => {
+    if (!loggingOnRef.current) return;
+    try {
+      const uname = (playerName || '').toLowerCase();
+      if (!uname || !gameId) return;
+      database.ref(`discardLog/${uname}/${gameId}`).push({
+        type, ...extra, seat: mySeatIndex, trump: trumpSuit || null, version: VERSION, ts: Date.now(),
+      }).catch(() => {});
+    } catch (_e) { /* logging must never break play */ }
+  };
   useEffect(() => {
-    if (phase === 'discarding' && currentPlayer === mySeatIndex && trumpSuit) {
+    if (phase !== 'discarding' || currentPlayer !== mySeatIndex) {
+      discardAutoSelKeyRef.current = null;
+      return;
+    }
+    if (trumpSuit) {
       const myHand = hands[mySeatIndex] || [];
+      const selKey = trumpSuit + '|' + myHand.map(c => c.id).join(',');
+      if (discardAutoSelKeyRef.current === selKey) {
+        logDiscardEvent('resync-skipped', { hand: myHand.map(c => c.id) });
+        return;
+      }
+      discardAutoSelKeyRef.current = selKey;
       const nonTrumpIndices = [];
       myHand.forEach((card, idx) => {
         // Use isTrump function which handles A♥ correctly
@@ -15756,6 +15783,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         }
       });
       if (nonTrumpIndices.length > 0) {
+        logDiscardEvent('auto-select', { hand: myHand.map(c => c.id), selected: nonTrumpIndices });
         setSelected(nonTrumpIndices);
       }
     }
@@ -19061,6 +19089,7 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
                       mid={myHand.length > 6}
                       onClick={() => {
                         if (phase === 'discarding' && isMyTurn) {
+                          logDiscardEvent('tap', { idx: i, card: card.id, hand: myHand.map(c => c.id), selectedBefore: selected });
                           setSelected(prev =>
                             prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]
                           );
