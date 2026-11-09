@@ -3480,7 +3480,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.147';
+const VERSION = '2.31.148';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -3663,7 +3663,8 @@ function getBadgeIds(stats) {
   const totalBids = (s.bid15Made||0) + (s.bid20Made||0) + (s.bid25Made||0) + (s.bid30Made||0) + (s.baggedBidMade||0);
   if (totalBids >= 100)               ids.push('bidding_sage');
   const sb = s.bidMadeBySuit || {};
-  if (sb.H && sb.D && sb.C && sb.S)   ids.push('suite_selector');
+  // Keys are stored as suit symbols; accept legacy letter keys too.
+  if ((sb['♥']||sb.H) && (sb['♦']||sb.D) && (sb['♣']||sb.C) && (sb['♠']||sb.S)) ids.push('suite_selector');
   if ((s.bid30Made||0)>=10)           ids.push('bid_boss');
   // Drama / score edges
   if ((s.reverseSweepWins||0)>=1)     ids.push('reverse_sweep');
@@ -7700,6 +7701,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.148', date: 'Nov 2026', changes: ['Badge tracking fixes. Suite Selector could never be awarded (the check looked for H/D/C/S keys but progress was saved under suit symbols); it now unlocks for anyone who already made bids in all four suits. Trump Hoarder, Trump Drainer, Razor\'s Edge, Dead in the Water, Carrying the Team, Sniper, Setter\'s Touch, Final Stand, Reverse Sweep, Survivor, Hat Trick, Dominant and Never Say Die were only counted when YOU played the last card of the trick/round, so rounds finished by an AI player were skipped. Both paths now share the same tracking. Trump Hoarder also now counts when your team wins the round even if the bid was set.'] },
     { version: '2.31.147', date: 'Nov 2026', changes: ['Fixed discard phase resetting your card selection: any background sync re-selected all non-trump cards, so some cards (e.g. A of diamonds while keeping Q of hearts) could not be toggled for discard. Auto-select now happens once per hand. Also adds discard-selection diagnostic logging (discardLog) under the existing per-player logging toggle.'] },
     { version: '2.31.146', date: 'Nov 2026', changes: ['New accounts now default to diagnostic logging ON (the same per-player toggle that lets us trace a weird bid or play from a Firebase record instead of needing console access). Existing accounts were just switched on manually; this keeps future signups the same way.'] },
     { version: '2.31.145', date: 'Oct 2026', changes: ['AI partner holding the boss trump now keeps it and leads off-suit when the bidder still has trump and both opponents are out, instead of leading the boss trump into its own partner. The AI now remembers what opponents have shown: an opponent who followed a trump lead with a trump that could not win is known to hold nothing lower, so it counts as out of trump once every higher trump has fallen or is in its own hand.'] },
@@ -16988,6 +16990,99 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
 
   // Handle playing a card
+  // ── Shared badge tracking (v2.31.148) ─────────────────────────────────────
+  // Previously these counters lived only in handlePlayCard (human completes the
+  // trick/round), so rounds/tricks completed by an AI player never counted
+  // (Trump Hoarder/Drainer, Suite Selector, Razor's Edge, Dead in the Water,
+  // Carrying the Team, Sniper, Setter's Touch, Final Stand, Reverse Sweep,
+  // Survivor, Hat Trick, Dominant, Never Say Die). Both paths now call these.
+  // Only refs/state setters are touched; every dynamic value is a parameter so a
+  // stale closure copy is harmless.
+  const trackTrickBadges = ({ iLed, ledIsTrump, winner, winnerTeam, trickNum, highBid, bidWinner, newRoundPts }) => {
+    const myTeam_ = mySeatIndex % 2;
+    const bidderTeam_ = bidWinner % 2;
+    const myTrickWin = winner === mySeatIndex;
+    // trump_drainer: I led trump on this trick (track per-round count + wins)
+    if (iLed && ledIsTrump) {
+      roundMyTrumpLeads.current += 1;
+      if (winnerTeam === myTeam_) roundMyTrumpWins.current += 1;
+    }
+    // setters_touch: 25+ bid, I'm defender, I won this trick, and after it the
+    // set is mathematically LOCKED. Fires at most once per round.
+    if (!roundSettersTouchFired.current && highBid >= 25 && myTrickWin && myTeam_ !== bidderTeam_) {
+      const bidderRoundScore = newRoundPts[bidderTeam_] || 0;
+      const remainingTricks = 5 - (trickNum + 1);
+      const remainingMax = remainingTricks * 5 + 5; // worst case: every remaining trick + bonus to bidder
+      if (bidderRoundScore + remainingMax < highBid) {
+        gameSettersTouchRef.current += 1;
+        roundSettersTouchFired.current = true;
+        console.log(`SETTER'S TOUCH: locked set on ${highBid}-bid (bidder ${bidderRoundScore} + max ${remainingMax} < ${highBid})`);
+      }
+    }
+  };
+
+  const trackRoundBadges = ({ finalRoundPts, newScores, scores, bidderTeam, bidWinner, highBid, trumpSuit, bids }) => {
+    const myTeam = mySeatIndex % 2;
+    const bidderIsMe = bidWinner === mySeatIndex;
+    const made = finalRoundPts[bidderTeam] >= highBid;
+    const myTeamPts = finalRoundPts[myTeam];
+    const oppTeamPts = finalRoundPts[1 - myTeam];
+    // reverse_sweep / survivor: deficit uses scores BEFORE this round
+    {
+      const myPreScore = scores[myTeam] || 0;
+      const oppPreScore = scores[1 - myTeam] || 0;
+      const deficit = oppPreScore - myPreScore;
+      if (deficit > gameMaxDeficitRef.current) gameMaxDeficitRef.current = deficit;
+      if (myPreScore <= 0 && oppPreScore >= 100) gameSurvivorFlagRef.current = true;
+    }
+    if (made) {
+      if (bidderIsMe) {
+        if (finalRoundPts[bidderTeam] - highBid === 0) gameExactBidsMadeRef.current += 1;            // razors_edge
+        if (trumpSuit) gameSuiteSelectorRef.current[trumpSuit] = true;                                 // suite_selector
+        if (roundMyTrumpCount.current <= 2) gameDeadInWaterMadeRef.current += 1;                       // dead_in_water
+        if (highBid >= 20 && roundPartnerDrawCount.current >= 4) gameCarryingTeamMadeRef.current += 1; // carrying_the_team
+        if (Array.isArray(bids) && bids.some((b, i) => i !== bidWinner && b > 0)) gameOverbidsMadeRef.current += 1; // sniper
+        if (roundMyTrumpLeads.current >= 3 && roundMyTrumpLeads.current === roundMyTrumpWins.current) gameTrumpDrainerRef.current += 1; // trump_drainer
+      }
+      if (myTeam === bidderTeam && myTeamPts >= 30) {
+        setGameConsec30s(prev => {
+          const next = prev + 1;
+          setGameMaxConsec30s(m => Math.max(m, next));
+          return next;
+        });
+      } else {
+        setGameConsec30s(0);
+      }
+      if (myTeamPts > oppTeamPts) {
+        setGameRoundWins(prev => {
+          const next = prev + 1;
+          setGameMaxRoundWins(m => Math.max(m, next));
+          return next;
+        });
+      } else {
+        setGameRoundWins(0);
+      }
+    } else {
+      if (myTeam !== bidderTeam) {
+        // final_stand: set opp's bid when making it would have won them the game
+        if ((scores[bidderTeam] || 0) + highBid >= 120) gameFinalStandRef.current += 1;
+        setGameRoundWins(prev => {
+          const next = prev + 1;
+          setGameMaxRoundWins(m => Math.max(m, next));
+          return next;
+        });
+      } else {
+        setGameRoundWins(0);
+      }
+      setGameConsec30s(0);
+    }
+    // trump_hoarder: my team won the round while I held 5+J+A♥ post-draw
+    // (bidder or defender; made or set).
+    if (roundIHaveTop3.current && myTeamPts > oppTeamPts) gameTopTrumpHandWinsRef.current += 1;
+    // never_say_die
+    if (newScores[myTeam] < 0) setGameScoreWentNegative(true);
+  };
+
   const handlePlayCard = useCallback(async (cardIndex) => {
     if (isSpectator) return;
     if (phase !== 'playing') return;
@@ -17292,32 +17387,8 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         gameCtDefenderTricksRef.current += 1;
       }
 
-      // Phase 3 per-trick badge increments (host's POV)
-      {
-        const myTeam_ = mySeatIndex % 2;
-        const bidderTeam_ = bidWinner % 2;
-        const iLed = trickLeader === mySeatIndex;
-        const myTrickWin = winner === mySeatIndex;
-        // trump_drainer: I led trump on this trick (track per-round count + wins)
-        if (iLed && ledIsTrump) {
-          roundMyTrumpLeads.current += 1;
-          if (winnerTeam === myTeam_) roundMyTrumpWins.current += 1;
-        }
-        // setters_touch: 25+ bid, I'm defender, I won this trick, and after
-        // it the set is mathematically LOCKED (bidder team's round score +
-        // max remaining points < bid). Fires at most once per round.
-        if (!roundSettersTouchFired.current && highBid >= 25 && myTrickWin
-            && myTeam_ !== bidderTeam_) {
-          const bidderRoundScore = newRoundPts[bidderTeam_] || 0;
-          const remainingTricks = 5 - (trickNum + 1);
-          const remainingMax = remainingTricks * 5 + 5; // worst case: every remaining trick + bonus to bidder
-          if (bidderRoundScore + remainingMax < highBid) {
-            gameSettersTouchRef.current += 1;
-            roundSettersTouchFired.current = true;
-            console.log(`🥷 SETTER'S TOUCH: locked set on ${highBid}-bid (bidder ${bidderRoundScore} + max ${remainingMax} < ${highBid})`);
-          }
-        }
-      }
+      // Per-trick badge tracking (shared with the AI-completes-the-trick path)
+      trackTrickBadges({ iLed: trickLeader === mySeatIndex, ledIsTrump, winner, winnerTeam, trickNum, highBid, bidWinner, newRoundPts });
 
       // Check if round is over
       if (trickNum + 1 >= 5) {
@@ -17347,14 +17418,6 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
         const bidderSeat = SEAT_NAMES[bidWinner];
         const bidderIsMe = bidWinner === mySeatIndex;
         const myTeam = mySeatIndex % 2;
-        // Phase 2b: per-round deficit/survivor tracking (state-of-scores BEFORE this round)
-        {
-          const myPreScore = scores[myTeam] || 0;
-          const oppPreScore = scores[1 - myTeam] || 0;
-          const deficit = oppPreScore - myPreScore;
-          if (deficit > gameMaxDeficitRef.current) gameMaxDeficitRef.current = deficit;
-          if (myPreScore <= 0 && oppPreScore >= 100) gameSurvivorFlagRef.current = true;
-        }
         if (finalRoundPts[bidderTeam] >= highBid) {
           // Made bid - add points
           newScores[bidderTeam] += finalRoundPts[bidderTeam];
@@ -17388,52 +17451,6 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
               setGamePerfect30s(p => p + 1);
             }
             if (!bidderHadTopTrump.current) gameTrumpSlayerRef.current += 1;
-            // Phase 2a per-round increments (bidder side)
-            if (excess === 0) gameExactBidsMadeRef.current += 1;
-            if (trumpSuit) gameSuiteSelectorRef.current[trumpSuit] = true;
-            if (roundMyTrumpCount.current <= 2) gameDeadInWaterMadeRef.current += 1;
-            if (highBid >= 20 && roundPartnerDrawCount.current >= 4) {
-              gameCarryingTeamMadeRef.current += 1;
-            }
-            // Phase 2b: sniper — I'm bidder and at least one other player
-            // had a non-pass bid > 0 (= I overbid them).
-            if (Array.isArray(bids)
-                && bids.some((b, i) => i !== bidWinner && b > 0)) {
-              gameOverbidsMadeRef.current += 1;
-            }
-            // Phase 3: trump_drainer — I'm bidder, led trump on 3+ tricks
-            // AND won ALL of those leads.
-            if (roundMyTrumpLeads.current >= 3
-                && roundMyTrumpLeads.current === roundMyTrumpWins.current) {
-              gameTrumpDrainerRef.current += 1;
-            }
-          }
-          // Phase 2a: trump_hoarder fires when MY team wins the round AND I held
-          // all top-3 trump (5+J+A♥) at round start (post-draw). Applies whether
-          // I was bidder or defender.
-          if (roundIHaveTop3.current && finalRoundPts[myTeam] > finalRoundPts[1 - myTeam]) {
-            gameTopTrumpHandWinsRef.current += 1;
-          }
-          // Track consecutive 30-pt rounds and dominant streak (for all players on my team)
-          const myTeamPts = finalRoundPts[myTeam];
-          const oppTeamPts = finalRoundPts[1 - myTeam];
-          if (myTeam === bidderTeam && myTeamPts >= 30) {
-            setGameConsec30s(prev => {
-              const next = prev + 1;
-              setGameMaxConsec30s(m => Math.max(m, next));
-              return next;
-            });
-          } else {
-            setGameConsec30s(0);
-          }
-          if (myTeamPts > oppTeamPts) {
-            setGameRoundWins(prev => {
-              const next = prev + 1;
-              setGameMaxRoundWins(m => Math.max(m, next));
-              return next;
-            });
-          } else {
-            setGameRoundWins(0);
           }
         } else {
           // Missed bid - lose bid amount (double penalty for 30-for-60)
@@ -17457,32 +17474,15 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             if (gameOppSetsRef.current >= 3 && !gameSet3InGameRef.current) {
               gameSet3InGameRef.current = true; // award once per game
             }
-            // Phase 2b: final_stand — set opp's bid when making it would
-            // have won them the game (opp pre-round score + bid ≥ 120).
-            const oppPreScore = scores[bidderTeam] || 0;
-            if (oppPreScore + highBid >= 120) {
-              gameFinalStandRef.current += 1;
-            }
           }
-          // Round wins streak: defending team gets points, bidding team loses
-          if (myTeam !== bidderTeam) {
-            setGameRoundWins(prev => {
-              const next = prev + 1;
-              setGameMaxRoundWins(m => Math.max(m, next));
-              return next;
-            });
-          } else {
-            setGameRoundWins(0);
-          }
-          setGameConsec30s(0);
         }
         
         // Other team always gets their points
         newScores[1 - bidderTeam] += finalRoundPts[1 - bidderTeam];
         console.log(`Team ${1 - bidderTeam} gets ${finalRoundPts[1 - bidderTeam]} points`);
 
-        // Track if my team's score went negative (for never_say_die badge)
-        if (newScores[myTeam] < 0) setGameScoreWentNegative(true);
+        // Round-end badge tracking (shared with the AI-completes-the-round path)
+        trackRoundBadges({ finalRoundPts, newScores, scores, bidderTeam, bidWinner, highBid, trumpSuit, bids });
 
         console.log('📊 New scores:', newScores);
         
@@ -18159,6 +18159,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
           gameCtDefenderTricksRef.current += 1;
         }
 
+        // Per-trick badge tracking (shared with the human-completes-the-trick path)
+        trackTrickBadges({ iLed: trickLeader === mySeatIndex, ledIsTrump, winner, winnerTeam, trickNum, highBid, bidWinner, newRoundPts });
+
         if (trickNum + 1 >= 5) {
           console.log('🎮 AI: Round complete!');
           
@@ -18214,6 +18217,9 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
             }
           }
           newScores[1 - bidderTeam] += finalRoundPts[1 - bidderTeam];
+
+          // Round-end badge tracking (shared with the human-completes-the-round path)
+          trackRoundBadges({ finalRoundPts, newScores, scores, bidderTeam, bidWinner, highBid, trumpSuit, bids });
 
           // Update history for score table
           let usRoundScore, themRoundScore;
