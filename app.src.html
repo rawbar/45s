@@ -3480,7 +3480,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.148';
+const VERSION = '2.31.150';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5913,10 +5913,11 @@ function estimateOpponentTrump(opponentDrawCount, cardsPlayedByOpponent, trumpSu
     getTrumpRank(c, trumpSuit) >= 0
   ).length;
   
-  let estimatedStartingTrump;
-  if (opponentDrawCount >= 4) estimatedStartingTrump = 2;
-  else if (opponentDrawCount === 3) estimatedStartingTrump = 2;
-  else if (opponentDrawCount <= 2) estimatedStartingTrump = 3;
+  // v2.31.150: measured mean trump held AFTER the draw (kept trump + trump
+  // picked up from the deck), by draw count: 0->5, 1->4, 2->3, 3->3, 4+->2.
+  // The old 2/2/3 table ignored trump drawn from the deck and undercounted.
+  const _startByDraw = [5, 4, 3, 3, 2];
+  const estimatedStartingTrump = _startByDraw[Math.min(4, Math.max(0, opponentDrawCount || 0))];
   
   return Math.max(0, estimatedStartingTrump - trumpPlayedByOpponent);
 }
@@ -6080,9 +6081,9 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
     if (_huOff.length > 0 && _huTrump.length > 0) {
       const _b2 = (bidWinner + 2) % 4;
       const _b3 = (bidWinner + 3) % 4;
-      const _laterDefHasTrump =
-        (intel.players[_b2]?.estimatedTrumpRemaining || 0) >= 1 ||
-        (intel.players[_b3]?.estimatedTrumpRemaining || 0) >= 1;
+      // v2.31.149: a seat that has shown a hard trump-void has 0 trump, whatever the draw-count estimate says.
+      const _defMayHaveTrump = (q) => intel.players[q]?.trumpStatus !== 'void' && (intel.players[q]?.estimatedTrumpRemaining || 0) >= 1;
+      const _laterDefHasTrump = _defMayHaveTrump(_b2) || _defMayHaveTrump(_b3);
       if (_laterDefHasTrump) {
         const _lowOff = _huOff.reduce((lo, c) =>
           getOffSuitRank(c) < getOffSuitRank(lo) ? c : lo);
@@ -7701,6 +7702,8 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.150', date: 'Nov 2026', changes: ['AI trump counting: the AI now estimates how much trump each player holds from simulation data on what a draw actually produces (a player who drew 3 cards holds about 3 trump, not 2; one who drew 0-1 holds 4-5). Partner-mode simulation: about +0.25 points win rate on 200k games, significant on two independent seed sets.'] },
+    { version: '2.31.149', date: 'Nov 2026', changes: ['Cutthroat AI: when the bidder led offsuit, the defender seated right after the bidder would hold back instead of trumping, because it assumed a later defender still had trump even if that defender had already shown they were out. A defender known to be out of trump is no longer counted.'] },
     { version: '2.31.148', date: 'Nov 2026', changes: ['Badge tracking fixes. Suite Selector could never be awarded (the check looked for H/D/C/S keys but progress was saved under suit symbols); it now unlocks for anyone who already made bids in all four suits. Trump Hoarder, Trump Drainer, Razor\'s Edge, Dead in the Water, Carrying the Team, Sniper, Setter\'s Touch, Final Stand, Reverse Sweep, Survivor, Hat Trick, Dominant and Never Say Die were only counted when YOU played the last card of the trick/round, so rounds finished by an AI player were skipped. Both paths now share the same tracking. Trump Hoarder also now counts when your team wins the round even if the bid was set.'] },
     { version: '2.31.147', date: 'Nov 2026', changes: ['Fixed discard phase resetting your card selection: any background sync re-selected all non-trump cards, so some cards (e.g. A of diamonds while keeping Q of hearts) could not be toggled for discard. Auto-select now happens once per hand. Also adds discard-selection diagnostic logging (discardLog) under the existing per-player logging toggle.'] },
     { version: '2.31.146', date: 'Nov 2026', changes: ['New accounts now default to diagnostic logging ON (the same per-player toggle that lets us trace a weird bid or play from a Firebase record instead of needing console access). Existing accounts were just switched on manually; this keeps future signups the same way.'] },
