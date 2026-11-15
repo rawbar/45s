@@ -106,6 +106,12 @@ def _worst_case_pad(cards: List[Card],
     return out
 
 
+def _ALL_TRUMP_CARDS(trump):
+    """Every card of the deck that is trump this round."""
+    return [Card(r, s) for s in Suit for r in ['2','3','4','5','6','7','8','9','10','J','Q','K','A']
+            if _is_trump(Card(r, s), trump)]
+
+
 def _pad4(cards: List[Card], trump: Optional[Suit] = None) -> List[Card]:
     """Pad partial trick to 4 cards for trick_winner() probes.
 
@@ -448,9 +454,81 @@ class ImprovedAI:
         intel = build_player_intelligence(play_history, cards_played,
                                           known_voids, cards_drawn, trump)
         iplayers = intel['players']
+        # VOID_EST_ZERO (opt-in challenger, 2026-11-11, user round 68YMDZ):
+        # a seat flagged hard trump-void (shown, trumpStatus=='void') has 0
+        # trump remaining, whatever the draw-count estimate says.
 
+        # EST_TABLE (opt-in challenger, 2026-11-13): replace the draw-count start
+        # guess with measured mean trump held after the draw (calib.py).
+        _et = self.flags.get('est_table')
+        if _et:
+            _tbl = {'v1': {0: 3, 1: 3, 2: 3, 3: 3, 4: 2},
+                    'full': {0: 5, 1: 4, 2: 3, 3: 3, 4: 2},
+                    'low': {0: 4, 1: 4, 2: 3, 3: 2, 4: 2}}[_et]
+            for _ip in iplayers:
+                _st = _tbl[min(4, max(0, _ip['cardsDrawn']))]
+                _ip['estimatedTrumpRemaining'] = max(0, _st - _ip['trumpPlayedCount'])
+        # EST_PROB (opt-in, 2026-11-14): start-trump DISTRIBUTION by draw count
+        # (measured, calib.py); est=0 only if P(trump remaining) < theta.
+        _ep = self.flags.get('est_prob')
+        if _ep is not None:
+            _D = {False: {0: {5: 1.0}, 1: {4: .83, 5: .17}, 2: {3: .63, 4: .33, 5: .04},
+                          3: {2: .47, 3: .41, 4: .11, 5: .01},
+                          4: {0: .10, 1: .36, 2: .37, 3: .15, 4: .02}},
+                  True: {0: {4: .47, 5: .53}, 1: {4: .78, 5: .22}, 2: {3: .57, 4: .38, 5: .06},
+                         3: {2: .39, 3: .44, 4: .15, 5: .01}, 4: {0: .10, 1: .36, 2: .37, 3: .15, 4: .02}}}
+            for _i, _ip in enumerate(iplayers):
+                _dist = _D[_i == bid_winner][min(4, max(0, _ip['cardsDrawn']))]
+                _pl = _ip['trumpPlayedCount']
+                _ge = {k: v for k, v in _dist.items() if k >= _pl}
+                _tot = sum(_ge.values())
+                if _tot <= 0:
+                    _ip['estimatedTrumpRemaining'] = 0
+                    continue
+                _pr = sum(v for k, v in _ge.items() if k > _pl) / _tot
+                _er = sum((k - _pl) * v for k, v in _ge.items()) / _tot
+                _ip['estimatedTrumpRemaining'] = 0 if _pr < _ep else max(1, int(round(_er)))
+        # (moved after est_table so it is not overwritten)
+        if self.flags.get('void_est_zero', False):
+            for _ip in iplayers:
+                if _ip.get('trumpStatus') == 'void':
+                    _ip['estimatedTrumpRemaining'] = 0
         F = lambda k: self.flags.get(k, True)   # rule enabled unless set False
         Fon = lambda k: self.flags.get(k, False)  # OPT-IN rule: absent in champion
+
+
+        # CT-HOLDUP (JS v2.31.100/101/149): cutthroat, I'm B+1 (plays 2nd), bidder
+        # led offsuit. If a LATER defender (B+2/B+3) may hold trump (not a shown
+        # void, est>=1), play lowest offsuit instead of ruffing. Off when anyone
+        # (me or an opp) is at >=110.
+        if (self.flags.get('ct_holdup') and self.flags.get('cutthroat')
+                and player != bid_winner and len(trick) == 1
+                and leader == bid_winner and not _is_trump(trick[0], trump)
+                and ((player - bid_winner) % 4) == 1):
+            _prs_h = state.pre_round_scores
+            _anyhi = bool(_prs_h) and any((_prs_h[_i] or 0) >= 110 for _i in range(4))
+            if not _anyhi:
+                _huOff = [c for c in playable if not _is_trump(c, trump)]
+                _huTr = [c for c in playable if _is_trump(c, trump)]
+                if _huOff and _huTr:
+                    def _may(q):
+                        return (iplayers[q]['trumpStatus'] != 'void'
+                                and (iplayers[q]['estimatedTrumpRemaining'] or 0) >= 1)
+                    if _may((bid_winner + 2) % 4) or _may((bid_winner + 3) % 4):
+                        return min(_huOff, key=get_offsuit_rank)
+
+        # CT-2ND-MAN-RENEGE-VS-BIDDER (JS v2.31.136): cutthroat, bidder led a
+        # low trump (<90) as leader, I'm 2nd; if I hold a top-3 trump that
+        # beats it and have offsuit, play lowest offsuit and keep the boss.
+        if (self.flags.get('ct_renege_vs_bidder') and self.flags.get('cutthroat')
+                and not self.flags.get('cutthroat_no_such') and len(trick) == 1
+                and leader == bid_winner and player != bid_winner
+                and 0 <= _tr(trick[0], trump) < 90 and _is_trump(trick[0], trump)):
+            _rn = [c for c in playable if _is_trump(c, trump)
+                   and _tr(c, trump) >= 100 and _tr(c, trump) > _tr(trick[0], trump)]
+            _off2 = [c for c in playable if not _is_trump(c, trump)]
+            if _rn and _off2:
+                return min(_off2, key=get_offsuit_rank)
 
         def est(i):
             return iplayers[i]['estimatedTrumpRemaining'] or 0
@@ -679,6 +757,28 @@ class ImprovedAI:
                 if Fon('bidder_5j_t3_off_t1hi') and not _pm_sweep:  # dead-end opt-in
                     return max(_b5_nt, key=get_offsuit_rank)
 
+        # J-ONLY TRICK-1 LEADS (opt-in test, 2026-10-13, user hand: dealer bagged
+        # 15 holding J + 4 of trump, partner kept 1 / drew 4. Leading the J first
+        # lost; offsuit-first, J kept as a late spoiler, makes it). Mirrors the
+        # 5+J rule above but for a J WITHOUT the 5. Variants:
+        #   bidder_j_t1_off_lo  -> lowest offsuit
+        #   bidder_j_t1_off_hi  -> highest offsuit
+        #   bidder_j_t1_lowtrump-> lowest trump (keeps J back, partner takes it)
+        if (is_leading and player == bid_winner and trick_num == 1
+                and not self.flags.get('cutthroat')):
+            _bj_tr = [c for c in playable if _is_trump(c, trump)]
+            _bj_nt = [c for c in playable if not _is_trump(c, trump)]
+            _bj_drew = cards_drawn[(player + 2) % 4] if cards_drawn else 0
+            if (_bj_tr and len(_bj_tr) <= 3 and _bj_drew >= 3 and state.high_bid <= 15
+                    and any(c.rank == 'J' and c.suit == trump for c in _bj_tr)
+                    and not any(c.rank == '5' for c in _bj_tr)):
+                if F('bidder_j_t1_off_lo') and _bj_nt and not _pm_sweep:  # SHIPPED live v2.31.144, default-ON
+                    return min(_bj_nt, key=get_offsuit_rank)
+                if Fon('bidder_j_t1_off_hi') and _bj_nt and not _pm_sweep:
+                    return max(_bj_nt, key=get_offsuit_rank)
+                if Fon('bidder_j_t1_lowtrump') and len(_bj_tr) >= 2 and not _pm_sweep:
+                    return min(_bj_tr, key=lambda c: _tr(c, trump))
+
         # ── STRATEGIC PRIORITY #1: BOSS CARD ─────────────────────────────────
         if not partner_winning_now:
             for card in playable:
@@ -724,7 +824,9 @@ class ImprovedAI:
                     # threat) outweighs saving the boss for a later trick.
                     # Default False = champion-identical (still gated by the
                     # endgame_lead_boss check above first).
-                    if self.flags.get('cutthroat') and self.flags.get('ct_defender_lead_boss_always') and _eg_is_def:
+                    if (self.flags.get('cutthroat') and self.flags.get('ct_defender_lead_boss_always')
+                            and _eg_is_def
+                            and trick_num >= self.flags.get('ct_defender_lead_boss_min_trick', 1)):
                         return card
                     # defender → don't lead boss, fall to defender-leading
                     if _eg_is_def:
@@ -735,12 +837,51 @@ class ImprovedAI:
                     is_partner_of_bidder = player != bid_winner
                     bidder_trump_est = est(bid_winner)
                     bidder_void = known_voids[bid_winner].get('trump') is True
-                    opps_out = est(p_opp1) == 0 and est(p_opp2) == 0
+                    # PBS_KNOWN_VOID / PBS_FLOOR (opt-in, 2026-10-22): the draw-count
+                    # estimate ignores what an opponent has SHOWN.  (A) a seat already
+                    # known trump-void counts as out; (B) a seat whose lose_floor
+                    # (it played its lowest trump and lost) leaves no unplayed trump it
+                    # could hold outside MY hand is effectively void too.
+                    def _opp_out(i):
+                        if est(i) == 0:
+                            return True
+                        _kv = known_voids[i] if i < len(known_voids) else {}
+                        if F('pbs_floor') and _kv.get('trump') is True:
+                            return True
+                        if F('pbs_floor'):
+                            _mine = {cid(c) for c in hand}
+                            _pt = _kv.get('possibleTrump')
+                            if _kv.get('trump') == 'reneging' and _pt is not None                                     and all((x in _mine) or (x in {cid(c) for c in cards_played}) for x in _pt):
+                                return True   # could only be hiding top-3 cards I hold / that fell
+                            _lf = _kv.get('lose_floor', 0)
+                            if _lf > 0:
+                                _seen = {cid(c) for c in cards_played} | {cid(c) for c in hand}
+                                _live = [c for c in _ALL_TRUMP_CARDS(trump)
+                                         if _tr(c, trump) >= _lf and cid(c) not in _seen]
+                                if not _live:
+                                    return True
+                        return False
+                    opps_out = _opp_out(p_opp1) and _opp_out(p_opp2)
                     offs = [c for c in playable if _tr(c, trump) < 0]
+                    # PBS_HARDVOID (opt-in challenger, 2026-11-11, user-reported
+                    # round LUFEP8 T4): the bidder's trump estimate hits 0 once
+                    # their est. starting trump have been played (bidder drew 2
+                    # -> est 3), but it is only a floor (~45-50% chance of a 4th
+                    # trump). When BOTH opps are HARD trump-void (shown, not
+                    # estimated) the boss is a guaranteed trick whenever played,
+                    # so leading the low offsuit first is weakly dominant (lets a
+                    # live bidder trump convert to a trick). Narrow: last 2
+                    # tricks, boss + <=1 other card.  'pbs_hardvoid_t3' widens
+                    # to the last 3 tricks.
+                    _hv_min = 3 if Fon('pbs_hardvoid_t3') else 4
+                    _hv = ((Fon('pbs_hardvoid') or Fon('pbs_hardvoid_t3'))
+                           and trick_num >= _hv_min and len(hand) <= (3 if _hv_min == 3 else 2)
+                           and known_voids[p_opp1].get('trump') is True
+                           and known_voids[p_opp2].get('trump') is True)
                     if (not self.flags.get('cutthroat')
                             and F('bidder_boss_partner_save')
                             and is_partner_of_bidder and not bidder_void
-                            and bidder_trump_est > 0 and opps_out and offs
+                            and (bidder_trump_est > 0 or _hv) and (opps_out or _hv) and offs
                             and not _pm_sweep):
                         return min(offs, key=get_offsuit_rank)
                     # partner weak (drew 4) + enemies stronger (drew ≤3)
@@ -825,6 +966,25 @@ class ImprovedAI:
                                           or est(third_idx) == 0)
                             if third_void and est(partner_idx) >= 1:
                                 break
+                        # CT-2ND-MAN-BOSS-RENEGE (candidate, not yet shipped):
+                        # cutthroat generalization of the block above. If the
+                        # LEADER is the bidder, then whoever is 3rd/4th to act
+                        # is guaranteed to be a non-bidder (only one bidder
+                        # exists and they already played as leader) — so
+                        # reneging here can never hand the bidder a cheap
+                        # win on THIS trick; some other defender may still
+                        # step up with a cheaper trump, and if not, the
+                        # bidder gains only 5pts on a trick they couldn't
+                        # have won anyway once beaten by anyone. Either way
+                        # the boss is preserved for later. Mirrors the
+                        # partner-mode rule with "my partner" replaced by
+                        # "any other defender, since I don't need to protect
+                        # a specific seat when the leader is the bidder."
+                        if (self.flags.get('cutthroat')
+                                and self.flags.get('ct_2nd_man_boss_renege')
+                                and len(trick) == 1 and 0 <= led_rank_chk < 90
+                                and leader == bid_winner):
+                            break
                         return card
                     # boss can't beat current trick → keep scanning
                     continue
@@ -839,7 +999,54 @@ class ImprovedAI:
             opps_est_out = est(opp1) == 0 and est(opp2) == 0
             all_known_out = (known_oot is not None and
                              all(known_oot[i] for i in range(4) if i != player))
-            if F('bidder_after_void_lead') and trumps and (all_known_out or opps_est_out):
+            # ALLVOID_TRUE_VOIDS_ONLY (opt-in test, 2026-10-10, user hand: Robr
+            # reneged with A-hearts, was flagged known_oot via the 'reneging'
+            # path, bidder then led its low trump "into void" opponents and lost
+            # it to the A-hearts). A renege means "may still hold 5/J/AH", not
+            # "void" -- count only known_voids[i]['trump'] is True.
+            if Fon('allvoid_true_voids_only') and all_known_out:
+                all_known_out = all(known_voids[i].get('trump') is True
+                                    for i in range(4) if i != player)
+            # ALLVOID_DEDUCTION_GUARD (opt-in test, 2026-08-26 user-reported
+            # hand). estimate_opponent_trump() caps its starting-trump guess
+            # at 3 when draw_count<=2 -- an opponent who actually held 4+
+            # real trump (a strong stand-pat hand) can hit an estimated 0
+            # well before they're truly void, once they've played 3 trump
+            # tricks. That false "opps_est_out" lets this branch fire and
+            # lead my own dying low trump BEFORE the later, deduction-based
+            # BIDDER_LOWTRUMP_DUMP check ever runs. Guard: if a hard
+            # deduction (get_highest_remaining_trump) proves a trump ranked
+            # higher than my own lowest is still unaccounted for, someone
+            # must be holding it -- that directly contradicts the estimate,
+            # so don't trust it (all_known_out, a hard flag not an estimate,
+            # is unaffected).
+            estimate_ok = opps_est_out
+            if (trumps and opps_est_out and not all_known_out
+                    and F('allvoid_deduction_guard')):
+                lowest_rank = min(_tr(c, trump) for c in trumps)
+                highest_remaining = get_highest_remaining_trump(cards_played, trump)
+                if highest_remaining > lowest_rank:
+                    estimate_ok = False
+            # BIDDER_PARTNER_TOP_OFFSUIT (opt-in challenger, 2026-11-11, user
+            # round CCYK6G T3). Bidder holds exactly 2 trump + >=1 offsuit,
+            # both opps are out of trump (est 0 or hard void), and partner is
+            # known to still hold a HIGH trump (follow_trump_floor >=98, i.e.
+            # partner threw K or better lowest-first; variant _est uses just
+            # est>0). Leading a trump only pulls partner's trump out and leaves
+            # my offsuit loser to be led later. Lead the offsuit so partner
+            # ruffs in over any opp offsuit winner, and keep both my trump for
+            # the later tricks. Early only (trick_num<=3).
+            if (not self.flags.get('cutthroat')
+                    and (Fon('bidder_partner_top_offsuit') or Fon('bidder_partner_top_offsuit_est'))
+                    and len(trumps) == 2 and non_trumps and trick_num <= 3):
+                _pt = (player + 2) % 4
+                _oo = lambda i: est(i) == 0 or known_voids[i].get('trump') is True
+                _pfloor = known_voids[_pt].get('min_trump_rank', 0)
+                _p_ok = (est(_pt) > 0 and known_voids[_pt].get('trump') is not True
+                         and (_pfloor >= 98 or Fon('bidder_partner_top_offsuit_est')))
+                if _oo(opp1) and _oo(opp2) and _p_ok:
+                    return max(non_trumps, key=get_offsuit_rank)
+            if F('bidder_after_void_lead') and trumps and (all_known_out or estimate_ok):
                 return min(trumps, key=lambda c: _tr(c, trump))
             # BIDDER_PARTNER_FLOOR_LEAD (opt-in): bidder leading with
             # multiple trumps, partner's known min_trump_rank floor is
@@ -885,6 +1092,18 @@ class ImprovedAI:
                     highest_remaining = get_highest_remaining_trump(cards_played, trump)
                     if my_trump_rank < highest_remaining:
                         return max(non_trumps, key=get_offsuit_rank)
+            # BIDDER_LASTTRUMP_PARTNER_RUFF (opt-in test, user-derived 2026-10-10).
+            # Lone non-boss trump (any rank), early (trick_num<=2, 1-indexed),
+            # bid>=20, partner est to hold trump: lead highest offsuit instead.
+            # NOTE: earlier BROAD lowtrump variant was -2.54pt; this one is wider
+            # than the shipped rank<=87 gate, so it must be rig-tested.
+            if (F('bidder_lasttrump_partner_ruff') and not self.flags.get('cutthroat')
+                    and len(trumps) == 1 and non_trumps and trick_num <= 2
+                    and state.high_bid >= 20):
+                _lt_rank = _tr(trumps[0], trump)
+                if (_lt_rank < get_highest_remaining_trump(cards_played, trump)
+                        and est((player + 2) % 4) > 0):
+                    return max(non_trumps, key=get_offsuit_rank)
             if (F('bidder_endgame_trump_timing')
                     and trick_num >= 4 and len(trumps) == 1 and len(non_trumps) == 1):
                 if self.flags.get('cutthroat'):
@@ -1341,7 +1560,38 @@ class ImprovedAI:
                 # cheapest-winner take regardless of who's currently winning.
                 _c2_suppress_l2 = (_l2 and cw == _l2_leader_seat)
                 _c2_suppress_l3 = _l3
-                if (Fon('cutthroat_c2_dont_overtake')
+                _c2_ok = True
+                if Fon('c2_trump_only') or Fon('c2_never_trump_cost'):
+                    _c2w = [c for c in playable
+                            if trick_winner(_pad4(trick + [c],
+                                                  trump if F('safe_pad4') else None),
+                                            trump, leader) == player]
+                    if _c2w:
+                        _cheap = min(_c2w, key=lambda c: _tr(c, trump) + 200
+                                     if _is_trump(c, trump) else get_offsuit_rank(c))
+                        # only hold back if the cheapest way to win costs a trump
+                        _c2_ok = _is_trump(_cheap, trump)
+                    else:
+                        _c2_ok = True
+                _c2lead = self.flags.get('c2_off_lead')
+                if _c2lead and state.pre_round_scores:
+                    _prs_l = state.pre_round_scores
+                    _oth = max(_prs_l[_i] for _i in range(4) if _i != player)
+                    if (_prs_l[player] - _oth) >= _c2lead:
+                        _c2_ok = False
+                _c2k = self.flags.get('c2_near_set')
+                if _c2k:
+                    # Bidder loses THIS trick either way (a defender is winning).
+                    # slack = bidder's best-case final pts minus the bid. C2 (save
+                    # trump) only while a set is live-but-close: 0 <= slack < 5*k.
+                    _pts_now = _ct_bidder_round_pts(_bw, _pt, _hp)
+                    _after = 5 - trick_num
+                    _slack = _pts_now + _after * 5 + (5 if _hp == -1 else 0) - _hb
+                    if not (0 <= _slack < 5 * _c2k):
+                        _c2_ok = False
+                if Fon('c2_off_made') and _made_lk:
+                    _c2_ok = False
+                if (Fon('cutthroat_c2_dont_overtake') and _c2_ok
                         and cw != _bw and cw != player
                         and _bidder_has_played
                         and not _set_lk

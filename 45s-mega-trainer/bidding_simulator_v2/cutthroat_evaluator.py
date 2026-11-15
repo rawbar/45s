@@ -43,10 +43,12 @@ from bidding_simulator_v2.cutthroat_runner import play_game_cutthroat
 
 _CHALLENGER_NAME = None
 _SEED_BASE = 0
+_CHAMP_NAME = 'champion-cutthroat'
 
 
-def _init(name, seed_base=0):
-    global _CHALLENGER_NAME, _SEED_BASE
+def _init(name, seed_base=0, champ_name='champion-cutthroat'):
+    global _CHALLENGER_NAME, _SEED_BASE, _CHAMP_NAME
+    _CHAMP_NAME = champ_name
     _CHALLENGER_NAME = name
     _SEED_BASE = seed_base
 
@@ -70,7 +72,7 @@ def _run_chunk(args):
     Returns counts: (games, wins, sum_place_score, place_hist[4])."""
     start, count = args
     chal = REGISTRY[_CHALLENGER_NAME]
-    champ = CHAMPION_CUTTHROAT
+    champ = REGISTRY[_CHAMP_NAME]
     games = 0
     wins = 0           # challenger 1st-place count
     sum_pts = 0        # sum of place-score (3/2/1/0) for challenger
@@ -116,6 +118,8 @@ def main():
     ap.add_argument('--workers', type=int, default=mp.cpu_count())
     ap.add_argument('--seed-base', type=int, default=0,
                     help='seed offset for hold-out re-validation')
+    ap.add_argument('--champion', default='champion-cutthroat', choices=sorted(REGISTRY),
+                    help='the 3 opponent seats (default champion-cutthroat; use ct-app to mirror the shipped app)')
     args = ap.parse_args()
 
     chunk = 250
@@ -140,7 +144,7 @@ def main():
     games = wins = sum_pts = 0
     hist = [0, 0, 0, 0]
     with Pool(args.workers, initializer=_init,
-              initargs=(args.challenger, args.seed_base)) as pool:
+              initargs=(args.challenger, args.seed_base, args.champion)) as pool:
         for (g, w, sp, h) in pool.imap_unordered(_run_chunk, tasks):
             games += g
             wins += w

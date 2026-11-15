@@ -1,2152 +1,2296 @@
-"""
-challengers.py — registry of AI policies for the head-to-head evaluator.
+"""
+challengers.py — registry of AI policies for the head-to-head evaluator.
+
+'champion' is the faithful v2.31.23 baseline (its self-test must read ~50%).
+The 'no-*' policies ablate a hand-coded bidding rule so the evaluator can
+measure whether that made-up rule actually helps, is neutral, or hurts.
+"""
+
+from typing import List, Tuple, Optional
+from game_engine import Card, Suit
+from bidding_simulator_v2.policy import Policy
+from bidding_simulator_v2 import bidding
+
+
+class NoDesperation(Policy):
+    name = "no-desperation"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_desperation=False, enable_cruise=True)
+
+
+class NoCruise(Policy):
+    name = "no-cruise"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_desperation=True, enable_cruise=False)
+
+
+class NoDespNoCruise(Policy):
+    name = "no-desp-no-cruise"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_desperation=False, enable_cruise=False)
+
+
+# Every discrete situational CARD-PLAY rule that has an ablation flag in
+# improved_ai.py. Audit turns each OFF (one at a time) vs champion.
+CARD_RULES = [
+    "bidder_boss_partner_save",
+    "pbs_floor",
+    "bidder_boss_weak_partner_save",
+    "following_partner_boss_save",
+    "following_all_remaining_void",
+    "following_2nd_man_offsuit_boss_save",
+    "following_2nd_man_low_trump_renege",
+    "bidder_after_void_lead",
+    "bidder_endgame_trump_timing",
+    # bidder_trump_save_lead REMOVED v2.31.34 — ablation proved net-negative
+    # (held-out +0.38pt z=2.62 to delete); rule no longer exists in code.
+    "defender_partner_trump_load",
+    "signal_3rd_man_high",
+    "partner_low_trump_signal_response",
+    "minwin_after_void",   # SHIPPED v2.31.27, champion default-ON (strict);
+                           # off: ablation reverts to pre-2.31.27 max-trump.
+    "holdup_2nd_def",      # SHIPPED v2.31.28 (hd:hi98), champion default-ON;
+                           # off: ablation reverts to pre-2.31.28 over-ruff.
+    "endgame_lead_boss",   # SHIPPED v2.31.30 (el:strict), champion default-ON;
+                           # off: ablation reverts to pre-2.31.30 boss-save.
+    "partner_save_boss5",  # FIX v2.31.39, champion default-ON: never burn
+                           # the 5 of trump (rank 102, unbeatable) to
+                           # respond to a partner-winning low-trump signal —
+                           # it is a guaranteed future trick. off: reverts.
+    "defender_cash_boss_ah",  # FIX v2.31.43, champion default-ON: a
+                           # defender FOLLOWING who can win the current
+                           # trick with A♥ while the bidding side is
+                           # winning it cashes A♥ now when it is PROVABLY
+                           # unbeatable for this trick (5/J-trump gone or
+                           # all later seats known trump-void) — instead of
+                           # dribbling it to the dead last trick because
+                           # is_card_boss can't prove boss while J-trump is
+                           # in the kitty (user-reported v2.31.42). off:
+                           # reverts to the kitty-blind is_card_boss path.
+    "partner_signal_overtake_guard",  # SHIPPED v2.31.51, champion
+                           # default-ON (rig +0.08/+0.09, comeback
+                           # +0.10/+0.12, n.s.). Don't overtake a partner
+                           # already winning with trump when a not-void
+                           # later opp could hold a higher trump (futile).
+                           # off: reverts to always-respond-to-signal.
+    "def_ruff_be_eg",          # SHIPPED v2.31.46, champion default-ON
+                           # (rig-NEUTRAL): defender cheap-ruffs the bidder's
+                           # endgame offsuit Ace instead of strict 2nd-man-
+                           # low sluff. off: reverts to strict 2nd-man-low.
+    "partner_off_boss_save",   # SHIPPED v2.31.46, champion default-ON
+                           # (rig-NEUTRAL): don't ruff partner's winning
+                           # offsuit card when it is the led-suit boss AND
+                           # all remaining opps provably trump-void. off:
+                           # reverts to always-ruff-to-secure.
+    "defender_cash_ah_jlate",  # SHIPPED v2.31.45, champion default-ON
+                           # (rig-NEUTRAL: 50.04% primary / 50.03% held-out,
+                           # z<0.35, comeback ~0). Looser defender A♥ cash:
+                           # 5-trump gone + trick>=4 ⇒ treat J as dead even
+                           # if unseen (would have been played by trick 4).
+                           # Shipped for intuitive play / AI-logic trust at
+                           # zero win-rate cost (v2.31.30 precedent). off:
+                           # reverts to the strict 5-AND-J-provably-gone gate.
+    "safe_pad4",               # FIX v2.31.55, champion default-ON: the
+                           # _pad4 helper pads partial tricks for trick_winner
+                           # probes (canBeat / cheapest-winner / 3rd-man-high).
+                           # Legacy dummy was hardcoded 2♣ — which IS trump
+                           # in clubs-trump games and ranks 87, above the real
+                           # 3-10 of clubs. canBeat therefore misreported
+                           # "can't beat" for low-trump candidates in clubs
+                           # trump, and the AI dumped offsuit instead of
+                           # over-trumping (user-reported, round T4 north
+                           # held 4♣ vs 8♣). Fix: dummy is 2 of a non-trump
+                           # suit. Primary 20k +0.39pt z=1.56 / held-out 30k
+                           # +0.38pt z=1.85 (replicated, comeback +0.18/+0.22
+                           # n.s.). off: reverts to the buggy 2♣ dummy.
+    "allvoid_deduction_guard", # SHIPPED live v2.31.137; promoted to champion default-ON 2026-10-10 (was opt-in test).
+    "bidder_lasttrump_partner_ruff",  # SHIPPED live v2.31.141; promoted to champion default-ON 2026-10-10 (rig neutral +0.07pt).
+    "bidder_j_t1_off_lo",      # SHIPPED live v2.31.144 (bid<=15, J no 5, partner drew 3+); champion default-ON.
+    "bidder_lowtrump_dump",    # SHIPPED v2.31.62, champion default-ON.
+                           # User-reported round: bidder N held only 2♥ as
+                           # last trump on trick 3 of a 20-bid round, opps
+                           # had A♥ available; leading 2♥ guaranteed-lost
+                           # the trick and the bid. Rule (NARROW): if I'm
+                           # bidder leading, have EXACTLY 1 trump left, and
+                           # it is rank ≤ 87 (low-number trump, not Q/K/A/J/5),
+                           # AND there's an unaccounted-for higher trump,
+                           # lead my highest OFFSUIT instead. Rig: primary
+                           # 20k +0.50pt z=+2.00 / held-out 30k +0.38pt
+                           # z=+1.85 (replicated, comeback +0.65/+0.10).
+                           # Earlier broad variant (any my_max_trump <
+                           # highest_remaining) was -2.54pt z=-10.16 — gate
+                           # MUST stay narrow.
+    "off2_beat_off_bidlead",   # SHIPPED v2.31.66, champion default-ON
+                           # (rig-NEUTRAL: +0.01pt z=+0.05 primary 20k,
+                           # comeback -0.01 z=-0.03 — v2.31.30 trust-fix
+                           # precedent). The "2nd-man-low" mantra is a
+                           # TRUMP heuristic; on OFFSUIT, 2nd-man defender
+                           # following a BIDDER offsuit lead should beat
+                           # with the cheapest higher led-suit card.
+                           # Forces 3rd-man (bidder's partner) to over-
+                           # beat with higher offsuit, commit trump, or
+                           # concede — and saves 4th-man (my partner)
+                           # from having to ruff in. User-derived from a
+                           # screenshot where the AI played strict-low.
+                           # off: reverts to strict 2nd-man-low.
+    "take_t4_2nd",             # SHIPPED v2.31.57, champion default-ON.
+                           # On trick 4+, 2nd-man plays the CHEAPEST card
+                           # that wins the partial-trick state — regardless
+                           # of trump vs offsuit, renege capability, or
+                           # role. The general principle: at trick 4 the
+                           # winner of this trick leads the final trick
+                           # with all other players holding only ONE card
+                           # each — positional advantage worth taking
+                           # higher cards for. Strict 2nd-man-low used to
+                           # "save" for later but at trick 4 there is
+                           # nothing later to save for. User-derived
+                           # 2026-05-21 from a round-T4 screenshot where
+                           # West reneged J♥ on the bidder's 2♥ lead,
+                           # bid made; broader rule generalizes to all
+                           # roles ("take trick 4 by any means"). Rig:
+                           # primary 20k +0.60pt z=2.42, held-out 30k
+                           # +0.70pt z=3.41 (replicated, comeback +0.54
+                           # directional). off: reverts to strict 2nd-
+                           # man-low at trick 4+.
+    "partner_winning_renege_prune",  # FIX v2.31.39, champion default-ON:
+                           # partner-winning block treats a reneging opp as
+                           # trump-void if every possibly-reneged trump is
+                           # PROVABLY GONE (my hand OR already played), not
+                           # just "all in my hand". Stops the boss 5/J/AH
+                           # being dumped on an already-won trick (user-
+                           # reported T3). off: reverts to hand-only check.
+    # following_2nd_man_after_void / ruff_cheap (v2.31.25) and trick3_exception
+    # (v2.31.26) removed — audit net-negative, no longer in code.
+]
+
+
+def _card_off(rule):
+    p = Policy()
+    p.name = f"off:{rule}"
+    p.ai_flags = {rule: False}
+    return p
+
+
+REGISTRY = {
+    "champion":           Policy(),            # baseline self-test → ~50%
+    "no-desperation":     NoDesperation(),
+    "no-cruise":          NoCruise(),
+    "no-desp-no-cruise":  NoDespNoCruise(),
+    # CUTTHROAT baseline. Bidding side gated for FFA (no partner concept —
+    # partner_bid forced to 0, spoiler off). Card-play coalition rules
+    # C1 (take_from_bidder) and C2 (don't_overtake — pass-2 gated on
+    # _bidder_has_played) default-ON since v2 (this commit). The pre-coalition
+    # baseline (both flags False) is preserved as opt-in 'cutthroat-stripped'
+    # below for ablation. Self-test = 4 of these against each other should
+    # still win ~25% each (all seats run the same policy, symmetric).
+    "champion-cutthroat": Policy(cutthroat=True,
+                                 ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                           'cutthroat_c2_dont_overtake': True,
+                                           'ct_defender_lead_boss_always': True}),
+}
+CHAMPION_CUTTHROAT = REGISTRY["champion-cutthroat"]
+
+# CT-DEFENDER-LEAD-BOSS-ALWAYS — SHIPPED v2.31.133 (jack2112 card-play
+# mining 2026-07-24; default-ON in champion-cutthroat above since
+# 2026-07-24). jack2112's cutthroat first-place rate (52.9%/17 games) is
+# nearly double the next-best logged player (32.1%). Card-play divergence
+# mining found his SIGNATURE move (stealing a contested 15-bid to 20) is
+# actually a leak (~21% make rate empirically). The one candidate that
+# held up: as a DEFENDER, he commits his boss trump (leads it) far more
+# readily than the shipped "save it, lead offsuit to drain" rule allows —
+# roughly double a comparison player's rate on the divergences where this
+# applied (small real-game sample, not independently outcome-tested there).
+# This mirrors the BIDDER's own rule, which is already fully unconditional
+# in cutthroat (zero exceptions — see improved_ai.py boss-card block).
+# Hypothesis: with no partner to split the "drain trump first" benefit,
+# immediately denying the sole bidder a trick outweighs saving the boss for
+# later. Rig (cutthroat_evaluator, 1-vs-3 first-place rate): +0.61pt
+# z=+2.82 primary 10k / +0.52pt z=+2.96 held-out 15k (replicated). Real-game
+# data was the hypothesis generator, not the validation, per the standard
+# workflow. Ablation (revert to pre-ship behavior) kept for reference:
+REGISTRY["ct-defboss-off"] = Policy(
+    cutthroat=True,
+    ai_flags={'cutthroat_c1_take_from_bidder': True,
+              'cutthroat_c2_dont_overtake': True,
+              'ct_defender_lead_boss_always': False},
+    name="ct-defboss-off")
+
+# Trick-number-gated middle ground: does the unconditional (any-trick) version
+# actually beat a version that skips only the earliest trick(s)? Neither the
+# jack2112 sample nor the ablation above says anything about *when* in the
+# round firing is correct — only that "always" beats "never". trick_num is
+# 1-indexed (round_runner.py: range(1,6)).
+REGISTRY["ct-defboss-skip-t1"] = Policy(
+    cutthroat=True,
+    ai_flags={'cutthroat_c1_take_from_bidder': True,
+              'cutthroat_c2_dont_overtake': True,
+              'ct_defender_lead_boss_always': True,
+              'ct_defender_lead_boss_min_trick': 2},
+    name="ct-defboss-skip-t1")
+
+REGISTRY["ct-defboss-skip-t2"] = Policy(
+    cutthroat=True,
+    ai_flags={'cutthroat_c1_take_from_bidder': True,
+              'cutthroat_c2_dont_overtake': True,
+              'ct_defender_lead_boss_always': True,
+              'ct_defender_lead_boss_min_trick': 3},
+    name="ct-defboss-skip-t2")
+
+# CT-2ND-MAN-BOSS-RENEGE (candidate, NOT shipped, NOT default-on). Partner
+# mode has a "2nd-man boss renege" rule (following_2nd_man_low_trump_renege,
+# improved_ai.py ~line 819): 2nd to act, low trump led (rank<90), holding a
+# top-3 trump that beats it, renege (play something else) if my specific
+# partner (seat+2) is estimated to still hold trump and the 3rd seat is
+# void — my partner sits behind me and can win it cheaper. Explicitly
+# disabled in cutthroat ("no partner concept").
+# Generalization tested here: in cutthroat, if the LEADER is the bidder,
+# then whoever acts 3rd/4th is guaranteed a non-bidder (only one bidder
+# exists, already played as leader) — reneging can never hand the bidder a
+# cheap win on this trick, so the "does my partner benefit" gate isn't
+# needed at all; just renege whenever 2nd-man + low trump + bidder led.
+REGISTRY["ct-2ndman-renege"] = Policy(
+    cutthroat=True,
+    ai_flags={'cutthroat_c1_take_from_bidder': True,
+              'cutthroat_c2_dont_overtake': True,
+              'ct_defender_lead_boss_always': True,
+              'ct_2nd_man_boss_renege': True},
+    name="ct-2ndman-renege")
+
+# BASELINE-PARTNER-IN-CUTTHROAT (chunk B measurement policy): partner-mode
+# champion (cutthroat=False — partner rules ON, partner_bid honored, spoiler
+# default off) placed in 1 cutthroat seat vs 3x champion-cutthroat (stripped).
+# This is THE delta measurement: does stripping the partner rules from the
+# cutthroat AI help, hurt, or wash? Baseline win% < 25% → stripping is an
+# improvement (the stripped version beats partner-AI in cutthroat).
+# Baseline win% > 25% → stripping HURT and we need to investigate.
+BASELINE_PARTNER_IN_CUTTHROAT = Policy(cutthroat=False)
+BASELINE_PARTNER_IN_CUTTHROAT.name = "baseline-partner-in-cutthroat"
+REGISTRY["baseline-partner-in-cutthroat"] = BASELINE_PARTNER_IN_CUTTHROAT
+
+for _r in CARD_RULES:
+    REGISTRY[f"off:{_r}"] = _card_off(_r)
+
+
+# CUTTHROAT BIDDING PHASE 2A — three tightening variants on top of
+# champion-cutthroat (Chunk A baseline). Each isolates one threshold class
+# so the rig attributes win-rate delta to that single change.
+#
+#   cutthroat-tight-20: 20-bid requires >=4 trump (drops 5+J@2-3 trump,
+#                       5+AH@3 trump). Partner-era patterns assumed partner
+#                       could cover one trick; solo can't.
+#   cutthroat-tight-25: 25-bid requires 5+J+AH OR 5+J+T3 (i.e. the J anchor
+#                       AND either AH or 5-trump depth). Drops 5+AH+T3
+#                       (no J → solo can't extract J safely) AND the
+#                       opp_bid25→30 demotion routes through H3.
+#   cutthroat-kill-30:  30-bid requires 5+J+AH+AT+T1 (=>5 trump incl. all
+#                       four top anchors). Drops 5+J+AH@T4 (no AT) and
+#                       5+J@T5 (no AH) — both 30-bid suicide solo.
+#
+# All three set cutthroat=True so the cutthroat normalization (partner_bid=0,
+# spoiler off, partner-mode tightening flags FORCED off) fires correctly.
+# Partner-mode bit-identity is preserved by the `else: cutthroat_tight_*=False`
+# guard inside bidding.decide_bid.
+class CutthroatTight20(Policy):
+    name = "cutthroat-tight-20"
+    def __init__(self):
+        super().__init__(cutthroat=True)
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True, cutthroat_tight_20=True)
+
+
+class CutthroatTight25(Policy):
+    name = "cutthroat-tight-25"
+    def __init__(self):
+        super().__init__(cutthroat=True)
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True, cutthroat_tight_25=True)
+
+
+class CutthroatKill30(Policy):
+    name = "cutthroat-kill-30"
+    def __init__(self):
+        super().__init__(cutthroat=True)
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True, cutthroat_kill_30=True)
+
+
+REGISTRY["cutthroat-tight-20"] = CutthroatTight20()
+REGISTRY["cutthroat-tight-25"] = CutthroatTight25()
+REGISTRY["cutthroat-kill-30"]  = CutthroatKill30()
+
+
+# SURGICAL TIGHT-20 — SHIPPED v2.31.77 (this commit) as champion-cutthroat
+# default-on. Pattern-targeted demotion driven by the
+# cutthroat_pattern_makerate.py output @ 2000 deals (commit 4b4858d).
+# Symmetric A-vs-B set-rate (4 seats each config, deals=2000):
+#   primary  seed-base=0       Δ=-1.24pt z=-3.05 SIGNIFICANT
+#                              (15s -2.18 z=-4.61, 20s +0.66 z=+0.79)
+#   held-out seed-base=5000000 Δ=-0.98pt z=-2.42 SIGNIFICANT (replicated)
+#                              (15s -1.82 z=-3.87)
+# Direction: NEGATIVE Δ set-rate = GOOD here (fewer overall sets — healthier
+# bidding population). Demoted 20-bid hands fall through to 15-bid; their
+# pattern-level make-rate jumps from ≤36% at 20 to 35-88% at 15.
+#
+# The coarse cutthroat_tight_20 above (trump_count<4) drops ALL T2/T3
+# 20-bids including 5+J@T3 (analyzer make-rate ~57.6% = +EV); the surgical
+# rule targets ONLY the make-rate≤36% patterns and lets 5J+T3 / 5+T4 keep
+# bidding 20.
+#
+# AGGRESSIVE variant — surgical + ALSO demotes 5+T4 (n=232, make-rate
+# 53.9%, borderline). Result @ 2000 deals: a STATISTICAL TIE vs surgical
+# (Δ=-1.23/-0.99 primary/held-out vs surgical -1.24/-0.98). The extra
+# 5+T4 demotion adds ~zero EV. Shipped: SURGICAL (minimum intervention).
+# Aggressive kept as opt-in for forward reference.
+#
+# This variant is retained as a CHALLENGER name even though its behavior
+# is now bit-identical to champion-cutthroat — useful for ablation (test
+# champion-cutthroat WITHOUT the shipped surgical rule by registering a
+# without-surgical variant, future work).
+class CutthroatSurgicalTight20(Policy):
+    name = "cutthroat-tight-20-surgical"
+    def __init__(self):
+        super().__init__(cutthroat=True)
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True,
+                                  cutthroat_surgical_tight_20=True)
+
+
+class CutthroatAggressiveTight20(Policy):
+    name = "cutthroat-tight-20-aggressive"
+    def __init__(self):
+        super().__init__(cutthroat=True)
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True,
+                                  cutthroat_aggressive_tight_20=True)
+
+
+# ABLATION: champion-cutthroat WITHOUT the shipped surgical tight-20 rule
+# (the meaningful regression test now that surgical is shipped default-ON).
+# Use this as the BASELINE to measure whether the surgical rule keeps
+# paying as the downstream coalition / L1-L3 rules evolve.
+class NoSurgicalTight20(Policy):
+    name = "no-surgical-tight-20"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_surgical_tight_20=False,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-tight-20-surgical"]   = CutthroatSurgicalTight20()
+REGISTRY["cutthroat-tight-20-aggressive"] = CutthroatAggressiveTight20()
+REGISTRY["no-surgical-tight-20"]          = NoSurgicalTight20()
+
+
+# SURGICAL TIGHT-15 — TESTED, NO-SHIP (this commit, post-v2.31.77 baseline).
+# Pattern-targeted demotion of natural-15 bids derived from
+# cutthroat_pattern_makerate.py @ 3000 deals against champion-cutthroat
+# (the surgical tight-20 already shipped). Demotes two patterns:
+#   hasJ-alone with <=2 trump (J+T1/J+T2 family, n~1,700 bids, make-rate
+#                              0-16% at 15 — clear EV-negative population)
+#   has5-alone with <=2 trump (5+T1/5+T2 family, n~3,400 bids, make-rate
+#                              3.5-33% at 15 — clear EV-negative population)
+# Layered ON TOP of the shipped surgical tight-20.
+#
+# Symmetric set-rate (cutthroat-tight-15-surgical vs champion-cutthroat,
+# 4 seats each, deals=2000):
+#   primary  seed-base=0       Δ=-0.44pt z=-1.09 not significant
+#                              15s +1.13 z=+2.40, 20s -1.93 z=-2.19,
+#                              25s -3.39 z=-2.45
+#   held-out seed-base=5000000 Δ=-0.49pt z=-1.20 not significant (same dir)
+#                              15s +1.29 z=+2.75, 20s -2.44 z=-2.75,
+#                              25s -3.22 z=-2.31
+# 1-vs-3 win-rate (lone surgical-tight-15 vs 3 champion-cutthroat,
+# deals=2000):
+#   primary  win=24.00% z=-2.07 SIGNIFICANT NEGATIVE
+#   held-out win=22.99% z=-4.16 SIGNIFICANT NEGATIVE (replicated)
+# Place-score modestly positive (+0.047 / +0.039 z=+3.75 / +3.14) — the
+# rule trades 1st-place wins for avoiding 4th place. Symmetric headline
+# direction is mildly positive but z<2; 1-vs-3 win-rate decisively
+# negative. NO SHIP. Diagnosis: passing weak natural-15s in cutthroat is
+# a SPOILER play — when EVERY seat does it the auction-bidder pool gets
+# slightly cleaner, but when one seat does it solo, that seat surrenders
+# auctions to opps who then make them. The bidder's bag at 15 with a
+# weak hand still nets some EV (~20% of made-bid value) which the
+# surgical-tight-15 seat forfeits. Kept as opt-in challenger.
+#
+# RE-TEST POST-COALITION (2026-06-01, against current champion with C1+C2
+# coalition + bag-threatening-dealer + ohd-always + open-15-gate, etc.):
+# Symmetric set-rate (cutthroat-tight-15-surgical vs champion-cutthroat):
+#   primary  20k seed 0   Δ=+2.93pt z=+22.83 SIGNIFICANT NEGATIVE
+#   held-out 30k seed 5M  Δ=+2.92pt z=+27.90 SIGNIFICANT NEGATIVE (rep)
+# 1-vs-3 win rate:
+#   primary  20k seed 0   win=21.78% z=-21.02 SIGNIFICANT NEGATIVE
+#   held-out 30k seed 5M  win=21.66% z=-26.73 SIGNIFICANT NEGATIVE (rep)
+# Worse than the original measurement on every metric — the layered
+# cutthroat improvements (coalition card-play, etc.) MAGNIFY the EV the
+# rule forfeits (the bidder's bagged-15 EV is now larger because the
+# bidder gets better card-play too). Still NO SHIP. Updated also to
+# include C1+C2 ai_flags in the policy so the re-test matched the rest
+# of the cutthroat lineup (the original test pre-dated those flags).
+# Original decide_bid signature was missing dealer_score; harness passes
+# that kwarg now (added 2026-06-01 along with the re-test).
+class CutthroatSurgicalTight15(Policy):
+    name = "cutthroat-tight-15-surgical"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb, dealer_score=-1):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True,
+                                  cutthroat_surgical_tight_20=True,
+                                  cutthroat_surgical_tight_15=True,
+                                  dealer_score=dealer_score)
+
+
+REGISTRY["cutthroat-tight-15-surgical"]   = CutthroatSurgicalTight15()
+
+
+# CUTTHROAT ALLOW 5+AH+AT → 25 — SHIPPED this commit as champion-cutthroat
+# default-on (Policy.cutthroat_allow_5ahat_25=True). Cutthroat-only;
+# partner-mode bit-identity preserved by the `else` safety guard in
+# bidding.decide_bid that force-resets the flag to False.
+#
+# Derived from a robr bidLogCutthroat divergence: he bid 25 on a
+# 5+AH+AT+T1 hand (5 of trump + A♥ + A of trump + 1 lower trump, no J)
+# and made it. EV math: 4 likely tricks @ 5pt + 5pt high-trump bonus =
+# 25pt. Pre-rule champion-cutthroat passed that hand against a 20-bid
+# (natural 20-bid → bid <= chb → pass). Rule overrides to 25 when the
+# auction stands at 20 and the hand has has5 ∧ hasAH ∧ hasAT ∧ !hasJ ∧
+# trump_count >= 4.
+#
+# Symmetric set-rate (cutthroat-allow-5ahat-25 vs champion-cutthroat,
+# 4 seats each, deals=2000):
+#   primary  seed-base=0       Δ=-1.49pt z=-3.67 SIGNIFICANT NEGATIVE
+#                              (15s -1.71 z=-3.64, 20s -0.99 z=-1.13,
+#                              25s -0.90 z=-0.71)
+#   held-out seed-base=5000000 Δ=-1.03pt z=-2.53 SIGNIFICANT NEGATIVE
+#                              (replicated; 15s -1.21 z=-2.60)
+# 1-vs-3 win-rate (lone allow-5ahat-25 vs 3 champion-cutthroat,
+# deals=2000):
+#   primary  win=26.54% z=+3.18 SIGNIFICANT POSITIVE (+1.54pt over 25%)
+#   held-out win=26.67% z=+3.46 SIGNIFICANT POSITIVE (replicated)
+# Per-pattern make-rate at the new 25-bid level (post-draw 5AHAT+T4,
+# the most common promoted bucket): ~47% direct — below the 60%
+# heuristic floor, but the rule's EV comes mainly from DENYING the
+# opp's 20-bid (~70% baseline make-rate at 20). Spoiler-dynamics
+# captured by the symmetric headline. Ship justified by both primary
+# metrics significant + replicated on disjoint seeds.
+class CutthroatAllow5AHAT25(Policy):
+    name = "cutthroat-allow-5ahat-25"
+    def __init__(self):
+        super().__init__(cutthroat=True)
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True,
+                                  cutthroat_surgical_tight_20=True,
+                                  cutthroat_allow_5ahat_25=True)
+
+
+REGISTRY["cutthroat-allow-5ahat-25"] = CutthroatAllow5AHAT25()
+
+
+# ABLATION: champion-cutthroat WITHOUT the shipped allow-5ahat-25 rule
+# (regression-test baseline now that the rule is default-on). Use this
+# to measure whether the rule keeps paying as future cutthroat work
+# evolves.
+class NoAllow5AHAT25(Policy):
+    name = "no-allow-5ahat-25"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_allow_5ahat_25=False,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["no-allow-5ahat-25"] = NoAllow5AHAT25()
+
+
+# CUTTHROAT UPBID15-ON (opt-in challenger). Live index-test.html /
+# index.html (through v2.31.82) has UPBID15 (v2.31.56) firing in cutthroat
+# unintentionally — the partner-mode rule that promotes a natural 15-bid
+# to 20 when the auction stands at 15 was never gated. The Python sim has
+# had it forced OFF in cutthroat since the cutthroat infra was built
+# (bidding.decide_bid line 145 + comment "rules live in index.html …
+# never back-ported"), so the shipped champion-cutthroat = UPBID15-OFF.
+#
+# Symptom (robr screenshot a265ca87, 2026-05-29): East bid 20♠ on
+# J♠+4♠+10♠+10♦+6♣ in cutthroat. has5=False, hasAH=False, hasAT=False,
+# trump_count=3 → does not match any base 20-bid rule → falls into 15
+# via `hasJ`. UPBID15 then sees chb=15 (N had bid 15) and promotes to 20.
+# In partner mode the partner-converts-borderline-15s assumption gives
+# UPBID15 +5.42pt. In cutthroat 3 coordinated defenders set this hand
+# routinely → hypothesis is large negative.
+#
+# This challenger forces UPBID15 ON in cutthroat by passing
+# `cutthroat_force_upbid15=True`. Symmetric A-vs-B set-rate test confirms
+# the magnitude before we ship the JS gate.
+class CutthroatUpBid15On(Policy):
+    name = "cutthroat-upbid15-on"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_force_upbid15=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-upbid15-on"] = CutthroatUpBid15On()
+
+
+# CUTTHROAT FORCE-UPBID15-WITH-5 (opt-in challenger; champion-cutthroat
+# default OFF). DOCUMENTED NO-SHIP. Surgical tight gate on the cutthroat-
+# disabled UPBID15 rule: fires ONLY when we hold the 5 of trump. v2.31.83
+# killed broad UPBID15 in cutthroat (+14pt set-rate, catastrophic). The
+# tight variant was motivated by bid_divergence_miner_cutthroat.py against
+# robr's score-clean bidLogCutthroat (12/12 of his upbid-15→20 hands had
+# the 5 of trump, 0 without). Hypothesis: the 5 alone guarantees 10 points
+# solo (1 trick + highest-trump bonus) so the tight version might be +EV
+# where the broad rule wasn't.
+#
+# Implementation: runs as a SEPARATE block in bidding.decide_bid after the
+# cutthroat normalization, so it fires regardless of enable_upbid15 (which
+# is force-off in cutthroat). Gate: cutthroat AND bid==15 AND chb==15 AND
+# player_index != dealer AND has5.
+#
+# Symmetric set-rate (cutthroat-force-upbid15-with-5 vs champion-cutthroat):
+#   primary  20k seed 0   Δ=+6.43pt z=+51.19 SIGNIFICANT NEGATIVE
+#   held-out 30k seed 5M  Δ=+6.49pt z=+63.27 SIGNIFICANT NEGATIVE (rep)
+# Direction: positive Δ = challenger sets MORE = bad rule. Even gated to
+# has5, the rule still hands 3 coordinated defenders too many wins. Less
+# catastrophic than broad UPBID15 (+14pt) but still emphatically negative.
+# Kept as opt-in challenger; no JS port.
+class CutthroatForceUpbid15With5(Policy):
+    name = "cutthroat-force-upbid15-with-5"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_force_upbid15_with_5=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-force-upbid15-with-5"] = CutthroatForceUpbid15With5()
+
+
+# CUTTHROAT DESPERATION-TIGHT-20 (candidate challenger). Two robr screenshots
+# in a row (2026-05-29) hit the same desperation block leak: RULE 6 of the
+# DESPERATION bid logic (preemptive 20 when an opp can win with 15 and no one
+# has bid yet) gates on `can20_60`, the partner-mode "60%+ make-rate" table.
+# That table includes:
+#   - AH_T4   (64.05%) ← robr screenshot 1: E bid 20♠ on A♥+T4 no other top
+#   - J_T3    (63.5%)  ← robr screenshot 2: W bid 20♥ on J+T3 (pre-draw)
+#   - AT_T4   (61.47%)
+#   - J_AH_T2 (66.3%)
+#   - J_AT_T2 (62.69%)
+# All five paths fire RULE 6 with no genuine 20-bid strength, on the theory
+# that the leader will otherwise make 15 and win. In partner mode this is
+# net-positive (partner can cover the sacrifice). In cutthroat the leader
+# only needs ~5 trick points to win and 3 coordinated defenders make the
+# bidder bust → the sacrifice converts to leader-wins-via-defender-tricks.
+#
+# This challenger tightens RULE 6 in cutthroat to require either has5 (the
+# unbeatable trump bonus carries a hand at any seat) OR (hasJ AND hasAH)
+# (J+A♥ is the only J-led pattern that holds up vs cutthroat defenders —
+# 2nd and 3rd highest trump in the game). All other partner-mode `can20_60`
+# paths fall through to PASS in cutthroat RULE 6.
+#
+# Partner-mode RULE 6 is bit-identical (the `cutthroat_desp_tight_20` gate
+# is wrapped in `if cutthroat`). Champion-cutthroat is also bit-identical
+# (flag default False).
+class CutthroatDespTight20(Policy):
+    name = "cutthroat-desp-tight-20"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_desp_tight_20=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-desp-tight-20"] = CutthroatDespTight20()
+
+
+# CUTTHROAT OPEN-15-ON (opt-in challenger). Live index-test.html / index.html
+# (through v2.31.85) has OPEN-15 (v2.31.36-37) firing in cutthroat
+# unintentionally — same architectural gap as UPBID15 (now v2.31.83-gated).
+# OPEN-15 unconditionally opens 15 when no one has bid, partner has not bid,
+# we are not cruising, and not in desperation — calibrated in partner mode at
+# +3.52pt / +1.19pt held-out where partner-cover can rescue borderline opens.
+# In cutthroat there is no partner, three opponents coordinate to set.
+#
+# Symptom (robr screenshot d5affd47, 2026-05-29): W bid 15♣ on K♣ + 3 low
+# trump + K♥ (no 5, no J, no AH, no AT, no QT — natural pass). OPEN-15 fired
+# because W was first-to-bid in a clean open with no cruise/desperation gate.
+#
+# This challenger forces OPEN-15 ON in cutthroat by passing
+# `cutthroat_force_loose_open=True`. Symmetric A-vs-B set-rate test confirms
+# the magnitude before we ship the JS gate.
+class CutthroatOpen15On(Policy):
+    name = "cutthroat-open15-on"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_force_loose_open=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-open15-on"] = CutthroatOpen15On()
+
+
+# CUTTHROAT SAVE-5-LEAD VARIANTS (opt-in challengers, user-derived 2026-05-29).
+# Robr screenshot 0d2a9549: bidder W (15♣) held 5♣+4♣ (trump) + Q♠/5♥/A♠
+# (offsuit). Champion led the 5; user contends offsuit lead conserves the
+# 5 for positional bonus capture and the 4 (3rd-highest number-trump in
+# clubs trump, not "lowest") for late-position ruff. Four variants test
+# the principle across trick-window × offsuit-preference:
+#
+#   t1lo : trick 1 only / lead lowest offsuit
+#   t1hi : trick 1 only / lead highest offsuit
+#   t12lo: tricks 1-2 (still holds 5) / lowest offsuit
+#   t12hi: tricks 1-2 (still holds 5) / highest offsuit
+#
+# Gate: cutthroat=True AND bidder leading AND has 5 of trump AND has >=2
+# trump (5 + at least one more) AND has >=1 offsuit. Champion-cutthroat
+# bit-identical (all four default-off via Fon).
+#
+# Prior context: a partner-mode `bidder_trump_save_lead` was tested
+# v2.31.33-34 and REMOVED as net-negative; H-A `bidder_lead_low_trump`
+# (lead lowest trump) tested 2026-05-17 negative. THIS is a different
+# hypothesis: lead OFFSUIT not trump, and gated tighter (must hold 5).
+class _CutthroatSave5(Policy):
+    """Base for the four save-5-lead variants. Each subclass enables exactly
+    one flag so the symmetric A-vs-B set-rate isolates that variant's EV."""
+    _flag: str = None  # overridden per subclass
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True,
+                                   self._flag: True})
+
+
+class CutthroatSave5T1Lo(_CutthroatSave5):
+    name = "cutthroat-save5-t1lo"
+    _flag = "cutthroat_save_5_t1lo"
+
+class CutthroatSave5T1Hi(_CutthroatSave5):
+    name = "cutthroat-save5-t1hi"
+    _flag = "cutthroat_save_5_t1hi"
+
+class CutthroatSave5T12Lo(_CutthroatSave5):
+    name = "cutthroat-save5-t12lo"
+    _flag = "cutthroat_save_5_t12lo"
+
+class CutthroatSave5T12Hi(_CutthroatSave5):
+    name = "cutthroat-save5-t12hi"
+    _flag = "cutthroat_save_5_t12hi"
+
+
+REGISTRY["cutthroat-save5-t1lo"]  = CutthroatSave5T1Lo()
+REGISTRY["cutthroat-save5-t1hi"]  = CutthroatSave5T1Hi()
+REGISTRY["cutthroat-save5-t12lo"] = CutthroatSave5T12Lo()
+REGISTRY["cutthroat-save5-t12hi"] = CutthroatSave5T12Hi()
+
+
+# CUTTHROAT OPP-HAS-DEALER-ALWAYS (SHIPPED v2.31.87, now champion default).
+# Partner-mode logic `opp_has_dealer = get_team(dealer) != my_team` uses
+# seat parity which is meaningless in cutthroat — every non-self seat is
+# an opp by definition. The pre-v2.31.87 cutthroat champion inherited the
+# parity check and got opp_has_dealer = True only for seats whose parity
+# differed from the dealer's, ~50% of cutthroat seats. That made
+# desperation RULE 4 (bag-the-dealer) and RULE 5 (overbid their 15) fire
+# only for parity-lucky cutthroat seats on a meaningless coincidence.
+#
+# Symmetric A-vs-B set-rate (champion-cutthroat pre-ship vs ohd-always):
+#   primary  20k seed-base=0       Δ=-1.30pt z=-10.16 SIGNIFICANT (B set
+#                                  less, mechanism: 25-bid count -44.7%
+#                                  as RULE 4 bag-the-dealer triggers
+#                                  uniformly, weaker hands pass-to-bag
+#                                  instead of pushing into doomed 20/25)
+#   held-out 30k seed-base=5000000 Δ=-1.21pt z=-11.6  SIGNIFICANT
+#                                  (REPLICATED; 25-bid count -44.7% same)
+# Per-bid level: 15 +1.07/+1.15 (slight worse — marginal hands stay at 15
+# instead of upbidding); 20 -3.22/-3.25 z=-11/-14; 25 -5.76/-5.08 z=-12/-13.
+#
+# Now default-on for cutthroat policies. Champion-cutthroat reads it from
+# the Policy class default (`cutthroat_opp_has_dealer_always: bool = True`).
+# Partner mode bit-identical (the flag's effect is gated on cutthroat=True
+# inside bidding.decide_bid). This explicit challenger remains for self-
+# documentation and identity-vs-champion verification.
+class CutthroatOppHasDealerAlways(Policy):
+    name = "cutthroat-ohd-always"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_opp_has_dealer_always=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-ohd-always"] = CutthroatOppHasDealerAlways()
+
+
+# CUTTHROAT OHD-PARITY: the pre-v2.31.87 ablation baseline. Reverts to the
+# parity-based opp_has_dealer check (the partner-mode logic). Use this to
+# regression-test the v2.31.87 ship as future cutthroat work evolves.
+class CutthroatOppHasDealerParity(Policy):
+    name = "cutthroat-ohd-parity"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_opp_has_dealer_always=False,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-ohd-parity"] = CutthroatOppHasDealerParity()
+
+
+# CUTTHROAT DESP-RULE4-TIGHT (candidate). After the v2.31.87 OHD-always
+# ship, desperation RULE 4 (bag-the-dealer with canMake15/20/25/30
+# thresholds for "can we make X to survive") fires uniformly across
+# cutthroat seats. The canMake thresholds were calibrated against the
+# partner-mode 1.1M-sim; in cutthroat with C1+C2 coalition the make
+# rates are lower → bid-20 exit gates that aren't J-anchored bust more
+# often. This challenger adds the J of trump (2nd-highest trump) to
+# each canMake test that lacks it:
+#   theyNeed<=5  : unchanged (5+J+AH+T5 already maximally strict)
+#   theyNeed<=10 : was 5+J+T4 → 5+J+AH+T4   (add AH)
+#   theyNeed<=15 : was 5+T4 → 5+J+T4         (add J)
+#   theyNeed<=20 : was 5 OR J+AH+T3 → 5+J OR J+AH+T4 (tighten both arms)
+# Net effect: fewer doomed bid-20 exits, more passes-to-bag.
+class CutthroatDespRule4Tight(Policy):
+    name = "cutthroat-desp-rule4-tight"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_desp_rule4_tight=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-desp-rule4-tight"] = CutthroatDespRule4Tight()
+
+
+# CUTTHROAT BAG-THREATENING-DEALER (SHIPPED v2.31.97; now champion
+# default). User-derived from screenshot 2026-05-30: E at 100 +
+# dealer, W bid 15♣ on its own natural 15 hand instead of passing
+# to force E into a bagged 15.
+#
+# Rule: when cutthroat AND dealer is opp at >=100 AND natural bid
+# would be 15 AND we_need > 20 (do not pass if I myself am at >=100
+# and could win the round) AND current_high_bid == 0 → demote to PASS.
+#
+# Rig (the pre-ship measurement, A=champion-cutthroat with rule OFF
+# vs B=this challenger with rule ON):
+#   primary  20k seed-base=0       Δ=-0.11pt z=-0.86 not significant
+#                                  20-bid level Δ=-0.70pt z=-2.45
+#                                  15-bid level Δ=+0.10pt z=+0.68
+#   held-out 30k seed-base=5000000 Δ=-0.11pt z=-1.06 not significant
+#                                  20-bid level Δ=-0.69pt z=-2.99 (rep)
+#                                  15-bid level Δ=+0.10pt z=+0.81
+#
+# Aggregate rig-NEUTRAL but shipped per the v2.31.30 trust-fix
+# precedent — the human-expected play is to bag a threatening dealer;
+# not making the bag erodes AI-logic trust. Per-bid-level signal at
+# 20 is real and replicated; per-bid-level offset at 15 (forced
+# bagged-15s bust more than the voluntary 15s they replace) cancels
+# the 20 gain in aggregate but neither side is a measured loss.
+class CutthroatBagThreateningDealer(Policy):
+    name = "cutthroat-bag-threatening-dealer"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_bag_threatening_dealer=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-bag-threatening-dealer"] = CutthroatBagThreateningDealer()
+
+
+# ABLATION: champion-cutthroat WITHOUT the v2.31.97 bag-threatening-
+# dealer rule. Use this as the regression baseline if future cutthroat
+# work appears to change the rule's measured effect.
+class CutthroatBagThreateningDealerOff(Policy):
+    name = "cutthroat-bag-threatening-dealer-off"
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_bag_threatening_dealer=False,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+
+REGISTRY["cutthroat-bag-threatening-dealer-off"] = CutthroatBagThreateningDealerOff()
+
+
+# CUTTHROAT COALITION (opt-in challengers; champion-cutthroat default OFF).
+# Two coordinated defender rules — see improved_ai.py for the gates:
+#   C1 (cutthroat_c1_take_from_bidder): defender following, BIDDER currently
+#       winning the trick, set/made not locked → play cheapest card that
+#       beats the bidder. Captures every "take from the bidder" case across
+#       all positions and tricks (broader than def_ruff_be_eg / take_t4_2nd
+#       / off2_beat_off_bidlead, which all stay enabled as narrow specifics).
+#   C2 (cutthroat_c2_dont_overtake): defender following, ANOTHER DEFENDER
+#       currently winning, BIDDER HAS ALREADY PLAYED, set not locked →
+#       play_lowest. Don't burn cards overtaking a teammate-of-convenience;
+#       conserve for tricks the bidder might win.
+# Together: when one defender wins the trick the others stay cheap; when
+# the bidder wins, every defender who can take cheaply does.
+#
+# pass-1 history (commit 550ad35 / 61ebe61): the FIRST cut of C2 had no
+# "bidder has played" gate. Symmetric A-vs-B set-rate test showed
+# coalition made bidders 1.36pt MORE successful (z=-3.36), concentrated
+# at 15-bids (-2.02pt). DIAGNOSIS: with C2 firing while the bidder was
+# still downstream, the next defender played low and the bidder over-
+# trumped cheaply — the coalition was handing the bidder free tricks.
+# pass-2 (current): C2 now gated on _bidder_has_played; v1 inherits the
+# fix (the buggy pre-2-pass form is preserved only in git history,
+# commits 550ad35 + 61ebe61 — no behavior preservation in code).
+#
+# cutthroat-c1-only      = C1 alone (sanity check: is C1 net-positive
+#                          without C2?). If C1 alone wins and v2 does
+#                          not beat it, ship C1, drop C2.
+# cutthroat-coalition-v2 = C1 + tightened C2 (pass-2 of the coalition).
+# cutthroat-coalition-v1 = name retained; behavior identical to v2 now
+#                          (the C2 tightening is in the rule body, both
+#                          flag combos enable it). Kept as an alias so
+#                          existing harness commands / commit refs still
+#                          work; do not test it separately from v2.
+CUTTHROAT_C1_ONLY = Policy(cutthroat=True,
+                           ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                     'cutthroat_c2_dont_overtake': False})
+CUTTHROAT_C1_ONLY.name = "cutthroat-c1-only"
+REGISTRY["cutthroat-c1-only"] = CUTTHROAT_C1_ONLY
+
+CUTTHROAT_COALITION_V1 = Policy(cutthroat=True,
+                                ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                          'cutthroat_c2_dont_overtake': True})
+CUTTHROAT_COALITION_V1.name = "cutthroat-coalition-v1"
+REGISTRY["cutthroat-coalition-v1"] = CUTTHROAT_COALITION_V1
+
+CUTTHROAT_COALITION_V2 = Policy(cutthroat=True,
+                                ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                          'cutthroat_c2_dont_overtake': True})
+CUTTHROAT_COALITION_V2.name = "cutthroat-coalition-v2"
+REGISTRY["cutthroat-coalition-v2"] = CUTTHROAT_COALITION_V2
+
+# SHIP: cutthroat-coalition-v2 promoted to champion-cutthroat default-ON
+# (this commit). Symmetric A-vs-B set-rate (deals=2000):
+#   primary  seed-base=0       Δ=+1.45pt z=+3.56 SIGNIFICANT
+#   held-out seed-base=5000000 Δ=+1.08pt z=+2.65 SIGNIFICANT (replicated)
+# Per-bid breakdown (primary): 15s +1.70 z=+3.54, 20s +1.12 z=+1.38,
+# 25s +0.64 z=+0.51, 30s n=3. Damage concentrated at 15-bids — same
+# regime that pass-1 BROKE (-2.02pt at 15s), now fixed and net-positive.
+# Sanity: C1-ALONE without C2 is NEGATIVE (Δ=-1.02pt z=-2.50, 15s -1.22
+# z=-2.56). C1 by itself hands defenders' beats to a non-tightened
+# downstream that the bidder then exploits / mis-takes context. The
+# combo (C1 + bidder_has_played-gated C2) is the win — both flags
+# required for the +EV signal. Opt-in 'cutthroat-stripped' below preserves
+# the pre-coalition baseline for ablation tests.
+CUTTHROAT_STRIPPED = Policy(cutthroat=True,
+                            ai_flags={'cutthroat_c1_take_from_bidder': False,
+                                      'cutthroat_c2_dont_overtake': False})
+CUTTHROAT_STRIPPED.name = "cutthroat-stripped"
+REGISTRY["cutthroat-stripped"] = CUTTHROAT_STRIPPED
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# CUTTHROAT L1 / L2 / L3 — SCORE-AWARE COALITION RULES
+# ─────────────────────────────────────────────────────────────────────────
+# Three score-aware rules layered on TOP of the C1/C2 coalition. All read
+# state.pre_round_scores (4-vec of per-seat game totals at round start)
+# threaded by cutthroat_runner. Cutthroat-only (no-op in partner mode);
+# game-context-only (no-op in round-only harnesses — pre_round_scores=None).
+#
+# L3 (cutthroat_l3_bidder_winning_game) — bidder making this bid wins them
+#     the game (pre_round_scores[bid_winner] + high_bid >= 120). Switch to
+#     MAX-AGGRESSION: C2 don't-overtake suppression OFF; C1 takes regardless
+#     of who currently winning; top-3 trump save disabled. NO THRESHOLD.
+#
+# L1 (cutthroat_l1_leader_self_nickel) — I'm the runaway leader-of-the-game-
+#     so-far (my pre_round_score >= leader_min AND ahead of next-best by
+#     >= leader_gap). Soften C1: when taking, refuse if cheapest winner is
+#     a top-3 trump (conserve high cards; bank cheap tricks only).
+#     Thresholds: (cutthroat_l1_min, cutthroat_l1_gap).
+#
+# L2 (cutthroat_l2_dont_help_leader) — ANOTHER defender is the runaway
+#     leader. When that leader is currently winning the trick (cw ==
+#     leader_seat), suppress C2's "don't overtake" so I TAKE from the leader.
+#     Extends C1 to "take from the leader-defender" too.
+#     Thresholds: (cutthroat_l2_min, cutthroat_l2_gap).
+#
+# Threshold sweep: register variants for each (min, gap) pair in the spec.
+
+def _l_rule(name: str, flags: dict):
+    p = Policy(cutthroat=True)
+    p.name = name
+    # Inherit C1+C2 coalition defaults from champion-cutthroat (default-on);
+    # callers add cutthroat_l*_* flags + thresholds on top.
+    base = {'cutthroat_c1_take_from_bidder': True,
+            'cutthroat_c2_dont_overtake': True}
+    base.update(flags)
+    p.ai_flags = base
+    return p
+
+
+# L3 — no threshold; one variant.
+REGISTRY["cutthroat-l3"] = _l_rule(
+    "cutthroat-l3",
+    {'cutthroat_l3_bidder_winning_game': True},
+)
+
+
+# L1 threshold sweep: (leader_min, leader_gap) pairs.
+for (_lmin, _lgap) in ((100, 40), (95, 30), (90, 25)):
+    _nm = f"cutthroat-l1-{_lmin}-{_lgap}"
+    REGISTRY[_nm] = _l_rule(_nm, {
+        'cutthroat_l1_leader_self_nickel': True,
+        'cutthroat_l1_min': _lmin,
+        'cutthroat_l1_gap': _lgap,
+    })
+
+
+# L2 threshold sweep: same (min, gap) pairs.
+for (_lmin, _lgap) in ((100, 40), (95, 30), (90, 25)):
+    _nm = f"cutthroat-l2-{_lmin}-{_lgap}"
+    REGISTRY[_nm] = _l_rule(_nm, {
+        'cutthroat_l2_dont_help_leader': True,
+        'cutthroat_l2_min': _lmin,
+        'cutthroat_l2_gap': _lgap,
+    })
+
+
+# L-ALL-BEST: L1+L2+L3 with TBD thresholds; pre-registered with the most
+# conservative (100,40) for both. The sweep-driven "best" combo is created
+# dynamically once the L1/L2 sweep winners are known (see below).
+REGISTRY["cutthroat-l-all-best"] = _l_rule("cutthroat-l-all-best", {
+    'cutthroat_l3_bidder_winning_game': True,
+    'cutthroat_l1_leader_self_nickel': True,
+    'cutthroat_l2_dont_help_leader': True,
+    'cutthroat_l1_min': 100, 'cutthroat_l1_gap': 40,
+    'cutthroat_l2_min': 100, 'cutthroat_l2_gap': 40,
+})
+
+
+# CUTTHROAT N1 NICKEL-GRAB (opt-in challenger on TOP of coalition-v2).
+# When set OR made is mathematically LOCKED, switch from coalition mode
+# (which is about influencing whether the bid is made/set — moot now)
+# to point-greedy mode: take the cheapest winning card, but NEVER burn
+# a top-3 trump (rank >= 100 — 5 of trump, J of trump, A♥ when trump
+# != hearts) to do so. N1 sits FIRST in the defender cutthroat block;
+# its early-return preempts C1 and C2 in the locked regime. C1 and C2
+# already gate on `not locked` so the not-locked regime is unchanged.
+#
+# Hypothesis: defenders banking cheap free tricks late in a decided
+# round leaves them with more raw round points (+EV) without increasing
+# the bidder's bid-quality (set-rate may be roughly flat — set is
+# decided by the time N1 fires). Lesson from pass-1 C1 sanity (commit
+# 3f26177): aggressive defender takes that burn top trump are
+# net-negative — nickel-grab restricts the take to free tricks.
+CUTTHROAT_NICKEL_GRAB = Policy(cutthroat=True,
+                               ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                         'cutthroat_c2_dont_overtake': True,
+                                         'cutthroat_n1_nickel_grab': True})
+CUTTHROAT_NICKEL_GRAB.name = "cutthroat-nickel-grab"
+REGISTRY["cutthroat-nickel-grab"] = CUTTHROAT_NICKEL_GRAB
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# CUTTHROAT D1 — DEFENDER RUFFS A FELLOW DEFENDER'S OFFSUIT LEAD
+# ─────────────────────────────────────────────────────────────────────────
+# D1 (cutthroat_d1_ruff_defender_offsuit_lead): defender following, the
+# LEADER was a fellow defender on OFFSUIT, the BIDDER HAS NOT yet played
+# in this trick, set not locked, I hold trump → play cheapest winning trump.
+# Covers the pre-bidder-play window that C1 (bidder currently winning) and
+# C2 (bidder already played) leave uncovered.
+#
+# User observation that motivated this rule: "when West leads offsuit in
+# cutthroat, nobody throws trump at all, giving me a free trick." The
+# defender coalition was failing to deny the bidder a free over-trump on
+# defender-defender-offsuit-lead tricks.
+#
+# Interaction with C1/C2: D1 fires when bidder_has_played == False AND
+# leader != bidder. C1 fires when current winner IS the bidder (so the
+# bidder has played and is winning). C2 fires when bidder_has_played
+# == True AND a fellow defender currently wins. The three rules cover
+# disjoint sub-cases of "defender following".
+#
+# D1-LATE variant (cutthroat_d1_late_only) restricts D1 to trick_num >= 2
+# (trick 3+ in 1-indexed counting). Hypothesis: early-trick ruffing wastes
+# trump that could win higher-value spots later.
+#
+# RESULT 2026-05-29 — TESTED, NOT SHIPPED:
+#   D1-broad symmetric @2k:   Δ +0.56pt z=+1.37 (right direction, NOT significant)
+#   D1-broad 1-vs-3 @2k:      24.51% z=-1.01 (slight neg for lone challenger)
+#   D1-LATE symmetric @2k:    Δ +0.56pt z=+1.37 (IDENTICAL to broad)
+#   D1-LATE 1-vs-3 @2k:       24.51% z=-1.01 (IDENTICAL to broad)
+# LATE and broad are behaviorally identical: trick 1's leader is ALWAYS
+# the bidder (bid winner leads first), so the "leader != bidder" gate
+# already filters out trick 1. The trick_num >= 2 additional gate is a
+# no-op. The 1-vs-3 slight-negative is the documented cooperative-equilibrium
+# underestimate (a lone ruff that denies the bidder pays full coalition
+# cost — the lone defender burns trump — without the other defenders'
+# reciprocal nickel-grab benefit). The symmetric +0.56pt is in the right
+# direction (bidders set more often when all 4 defenders coordinate D1)
+# but z=+1.37 doesn't clear the z>2 ship gate.
+# INTERPRETATION: the user's observation generalizes to a small +EV signal,
+# but it's largely already captured by C1/C2 — the pre-bidder-play case
+# where a defender leads offsuit and another defender CAN ruff cheaply is
+# rare enough (and the fallback "I follow offsuit, bidder ruffs cheaply"
+# costs the defending team similar EV in most spots) that the marginal
+# coalition gain is small. Kept opt-in for future iteration / data layer.
+CUTTHROAT_D1_RUFF = Policy(cutthroat=True,
+                           ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                     'cutthroat_c2_dont_overtake': True,
+                                     'cutthroat_d1_ruff_defender_offsuit_lead': True})
+CUTTHROAT_D1_RUFF.name = "cutthroat-d1-ruff-defender-offsuit"
+REGISTRY["cutthroat-d1-ruff-defender-offsuit"] = CUTTHROAT_D1_RUFF
+
+CUTTHROAT_D1_RUFF_LATE = Policy(cutthroat=True,
+                                ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                          'cutthroat_c2_dont_overtake': True,
+                                          'cutthroat_d1_ruff_defender_offsuit_lead': True,
+                                          'cutthroat_d1_late_only': True})
+CUTTHROAT_D1_RUFF_LATE.name = "cutthroat-d1-ruff-defender-offsuit-late"
+REGISTRY["cutthroat-d1-ruff-defender-offsuit-late"] = CUTTHROAT_D1_RUFF_LATE
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# CT-SETLOCKED-SAVE-LAST-TRUMP (challenger)
+# ─────────────────────────────────────────────────────────────────────────
+# When the bidder is mathematically SET-LOCKED for the round and holds
+# EXACTLY one trump remaining, and the current trick was led non-trump and
+# is being won by a non-self defender with a non-trump → play lowest non-
+# trump instead of the last trump. Rationale: winning this trick adds 5 to
+# the set-locked column (worth 0 toward the bid). Saving the trump to
+# over-trump the defenders' expected ruff next trick denies 5 pts to a
+# defender (typically the game leader). Net: +5 denial > +5 vanity trick.
+#
+# Built on top of the current champion-cutthroat coalition (C1+C2 + bag-
+# threatening-dealer default-on; cutthroat_bag_threatening_dealer reads
+# the Policy attr, no flag plumbing needed).
+CT_SETLOCKED_SAVE_LAST_TRUMP = Policy(
+    cutthroat=True,
+    ct_setlocked_save_last_trump=True,
+    ai_flags={'cutthroat_c1_take_from_bidder': True,
+              'cutthroat_c2_dont_overtake': True})
+CT_SETLOCKED_SAVE_LAST_TRUMP.name = "ct-setlocked-save-last-trump"
+REGISTRY["ct-setlocked-save-last-trump"] = CT_SETLOCKED_SAVE_LAST_TRUMP
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# CT-B3-TAKE-OVER-FELLOW — replay of the OLD v2.31.100 JS behavior
+# ─────────────────────────────────────────────────────────────────────────
+# Original v2.31.100 rule: defender clockwise-BEFORE bidder (plays 4th)
+# takes the trick with the cheapest winner on a bidder offsuit lead, even
+# when a fellow defender has already ruffed in to win the trick. Rationale
+# at the time: "grab the lead FOR the coalition" — over-trumping ensures
+# the lead lands on me (B+3) and the bidder is in 2nd seat next trick.
+#
+# v2.31.104 JS adds a `!_ctFellowDefenderWinning` gate (skip when a fellow
+# defender already has the trick locked). Rationale: bidder played first
+# as leader, so once a defender has trumped in to win, the coalition has
+# already won the lead — over-trumping a fellow defender burns a higher
+# trump for zero coalition benefit. The Python champion-cutthroat C2 rule
+# already handles this correctly (fires when cw != bidder, cw != player,
+# bidder has played — all true at B+3 in this scenario), so the v2.31.104
+# JS gate makes JS match Python champion's existing behavior.
+#
+# This challenger inverts that: enables `cutthroat_b3_take_over_fellow` so
+# B+3 over-trumps a fellow defender every time (= OLD JS pre-v2.31.104).
+# Negative rig vs champion would mean the v2.31.104 JS gate is a real win;
+# neutral rig confirms trust-fix ship territory.
+#
+# Built on top of the current champion-cutthroat coalition (C1+C2 + bag-
+# threatening-dealer + ct_setlocked default-on).
+CT_B3_TAKE_OVER_FELLOW = Policy(
+    cutthroat=True,
+    cutthroat_b3_take_over_fellow=True,
+    ai_flags={'cutthroat_c1_take_from_bidder': True,
+              'cutthroat_c2_dont_overtake': True})
+CT_B3_TAKE_OVER_FELLOW.name = "ct-b3-take-over-fellow"
+REGISTRY["ct-b3-take-over-fellow"] = CT_B3_TAKE_OVER_FELLOW
+
+
+# FORCE-EXTRACT challenger variants (opt-in rule, default absent in champion).
+# Each enables the rule + one partner-trump-rich proxy; data picks the proxy.
+def _fx(proxy: str):
+    p = Policy()
+    p.name = f"fx:{proxy}"
+    p.ai_flags = {'following_3rd_man_force_extract': True,
+                  f'fx_proxy_{proxy}': True}
+    return p
+
+
+for _p in ('shed', 'drew', 'led_trump', 'any'):
+    REGISTRY[f"fx:{_p}"] = _fx(_p)
+
+
+# HOLD-UP #30 variants (opt-in; champion default off). 2nd-man defender on
+# an offsuit lead with no low trump to ruff cheap → hold up (follow/play
+# non-trump) instead of wasting a high/boss trump on a junk trick.
+def _hd(name: str, flags: dict):
+    p = Policy()
+    p.name = name
+    p.ai_flags = dict(flags, holdup_2nd_def=True)
+    return p
+
+
+# hd:hi98 removed — it IS the champion now (SHIPPED v2.31.28, default-ON).
+# The meaningful test is off:holdup_2nd_def (auto from CARD_RULES, ablates
+# the shipped rule). hd:hi98_force / hd:hi97 kept as forward-variants:
+# "would champion + forcer-gate / broader ≥Q threshold do better than the
+# shipped ≥K?" (champion = baseline; these add one flag on top).
+REGISTRY["hd:hi98_force"] = _hd("hd:hi98_force", {'holdup_force': True})
+REGISTRY["hd:hi97"]       = _hd("hd:hi97", {'holdup_hi97': True})    # ≥Q (broader)
+
+
+# ENDGAME LEAD-BOSS #32 (opt-in; champion default off). Defender on lead in
+# the endgame (trick>=4) with the bidding team trump-void → lead the boss
+# now (win + keep the lead) instead of saving it / leading offsuit.
+#   el:strict — opponents KNOWN trump-void only (deduction-only)
+#   el:est    — also estimatedTrumpRemaining==0 (broader; est can misfire)
+def _el(name: str, flags: dict):
+    p = Policy()
+    p.name = name
+    p.ai_flags = dict(flags, endgame_lead_boss=True)
+    return p
+
+
+# el:strict removed — it IS the champion now (SHIPPED v2.31.30, default-ON
+# strict). Meaningful test = off:endgame_lead_boss (auto from CARD_RULES).
+# el:est kept as a forward-variant (champion + estimate-based void too).
+REGISTRY["el:est"]    = _el("el:est", {'endgame_lead_boss_est': True})
+
+
+# safe:pad4 promoted to champion v2.31.55 (default-ON; rig +0.39pt z=1.56
+# primary 20k / +0.38pt z=1.85 held-out 30k, replicated). The meaningful
+# test now = off:safe_pad4 (auto from CARD_RULES, reverts to the buggy
+# 2♣ dummy). The legacy dummy was logically wrong in clubs-trump games.
+
+
+# follow_trump_floor canBeat refinement — tested 2026-05-20, rig-NEUTRAL
+# (49.99% z=-0.02 unconditional, 0.00 comeback @ 20k). Backed out.
+# The data layer (min_trump_rank tracking in round_runner._update_known_voids)
+# is kept always-on as scaffolding for further iteration.
+
+
+# BURN-FORCE 3RD #35b (opt-in; champion default off — TESTED rig-NEUTRAL).
+# Defender 3rd-man with trump on a trick currently won by an opponent:
+# play the LOWEST non-top-3 trump for which every remaining over-trump
+# is a top-3 (5/J/A♥). Idea: either I win cheaply OR 4th-man burns a
+# top-3 to win. RESULT 2026-05-20: 50.01% z=+0.02 / comeback +0.02 @ 20k
+# — fires too rarely (late-round, requires K/Q/A_trump accounted-for)
+# and when it does, picks the same card max-trump would pick anyway in
+# most cases. Kept opt-in for future refinement; do NOT ship default-ON.
+def _burnforce_3rd():
+    p = Policy()
+    p.name = "bf:3rd"
+    p.ai_flags = {'burnforce_3rd': True}
+    return p
+
+
+REGISTRY["bf:3rd"] = _burnforce_3rd()
+
+
+# BIDDER-PARTNER-FLOOR-LEAD #35c (opt-in; champion default off — TESTED
+# rig-NEUTRAL). Bidder leading with ≥2 trumps, partner_floor ≥98, and all
+# over-trumps for partner's floor card accounted for (mine or played).
+# Lead lowest trump so partner cashes their high trump here, I save mine.
+# RESULTS 2026-05-20 @ 20k: loose gate (floor ≥98, no safety) 49.75% z=-0.99
+# (mildly negative — partner with K loses to opp's A♥). Tight gate (all
+# over-trumps accounted-for) 49.98% z=-0.07 / comeback +0.06 z=+0.14 — dead
+# neutral, fires too rarely. Three consecutive rig-neutrals on min_trump_rank
+# heuristic rules (ftf:floor 49.99, bf:3rd 50.01, bf:partnerlead 49.98)
+# suggest the floor data is sound but hard to leverage via simple
+# position-based rules. Future work: monte-carlo rollouts that use the
+# floor as a constraint, not a heuristic flag.
+def _bidder_partner_floor_lead():
+    p = Policy()
+    p.name = "bf:partnerlead"
+    p.ai_flags = {'bidder_partner_floor_lead': True}
+    return p
+
+
+REGISTRY["bf:partnerlead"] = _bidder_partner_floor_lead()
+
+
+# UPBID15 promoted to champion v2.31.56 (default-ON; rig +5.42pt z=21.68
+# primary 20k / +5.30pt z=25.96 held-out 30k, replicated, comeback n.s.).
+# Jack2112-derived from the bidLog (5 of 13 logged divergences match the
+# exact pattern). When auction stands at 15 and hand computes as a 15-bid
+# (which the old champion would pass on), overbid to 20. Excludes dealer
+# and partner-bid-15. The pre-2.18.1 5M-sim calibration that dropped this
+# from the 20-bid threshold ran against a much weaker champion — current
+# card-play (safe:pad4 + pso:guard + dca:jlate + pob:save + dre:bidace_eg)
+# converts the borderline 15-strength hands well enough to make 20.
+class NoUpBid15(Policy):
+    name = "bid:no-upbid15"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_upbid15=False)
+
+
+REGISTRY["bid:no-upbid15"] = NoUpBid15()
+
+
+# UPBID15-CAN20-GATE (challenger for v2.31.109 hypothesis). Screenshots show
+# UPBID15 promoting J+10♦ (trumpCount=2, no 5/A♥/A-trump) to 20, which is
+# very unlikely to succeed. The current gate is only `bid==15 && chb==15`.
+# This challenger adds can20_at_60pct as a floor: J alone (T2 only) fails
+# the gate and passes instead of upbidding. J+A♥, J+A-trump, J+3+trump,
+# any-5 all still fire. Mirrors the cutthroat forced-20 gate (v2.31.105).
+class UpBid15Can20Gate(Policy):
+    name = "upbid15:can20-gate"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  upbid15_can20_gate=True)
+
+
+REGISTRY["upbid15:can20-gate"] = UpBid15Can20Gate()
+
+
+# UPBID15-WENEED-GATE (challenger, robr screenshot d3bf8cc1 2026-07-19).
+# CRUISE CONTROL vets the hand for a SAFE 15 (has5 alone ~96%) before
+# letting bidding continue, but UPBID15 then unconditionally escalates to a
+# 20-bid, which has5-alone only makes ~62% of the time. Whenever we_need is
+# already <= the threshold, simply MAKING our own natural 15 (becoming
+# bidder) already reaches 120 — escalating to 20 buys nothing, only set
+# risk. Live case: E/W at 115 (we_need=5) with 5♥+7♥+2♥ (natural 15),
+# UPBID15 pushed to 20♥, got set, -20 dropped them 115→95.
+#
+# THRESHOLD SWEEP (2026-07-19, user pushback: "you only applied this to
+# 115[we_need=5] — we always need to look at similar scenarios like 110
+# [we_need=10]"). The "already-won-on-15" argument is not specific to
+# we_need=5 — it holds for ANY we_need<=15 (making a bare 15 always nets
+# >=15 real points, which is enough once we_need<=15). Sweep 5/10/15/20 to
+# find where the effect actually stops paying off before shipping a wider
+# gate than the single reported screenshot justifies.
+class UpBid15WeNeedGate5(Policy):
+    name = "upbid15:weneed-5"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  upbid15_weneed_gate=True,
+                                  upbid15_weneed_threshold=5)
+
+
+class UpBid15WeNeedGate10(Policy):
+    name = "upbid15:weneed-10"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  upbid15_weneed_gate=True,
+                                  upbid15_weneed_threshold=10)
+
+
+class UpBid15WeNeedGate15(Policy):
+    name = "upbid15:weneed-15"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  upbid15_weneed_gate=True,
+                                  upbid15_weneed_threshold=15)
+
+
+class UpBid15WeNeedGate20(Policy):
+    name = "upbid15:weneed-20"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  upbid15_weneed_gate=True,
+                                  upbid15_weneed_threshold=20)
+
+
+REGISTRY["upbid15:weneed-5"]  = UpBid15WeNeedGate5()
+REGISTRY["upbid15:weneed-10"] = UpBid15WeNeedGate10()
+REGISTRY["upbid15:weneed-15"] = UpBid15WeNeedGate15()
+REGISTRY["upbid15:weneed-20"] = UpBid15WeNeedGate20()
+
+
+# UPBID15 sub-pattern isolators — each fires UPBID15 ONLY for one specific
+# hand composition, with all others suppressed. This answers: "is this
+# sub-pattern individually sufficient to justify upbidding to 20?"
+# The base conditions (bid==15, chb==15, not-dealer, partner!=15) are
+# replicated in each challenger. Cutthroat is not applicable (partner mode).
+#
+# Sub-patterns mirror the can20At60Pct components (from 5M-sim calibration):
+#   J+A♥+T2:  66.3%   → upbid15:j-ah
+#   J+AT+T2:  62.69%  → upbid15:j-at
+#   J+T3:     63.5%   → upbid15:j-t3
+#   5+any:    62.44%  → upbid15:5
+#
+# These patterns overlap (e.g., J+A♥+T3 matches both j-ah and j-t3) but
+# each challenger tests ONLY its named pattern in isolation.
+
+# Design note: enable_upbid15 must be set BEFORE decide_bid runs, because
+# decide_bid demotes bid=15 to bid=0 (pass) inside the bid<=chb block when
+# upbid15 is disabled — by then the natural-15 signal is gone and any post-
+# call check on bid==15 never fires. Correct approach: check the hand pattern
+# upfront, then pass enable_upbid15 accordingly so decide_bid fires it
+# internally at the right point (before the bid<=chb demotion).
+
+class UpBid15JAh(Policy):
+    """upbid15:j-ah — UPBID15 fires ONLY on J + A♥ hands (no 5 required)."""
+    name = "upbid15:j-ah"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        fb = bidding.find_best_trump_suit(hand)
+        enable = fb['hasJ'] and bidding.has_ace_hearts(hand)
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_upbid15=enable)
+
+
+class UpBid15JAt(Policy):
+    """upbid15:j-at — UPBID15 fires ONLY on J + A-trump hands."""
+    name = "upbid15:j-at"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        fb = bidding.find_best_trump_suit(hand)
+        enable = fb['hasJ'] and bidding.has_ace_trump(hand, fb['suit'])
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_upbid15=enable)
+
+
+class UpBid15JT3(Policy):
+    """upbid15:j-t3 — UPBID15 fires ONLY on J + 3+ trump hands."""
+    name = "upbid15:j-t3"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        fb = bidding.find_best_trump_suit(hand)
+        enable = fb['hasJ'] and fb['trumpCount'] >= 3
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_upbid15=enable)
+
+
+class UpBid15Has5(Policy):
+    """upbid15:5 — UPBID15 fires ONLY when hand has the 5 of trump."""
+    name = "upbid15:5"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        fb = bidding.find_best_trump_suit(hand)
+        enable = fb['has5']
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_upbid15=enable)
+
+
+REGISTRY["upbid15:j-ah"] = UpBid15JAh()
+REGISTRY["upbid15:j-at"] = UpBid15JAt()
+REGISTRY["upbid15:j-t3"] = UpBid15JT3()
+REGISTRY["upbid15:5"]    = UpBid15Has5()
+
+
+# UPBID15 TIGHT GATE (candidate v2.31.110): sub-pattern analysis shows the
+# 5 does most of the work (-1.36pt vs full) and J+T3 has modest value
+# (+0.83pt vs no-upbid15). J+A♥ and J+AT are ~neutral in isolation. This
+# challenger narrows the can20 gate to ONLY (has5 OR J+T3), dropping J+A♥
+# and J+AT from the upbid15 trigger. Tests whether tightening further helps.
+class UpBid15TightGate(Policy):
+    """upbid15:tight-gate — UPBID15 only fires on has5 OR (hasJ + 3+ trump)."""
+    name = "upbid15:tight-gate"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        fb = bidding.find_best_trump_suit(hand)
+        enable = fb['has5'] or (fb['hasJ'] and fb['trumpCount'] >= 3)
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_upbid15=enable)
+
+
+REGISTRY["upbid15:tight-gate"] = UpBid15TightGate()
+
+
+# ENDGAME_DENY (opt-in challenger; dormant rule already in improved_ai.py).
+# Bidder side, opp at 110+ (one bid from winning):
+#   Leading  → max trump (or max playable if no trump)
+#   Following→ if opp currently winning AND I have a winning card,
+#              play the MIN-sufficient winner. Else play_lowest
+#              (preserve strength).
+# Tested 2026-05-22 rig-NEUTRAL (50.04% z=0.18 primary 20k / 50.02%
+# z=0.11 held-out 30k) — kept here for future re-test when more
+# expert data accumulates, since the rule fires rarely.
+def _endgame_deny():
+    p = Policy()
+    p.name = "egd:on"
+    p.ai_flags = {'endgame_deny': True}
+    return p
+
+
+REGISTRY["egd:on"] = _endgame_deny()
+
+
+# PM_SWEEP — SHIPPED v2.31.130 (2026-07-13, user-derived). Partner mode,
+# every bidder-side boss-hold-back rule (bidder_5j_t3_off_t1lo,
+# bidder_boss_partner_save, bidder_boss_weak_partner_save) is skipped
+# whenever the DEFENDING team's score is >=110 (one made bid from
+# winning at 120) — lead the boss now instead of saving it for tempo.
+# Tested at both >=110 and >=115 thresholds: rig-neutral both ways
+# (50.01-50.02%, z<0.1, primary 20k + held-out 30k) — shipped for
+# AI-logic trust (v2.31.30 precedent), 110 kept as champion (broader,
+# superset of 115). Meaningful re-test = disabling it below.
+def _off_pm_sweep_lead():
+    p = Policy()
+    p.name = "off:pm_sweep_lead"
+    p.ai_flags = {'pm_sweep_lead': False}
+    return p
+
+
+REGISTRY["off:pm_sweep_lead"] = _off_pm_sweep_lead()
+
+
+# off2:beat_bidlead promoted to champion v2.31.66 (default-ON; rig-NEUTRAL
+# +0.01pt z=+0.05 primary 20k, v2.31.30 trust-fix precedent). Meaningful
+# test now = off:off2_beat_off_bidlead (auto from CARD_RULES, reverts to
+# strict 2nd-man-low). The broader off2:beat_anyopp (any-opp lead, not just
+# bidder) also tested rig-NEUTRAL (+0.01pt z=+0.03) and is kept as a
+# forward-variant opt-in challenger.
+def _off2_beat_anyopp():
+    p = Policy()
+    p.name = "off2:beat_anyopp"
+    p.ai_flags = {'off2_beat_off_anyopp': True}
+    return p
+
+
+REGISTRY["off2:beat_anyopp"]  = _off2_beat_anyopp()
+
+
+# BIDDER_5J_T3_OFF_T1LO — SHIPPED v2.31.112 (2026-06-15).
+# Bidder trick 1, ≤3 trump (5+J+≤1 low), partner drew ≥3 cards.
+# Leading 5 (boss) forces weak/moderate partner to follow trump on an
+# already-won trick. Leading lowest offsuit first preserves partner's
+# trump for a later ruff. Targeted rig (5k deals/category):
+#   partner drew 3: +12.3% make rate z=+8.7
+#   partner drew 4+: +9.6% make rate z=+7.9
+#   partner drew 0-2: ≤+2% not sig → gated out
+# Global rig: +0.12pt / +0.21pt (positive, diluted by rarity).
+# t1lo = lead lowest offsuit (SHIPPED, now default F); t1hi = dead-end.
+# Ablation challenger: set bidder_5j_t3_off_t1lo=False to revert.
+def _5j3_t1lo():
+    # challenger form still useful as an explicit opt-in regression test
+    p = Policy()
+    p.name = "card:5j3-t1lo"
+    p.ai_flags = {'bidder_5j_t3_off_t1lo': True}
+    return p
+
+def _5j3_t1hi():
+    # dead-end: must also disable now-default t1lo
+    p = Policy()
+    p.name = "card:5j3-t1hi"
+    p.ai_flags = {'bidder_5j_t3_off_t1lo': False, 'bidder_5j_t3_off_t1hi': True}
+    return p
+
+def _5j3_ablate():
+    # ablation: revert shipped t1lo rule to measure regression
+    p = Policy()
+    p.name = "card:5j3-ablate"
+    p.ai_flags = {'bidder_5j_t3_off_t1lo': False}
+    return p
+
+REGISTRY["card:5j3-t1lo"]    = _5j3_t1lo()
+REGISTRY["card:5j3-t1hi"]    = _5j3_t1hi()
+REGISTRY["card:5j3-ablate"]  = _5j3_ablate()
+
+
+# OPEN20-WITH-5 (candidate challengers; derived from jack2112 bid mining).
+# jack2112 opens 20 in a clean auction (hb=0) 37x in early game when holding
+# the 5 of trump — champion bids 15. Two variants:
+#
+#   open20:has5      — fires on ANY has5 hand (5+T1 through 5+T5). The broad
+#                      form. Matches all 37 jack2112 cluster-A hands.
+#
+#   open20:has5-t3   — fires ONLY on has5 AND trump_count >= 3. The filtered
+#                      form. Targets the solid 20-bid hands (5+T3 or better)
+#                      and excludes the bare 5+T2 hands that may win only 15.
+#
+# Both are partner-mode only. Cutthroat is NOT applicable — the 5M-sim showed
+# cutthroat-force-upbid15-with-5 catastrophic (+6.43pt set-rate, no-ship);
+# the open-auction analogue likely carries the same 3-defender penalty.
+# Gate: enable_open20 fires inside bidding.decide_bid when bid==15, hb==0,
+# player!=dealer, and has5.
+#
+# Rig results (2026-06-14, partner-mode symmetric A-vs-B):
+#   open20:has5    primary 20k: +0.77pt z=+2.18 / held-out 30k: +1.23pt z=+4.25
+#   open20:has5-t3 primary 20k: +0.74pt z=+2.09 / held-out 30k: +1.09pt z=+3.79
+# Both replicated; broad version (has5 alone) slightly stronger.
+# NO SHIP (backlog). Signal modest (~+1pt vs UPBID15's +5.4pt). Lone 5+T2
+# hands make 20 unreliably in practice; the rig EV doesn't overcome the
+# human-frustration cost of watching the AI get set on bare-5 opens.
+# Comeback equity neutral (ns) on both variants.
+class Open20Has5(Policy):
+    """open20:has5 — open at 20 in clean auction when has5, AI would bid 15."""
+    name = "open20:has5"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_open20=True)
+
+
+class Open20Has5T3(Policy):
+    """open20:has5-t3 — open at 20 in clean auction when has5 AND T>=3."""
+    name = "open20:has5-t3"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        fb = bidding.find_best_trump_suit(hand)
+        enable = fb['has5'] and fb['trumpCount'] >= 3
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_open20=enable)
+
+
+REGISTRY["open20:has5"]    = Open20Has5()
+REGISTRY["open20:has5-t3"] = Open20Has5T3()
+
+
+# OVERBID25-PB15 (candidate challenger; derived from jack2112 bid mining).
+# Cluster C (10x early-game): partner bid 15, opponent at hb=20, jack holds
+# the 5 of trump and bids 25 — champion passes. Combined hand strength:
+# partner's 15-bid hand + jack's 5 (guaranteed 10pt) = ~25pt potential.
+# Partner-mode only; cutthroat has no partner_bid concept.
+#
+# Rig results (2026-06-14, partner-mode symmetric A-vs-B):
+#   overbid25:pb15-has5  primary 20k: -2.30pt z=-9.20 / held-out 30k: -2.42pt z=-11.83
+#   Comeback equity: -2.75pt primary / -3.35pt held-out. Both SIGNIFICANT NEGATIVE.
+# NO SHIP. Jack's 10 instances have specific game-context reasons that don't
+# generalize. Blindly overbidding to 25 against an opp who already bid 20
+# (strong hand) with only 5+pb15 support loses ~2.4pt. The opp's 20-bid
+# strength means they can take enough tricks to set the 25 bid reliably.
+class Overbid25Pb15(Policy):
+    """overbid25:pb15-has5 — bid 25 at hb=20 when partner bid 15 and has5."""
+    name = "overbid25:pb15-has5"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_overbid25_pb15=True)
+
+
+REGISTRY["overbid25:pb15-has5"] = Overbid25Pb15()
+
+
+# BIDDER-LOWTRUMP-DUMP #38 (opt-in; champion default off). User-reported
+# round: bidder N held only the lowest remaining trump (2♥) on trick 3
+# of a 20-bid round, opps had A♥ available, leading 2♥ was a guaranteed
+# loss. Rule: when bidder is leading and my best trump is BELOW the
+# highest unplayed trump (= an opp could over-trump), lead my highest
+# offsuit instead. Saves my dead trump for forced-follow later AND
+# gives the offsuit a real chance to steal a trick.
+# bidder_lowtrump_dump promoted to champion v2.31.62 (default-ON; rig
+# +0.50pt z=+2.00 primary 20k / +0.38pt z=+1.85 held-out 30k). The
+# meaningful test now = off:bidder_lowtrump_dump (auto from CARD_RULES).
+
+
+# DEFENDER-TAKE-JAH-LATE #37 (opt-in; champion default off — TESTED
+# rig-NEUTRAL 2026-05-21: 50.08% z=+0.33 unconditional, comeback
+# +0.05 z=+0.13 @ 20k). Defender 2nd-man on a late trick (>=4) when
+# the bidder led TRUMP at a rank a top-3 (5/J/A♥) can renege: TAKE
+# the trick with the lowest top-3 trump instead of reneging. Idea
+# was sound (user-derived from a real round-T4 screenshot where
+# reneging J♥ cost a 40pt swing), but the conjunction of conditions
+# is too narrow — fires rarely, and when it does, +EV and -EV cases
+# roughly cancel (saving J♥ is +EV when 5♥ is in opp's hand, -EV when
+# 5♥ is in kitty/already-played). Kept opt-in for forward reference;
+# do NOT ship.
+# take_t4_2nd promoted to champion v2.31.57 (default-ON). Meaningful
+# test now = off:take_t4_2nd (auto from CARD_RULES, reverts to strict
+# 2nd-man-low at trick 4+).
+
+
+# pso:guard removed — it IS the champion now (SHIPPED v2.31.51, default-ON;
+# rig consistently +0.08/+0.09 unconditional & +0.10/+0.12 comeback, both
+# samples, z<1 n.s. — shipped as a non-negative trust fix per v2.31.30
+# precedent). Meaningful test = off:partner_signal_overtake_guard (auto
+# from CARD_RULES). user-reported: North played A♥ over partner's winning
+# 8♥ though a possible East J♥ beats A♥ regardless.
+
+
+# dre:bidace_eg / pob:save removed — both ARE the champion now (SHIPPED
+# v2.31.46, default-ON; rig-NEUTRAL 50.00%/50.00% z≈0 both samples,
+# shipped for intuitive play / AI-logic trust per v2.31.30 precedent +
+# user-confirmed j_trump_dump_void deduction). Meaningful tests are the
+# auto off:def_ruff_be_eg / off:partner_off_boss_save from CARD_RULES.
+# NOTE: j_trump_dump_void (the sound "follower J-on-5-lead → trump-void"
+# deduction) is baked into round_runner._update_known_voids (harness
+# deduction layer, NOT an ai_flag) — it only ever adds PROVABLY-true
+# voids, so it is not ablation-gated.
+
+
+# dca:jlate removed — it IS the champion now (SHIPPED v2.31.45, default-ON;
+# rig-neutral, shipped for intuitive play / AI-logic trust). The meaningful
+# test is off:defender_cash_ah_jlate (auto from CARD_RULES, ablates back to
+# the strict 5-AND-J-provably-gone gate of v2.31.43).
+
+
+class BidTighten5JT4(Policy):
+    """DATA-DRIVEN (5M v2.31.27 re-run): category 5_J_T4 (has5 ∧ hasJ ∧ 4
+    trump ∧ no A♥ ∧ no A-trump) refreshed round-EV says open 20 (EV+19.50)
+    not 25 (EV+18.91). decide_bid currently opens 25. Surgical: only when
+    OPENER (chb==0, pb==0) and the hand is EXACTLY that category and base
+    decide_bid returned 25 → return 20 instead. 5_J_T5 (5 trump) stays 25
+    (its rec did NOT flip), hence count==4 not >=4. Everything else untouched."""
+    name = "bid:5jt4_25to20"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb)
+        if (b == 25 and s is not None and chb == 0 and pb == 0
+                and bidding.has_five(hand, s) and bidding.has_jack(hand, s)
+                and not bidding.has_ace_hearts(hand)
+                and not bidding.has_ace_trump(hand, s)
+                and bidding.count_trumps(hand, s) == 4):
+            return 20, s
+        return b, s
+
+
+REGISTRY["bid:5jt4_25to20"] = BidTighten5JT4()
+
+
+# SPOILER (opt-in; champion default off). When an opponent holds a bid that
+# — given how often bids overmake — likely carries them to 120, seize the
+# contract with the minimum overbid even without a hand to justify it
+# (drops the desperation we_need>30 gate; the 105-105 / near-game-point
+# case). ONLY meaningful in a GAME-context harness (needs live scores).
+class Spoiler(Policy):
+    name = "spoiler"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_spoiler=True)
+
+
+REGISTRY["spoiler"] = Spoiler()
+
+
+# RANDOMIZED AUTO-15 PASS (opt-in; champion default prob 0.0 = current nd,
+# bit-identical). The auto-15 on residual (5M-oracle-pass) hands is +EV
+# but deterministic → predictable/exploitable and human-frustrating. These
+# variants pass that residual open with probability p (mixed strategy).
+# The rig measures the EV cost of each dial so the user can choose the
+# setting with eyes open (cost is informational, NOT a ship gate — this
+# is a deliberate enjoyment/unpredictability-over-stats choice).
+class RndPass(Policy):
+    def __init__(self, p):
+        self.p = p
+        self.name = f"rnd:p{int(p*100):02d}"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  loose_open_pass_prob=self.p)
+
+
+for _p in (0.25, 0.50, 0.75):
+    _rp = RndPass(_p)
+    REGISTRY[_rp.name] = _rp
+
+
+# RANDOMIZED DESPERATION 25-SACRIFICE (opt-in; champion default 0.0 =
+# bit-identical). The hand-blind overbid to 25 (deny opp's game-point 20)
+# is exploitable + frustrating. These variants pass it with probability p
+# ONLY when the hand is crap for 25 (cannot even make 20 → pure
+# sacrifice); 20-overbids and real (can20_60) hands stay deterministic.
+# Rig measures the EV cost of each dial (informational, not a gate —
+# enjoyment/unpredictability-over-stats).
+class RndDesp25(Policy):
+    def __init__(self, p):
+        self.p = p
+        self.name = f"d25:p{int(p*100):02d}"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  desp_overbid25_pass_prob=self.p)
+
+
+for _p in (0.25, 0.50, 0.75):
+    _rd = RndDesp25(_p)
+    REGISTRY[_rd.name] = _rd
+
+
+# NOTE: a desp:callbluff challenger (pass instead of the desperation
+# sacrifice-overbid when holding "strong defensive trump") was built and
+# REMOVED — fatally flawed: the bid is made BEFORE trump selection, so the
+# AI cannot know its trump strength (the opponent picks the suit). The
+# only always-trump card is A♥; everything else (5/J/high-trump in our own
+# best suit) is irrelevant once the opponent chooses a different trump.
+# Any real call-the-bluff must be SCORE/odds-driven (or A♥-only), not
+# based on our hand's trump — and the all-AI rig cannot model a human who
+# deliberately bluff-bids at game point. Parked pending user direction.
+
+
+# ENDGAME POINT-BUDGET DENY (opt-in; champion default off). Bidder-side:
+# when opponent is at game point (oppNeed<=10 to 120) a normal made bid
+# still loses (defenders score), so play every trick must-win / never
+# concede. ONLY meaningful in a GAME-context harness (needs team_scores);
+# round-context evaluator passes team_scores=None → this is a no-op there.
+_ed = Policy()
+_ed.name = "endgame_deny"
+_ed.ai_flags = {'endgame_deny': True}
+REGISTRY["endgame_deny"] = _ed
+
+
+# BIDDER LEAD LOW TRUMP (H-A; opt-in, champion default off). When the
+# bidder is leading and the champion would lead a trump, lead the LOWEST
+# trump instead of the highest (conserve boss-class high trump for
+# later). Implemented at the TOP of the bidder-leading trump branch in
+# improved_ai.py so it intercepts BOTH champion lead-high paths
+# (len(trumps)>=3 return max, and >=1 return highest_trump). Reachable
+# in all non-void / non-narrow-endgame bidder-leading cases (the
+# bidder_after_void_lead site already leads low when opps are out).
+# RESULT (2026-05-17): TESTED, NO-SHIP. Reachability proven (5153
+# decision changes / 1500 games). Screen 30k deals: win 49.41%,
+# z=-2.91 SIGNIFICANTLY NEGATIVE (no held-out run — direction wrong).
+# The expert-divergence hypothesis does NOT replicate in simulation;
+# leading lowest trump as bidder is net-negative. Champion correctly
+# leads its highest trump. Do NOT re-test without a new mechanism.
+_bllt = Policy()
+_bllt.name = "bidder_lead_low_trump"
+_bllt.ai_flags = {'bidder_lead_low_trump': True}
+REGISTRY["bidder_lead_low_trump"] = _bllt
+
+
+# BIDDER LOW-TRUMP OFFSUIT (opt-in; champion default off). Bidder leading
+# with <=2 trump past trick 1: if cashing its (boss) top trump promotes a
+# >=Q-class trump a defender is estimated to hold, lead offsuit instead
+# (keep tempo, let partner ruff, deny the boss-up). Round-context rule.
+# bidder_lowtrump_offsuit (B narrow + A broad) REMOVED — both proven
+# structurally dead: the insertion site after bidder_trump_save_lead is
+# never reached (0/1500 games) because bidder_after_void_lead returns
+# first. The user's low-trump-lead idea must be tested by ablating/
+# altering bidder_after_void_lead (already in CARD_RULES as
+# off:bidder_after_void_lead), not via a new bolt-on rule.
+
+
+# NOTE: the old mw:strict / mw:est opt-in challengers were removed — strict
+# min-win is now SHIPPED (champion default-ON, v2.31.27). The meaningful
+# test is now the ablation `off:minwin_after_void` (auto-created from
+# CARD_RULES above), which reverts to pre-2.31.27 max-trump. The est
+# variant was proven mildly negative and is not in the champion at all.
+
+
+# LOOSER OPEN — SHIPPED v2.31.36 (champion default-ON via
+# bidding.decide_bid enable_loose_open=True). Rig-confirmed +3.52pt
+# held-out (z=17.2, 120k disjoint, replicated); data-derived from expert
+# aggression (bid-wins/game 2.45 vs robr 1.39 at the SAME ~23% set rate).
+# The old opt-in open:t3/t4/ah/at/loose challengers are GONE — open:loose
+# IS the champion now, and t3/t4/ah/at are strict subsets of it (adding
+# them on top of loose-champion is a no-op). The meaningful regression
+# test is the ablation `no-loose-open` below (reverts to pre-2.31.36).
+class NoLooseOpen(Policy):
+    name = "no-loose-open"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_loose_open=False)
+
+
+REGISTRY["no-loose-open"] = NoLooseOpen()
+
+
+# SEAT-AWARE OPEN (opt-in; champion default off). Forward-variant ON TOP
+# of the shipped loose-champion. Question (user): does bid-order position
+# matter? loose fires identically regardless of seat. This adds EXTRA
+# late-position aggression: when loose-champion STILL passes a clean open
+# (hand failed loose: <3 trump, no A♥, no A-trump) and the player is LATE
+# in bid order (>=2 earlier players already passed → strong evidence
+# partner+opps are weak, so the forced-bagged dealer likely holds junk),
+# open 15 anyway on a residual weak hand.
+#   open:seat2  late & >=2 trump
+#   open:seat1  late & >=1 trump (very aggressive)
+# bid-order position of p = (p - dealer - 1) mod 4 (0 = first to act,
+# dealer never reaches here — it is force-bagged at 15).
+class SeatOpen(Policy):
+    def __init__(self, min_trump):
+        self.min_trump = min_trump
+        self.name = f"open:seat{min_trump}"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb)
+        if b != 0:
+            return b, s                  # champion (incl. loose) bids
+        if chb != 0 or pb > 0:
+            return b, s                  # not a clean open spot
+        we_need = 120 - ts
+        if we_need <= 15 and os <= 85:   # cruise / ahead-protection
+            return b, s
+        bidorder = (pi - dl - 1) % 4
+        if bidorder < 2:                 # early position — status quo (loose)
+            return b, s
+        fb = bidding.find_best_trump_suit(hand)
+        suit, tc = fb['suit'], fb['trumpCount']
+        return (15, suit) if tc >= self.min_trump else (b, s)
+
+
+for _mt in (1, 2):
+    REGISTRY[f"open:seat{_mt}"] = SeatOpen(_mt)
+
+
+# EARLY-POSITION OPEN (opt-in; champion default off). User insight: the
+# real value of an aggressive open is largely a DENIAL effect — a P1 15
+# sets the floor BEFORE opponents act, so they can only bid 20+ (riskier,
+# more sets) or pass (concede the contract). That blocking value is
+# HIGHEST from early position (mirror-opposite of open:seat). When
+# loose-champion STILL passes a clean open (hand failed loose) and the
+# player is EARLY in bid order (bidorder < 2 — first or second to act,
+# i.e. P1/P2), open 15 anyway on a residual weak hand to deny opponents
+# the cheap 15. open:early2 = early & >=2 trump; open:early1 = early &
+# >=1 trump. Tests whether the extra-open edge concentrates early
+# (denial-driven) vs late (open:seat, info-driven) vs neither.
+class EarlyOpen(Policy):
+    def __init__(self, min_trump):
+        self.min_trump = min_trump
+        self.name = f"open:early{min_trump}"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb)
+        if b != 0:
+            return b, s                  # champion (incl. loose) bids
+        if chb != 0 or pb > 0:
+            return b, s                  # not a clean open spot
+        we_need = 120 - ts
+        if we_need <= 15 and os <= 85:   # cruise / ahead-protection
+            return b, s
+        bidorder = (pi - dl - 1) % 4
+        if bidorder >= 2:                # late position — status quo (loose)
+            return b, s
+        fb = bidding.find_best_trump_suit(hand)
+        suit, tc = fb['suit'], fb['trumpCount']
+        return (15, suit) if tc >= self.min_trump else (b, s)
+
+
+for _mt in (1, 2):
+    REGISTRY[f"open:early{_mt}"] = EarlyOpen(_mt)
+
+
+# UNCONDITIONAL OPEN (opt-in; champion default off). The likely ENDPOINT:
+# loose-champion + seat1 (late, confirmed +1.05) + early (untested) would
+# union to "in a clean open outside cruise, ALWAYS bid 15" — drop the
+# trump/honor condition entirely. This is the expert's LITERAL stated
+# heuristic ("almost always bid at least 15"). Test the endpoint directly
+# so we ship the final rule ONCE instead of loose→seat1→union in 3 hops.
+class AlwaysOpen(Policy):
+    name = "open:always"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb)
+        if b != 0:
+            return b, s
+        if chb != 0 or pb > 0:
+            return b, s
+        if (120 - ts) <= 15 and os <= 85:   # cruise / ahead-protection
+            return b, s
+        return 15, bidding.find_best_trump_suit(hand)['suit']
+
+
+REGISTRY["open:always"] = AlwaysOpen()
+
+
+# EARLY-GAME OPEN (opt-in; champion default off). THE EXPERT'S ACTUAL
+# STATED RULE (jack2112, messaged 2026-05-17): "early in the game he will
+# always bid 15; he evaluates more in later game as the score develops."
+# So aggression is conditioned on GAME PHASE BY SCORE — NOT hand-quality
+# (loose), NOT bid-order (seat/early — that is late-in-the-AUCTION, a
+# different 'late'), NOT all-game-unconditional (open:always, which the
+# expert explicitly is NOT). Rule: in a clean open outside the cruise
+# regime, if the game is EARLY (neither team's score has developed past
+# the threshold) → open 15 unconditionally; once scores develop → fall
+# straight back to champion (loose + cruise + desperation + spoiler =
+# the 'evaluate as the score develops' logic). Graduated thresholds on
+# max(team,opp) score — the rig picks where early-aggression stops
+# paying:  open:eg40 (<40), open:eg60 (<60), open:eg80 (<80).
+class EarlyGameOpen(Policy):
+    def __init__(self, thresh):
+        self.thresh = thresh
+        self.name = f"open:eg{thresh}"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb)
+        if b != 0:
+            return b, s                  # champion (incl. loose) bids
+        if chb != 0 or pb > 0:
+            return b, s                  # not a clean open spot
+        if (120 - ts) <= 15 and os <= 85:   # cruise / ahead-protection
+            return b, s
+        if max(ts, os) >= self.thresh:   # scores developed → champion judges
+            return b, s
+        return 15, bidding.find_best_trump_suit(hand)['suit']  # early → always 15
+
+
+for _t in (40, 60, 80):
+    REGISTRY[f"open:eg{_t}"] = EarlyGameOpen(_t)
+
+
+# DESPERATION-GUARDED OPEN (opt-in; champion default off). User insight
+# (2026-05-17), verified in code: the -2.11pt comeback drag of
+# open:always is NOT an inherent cost of aggression — it is a LEAK. When
+# desperation is active (they_need<=15 & we_need>0 == opp>=105 & we
+# behind), the desperation block OWNS that regime: with opp_has_dealer it
+# returns 20-fight / pass; but in the not-opp_has_dealer weak-hand case
+# it FALLS THROUGH to the (baked) loose-open, which bids 15 on junk and
+# deepens the loss. Fix = let desperation own that regime: gate the open
+# with `not desperation`. Champion is called with loose OFF, then the
+# open is re-applied here WITH the desperation guard (and the existing
+# cruise guard), so the leak is removed at the source.
+#   open:ndloose  minimal: shipped loose condition + desperation guard
+#                 (pure leak-fix of the SHIPPED rule, hand cond kept)
+#   open:nd       maximal: UNCONDITIONAL clean-open + desperation guard
+#                 (= open:always with the comeback leak removed)
+class DespGuardedOpen(Policy):
+    def __init__(self, unconditional):
+        self.unconditional = unconditional
+        self.name = "open:nd" if unconditional else "open:ndloose"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        # champion WITHOUT baked loose — so desperation/standard decide
+        # first; loose's in-desperation leak cannot fire at the source.
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_loose_open=False)
+        if b != 0:
+            return b, s                       # champion (incl. desp) bids
+        if chb != 0 or pb > 0:
+            return b, s                       # not a clean open spot
+        we_need, they_need = 120 - ts, 120 - os
+        if we_need <= 15 and os <= 85:        # cruise / ahead-protection
+            return b, s
+        if they_need <= 15 and we_need > 0:   # DESPERATION owns this regime
+            return b, s                       # → defer (no junk 15 leak)
+        fb = bidding.find_best_trump_suit(hand)
+        suit, tc = fb['suit'], fb['trumpCount']
+        if self.unconditional:
+            return 15, suit
+        hasAH = bidding.has_ace_hearts(hand)
+        hasAT = bidding.has_ace_trump(hand, suit)
+        return (15, suit) if (tc >= 3 or hasAH or hasAT) else (b, s)
+
+
+REGISTRY["open:ndloose"] = DespGuardedOpen(False)
+REGISTRY["open:nd"]      = DespGuardedOpen(True)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# CT-GAMEPOINT-BAIT15 — bait-the-AI exploit challenger
+# ─────────────────────────────────────────────────────────────────────────
+# Hypothesis: the human exploit of opening 15 on garbage at own game-point
+# (score >= 105) forces the AI into a mandatory desperation overbid to 20
+# on any hand — the AI cannot refuse because the plain champion code at
+# bidding.py line 197 returns 20 unconditionally when (opp_bid_15 AND
+# they_can_win_15). The human then defends against a coerced, probably-
+# doomed 20-bid. This challenger measures the EXPLOIT SEVERITY: does a
+# seat that always opens 15 on garbage when it is at game-point (we_need
+# <= 15 and no bid yet) beat the champion?
+#
+# Implementation: when cutthroat AND we_need <= 15 AND current_high_bid
+# == 0, open 15 on the best-suit regardless of hand strength. Otherwise
+# fall through to champion decide_bid. In the sim, team_scores == the
+# individual player's score (cutthroat: no partner), so we_need =
+# 120 - team_scores measures how far THAT SEAT is from winning.
+#
+# C1+C2 coalition defaults ON (same as all other cutthroat challengers —
+# required for the re-test to match the current champion baseline).
+# dealer_score kwarg threaded through to champion decide_bid.
+class CutthroatGamepointBait15(Policy):
+    name = "ct-gamepoint-bait15"
+
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb, dealer_score=-1):
+        we_need = 120 - ts
+        if we_need <= 15 and chb == 0:
+            # At game point with no prior bid: open 15 on garbage to bait
+            # the AI into a forced-20 overbid via the desperation block.
+            fb = bidding.find_best_trump_suit(hand)
+            return 15, fb['suit']
+        # Otherwise use champion-cutthroat bidding (all defaults apply).
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True,
+                                  cutthroat_surgical_tight_20=True,
+                                  cutthroat_allow_5ahat_25=True,
+                                  cutthroat_opp_has_dealer_always=True,
+                                  cutthroat_bag_threatening_dealer=True,
+                                  dealer_score=dealer_score)
+
+
+REGISTRY["ct-gamepoint-bait15"] = CutthroatGamepointBait15()
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# CT-DESP-FIX-GATE-FORCED-20 — fix for the desperation forced-20 exploit
+# ─────────────────────────────────────────────────────────────────────────
+# Hypothesis: gating the forced-20 overbid on can20_60 (the standard
+# hand-quality gate) neutralizes the human bait-15 exploit without
+# harming the non-exploit case. When an opp bids 15 at game-point but
+# the defending AI's hand genuinely justifies 20, it still overbids.
+# When the hand is junk (can20_60 == False), it passes and defends the
+# garbage 15-bid instead of being coerced into a doomed 20.
+#
+# Partner mode bit-identical: the flag is forced False in the `else`
+# branch of bidding.decide_bid for non-cutthroat callers.
+# C1+C2 coalition defaults ON (same as champion-cutthroat baseline).
+# dealer_score kwarg threaded through.
+class CutthroatDespFixGateForced20(Policy):
+    name = "ct-desp-fix-gate-forced-20"
+
+    def __init__(self):
+        super().__init__(cutthroat=True,
+                         cutthroat_desp_fix_gate_forced_20=True,
+                         ai_flags={'cutthroat_c1_take_from_bidder': True,
+                                   'cutthroat_c2_dont_overtake': True})
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb, dealer_score=-1):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  cutthroat=True,
+                                  cutthroat_surgical_tight_20=True,
+                                  cutthroat_allow_5ahat_25=True,
+                                  cutthroat_opp_has_dealer_always=True,
+                                  cutthroat_bag_threatening_dealer=True,
+                                  cutthroat_desp_fix_gate_forced_20=True,
+                                  dealer_score=dealer_score)
+
+
+REGISTRY["ct-desp-fix-gate-forced-20"] = CutthroatDespFixGateForced20()
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# OPEN-15 MINIMUM TRUMP FLOOR — PARTNER MODE CHALLENGERS
+# ─────────────────────────────────────────────────────────────────────────
+# OPEN-15 (v2.31.37, open:nd) unconditionally opens 15 on any clean opening
+# auction in partner mode, regardless of hand strength. The current champion
+# Policy() is bit-identical to open:nd (confirmed: open:nd vs champion =
+# exactly 50.00%, z=0.00 at 20k deals). Concern: open:nd fires on genuinely
+# weak hands like pure-low tc=2 (no 5/J/AH/AT/K/Q of trump).
+#
+# DB analysis (bidding_sim_v2.db, 15-bid subcategories, no 5/J/AH):
+#
+#   sub-category          n          make%    EV     verdict
+#   ──────────────────── ────────   ──────   ─────  ───────
+#   K-or-better  tc=2    220,284    68.6%   +5.59   +EV
+#   K-or-better  tc=3+   194,625    74.7%   +7.41   +EV
+#   Q-only       tc=2    197,246    66.0%   +4.81   +EV
+#   Q-only       tc=3+   149,635    70.9%   +6.28   +EV (aggregated)
+#   AT-only      tc=2    124,576    68.3%   +5.48   +EV
+#   AT-only      tc=3+    91,342    73.0%   +6.90   +EV (aggregated)
+#   pure-low     tc=2    639,454    60.3%   +3.08   +EV  ← WORST CASE
+#   pure-low     tc=3+   235,244    64.8%   +4.45   +EV
+#
+# NAÏVE EV FINDING: every sub-category is positive EV at 15-bid, including
+# the worst case (pure-low tc=2: 60.3% make-rate, +3.08 EV). Break-even is
+# 50%. There is no EV-negative sub-category in the data. A simple per-hand
+# EV analysis says "no floor needed."
+#
+# HOWEVER, the rig told a different story. Because the quality gate causes
+# pure-low hands to PASS instead of opening, the contract shifts to the
+# DEALER (forced-bag at 15). The dealer's hand quality is random (averages
+# 63.5% make-rate vs the pure-low opener's 60.3%). More importantly, in
+# many open-15 scenarios the dealer IS on the opposing team. Suppressing
+# the pure-low open denies a weak contract from our team and bags the
+# dealer (opposing-team bidder) instead — a positive-EV exchange that
+# the per-hand analysis misses because it ignores game dynamics.
+#
+# Three challenger gates tested (each built on the DespGuardedOpen base
+# identical to the champion, so the delta isolates ONLY the quality gate):
+#
+#   open:min-qt  — gate on hasQT (Q of trump) or better. Suppresses 17.6%
+#                  of open:nd clean-open decisions (pure-low tc>=2 hands).
+#   open:min-kt  — gate on hasKT (K of trump) or better. Suppresses 23.7%
+#                  of open:nd clean-open decisions (also blocks Q-only).
+#   open:3trump  — gate on trumpCount >= 3. Suppresses 24.2%.
+#
+# RIG RESULTS (partner mode, symmetric A-vs-B vs Policy() champion):
+# NOTE: positive Δ = challenger wins MORE games than champion.
+#
+#   challenger    primary 20k          held-out 30k        direction
+#   ──────────── ──────────────────── ──────────────────  ─────────
+#   open:min-qt  +0.64pt z=+2.56 SIG  +0.50pt z=+2.43 SIG  REPLICATED
+#   open:min-kt  +0.71pt z=+2.84 SIG  +0.64pt z=+3.13 SIG  REPLICATED
+#   open:3trump  +0.46pt z=+1.83 n.s. (no held-out needed)  NEUTRAL
+#   open:nd      +0.00pt z=0.00 (self-test confirm: bit-identical to champ)
+#
+# INTERPRETATION: open:min-kt is the DOMINANT floor: more restrictive than
+# min-qt (suppresses Q-only opens as well), and held-out z=+3.13 is the
+# strongest signal. open:min-qt is also significant but weaker. open:3trump
+# does not clear z=2. The honor-based gate (K or better) is the sweet spot:
+# it targets the specific hands where the dealer-bag-dynamics are most
+# favorable.
+#
+# NOTE ON DIRECTION: "challenger wins MORE" means the quality-gated version
+# is BETTER than the open:nd champion. This is counter-intuitive given per-
+# hand EV analysis — pure-low hands individually make 60% — but makes sense
+# at the game level: passing pure-low forces the dealer to bag with a random
+# (slightly stronger on average) hand, and in roughly half those situations
+# the dealer is an opponent, converting a weak own-contract to an opponent-
+# bag opportunity. The game-level EV swamps the per-hand raw make-rate.
+class OpenMinQT(Policy):
+    """open:min-qt — OPEN-15 only fires if hand has Q of trump or higher.
+    Rig vs champion: primary 20k +0.64pt z=+2.56 SIGNIFICANT /
+    held-out 30k +0.50pt z=+2.43 SIGNIFICANT (replicated)."""
+    name = "open:min-qt"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        # Get base decision without loose open
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_loose_open=False)
+        if b != 0:
+            return b, s                       # standard bidding already acts
+        if chb != 0 or pb > 0:
+            return b, s                       # not a clean open spot
+        we_need, they_need = 120 - ts, 120 - os
+        if we_need <= 15 and os <= 85:        # cruise / ahead-protection
+            return b, s
+        if they_need <= 15 and we_need > 0:   # desperation owns this regime
+            return b, s
+        fb = bidding.find_best_trump_suit(hand)
+        suit, tc = fb['suit'], fb['trumpCount']
+        # Gate: must have Q of trump or better (K, AT, AH, J, 5 already
+        # handled by standard bidding). Use has_card to check Q and K.
+        hasQT = bidding.has_card(hand, 'Q', suit)
+        hasKT = bidding.has_card(hand, 'K', suit)
+        hasAT = bidding.has_ace_trump(hand, suit)
+        hasAH = bidding.has_ace_hearts(hand)
+        if hasQT or hasKT or hasAT or hasAH:
+            return 15, suit
+        return b, s
+
+
+class OpenMinKT(Policy):
+    """open:min-kt — OPEN-15 only fires if hand has K of trump or higher.
+    DOMINANT floor: rig vs champion: primary 20k +0.71pt z=+2.84 SIGNIFICANT /
+    held-out 30k +0.64pt z=+3.13 SIGNIFICANT (replicated, comeback +0.69pt
+    z=+2.02 SIGNIFICANT). Strongest signal of the three floor variants tested.
+    Suppress 23.7% of open:nd clean-open decisions (pure-low + Q-only hands)."""
+    name = "open:min-kt"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_loose_open=False)
+        if b != 0:
+            return b, s
+        if chb != 0 or pb > 0:
+            return b, s
+        we_need, they_need = 120 - ts, 120 - os
+        if we_need <= 15 and os <= 85:
+            return b, s
+        if they_need <= 15 and we_need > 0:
+            return b, s
+        fb = bidding.find_best_trump_suit(hand)
+        suit, tc = fb['suit'], fb['trumpCount']
+        # Gate: must have K of trump or better
+        hasKT = bidding.has_card(hand, 'K', suit)
+        hasAT = bidding.has_ace_trump(hand, suit)
+        hasAH = bidding.has_ace_hearts(hand)
+        if hasKT or hasAT or hasAH:
+            return 15, suit
+        return b, s
+
+
+class Open3Trump(Policy):
+    """open:3trump — OPEN-15 only fires if trumpCount >= 3.
+    Rig vs champion: primary 20k +0.46pt z=+1.83 NOT significant.
+    Suppresses 24.2% of open:nd clean-open decisions. Does not clear z=2
+    ship gate; depth gate less powerful than honor gate (open:min-kt)."""
+    name = "open:3trump"
+
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
+        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  enable_loose_open=False)
+        if b != 0:
+            return b, s
+        if chb != 0 or pb > 0:
+            return b, s
+        we_need, they_need = 120 - ts, 120 - os
+        if we_need <= 15 and os <= 85:
+            return b, s
+        if they_need <= 15 and we_need > 0:
+            return b, s
+        fb = bidding.find_best_trump_suit(hand)
+        suit, tc = fb['suit'], fb['trumpCount']
+        # Gate: must have at least 3 trump cards
+        if tc >= 3:
+            return 15, suit
+        return b, s
+
+
+REGISTRY["open:min-qt"] = OpenMinQT()
+REGISTRY["open:min-kt"] = OpenMinKT()
+REGISTRY["open:3trump"] = Open3Trump()
+
+# ALLVOID_DEDUCTION_GUARD (test challengers, 2026-08-26). See improved_ai.py
+# for the rule itself. Two variants: partner mode (vs "champion") and
+# cutthroat (vs "champion-cutthroat"), since the bug lives in shared code.
+REGISTRY["allvoid-guard-pm"] = Policy(
+    ai_flags={'allvoid_deduction_guard': True})
+REGISTRY["allvoid-guard-ct"] = Policy(
+    cutthroat=True,
+    ai_flags={'cutthroat_c1_take_from_bidder': True,
+              'cutthroat_c2_dont_overtake': True,
+              'ct_defender_lead_boss_always': True,
+              'allvoid_deduction_guard': True})
+
+# BIDDER_LASTTRUMP_PARTNER_RUFF (test challenger, 2026-10-10). See improved_ai.py.
+REGISTRY["lasttrump-ruff"] = Policy(
+    ai_flags={'bidder_lasttrump_partner_ruff': True})
+# Narrower variant: only when the lone trump is K or Q (rank 97-98), not the A.
+
+# ALLVOID_TRUE_VOIDS_ONLY (test challenger, 2026-10-10). See improved_ai.py.
+REGISTRY["allvoid-true-voids"] = Policy(
+    ai_flags={'allvoid_true_voids_only': True})
+
+
+# PBS_KNOWN_VOID / PBS_FLOOR (test challengers, 2026-10-22). Partner boss-save's
+# "opponents out of trump" check now honours what opponents have SHOWN:
+#   pbs-void  : known trump-void seats count as out (deduction only)
+#   pbs-floor : also the lose_floor deduction (lowest-trump convention, audited sound)
+REGISTRY["pbs-void"]  = Policy(ai_flags={'pbs_known_void': True})
+REGISTRY["pbs-floor"] = Policy(ai_flags={'pbs_floor': True})
+
+# PBS_HARDVOID (test challengers, 2026-11-11). Partner boss-save also fires when
+# both opps are HARD trump-void even if the bidder's estimated trump is 0.
+REGISTRY["pbs-hardvoid"]    = Policy(ai_flags={'pbs_hardvoid': True})
+REGISTRY["pbs-hardvoid-t3"] = Policy(ai_flags={'pbs_hardvoid_t3': True})
+
+# BIDDER_PARTNER_TOP_OFFSUIT (test challengers, 2026-11-11; user round CCYK6G T3).
+REGISTRY["bpto-floor"] = Policy(ai_flags={'bidder_partner_top_offsuit': True})
+REGISTRY["bpto-est"]   = Policy(ai_flags={'bidder_partner_top_offsuit_est': True})
 
-'champion' is the faithful v2.31.23 baseline (its self-test must read ~50%).
-The 'no-*' policies ablate a hand-coded bidding rule so the evaluator can
-measure whether that made-up rule actually helps, is neutral, or hurts.
-"""
-
-from typing import List, Tuple, Optional
-from game_engine import Card, Suit
-from bidding_simulator_v2.policy import Policy
-from bidding_simulator_v2 import bidding
-
-
-class NoDesperation(Policy):
-    name = "no-desperation"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_desperation=False, enable_cruise=True)
-
-
-class NoCruise(Policy):
-    name = "no-cruise"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_desperation=True, enable_cruise=False)
-
-
-class NoDespNoCruise(Policy):
-    name = "no-desp-no-cruise"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_desperation=False, enable_cruise=False)
-
-
-# Every discrete situational CARD-PLAY rule that has an ablation flag in
-# improved_ai.py. Audit turns each OFF (one at a time) vs champion.
-CARD_RULES = [
-    "bidder_boss_partner_save",
-    "bidder_boss_weak_partner_save",
-    "following_partner_boss_save",
-    "following_all_remaining_void",
-    "following_2nd_man_offsuit_boss_save",
-    "following_2nd_man_low_trump_renege",
-    "bidder_after_void_lead",
-    "bidder_endgame_trump_timing",
-    # bidder_trump_save_lead REMOVED v2.31.34 — ablation proved net-negative
-    # (held-out +0.38pt z=2.62 to delete); rule no longer exists in code.
-    "defender_partner_trump_load",
-    "signal_3rd_man_high",
-    "partner_low_trump_signal_response",
-    "minwin_after_void",   # SHIPPED v2.31.27, champion default-ON (strict);
-                           # off: ablation reverts to pre-2.31.27 max-trump.
-    "holdup_2nd_def",      # SHIPPED v2.31.28 (hd:hi98), champion default-ON;
-                           # off: ablation reverts to pre-2.31.28 over-ruff.
-    "endgame_lead_boss",   # SHIPPED v2.31.30 (el:strict), champion default-ON;
-                           # off: ablation reverts to pre-2.31.30 boss-save.
-    "partner_save_boss5",  # FIX v2.31.39, champion default-ON: never burn
-                           # the 5 of trump (rank 102, unbeatable) to
-                           # respond to a partner-winning low-trump signal —
-                           # it is a guaranteed future trick. off: reverts.
-    "defender_cash_boss_ah",  # FIX v2.31.43, champion default-ON: a
-                           # defender FOLLOWING who can win the current
-                           # trick with A♥ while the bidding side is
-                           # winning it cashes A♥ now when it is PROVABLY
-                           # unbeatable for this trick (5/J-trump gone or
-                           # all later seats known trump-void) — instead of
-                           # dribbling it to the dead last trick because
-                           # is_card_boss can't prove boss while J-trump is
-                           # in the kitty (user-reported v2.31.42). off:
-                           # reverts to the kitty-blind is_card_boss path.
-    "partner_signal_overtake_guard",  # SHIPPED v2.31.51, champion
-                           # default-ON (rig +0.08/+0.09, comeback
-                           # +0.10/+0.12, n.s.). Don't overtake a partner
-                           # already winning with trump when a not-void
-                           # later opp could hold a higher trump (futile).
-                           # off: reverts to always-respond-to-signal.
-    "def_ruff_be_eg",          # SHIPPED v2.31.46, champion default-ON
-                           # (rig-NEUTRAL): defender cheap-ruffs the bidder's
-                           # endgame offsuit Ace instead of strict 2nd-man-
-                           # low sluff. off: reverts to strict 2nd-man-low.
-    "partner_off_boss_save",   # SHIPPED v2.31.46, champion default-ON
-                           # (rig-NEUTRAL): don't ruff partner's winning
-                           # offsuit card when it is the led-suit boss AND
-                           # all remaining opps provably trump-void. off:
-                           # reverts to always-ruff-to-secure.
-    "defender_cash_ah_jlate",  # SHIPPED v2.31.45, champion default-ON
-                           # (rig-NEUTRAL: 50.04% primary / 50.03% held-out,
-                           # z<0.35, comeback ~0). Looser defender A♥ cash:
-                           # 5-trump gone + trick>=4 ⇒ treat J as dead even
-                           # if unseen (would have been played by trick 4).
-                           # Shipped for intuitive play / AI-logic trust at
-                           # zero win-rate cost (v2.31.30 precedent). off:
-                           # reverts to the strict 5-AND-J-provably-gone gate.
-    "safe_pad4",               # FIX v2.31.55, champion default-ON: the
-                           # _pad4 helper pads partial tricks for trick_winner
-                           # probes (canBeat / cheapest-winner / 3rd-man-high).
-                           # Legacy dummy was hardcoded 2♣ — which IS trump
-                           # in clubs-trump games and ranks 87, above the real
-                           # 3-10 of clubs. canBeat therefore misreported
-                           # "can't beat" for low-trump candidates in clubs
-                           # trump, and the AI dumped offsuit instead of
-                           # over-trumping (user-reported, round T4 north
-                           # held 4♣ vs 8♣). Fix: dummy is 2 of a non-trump
-                           # suit. Primary 20k +0.39pt z=1.56 / held-out 30k
-                           # +0.38pt z=1.85 (replicated, comeback +0.18/+0.22
-                           # n.s.). off: reverts to the buggy 2♣ dummy.
-    "bidder_lowtrump_dump",    # SHIPPED v2.31.62, champion default-ON.
-                           # User-reported round: bidder N held only 2♥ as
-                           # last trump on trick 3 of a 20-bid round, opps
-                           # had A♥ available; leading 2♥ guaranteed-lost
-                           # the trick and the bid. Rule (NARROW): if I'm
-                           # bidder leading, have EXACTLY 1 trump left, and
-                           # it is rank ≤ 87 (low-number trump, not Q/K/A/J/5),
-                           # AND there's an unaccounted-for higher trump,
-                           # lead my highest OFFSUIT instead. Rig: primary
-                           # 20k +0.50pt z=+2.00 / held-out 30k +0.38pt
-                           # z=+1.85 (replicated, comeback +0.65/+0.10).
-                           # Earlier broad variant (any my_max_trump <
-                           # highest_remaining) was -2.54pt z=-10.16 — gate
-                           # MUST stay narrow.
-    "off2_beat_off_bidlead",   # SHIPPED v2.31.66, champion default-ON
-                           # (rig-NEUTRAL: +0.01pt z=+0.05 primary 20k,
-                           # comeback -0.01 z=-0.03 — v2.31.30 trust-fix
-                           # precedent). The "2nd-man-low" mantra is a
-                           # TRUMP heuristic; on OFFSUIT, 2nd-man defender
-                           # following a BIDDER offsuit lead should beat
-                           # with the cheapest higher led-suit card.
-                           # Forces 3rd-man (bidder's partner) to over-
-                           # beat with higher offsuit, commit trump, or
-                           # concede — and saves 4th-man (my partner)
-                           # from having to ruff in. User-derived from a
-                           # screenshot where the AI played strict-low.
-                           # off: reverts to strict 2nd-man-low.
-    "take_t4_2nd",             # SHIPPED v2.31.57, champion default-ON.
-                           # On trick 4+, 2nd-man plays the CHEAPEST card
-                           # that wins the partial-trick state — regardless
-                           # of trump vs offsuit, renege capability, or
-                           # role. The general principle: at trick 4 the
-                           # winner of this trick leads the final trick
-                           # with all other players holding only ONE card
-                           # each — positional advantage worth taking
-                           # higher cards for. Strict 2nd-man-low used to
-                           # "save" for later but at trick 4 there is
-                           # nothing later to save for. User-derived
-                           # 2026-05-21 from a round-T4 screenshot where
-                           # West reneged J♥ on the bidder's 2♥ lead,
-                           # bid made; broader rule generalizes to all
-                           # roles ("take trick 4 by any means"). Rig:
-                           # primary 20k +0.60pt z=2.42, held-out 30k
-                           # +0.70pt z=3.41 (replicated, comeback +0.54
-                           # directional). off: reverts to strict 2nd-
-                           # man-low at trick 4+.
-    "partner_winning_renege_prune",  # FIX v2.31.39, champion default-ON:
-                           # partner-winning block treats a reneging opp as
-                           # trump-void if every possibly-reneged trump is
-                           # PROVABLY GONE (my hand OR already played), not
-                           # just "all in my hand". Stops the boss 5/J/AH
-                           # being dumped on an already-won trick (user-
-                           # reported T3). off: reverts to hand-only check.
-    # following_2nd_man_after_void / ruff_cheap (v2.31.25) and trick3_exception
-    # (v2.31.26) removed — audit net-negative, no longer in code.
-]
-
-
-def _card_off(rule):
-    p = Policy()
-    p.name = f"off:{rule}"
-    p.ai_flags = {rule: False}
-    return p
-
-
-REGISTRY = {
-    "champion":           Policy(),            # baseline self-test → ~50%
-    "no-desperation":     NoDesperation(),
-    "no-cruise":          NoCruise(),
-    "no-desp-no-cruise":  NoDespNoCruise(),
-    # CUTTHROAT baseline. Bidding side gated for FFA (no partner concept —
-    # partner_bid forced to 0, spoiler off). Card-play coalition rules
-    # C1 (take_from_bidder) and C2 (don't_overtake — pass-2 gated on
-    # _bidder_has_played) default-ON since v2 (this commit). The pre-coalition
-    # baseline (both flags False) is preserved as opt-in 'cutthroat-stripped'
-    # below for ablation. Self-test = 4 of these against each other should
-    # still win ~25% each (all seats run the same policy, symmetric).
-    "champion-cutthroat": Policy(cutthroat=True,
-                                 ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                           'cutthroat_c2_dont_overtake': True,
-                                           'ct_defender_lead_boss_always': True}),
-}
-CHAMPION_CUTTHROAT = REGISTRY["champion-cutthroat"]
-
-# CT-DEFENDER-LEAD-BOSS-ALWAYS — SHIPPED v2.31.133 (jack2112 card-play
-# mining 2026-07-24; default-ON in champion-cutthroat above since
-# 2026-07-24). jack2112's cutthroat first-place rate (52.9%/17 games) is
-# nearly double the next-best logged player (32.1%). Card-play divergence
-# mining found his SIGNATURE move (stealing a contested 15-bid to 20) is
-# actually a leak (~21% make rate empirically). The one candidate that
-# held up: as a DEFENDER, he commits his boss trump (leads it) far more
-# readily than the shipped "save it, lead offsuit to drain" rule allows —
-# roughly double a comparison player's rate on the divergences where this
-# applied (small real-game sample, not independently outcome-tested there).
-# This mirrors the BIDDER's own rule, which is already fully unconditional
-# in cutthroat (zero exceptions — see improved_ai.py boss-card block).
-# Hypothesis: with no partner to split the "drain trump first" benefit,
-# immediately denying the sole bidder a trick outweighs saving the boss for
-# later. Rig (cutthroat_evaluator, 1-vs-3 first-place rate): +0.61pt
-# z=+2.82 primary 10k / +0.52pt z=+2.96 held-out 15k (replicated). Real-game
-# data was the hypothesis generator, not the validation, per the standard
-# workflow. Ablation (revert to pre-ship behavior) kept for reference:
-REGISTRY["ct-defboss-off"] = Policy(
+# VOID_EST_ZERO (test challengers, 2026-11-11). Hard-void seat => est trump 0.
+REGISTRY["void-est-zero"]    = Policy(ai_flags={'void_est_zero': True})
+REGISTRY["void-est-zero-ct"] = Policy(
     cutthroat=True,
     ai_flags={'cutthroat_c1_take_from_bidder': True,
               'cutthroat_c2_dont_overtake': True,
-              'ct_defender_lead_boss_always': False},
-    name="ct-defboss-off")
-
-# BASELINE-PARTNER-IN-CUTTHROAT (chunk B measurement policy): partner-mode
-# champion (cutthroat=False — partner rules ON, partner_bid honored, spoiler
-# default off) placed in 1 cutthroat seat vs 3x champion-cutthroat (stripped).
-# This is THE delta measurement: does stripping the partner rules from the
-# cutthroat AI help, hurt, or wash? Baseline win% < 25% → stripping is an
-# improvement (the stripped version beats partner-AI in cutthroat).
-# Baseline win% > 25% → stripping HURT and we need to investigate.
-BASELINE_PARTNER_IN_CUTTHROAT = Policy(cutthroat=False)
-BASELINE_PARTNER_IN_CUTTHROAT.name = "baseline-partner-in-cutthroat"
-REGISTRY["baseline-partner-in-cutthroat"] = BASELINE_PARTNER_IN_CUTTHROAT
-
-for _r in CARD_RULES:
-    REGISTRY[f"off:{_r}"] = _card_off(_r)
-
-
-# CUTTHROAT BIDDING PHASE 2A — three tightening variants on top of
-# champion-cutthroat (Chunk A baseline). Each isolates one threshold class
-# so the rig attributes win-rate delta to that single change.
-#
-#   cutthroat-tight-20: 20-bid requires >=4 trump (drops 5+J@2-3 trump,
-#                       5+AH@3 trump). Partner-era patterns assumed partner
-#                       could cover one trick; solo can't.
-#   cutthroat-tight-25: 25-bid requires 5+J+AH OR 5+J+T3 (i.e. the J anchor
-#                       AND either AH or 5-trump depth). Drops 5+AH+T3
-#                       (no J → solo can't extract J safely) AND the
-#                       opp_bid25→30 demotion routes through H3.
-#   cutthroat-kill-30:  30-bid requires 5+J+AH+AT+T1 (=>5 trump incl. all
-#                       four top anchors). Drops 5+J+AH@T4 (no AT) and
-#                       5+J@T5 (no AH) — both 30-bid suicide solo.
-#
-# All three set cutthroat=True so the cutthroat normalization (partner_bid=0,
-# spoiler off, partner-mode tightening flags FORCED off) fires correctly.
-# Partner-mode bit-identity is preserved by the `else: cutthroat_tight_*=False`
-# guard inside bidding.decide_bid.
-class CutthroatTight20(Policy):
-    name = "cutthroat-tight-20"
-    def __init__(self):
-        super().__init__(cutthroat=True)
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  cutthroat=True, cutthroat_tight_20=True)
-
-
-class CutthroatTight25(Policy):
-    name = "cutthroat-tight-25"
-    def __init__(self):
-        super().__init__(cutthroat=True)
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  cutthroat=True, cutthroat_tight_25=True)
-
-
-class CutthroatKill30(Policy):
-    name = "cutthroat-kill-30"
-    def __init__(self):
-        super().__init__(cutthroat=True)
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  cutthroat=True, cutthroat_kill_30=True)
-
-
-REGISTRY["cutthroat-tight-20"] = CutthroatTight20()
-REGISTRY["cutthroat-tight-25"] = CutthroatTight25()
-REGISTRY["cutthroat-kill-30"]  = CutthroatKill30()
-
-
-# SURGICAL TIGHT-20 — SHIPPED v2.31.77 (this commit) as champion-cutthroat
-# default-on. Pattern-targeted demotion driven by the
-# cutthroat_pattern_makerate.py output @ 2000 deals (commit 4b4858d).
-# Symmetric A-vs-B set-rate (4 seats each config, deals=2000):
-#   primary  seed-base=0       Δ=-1.24pt z=-3.05 SIGNIFICANT
-#                              (15s -2.18 z=-4.61, 20s +0.66 z=+0.79)
-#   held-out seed-base=5000000 Δ=-0.98pt z=-2.42 SIGNIFICANT (replicated)
-#                              (15s -1.82 z=-3.87)
-# Direction: NEGATIVE Δ set-rate = GOOD here (fewer overall sets — healthier
-# bidding population). Demoted 20-bid hands fall through to 15-bid; their
-# pattern-level make-rate jumps from ≤36% at 20 to 35-88% at 15.
-#
-# The coarse cutthroat_tight_20 above (trump_count<4) drops ALL T2/T3
-# 20-bids including 5+J@T3 (analyzer make-rate ~57.6% = +EV); the surgical
-# rule targets ONLY the make-rate≤36% patterns and lets 5J+T3 / 5+T4 keep
-# bidding 20.
-#
-# AGGRESSIVE variant — surgical + ALSO demotes 5+T4 (n=232, make-rate
-# 53.9%, borderline). Result @ 2000 deals: a STATISTICAL TIE vs surgical
-# (Δ=-1.23/-0.99 primary/held-out vs surgical -1.24/-0.98). The extra
-# 5+T4 demotion adds ~zero EV. Shipped: SURGICAL (minimum intervention).
-# Aggressive kept as opt-in for forward reference.
-#
-# This variant is retained as a CHALLENGER name even though its behavior
-# is now bit-identical to champion-cutthroat — useful for ablation (test
-# champion-cutthroat WITHOUT the shipped surgical rule by registering a
-# without-surgical variant, future work).
-class CutthroatSurgicalTight20(Policy):
-    name = "cutthroat-tight-20-surgical"
-    def __init__(self):
-        super().__init__(cutthroat=True)
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  cutthroat=True,
-                                  cutthroat_surgical_tight_20=True)
-
-
-class CutthroatAggressiveTight20(Policy):
-    name = "cutthroat-tight-20-aggressive"
-    def __init__(self):
-        super().__init__(cutthroat=True)
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  cutthroat=True,
-                                  cutthroat_aggressive_tight_20=True)
-
-
-# ABLATION: champion-cutthroat WITHOUT the shipped surgical tight-20 rule
-# (the meaningful regression test now that surgical is shipped default-ON).
-# Use this as the BASELINE to measure whether the surgical rule keeps
-# paying as the downstream coalition / L1-L3 rules evolve.
-class NoSurgicalTight20(Policy):
-    name = "no-surgical-tight-20"
-    def __init__(self):
-        super().__init__(cutthroat=True,
-                         cutthroat_surgical_tight_20=False,
-                         ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                   'cutthroat_c2_dont_overtake': True})
-
-
-REGISTRY["cutthroat-tight-20-surgical"]   = CutthroatSurgicalTight20()
-REGISTRY["cutthroat-tight-20-aggressive"] = CutthroatAggressiveTight20()
-REGISTRY["no-surgical-tight-20"]          = NoSurgicalTight20()
-
-
-# SURGICAL TIGHT-15 — TESTED, NO-SHIP (this commit, post-v2.31.77 baseline).
-# Pattern-targeted demotion of natural-15 bids derived from
-# cutthroat_pattern_makerate.py @ 3000 deals against champion-cutthroat
-# (the surgical tight-20 already shipped). Demotes two patterns:
-#   hasJ-alone with <=2 trump (J+T1/J+T2 family, n~1,700 bids, make-rate
-#                              0-16% at 15 — clear EV-negative population)
-#   has5-alone with <=2 trump (5+T1/5+T2 family, n~3,400 bids, make-rate
-#                              3.5-33% at 15 — clear EV-negative population)
-# Layered ON TOP of the shipped surgical tight-20.
-#
-# Symmetric set-rate (cutthroat-tight-15-surgical vs champion-cutthroat,
-# 4 seats each, deals=2000):
-#   primary  seed-base=0       Δ=-0.44pt z=-1.09 not significant
-#                              15s +1.13 z=+2.40, 20s -1.93 z=-2.19,
-#                              25s -3.39 z=-2.45
-#   held-out seed-base=5000000 Δ=-0.49pt z=-1.20 not significant (same dir)
-#                              15s +1.29 z=+2.75, 20s -2.44 z=-2.75,
-#                              25s -3.22 z=-2.31
-# 1-vs-3 win-rate (lone surgical-tight-15 vs 3 champion-cutthroat,
-# deals=2000):
-#   primary  win=24.00% z=-2.07 SIGNIFICANT NEGATIVE
-#   held-out win=22.99% z=-4.16 SIGNIFICANT NEGATIVE (replicated)
-# Place-score modestly positive (+0.047 / +0.039 z=+3.75 / +3.14) — the
-# rule trades 1st-place wins for avoiding 4th place. Symmetric headline
-# direction is mildly positive but z<2; 1-vs-3 win-rate decisively
-# negative. NO SHIP. Diagnosis: passing weak natural-15s in cutthroat is
-# a SPOILER play — when EVERY seat does it the auction-bidder pool gets
-# slightly cleaner, but when one seat does it solo, that seat surrenders
-# auctions to opps who then make them. The bidder's bag at 15 with a
-# weak hand still nets some EV (~20% of made-bid value) which the
-# surgical-tight-15 seat forfeits. Kept as opt-in challenger.
-#
-# RE-TEST POST-COALITION (2026-06-01, against current champion with C1+C2
-# coalition + bag-threatening-dealer + ohd-always + open-15-gate, etc.):
-# Symmetric set-rate (cutthroat-tight-15-surgical vs champion-cutthroat):
-#   primary  20k seed 0   Δ=+2.93pt z=+22.83 SIGNIFICANT NEGATIVE
-#   held-out 30k seed 5M  Δ=+2.92pt z=+27.90 SIGNIFICANT NEGATIVE (rep)
-# 1-vs-3 win rate:
-#   primary  20k seed 0   win=21.78% z=-21.02 SIGNIFICANT NEGATIVE
-#   held-out 30k seed 5M  win=21.66% z=-26.73 SIGNIFICANT NEGATIVE (rep)
-# Worse than the original measurement on every metric — the layered
-# cutthroat improvements (coalition card-play, etc.) MAGNIFY the EV the
-# rule forfeits (the bidder's bagged-15 EV is now larger because the
-# bidder gets better card-play too). Still NO SHIP. Updated also to
-# include C1+C2 ai_flags in the policy so the re-test matched the rest
-# of the cutthroat lineup (the original test pre-dated those flags).
-# Original decide_bid signature was missing dealer_score; harness passes
-# that kwarg now (added 2026-06-01 along with the re-test).
-class CutthroatSurgicalTight15(Policy):
-    name = "cutthroat-tight-15-surgical"
-    def __init__(self):
-        super().__init__(cutthroat=True,
-                         ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                   'cutthroat_c2_dont_overtake': True})
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb, dealer_score=-1):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  cutthroat=True,
-                                  cutthroat_surgical_tight_20=True,
-                                  cutthroat_surgical_tight_15=True,
-                                  dealer_score=dealer_score)
-
-
-REGISTRY["cutthroat-tight-15-surgical"]   = CutthroatSurgicalTight15()
-
-
-# CUTTHROAT ALLOW 5+AH+AT → 25 — SHIPPED this commit as champion-cutthroat
-# default-on (Policy.cutthroat_allow_5ahat_25=True). Cutthroat-only;
-# partner-mode bit-identity preserved by the `else` safety guard in
-# bidding.decide_bid that force-resets the flag to False.
-#
-# Derived from a robr bidLogCutthroat divergence: he bid 25 on a
-# 5+AH+AT+T1 hand (5 of trump + A♥ + A of trump + 1 lower trump, no J)
-# and made it. EV math: 4 likely tricks @ 5pt + 5pt high-trump bonus =
-# 25pt. Pre-rule champion-cutthroat passed that hand against a 20-bid
-# (natural 20-bid → bid <= chb → pass). Rule overrides to 25 when the
-# auction stands at 20 and the hand has has5 ∧ hasAH ∧ hasAT ∧ !hasJ ∧
-# trump_count >= 4.
-#
-# Symmetric set-rate (cutthroat-allow-5ahat-25 vs champion-cutthroat,
-# 4 seats each, deals=2000):
-#   primary  seed-base=0       Δ=-1.49pt z=-3.67 SIGNIFICANT NEGATIVE
-#                              (15s -1.71 z=-3.64, 20s -0.99 z=-1.13,
-#                              25s -0.90 z=-0.71)
-#   held-out seed-base=5000000 Δ=-1.03pt z=-2.53 SIGNIFICANT NEGATIVE
-#                              (replicated; 15s -1.21 z=-2.60)
-# 1-vs-3 win-rate (lone allow-5ahat-25 vs 3 champion-cutthroat,
-# deals=2000):
-#   primary  win=26.54% z=+3.18 SIGNIFICANT POSITIVE (+1.54pt over 25%)
-#   held-out win=26.67% z=+3.46 SIGNIFICANT POSITIVE (replicated)
-# Per-pattern make-rate at the new 25-bid level (post-draw 5AHAT+T4,
-# the most common promoted bucket): ~47% direct — below the 60%
-# heuristic floor, but the rule's EV comes mainly from DENYING the
-# opp's 20-bid (~70% baseline make-rate at 20). Spoiler-dynamics
-# captured by the symmetric headline. Ship justified by both primary
-# metrics significant + replicated on disjoint seeds.
-class CutthroatAllow5AHAT25(Policy):
-    name = "cutthroat-allow-5ahat-25"
-    def __init__(self):
-        super().__init__(cutthroat=True)
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  cutthroat=True,
-                                  cutthroat_surgical_tight_20=True,
-                                  cutthroat_allow_5ahat_25=True)
-
-
-REGISTRY["cutthroat-allow-5ahat-25"] = CutthroatAllow5AHAT25()
-
-
-# ABLATION: champion-cutthroat WITHOUT the shipped allow-5ahat-25 rule
-# (regression-test baseline now that the rule is default-on). Use this
-# to measure whether the rule keeps paying as future cutthroat work
-# evolves.
-class NoAllow5AHAT25(Policy):
-    name = "no-allow-5ahat-25"
-    def __init__(self):
-        super().__init__(cutthroat=True,
-                         cutthroat_allow_5ahat_25=False,
-                         ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                   'cutthroat_c2_dont_overtake': True})
-
-
-REGISTRY["no-allow-5ahat-25"] = NoAllow5AHAT25()
-
-
-# CUTTHROAT UPBID15-ON (opt-in challenger). Live index-test.html /
-# index.html (through v2.31.82) has UPBID15 (v2.31.56) firing in cutthroat
-# unintentionally — the partner-mode rule that promotes a natural 15-bid
-# to 20 when the auction stands at 15 was never gated. The Python sim has
-# had it forced OFF in cutthroat since the cutthroat infra was built
-# (bidding.decide_bid line 145 + comment "rules live in index.html …
-# never back-ported"), so the shipped champion-cutthroat = UPBID15-OFF.
-#
-# Symptom (robr screenshot a265ca87, 2026-05-29): East bid 20♠ on
-# J♠+4♠+10♠+10♦+6♣ in cutthroat. has5=False, hasAH=False, hasAT=False,
-# trump_count=3 → does not match any base 20-bid rule → falls into 15
-# via `hasJ`. UPBID15 then sees chb=15 (N had bid 15) and promotes to 20.
-# In partner mode the partner-converts-borderline-15s assumption gives
-# UPBID15 +5.42pt. In cutthroat 3 coordinated defenders set this hand
-# routinely → hypothesis is large negative.
-#
-# This challenger forces UPBID15 ON in cutthroat by passing
-# `cutthroat_force_upbid15=True`. Symmetric A-vs-B set-rate test confirms
-# the magnitude before we ship the JS gate.
-class CutthroatUpBid15On(Policy):
-    name = "cutthroat-upbid15-on"
-    def __init__(self):
-        super().__init__(cutthroat=True,
-                         cutthroat_force_upbid15=True,
-                         ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                   'cutthroat_c2_dont_overtake': True})
-
-
-REGISTRY["cutthroat-upbid15-on"] = CutthroatUpBid15On()
-
-
-# CUTTHROAT FORCE-UPBID15-WITH-5 (opt-in challenger; champion-cutthroat
-# default OFF). DOCUMENTED NO-SHIP. Surgical tight gate on the cutthroat-
-# disabled UPBID15 rule: fires ONLY when we hold the 5 of trump. v2.31.83
-# killed broad UPBID15 in cutthroat (+14pt set-rate, catastrophic). The
-# tight variant was motivated by bid_divergence_miner_cutthroat.py against
-# robr's score-clean bidLogCutthroat (12/12 of his upbid-15→20 hands had
-# the 5 of trump, 0 without). Hypothesis: the 5 alone guarantees 10 points
-# solo (1 trick + highest-trump bonus) so the tight version might be +EV
-# where the broad rule wasn't.
-#
-# Implementation: runs as a SEPARATE block in bidding.decide_bid after the
-# cutthroat normalization, so it fires regardless of enable_upbid15 (which
-# is force-off in cutthroat). Gate: cutthroat AND bid==15 AND chb==15 AND
-# player_index != dealer AND has5.
-#
-# Symmetric set-rate (cutthroat-force-upbid15-with-5 vs champion-cutthroat):
-#   primary  20k seed 0   Δ=+6.43pt z=+51.19 SIGNIFICANT NEGATIVE
-#   held-out 30k seed 5M  Δ=+6.49pt z=+63.27 SIGNIFICANT NEGATIVE (rep)
-# Direction: positive Δ = challenger sets MORE = bad rule. Even gated to
-# has5, the rule still hands 3 coordinated defenders too many wins. Less
-# catastrophic than broad UPBID15 (+14pt) but still emphatically negative.
-# Kept as opt-in challenger; no JS port.
-class CutthroatForceUpbid15With5(Policy):
-    name = "cutthroat-force-upbid15-with-5"
-    def __init__(self):
-        super().__init__(cutthroat=True,
-                         cutthroat_force_upbid15_with_5=True,
-                         ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                   'cutthroat_c2_dont_overtake': True})
-
-
-REGISTRY["cutthroat-force-upbid15-with-5"] = CutthroatForceUpbid15With5()
-
-
-# CUTTHROAT DESPERATION-TIGHT-20 (candidate challenger). Two robr screenshots
-# in a row (2026-05-29) hit the same desperation block leak: RULE 6 of the
-# DESPERATION bid logic (preemptive 20 when an opp can win with 15 and no one
-# has bid yet) gates on `can20_60`, the partner-mode "60%+ make-rate" table.
-# That table includes:
-#   - AH_T4   (64.05%) ← robr screenshot 1: E bid 20♠ on A♥+T4 no other top
-#   - J_T3    (63.5%)  ← robr screenshot 2: W bid 20♥ on J+T3 (pre-draw)
-#   - AT_T4   (61.47%)
-#   - J_AH_T2 (66.3%)
-#   - J_AT_T2 (62.69%)
-# All five paths fire RULE 6 with no genuine 20-bid strength, on the theory
-# that the leader will otherwise make 15 and win. In partner mode this is
-# net-positive (partner can cover the sacrifice). In cutthroat the leader
-# only needs ~5 trick points to win and 3 coordinated defenders make the
-# bidder bust → the sacrifice converts to leader-wins-via-defender-tricks.
-#
-# This challenger tightens RULE 6 in cutthroat to require either has5 (the
-# unbeatable trump bonus carries a hand at any seat) OR (hasJ AND hasAH)
-# (J+A♥ is the only J-led pattern that holds up vs cutthroat defenders —
-# 2nd and 3rd highest trump in the game). All other partner-mode `can20_60`
-# paths fall through to PASS in cutthroat RULE 6.
-#
-# Partner-mode RULE 6 is bit-identical (the `cutthroat_desp_tight_20` gate
-# is wrapped in `if cutthroat`). Champion-cutthroat is also bit-identical
-# (flag default False).
-class CutthroatDespTight20(Policy):
-    name = "cutthroat-desp-tight-20"
-    def __init__(self):
-        super().__init__(cutthroat=True,
-                         cutthroat_desp_tight_20=True,
-                         ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                   'cutthroat_c2_dont_overtake': True})
-
-
-REGISTRY["cutthroat-desp-tight-20"] = CutthroatDespTight20()
-
-
-# CUTTHROAT OPEN-15-ON (opt-in challenger). Live index-test.html / index.html
-# (through v2.31.85) has OPEN-15 (v2.31.36-37) firing in cutthroat
-# unintentionally — same architectural gap as UPBID15 (now v2.31.83-gated).
-# OPEN-15 unconditionally opens 15 when no one has bid, partner has not bid,
-# we are not cruising, and not in desperation — calibrated in partner mode at
-# +3.52pt / +1.19pt held-out where partner-cover can rescue borderline opens.
-# In cutthroat there is no partner, three opponents coordinate to set.
-#
-# Symptom (robr screenshot d5affd47, 2026-05-29): W bid 15♣ on K♣ + 3 low
-# trump + K♥ (no 5, no J, no AH, no AT, no QT — natural pass). OPEN-15 fired
-# because W was first-to-bid in a clean open with no cruise/desperation gate.
-#
-# This challenger forces OPEN-15 ON in cutthroat by passing
-# `cutthroat_force_loose_open=True`. Symmetric A-vs-B set-rate test confirms
-# the magnitude before we ship the JS gate.
-class CutthroatOpen15On(Policy):
-    name = "cutthroat-open15-on"
-    def __init__(self):
-        super().__init__(cutthroat=True,
-                         cutthroat_force_loose_open=True,
-                         ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                   'cutthroat_c2_dont_overtake': True})
-
-
-REGISTRY["cutthroat-open15-on"] = CutthroatOpen15On()
-
-
-# CUTTHROAT SAVE-5-LEAD VARIANTS (opt-in challengers, user-derived 2026-05-29).
-# Robr screenshot 0d2a9549: bidder W (15♣) held 5♣+4♣ (trump) + Q♠/5♥/A♠
-# (offsuit). Champion led the 5; user contends offsuit lead conserves the
-# 5 for positional bonus capture and the 4 (3rd-highest number-trump in
-# clubs trump, not "lowest") for late-position ruff. Four variants test
-# the principle across trick-window × offsuit-preference:
-#
-#   t1lo : trick 1 only / lead lowest offsuit
-#   t1hi : trick 1 only / lead highest offsuit
-#   t12lo: tricks 1-2 (still holds 5) / lowest offsuit
-#   t12hi: tricks 1-2 (still holds 5) / highest offsuit
-#
-# Gate: cutthroat=True AND bidder leading AND has 5 of trump AND has >=2
-# trump (5 + at least one more) AND has >=1 offsuit. Champion-cutthroat
-# bit-identical (all four default-off via Fon).
-#
-# Prior context: a partner-mode `bidder_trump_save_lead` was tested
-# v2.31.33-34 and REMOVED as net-negative; H-A `bidder_lead_low_trump`
-# (lead lowest trump) tested 2026-05-17 negative. THIS is a different
-# hypothesis: lead OFFSUIT not trump, and gated tighter (must hold 5).
-class _CutthroatSave5(Policy):
-    """Base for the four save-5-lead variants. Each subclass enables exactly
-    one flag so the symmetric A-vs-B set-rate isolates that variant's EV."""
-    _flag: str = None  # overridden per subclass
-    def __init__(self):
-        super().__init__(cutthroat=True,
-                         ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                   'cutthroat_c2_dont_overtake': True,
-                                   self._flag: True})
-
-
-class CutthroatSave5T1Lo(_CutthroatSave5):
-    name = "cutthroat-save5-t1lo"
-    _flag = "cutthroat_save_5_t1lo"
-
-class CutthroatSave5T1Hi(_CutthroatSave5):
-    name = "cutthroat-save5-t1hi"
-    _flag = "cutthroat_save_5_t1hi"
-
-class CutthroatSave5T12Lo(_CutthroatSave5):
-    name = "cutthroat-save5-t12lo"
-    _flag = "cutthroat_save_5_t12lo"
-
-class CutthroatSave5T12Hi(_CutthroatSave5):
-    name = "cutthroat-save5-t12hi"
-    _flag = "cutthroat_save_5_t12hi"
-
-
-REGISTRY["cutthroat-save5-t1lo"]  = CutthroatSave5T1Lo()
-REGISTRY["cutthroat-save5-t1hi"]  = CutthroatSave5T1Hi()
-REGISTRY["cutthroat-save5-t12lo"] = CutthroatSave5T12Lo()
-REGISTRY["cutthroat-save5-t12hi"] = CutthroatSave5T12Hi()
-
-
-# CUTTHROAT OPP-HAS-DEALER-ALWAYS (SHIPPED v2.31.87, now champion default).
-# Partner-mode logic `opp_has_dealer = get_team(dealer) != my_team` uses
-# seat parity which is meaningless in cutthroat — every non-self seat is
-# an opp by definition. The pre-v2.31.87 cutthroat champion inherited the
-# parity check and got opp_has_dealer = True only for seats whose parity
-# differed from the dealer's, ~50% of cutthroat seats. That made
-# desperation RULE 4 (bag-the-dealer) and RULE 5 (overbid their 15) fire
-# only for parity-lucky cutthroat seats on a meaningless coincidence.
-#
-# Symmetric A-vs-B set-rate (champion-cutthroat pre-ship vs ohd-always):
-#   primary  20k seed-base=0       Δ=-1.30pt z=-10.16 SIGNIFICANT (B set
-#                                  less, mechanism: 25-bid count -44.7%
-#                                  as RULE 4 bag-the-dealer triggers
-#                                  uniformly, weaker hands pass-to-bag
-#                                  instead of pushing into doomed 20/25)
-#   held-out 30k seed-base=5000000 Δ=-1.21pt z=-11.6  SIGNIFICANT
-#                                  (REPLICATED; 25-bid count -44.7% same)
-# Per-bid level: 15 +1.07/+1.15 (slight worse — marginal hands stay at 15
-# instead of upbidding); 20 -3.22/-3.25 z=-11/-14; 25 -5.76/-5.08 z=-12/-13.
-#
-# Now default-on for cutthroat policies. Champion-cutthroat reads it from
-# the Policy class default (`cutthroat_opp_has_dealer_always: bool = True`).
-# Partner mode bit-identical (the flag's effect is gated on cutthroat=True
-# inside bidding.decide_bid). This explicit challenger remains for self-
-# documentation and identity-vs-champion verification.
-class CutthroatOppHasDealerAlways(Policy):
-    name = "cutthroat-ohd-always"
-    def __init__(self):
-        super().__init__(cutthroat=True,
-                         cutthroat_opp_has_dealer_always=True,
-                         ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                   'cutthroat_c2_dont_overtake': True})
-
-
-REGISTRY["cutthroat-ohd-always"] = CutthroatOppHasDealerAlways()
-
-
-# CUTTHROAT OHD-PARITY: the pre-v2.31.87 ablation baseline. Reverts to the
-# parity-based opp_has_dealer check (the partner-mode logic). Use this to
-# regression-test the v2.31.87 ship as future cutthroat work evolves.
-class CutthroatOppHasDealerParity(Policy):
-    name = "cutthroat-ohd-parity"
-    def __init__(self):
-        super().__init__(cutthroat=True,
-                         cutthroat_opp_has_dealer_always=False,
-                         ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                   'cutthroat_c2_dont_overtake': True})
-
-
-REGISTRY["cutthroat-ohd-parity"] = CutthroatOppHasDealerParity()
-
-
-# CUTTHROAT DESP-RULE4-TIGHT (candidate). After the v2.31.87 OHD-always
-# ship, desperation RULE 4 (bag-the-dealer with canMake15/20/25/30
-# thresholds for "can we make X to survive") fires uniformly across
-# cutthroat seats. The canMake thresholds were calibrated against the
-# partner-mode 1.1M-sim; in cutthroat with C1+C2 coalition the make
-# rates are lower → bid-20 exit gates that aren't J-anchored bust more
-# often. This challenger adds the J of trump (2nd-highest trump) to
-# each canMake test that lacks it:
-#   theyNeed<=5  : unchanged (5+J+AH+T5 already maximally strict)
-#   theyNeed<=10 : was 5+J+T4 → 5+J+AH+T4   (add AH)
-#   theyNeed<=15 : was 5+T4 → 5+J+T4         (add J)
-#   theyNeed<=20 : was 5 OR J+AH+T3 → 5+J OR J+AH+T4 (tighten both arms)
-# Net effect: fewer doomed bid-20 exits, more passes-to-bag.
-class CutthroatDespRule4Tight(Policy):
-    name = "cutthroat-desp-rule4-tight"
-    def __init__(self):
-        super().__init__(cutthroat=True,
-                         cutthroat_desp_rule4_tight=True,
-                         ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                   'cutthroat_c2_dont_overtake': True})
-
-
-REGISTRY["cutthroat-desp-rule4-tight"] = CutthroatDespRule4Tight()
-
-
-# CUTTHROAT BAG-THREATENING-DEALER (SHIPPED v2.31.97; now champion
-# default). User-derived from screenshot 2026-05-30: E at 100 +
-# dealer, W bid 15♣ on its own natural 15 hand instead of passing
-# to force E into a bagged 15.
-#
-# Rule: when cutthroat AND dealer is opp at >=100 AND natural bid
-# would be 15 AND we_need > 20 (do not pass if I myself am at >=100
-# and could win the round) AND current_high_bid == 0 → demote to PASS.
-#
-# Rig (the pre-ship measurement, A=champion-cutthroat with rule OFF
-# vs B=this challenger with rule ON):
-#   primary  20k seed-base=0       Δ=-0.11pt z=-0.86 not significant
-#                                  20-bid level Δ=-0.70pt z=-2.45
-#                                  15-bid level Δ=+0.10pt z=+0.68
-#   held-out 30k seed-base=5000000 Δ=-0.11pt z=-1.06 not significant
-#                                  20-bid level Δ=-0.69pt z=-2.99 (rep)
-#                                  15-bid level Δ=+0.10pt z=+0.81
-#
-# Aggregate rig-NEUTRAL but shipped per the v2.31.30 trust-fix
-# precedent — the human-expected play is to bag a threatening dealer;
-# not making the bag erodes AI-logic trust. Per-bid-level signal at
-# 20 is real and replicated; per-bid-level offset at 15 (forced
-# bagged-15s bust more than the voluntary 15s they replace) cancels
-# the 20 gain in aggregate but neither side is a measured loss.
-class CutthroatBagThreateningDealer(Policy):
-    name = "cutthroat-bag-threatening-dealer"
-    def __init__(self):
-        super().__init__(cutthroat=True,
-                         cutthroat_bag_threatening_dealer=True,
-                         ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                   'cutthroat_c2_dont_overtake': True})
-
-
-REGISTRY["cutthroat-bag-threatening-dealer"] = CutthroatBagThreateningDealer()
-
-
-# ABLATION: champion-cutthroat WITHOUT the v2.31.97 bag-threatening-
-# dealer rule. Use this as the regression baseline if future cutthroat
-# work appears to change the rule's measured effect.
-class CutthroatBagThreateningDealerOff(Policy):
-    name = "cutthroat-bag-threatening-dealer-off"
-    def __init__(self):
-        super().__init__(cutthroat=True,
-                         cutthroat_bag_threatening_dealer=False,
-                         ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                   'cutthroat_c2_dont_overtake': True})
-
-
-REGISTRY["cutthroat-bag-threatening-dealer-off"] = CutthroatBagThreateningDealerOff()
-
-
-# CUTTHROAT COALITION (opt-in challengers; champion-cutthroat default OFF).
-# Two coordinated defender rules — see improved_ai.py for the gates:
-#   C1 (cutthroat_c1_take_from_bidder): defender following, BIDDER currently
-#       winning the trick, set/made not locked → play cheapest card that
-#       beats the bidder. Captures every "take from the bidder" case across
-#       all positions and tricks (broader than def_ruff_be_eg / take_t4_2nd
-#       / off2_beat_off_bidlead, which all stay enabled as narrow specifics).
-#   C2 (cutthroat_c2_dont_overtake): defender following, ANOTHER DEFENDER
-#       currently winning, BIDDER HAS ALREADY PLAYED, set not locked →
-#       play_lowest. Don't burn cards overtaking a teammate-of-convenience;
-#       conserve for tricks the bidder might win.
-# Together: when one defender wins the trick the others stay cheap; when
-# the bidder wins, every defender who can take cheaply does.
-#
-# pass-1 history (commit 550ad35 / 61ebe61): the FIRST cut of C2 had no
-# "bidder has played" gate. Symmetric A-vs-B set-rate test showed
-# coalition made bidders 1.36pt MORE successful (z=-3.36), concentrated
-# at 15-bids (-2.02pt). DIAGNOSIS: with C2 firing while the bidder was
-# still downstream, the next defender played low and the bidder over-
-# trumped cheaply — the coalition was handing the bidder free tricks.
-# pass-2 (current): C2 now gated on _bidder_has_played; v1 inherits the
-# fix (the buggy pre-2-pass form is preserved only in git history,
-# commits 550ad35 + 61ebe61 — no behavior preservation in code).
-#
-# cutthroat-c1-only      = C1 alone (sanity check: is C1 net-positive
-#                          without C2?). If C1 alone wins and v2 does
-#                          not beat it, ship C1, drop C2.
-# cutthroat-coalition-v2 = C1 + tightened C2 (pass-2 of the coalition).
-# cutthroat-coalition-v1 = name retained; behavior identical to v2 now
-#                          (the C2 tightening is in the rule body, both
-#                          flag combos enable it). Kept as an alias so
-#                          existing harness commands / commit refs still
-#                          work; do not test it separately from v2.
-CUTTHROAT_C1_ONLY = Policy(cutthroat=True,
-                           ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                     'cutthroat_c2_dont_overtake': False})
-CUTTHROAT_C1_ONLY.name = "cutthroat-c1-only"
-REGISTRY["cutthroat-c1-only"] = CUTTHROAT_C1_ONLY
-
-CUTTHROAT_COALITION_V1 = Policy(cutthroat=True,
-                                ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                          'cutthroat_c2_dont_overtake': True})
-CUTTHROAT_COALITION_V1.name = "cutthroat-coalition-v1"
-REGISTRY["cutthroat-coalition-v1"] = CUTTHROAT_COALITION_V1
-
-CUTTHROAT_COALITION_V2 = Policy(cutthroat=True,
-                                ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                          'cutthroat_c2_dont_overtake': True})
-CUTTHROAT_COALITION_V2.name = "cutthroat-coalition-v2"
-REGISTRY["cutthroat-coalition-v2"] = CUTTHROAT_COALITION_V2
-
-# SHIP: cutthroat-coalition-v2 promoted to champion-cutthroat default-ON
-# (this commit). Symmetric A-vs-B set-rate (deals=2000):
-#   primary  seed-base=0       Δ=+1.45pt z=+3.56 SIGNIFICANT
-#   held-out seed-base=5000000 Δ=+1.08pt z=+2.65 SIGNIFICANT (replicated)
-# Per-bid breakdown (primary): 15s +1.70 z=+3.54, 20s +1.12 z=+1.38,
-# 25s +0.64 z=+0.51, 30s n=3. Damage concentrated at 15-bids — same
-# regime that pass-1 BROKE (-2.02pt at 15s), now fixed and net-positive.
-# Sanity: C1-ALONE without C2 is NEGATIVE (Δ=-1.02pt z=-2.50, 15s -1.22
-# z=-2.56). C1 by itself hands defenders' beats to a non-tightened
-# downstream that the bidder then exploits / mis-takes context. The
-# combo (C1 + bidder_has_played-gated C2) is the win — both flags
-# required for the +EV signal. Opt-in 'cutthroat-stripped' below preserves
-# the pre-coalition baseline for ablation tests.
-CUTTHROAT_STRIPPED = Policy(cutthroat=True,
-                            ai_flags={'cutthroat_c1_take_from_bidder': False,
-                                      'cutthroat_c2_dont_overtake': False})
-CUTTHROAT_STRIPPED.name = "cutthroat-stripped"
-REGISTRY["cutthroat-stripped"] = CUTTHROAT_STRIPPED
-
-
-# ─────────────────────────────────────────────────────────────────────────
-# CUTTHROAT L1 / L2 / L3 — SCORE-AWARE COALITION RULES
-# ─────────────────────────────────────────────────────────────────────────
-# Three score-aware rules layered on TOP of the C1/C2 coalition. All read
-# state.pre_round_scores (4-vec of per-seat game totals at round start)
-# threaded by cutthroat_runner. Cutthroat-only (no-op in partner mode);
-# game-context-only (no-op in round-only harnesses — pre_round_scores=None).
-#
-# L3 (cutthroat_l3_bidder_winning_game) — bidder making this bid wins them
-#     the game (pre_round_scores[bid_winner] + high_bid >= 120). Switch to
-#     MAX-AGGRESSION: C2 don't-overtake suppression OFF; C1 takes regardless
-#     of who currently winning; top-3 trump save disabled. NO THRESHOLD.
-#
-# L1 (cutthroat_l1_leader_self_nickel) — I'm the runaway leader-of-the-game-
-#     so-far (my pre_round_score >= leader_min AND ahead of next-best by
-#     >= leader_gap). Soften C1: when taking, refuse if cheapest winner is
-#     a top-3 trump (conserve high cards; bank cheap tricks only).
-#     Thresholds: (cutthroat_l1_min, cutthroat_l1_gap).
-#
-# L2 (cutthroat_l2_dont_help_leader) — ANOTHER defender is the runaway
-#     leader. When that leader is currently winning the trick (cw ==
-#     leader_seat), suppress C2's "don't overtake" so I TAKE from the leader.
-#     Extends C1 to "take from the leader-defender" too.
-#     Thresholds: (cutthroat_l2_min, cutthroat_l2_gap).
-#
-# Threshold sweep: register variants for each (min, gap) pair in the spec.
-
-def _l_rule(name: str, flags: dict):
-    p = Policy(cutthroat=True)
-    p.name = name
-    # Inherit C1+C2 coalition defaults from champion-cutthroat (default-on);
-    # callers add cutthroat_l*_* flags + thresholds on top.
-    base = {'cutthroat_c1_take_from_bidder': True,
-            'cutthroat_c2_dont_overtake': True}
-    base.update(flags)
-    p.ai_flags = base
-    return p
-
-
-# L3 — no threshold; one variant.
-REGISTRY["cutthroat-l3"] = _l_rule(
-    "cutthroat-l3",
-    {'cutthroat_l3_bidder_winning_game': True},
-)
-
-
-# L1 threshold sweep: (leader_min, leader_gap) pairs.
-for (_lmin, _lgap) in ((100, 40), (95, 30), (90, 25)):
-    _nm = f"cutthroat-l1-{_lmin}-{_lgap}"
-    REGISTRY[_nm] = _l_rule(_nm, {
-        'cutthroat_l1_leader_self_nickel': True,
-        'cutthroat_l1_min': _lmin,
-        'cutthroat_l1_gap': _lgap,
-    })
-
-
-# L2 threshold sweep: same (min, gap) pairs.
-for (_lmin, _lgap) in ((100, 40), (95, 30), (90, 25)):
-    _nm = f"cutthroat-l2-{_lmin}-{_lgap}"
-    REGISTRY[_nm] = _l_rule(_nm, {
-        'cutthroat_l2_dont_help_leader': True,
-        'cutthroat_l2_min': _lmin,
-        'cutthroat_l2_gap': _lgap,
-    })
-
-
-# L-ALL-BEST: L1+L2+L3 with TBD thresholds; pre-registered with the most
-# conservative (100,40) for both. The sweep-driven "best" combo is created
-# dynamically once the L1/L2 sweep winners are known (see below).
-REGISTRY["cutthroat-l-all-best"] = _l_rule("cutthroat-l-all-best", {
-    'cutthroat_l3_bidder_winning_game': True,
-    'cutthroat_l1_leader_self_nickel': True,
-    'cutthroat_l2_dont_help_leader': True,
-    'cutthroat_l1_min': 100, 'cutthroat_l1_gap': 40,
-    'cutthroat_l2_min': 100, 'cutthroat_l2_gap': 40,
-})
-
-
-# CUTTHROAT N1 NICKEL-GRAB (opt-in challenger on TOP of coalition-v2).
-# When set OR made is mathematically LOCKED, switch from coalition mode
-# (which is about influencing whether the bid is made/set — moot now)
-# to point-greedy mode: take the cheapest winning card, but NEVER burn
-# a top-3 trump (rank >= 100 — 5 of trump, J of trump, A♥ when trump
-# != hearts) to do so. N1 sits FIRST in the defender cutthroat block;
-# its early-return preempts C1 and C2 in the locked regime. C1 and C2
-# already gate on `not locked` so the not-locked regime is unchanged.
-#
-# Hypothesis: defenders banking cheap free tricks late in a decided
-# round leaves them with more raw round points (+EV) without increasing
-# the bidder's bid-quality (set-rate may be roughly flat — set is
-# decided by the time N1 fires). Lesson from pass-1 C1 sanity (commit
-# 3f26177): aggressive defender takes that burn top trump are
-# net-negative — nickel-grab restricts the take to free tricks.
-CUTTHROAT_NICKEL_GRAB = Policy(cutthroat=True,
-                               ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                         'cutthroat_c2_dont_overtake': True,
-                                         'cutthroat_n1_nickel_grab': True})
-CUTTHROAT_NICKEL_GRAB.name = "cutthroat-nickel-grab"
-REGISTRY["cutthroat-nickel-grab"] = CUTTHROAT_NICKEL_GRAB
-
-
-# ─────────────────────────────────────────────────────────────────────────
-# CUTTHROAT D1 — DEFENDER RUFFS A FELLOW DEFENDER'S OFFSUIT LEAD
-# ─────────────────────────────────────────────────────────────────────────
-# D1 (cutthroat_d1_ruff_defender_offsuit_lead): defender following, the
-# LEADER was a fellow defender on OFFSUIT, the BIDDER HAS NOT yet played
-# in this trick, set not locked, I hold trump → play cheapest winning trump.
-# Covers the pre-bidder-play window that C1 (bidder currently winning) and
-# C2 (bidder already played) leave uncovered.
-#
-# User observation that motivated this rule: "when West leads offsuit in
-# cutthroat, nobody throws trump at all, giving me a free trick." The
-# defender coalition was failing to deny the bidder a free over-trump on
-# defender-defender-offsuit-lead tricks.
-#
-# Interaction with C1/C2: D1 fires when bidder_has_played == False AND
-# leader != bidder. C1 fires when current winner IS the bidder (so the
-# bidder has played and is winning). C2 fires when bidder_has_played
-# == True AND a fellow defender currently wins. The three rules cover
-# disjoint sub-cases of "defender following".
-#
-# D1-LATE variant (cutthroat_d1_late_only) restricts D1 to trick_num >= 2
-# (trick 3+ in 1-indexed counting). Hypothesis: early-trick ruffing wastes
-# trump that could win higher-value spots later.
-#
-# RESULT 2026-05-29 — TESTED, NOT SHIPPED:
-#   D1-broad symmetric @2k:   Δ +0.56pt z=+1.37 (right direction, NOT significant)
-#   D1-broad 1-vs-3 @2k:      24.51% z=-1.01 (slight neg for lone challenger)
-#   D1-LATE symmetric @2k:    Δ +0.56pt z=+1.37 (IDENTICAL to broad)
-#   D1-LATE 1-vs-3 @2k:       24.51% z=-1.01 (IDENTICAL to broad)
-# LATE and broad are behaviorally identical: trick 1's leader is ALWAYS
-# the bidder (bid winner leads first), so the "leader != bidder" gate
-# already filters out trick 1. The trick_num >= 2 additional gate is a
-# no-op. The 1-vs-3 slight-negative is the documented cooperative-equilibrium
-# underestimate (a lone ruff that denies the bidder pays full coalition
-# cost — the lone defender burns trump — without the other defenders'
-# reciprocal nickel-grab benefit). The symmetric +0.56pt is in the right
-# direction (bidders set more often when all 4 defenders coordinate D1)
-# but z=+1.37 doesn't clear the z>2 ship gate.
-# INTERPRETATION: the user's observation generalizes to a small +EV signal,
-# but it's largely already captured by C1/C2 — the pre-bidder-play case
-# where a defender leads offsuit and another defender CAN ruff cheaply is
-# rare enough (and the fallback "I follow offsuit, bidder ruffs cheaply"
-# costs the defending team similar EV in most spots) that the marginal
-# coalition gain is small. Kept opt-in for future iteration / data layer.
-CUTTHROAT_D1_RUFF = Policy(cutthroat=True,
-                           ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                     'cutthroat_c2_dont_overtake': True,
-                                     'cutthroat_d1_ruff_defender_offsuit_lead': True})
-CUTTHROAT_D1_RUFF.name = "cutthroat-d1-ruff-defender-offsuit"
-REGISTRY["cutthroat-d1-ruff-defender-offsuit"] = CUTTHROAT_D1_RUFF
-
-CUTTHROAT_D1_RUFF_LATE = Policy(cutthroat=True,
-                                ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                          'cutthroat_c2_dont_overtake': True,
-                                          'cutthroat_d1_ruff_defender_offsuit_lead': True,
-                                          'cutthroat_d1_late_only': True})
-CUTTHROAT_D1_RUFF_LATE.name = "cutthroat-d1-ruff-defender-offsuit-late"
-REGISTRY["cutthroat-d1-ruff-defender-offsuit-late"] = CUTTHROAT_D1_RUFF_LATE
-
-
-# ─────────────────────────────────────────────────────────────────────────
-# CT-SETLOCKED-SAVE-LAST-TRUMP (challenger)
-# ─────────────────────────────────────────────────────────────────────────
-# When the bidder is mathematically SET-LOCKED for the round and holds
-# EXACTLY one trump remaining, and the current trick was led non-trump and
-# is being won by a non-self defender with a non-trump → play lowest non-
-# trump instead of the last trump. Rationale: winning this trick adds 5 to
-# the set-locked column (worth 0 toward the bid). Saving the trump to
-# over-trump the defenders' expected ruff next trick denies 5 pts to a
-# defender (typically the game leader). Net: +5 denial > +5 vanity trick.
-#
-# Built on top of the current champion-cutthroat coalition (C1+C2 + bag-
-# threatening-dealer default-on; cutthroat_bag_threatening_dealer reads
-# the Policy attr, no flag plumbing needed).
-CT_SETLOCKED_SAVE_LAST_TRUMP = Policy(
-    cutthroat=True,
-    ct_setlocked_save_last_trump=True,
-    ai_flags={'cutthroat_c1_take_from_bidder': True,
-              'cutthroat_c2_dont_overtake': True})
-CT_SETLOCKED_SAVE_LAST_TRUMP.name = "ct-setlocked-save-last-trump"
-REGISTRY["ct-setlocked-save-last-trump"] = CT_SETLOCKED_SAVE_LAST_TRUMP
-
-
-# ─────────────────────────────────────────────────────────────────────────
-# CT-B3-TAKE-OVER-FELLOW — replay of the OLD v2.31.100 JS behavior
-# ─────────────────────────────────────────────────────────────────────────
-# Original v2.31.100 rule: defender clockwise-BEFORE bidder (plays 4th)
-# takes the trick with the cheapest winner on a bidder offsuit lead, even
-# when a fellow defender has already ruffed in to win the trick. Rationale
-# at the time: "grab the lead FOR the coalition" — over-trumping ensures
-# the lead lands on me (B+3) and the bidder is in 2nd seat next trick.
-#
-# v2.31.104 JS adds a `!_ctFellowDefenderWinning` gate (skip when a fellow
-# defender already has the trick locked). Rationale: bidder played first
-# as leader, so once a defender has trumped in to win, the coalition has
-# already won the lead — over-trumping a fellow defender burns a higher
-# trump for zero coalition benefit. The Python champion-cutthroat C2 rule
-# already handles this correctly (fires when cw != bidder, cw != player,
-# bidder has played — all true at B+3 in this scenario), so the v2.31.104
-# JS gate makes JS match Python champion's existing behavior.
-#
-# This challenger inverts that: enables `cutthroat_b3_take_over_fellow` so
-# B+3 over-trumps a fellow defender every time (= OLD JS pre-v2.31.104).
-# Negative rig vs champion would mean the v2.31.104 JS gate is a real win;
-# neutral rig confirms trust-fix ship territory.
-#
-# Built on top of the current champion-cutthroat coalition (C1+C2 + bag-
-# threatening-dealer + ct_setlocked default-on).
-CT_B3_TAKE_OVER_FELLOW = Policy(
-    cutthroat=True,
-    cutthroat_b3_take_over_fellow=True,
-    ai_flags={'cutthroat_c1_take_from_bidder': True,
-              'cutthroat_c2_dont_overtake': True})
-CT_B3_TAKE_OVER_FELLOW.name = "ct-b3-take-over-fellow"
-REGISTRY["ct-b3-take-over-fellow"] = CT_B3_TAKE_OVER_FELLOW
-
-
-# FORCE-EXTRACT challenger variants (opt-in rule, default absent in champion).
-# Each enables the rule + one partner-trump-rich proxy; data picks the proxy.
-def _fx(proxy: str):
-    p = Policy()
-    p.name = f"fx:{proxy}"
-    p.ai_flags = {'following_3rd_man_force_extract': True,
-                  f'fx_proxy_{proxy}': True}
-    return p
-
-
-for _p in ('shed', 'drew', 'led_trump', 'any'):
-    REGISTRY[f"fx:{_p}"] = _fx(_p)
-
-
-# HOLD-UP #30 variants (opt-in; champion default off). 2nd-man defender on
-# an offsuit lead with no low trump to ruff cheap → hold up (follow/play
-# non-trump) instead of wasting a high/boss trump on a junk trick.
-def _hd(name: str, flags: dict):
-    p = Policy()
-    p.name = name
-    p.ai_flags = dict(flags, holdup_2nd_def=True)
-    return p
-
-
-# hd:hi98 removed — it IS the champion now (SHIPPED v2.31.28, default-ON).
-# The meaningful test is off:holdup_2nd_def (auto from CARD_RULES, ablates
-# the shipped rule). hd:hi98_force / hd:hi97 kept as forward-variants:
-# "would champion + forcer-gate / broader ≥Q threshold do better than the
-# shipped ≥K?" (champion = baseline; these add one flag on top).
-REGISTRY["hd:hi98_force"] = _hd("hd:hi98_force", {'holdup_force': True})
-REGISTRY["hd:hi97"]       = _hd("hd:hi97", {'holdup_hi97': True})    # ≥Q (broader)
-
-
-# ENDGAME LEAD-BOSS #32 (opt-in; champion default off). Defender on lead in
-# the endgame (trick>=4) with the bidding team trump-void → lead the boss
-# now (win + keep the lead) instead of saving it / leading offsuit.
-#   el:strict — opponents KNOWN trump-void only (deduction-only)
-#   el:est    — also estimatedTrumpRemaining==0 (broader; est can misfire)
-def _el(name: str, flags: dict):
-    p = Policy()
-    p.name = name
-    p.ai_flags = dict(flags, endgame_lead_boss=True)
-    return p
-
-
-# el:strict removed — it IS the champion now (SHIPPED v2.31.30, default-ON
-# strict). Meaningful test = off:endgame_lead_boss (auto from CARD_RULES).
-# el:est kept as a forward-variant (champion + estimate-based void too).
-REGISTRY["el:est"]    = _el("el:est", {'endgame_lead_boss_est': True})
-
-
-# safe:pad4 promoted to champion v2.31.55 (default-ON; rig +0.39pt z=1.56
-# primary 20k / +0.38pt z=1.85 held-out 30k, replicated). The meaningful
-# test now = off:safe_pad4 (auto from CARD_RULES, reverts to the buggy
-# 2♣ dummy). The legacy dummy was logically wrong in clubs-trump games.
-
-
-# follow_trump_floor canBeat refinement — tested 2026-05-20, rig-NEUTRAL
-# (49.99% z=-0.02 unconditional, 0.00 comeback @ 20k). Backed out.
-# The data layer (min_trump_rank tracking in round_runner._update_known_voids)
-# is kept always-on as scaffolding for further iteration.
-
-
-# BURN-FORCE 3RD #35b (opt-in; champion default off — TESTED rig-NEUTRAL).
-# Defender 3rd-man with trump on a trick currently won by an opponent:
-# play the LOWEST non-top-3 trump for which every remaining over-trump
-# is a top-3 (5/J/A♥). Idea: either I win cheaply OR 4th-man burns a
-# top-3 to win. RESULT 2026-05-20: 50.01% z=+0.02 / comeback +0.02 @ 20k
-# — fires too rarely (late-round, requires K/Q/A_trump accounted-for)
-# and when it does, picks the same card max-trump would pick anyway in
-# most cases. Kept opt-in for future refinement; do NOT ship default-ON.
-def _burnforce_3rd():
-    p = Policy()
-    p.name = "bf:3rd"
-    p.ai_flags = {'burnforce_3rd': True}
-    return p
-
-
-REGISTRY["bf:3rd"] = _burnforce_3rd()
-
-
-# BIDDER-PARTNER-FLOOR-LEAD #35c (opt-in; champion default off — TESTED
-# rig-NEUTRAL). Bidder leading with ≥2 trumps, partner_floor ≥98, and all
-# over-trumps for partner's floor card accounted for (mine or played).
-# Lead lowest trump so partner cashes their high trump here, I save mine.
-# RESULTS 2026-05-20 @ 20k: loose gate (floor ≥98, no safety) 49.75% z=-0.99
-# (mildly negative — partner with K loses to opp's A♥). Tight gate (all
-# over-trumps accounted-for) 49.98% z=-0.07 / comeback +0.06 z=+0.14 — dead
-# neutral, fires too rarely. Three consecutive rig-neutrals on min_trump_rank
-# heuristic rules (ftf:floor 49.99, bf:3rd 50.01, bf:partnerlead 49.98)
-# suggest the floor data is sound but hard to leverage via simple
-# position-based rules. Future work: monte-carlo rollouts that use the
-# floor as a constraint, not a heuristic flag.
-def _bidder_partner_floor_lead():
-    p = Policy()
-    p.name = "bf:partnerlead"
-    p.ai_flags = {'bidder_partner_floor_lead': True}
-    return p
-
-
-REGISTRY["bf:partnerlead"] = _bidder_partner_floor_lead()
-
-
-# UPBID15 promoted to champion v2.31.56 (default-ON; rig +5.42pt z=21.68
-# primary 20k / +5.30pt z=25.96 held-out 30k, replicated, comeback n.s.).
-# Jack2112-derived from the bidLog (5 of 13 logged divergences match the
-# exact pattern). When auction stands at 15 and hand computes as a 15-bid
-# (which the old champion would pass on), overbid to 20. Excludes dealer
-# and partner-bid-15. The pre-2.18.1 5M-sim calibration that dropped this
-# from the 20-bid threshold ran against a much weaker champion — current
-# card-play (safe:pad4 + pso:guard + dca:jlate + pob:save + dre:bidace_eg)
-# converts the borderline 15-strength hands well enough to make 20.
-class NoUpBid15(Policy):
-    name = "bid:no-upbid15"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_upbid15=False)
-
-
-REGISTRY["bid:no-upbid15"] = NoUpBid15()
-
-
-# UPBID15-CAN20-GATE (challenger for v2.31.109 hypothesis). Screenshots show
-# UPBID15 promoting J+10♦ (trumpCount=2, no 5/A♥/A-trump) to 20, which is
-# very unlikely to succeed. The current gate is only `bid==15 && chb==15`.
-# This challenger adds can20_at_60pct as a floor: J alone (T2 only) fails
-# the gate and passes instead of upbidding. J+A♥, J+A-trump, J+3+trump,
-# any-5 all still fire. Mirrors the cutthroat forced-20 gate (v2.31.105).
-class UpBid15Can20Gate(Policy):
-    name = "upbid15:can20-gate"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  upbid15_can20_gate=True)
-
-
-REGISTRY["upbid15:can20-gate"] = UpBid15Can20Gate()
-
-
-# UPBID15-WENEED-GATE (challenger, robr screenshot d3bf8cc1 2026-07-19).
-# CRUISE CONTROL vets the hand for a SAFE 15 (has5 alone ~96%) before
-# letting bidding continue, but UPBID15 then unconditionally escalates to a
-# 20-bid, which has5-alone only makes ~62% of the time. Whenever we_need is
-# already <= the threshold, simply MAKING our own natural 15 (becoming
-# bidder) already reaches 120 — escalating to 20 buys nothing, only set
-# risk. Live case: E/W at 115 (we_need=5) with 5♥+7♥+2♥ (natural 15),
-# UPBID15 pushed to 20♥, got set, -20 dropped them 115→95.
-#
-# THRESHOLD SWEEP (2026-07-19, user pushback: "you only applied this to
-# 115[we_need=5] — we always need to look at similar scenarios like 110
-# [we_need=10]"). The "already-won-on-15" argument is not specific to
-# we_need=5 — it holds for ANY we_need<=15 (making a bare 15 always nets
-# >=15 real points, which is enough once we_need<=15). Sweep 5/10/15/20 to
-# find where the effect actually stops paying off before shipping a wider
-# gate than the single reported screenshot justifies.
-class UpBid15WeNeedGate5(Policy):
-    name = "upbid15:weneed-5"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  upbid15_weneed_gate=True,
-                                  upbid15_weneed_threshold=5)
-
-
-class UpBid15WeNeedGate10(Policy):
-    name = "upbid15:weneed-10"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  upbid15_weneed_gate=True,
-                                  upbid15_weneed_threshold=10)
-
-
-class UpBid15WeNeedGate15(Policy):
-    name = "upbid15:weneed-15"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  upbid15_weneed_gate=True,
-                                  upbid15_weneed_threshold=15)
-
-
-class UpBid15WeNeedGate20(Policy):
-    name = "upbid15:weneed-20"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  upbid15_weneed_gate=True,
-                                  upbid15_weneed_threshold=20)
-
-
-REGISTRY["upbid15:weneed-5"]  = UpBid15WeNeedGate5()
-REGISTRY["upbid15:weneed-10"] = UpBid15WeNeedGate10()
-REGISTRY["upbid15:weneed-15"] = UpBid15WeNeedGate15()
-REGISTRY["upbid15:weneed-20"] = UpBid15WeNeedGate20()
-
-
-# UPBID15 sub-pattern isolators — each fires UPBID15 ONLY for one specific
-# hand composition, with all others suppressed. This answers: "is this
-# sub-pattern individually sufficient to justify upbidding to 20?"
-# The base conditions (bid==15, chb==15, not-dealer, partner!=15) are
-# replicated in each challenger. Cutthroat is not applicable (partner mode).
-#
-# Sub-patterns mirror the can20At60Pct components (from 5M-sim calibration):
-#   J+A♥+T2:  66.3%   → upbid15:j-ah
-#   J+AT+T2:  62.69%  → upbid15:j-at
-#   J+T3:     63.5%   → upbid15:j-t3
-#   5+any:    62.44%  → upbid15:5
-#
-# These patterns overlap (e.g., J+A♥+T3 matches both j-ah and j-t3) but
-# each challenger tests ONLY its named pattern in isolation.
-
-# Design note: enable_upbid15 must be set BEFORE decide_bid runs, because
-# decide_bid demotes bid=15 to bid=0 (pass) inside the bid<=chb block when
-# upbid15 is disabled — by then the natural-15 signal is gone and any post-
-# call check on bid==15 never fires. Correct approach: check the hand pattern
-# upfront, then pass enable_upbid15 accordingly so decide_bid fires it
-# internally at the right point (before the bid<=chb demotion).
-
-class UpBid15JAh(Policy):
-    """upbid15:j-ah — UPBID15 fires ONLY on J + A♥ hands (no 5 required)."""
-    name = "upbid15:j-ah"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        fb = bidding.find_best_trump_suit(hand)
-        enable = fb['hasJ'] and bidding.has_ace_hearts(hand)
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_upbid15=enable)
-
-
-class UpBid15JAt(Policy):
-    """upbid15:j-at — UPBID15 fires ONLY on J + A-trump hands."""
-    name = "upbid15:j-at"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        fb = bidding.find_best_trump_suit(hand)
-        enable = fb['hasJ'] and bidding.has_ace_trump(hand, fb['suit'])
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_upbid15=enable)
-
-
-class UpBid15JT3(Policy):
-    """upbid15:j-t3 — UPBID15 fires ONLY on J + 3+ trump hands."""
-    name = "upbid15:j-t3"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        fb = bidding.find_best_trump_suit(hand)
-        enable = fb['hasJ'] and fb['trumpCount'] >= 3
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_upbid15=enable)
-
-
-class UpBid15Has5(Policy):
-    """upbid15:5 — UPBID15 fires ONLY when hand has the 5 of trump."""
-    name = "upbid15:5"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        fb = bidding.find_best_trump_suit(hand)
-        enable = fb['has5']
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_upbid15=enable)
-
-
-REGISTRY["upbid15:j-ah"] = UpBid15JAh()
-REGISTRY["upbid15:j-at"] = UpBid15JAt()
-REGISTRY["upbid15:j-t3"] = UpBid15JT3()
-REGISTRY["upbid15:5"]    = UpBid15Has5()
-
-
-# UPBID15 TIGHT GATE (candidate v2.31.110): sub-pattern analysis shows the
-# 5 does most of the work (-1.36pt vs full) and J+T3 has modest value
-# (+0.83pt vs no-upbid15). J+A♥ and J+AT are ~neutral in isolation. This
-# challenger narrows the can20 gate to ONLY (has5 OR J+T3), dropping J+A♥
-# and J+AT from the upbid15 trigger. Tests whether tightening further helps.
-class UpBid15TightGate(Policy):
-    """upbid15:tight-gate — UPBID15 only fires on has5 OR (hasJ + 3+ trump)."""
-    name = "upbid15:tight-gate"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        fb = bidding.find_best_trump_suit(hand)
-        enable = fb['has5'] or (fb['hasJ'] and fb['trumpCount'] >= 3)
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_upbid15=enable)
-
-
-REGISTRY["upbid15:tight-gate"] = UpBid15TightGate()
-
-
-# ENDGAME_DENY (opt-in challenger; dormant rule already in improved_ai.py).
-# Bidder side, opp at 110+ (one bid from winning):
-#   Leading  → max trump (or max playable if no trump)
-#   Following→ if opp currently winning AND I have a winning card,
-#              play the MIN-sufficient winner. Else play_lowest
-#              (preserve strength).
-# Tested 2026-05-22 rig-NEUTRAL (50.04% z=0.18 primary 20k / 50.02%
-# z=0.11 held-out 30k) — kept here for future re-test when more
-# expert data accumulates, since the rule fires rarely.
-def _endgame_deny():
-    p = Policy()
-    p.name = "egd:on"
-    p.ai_flags = {'endgame_deny': True}
-    return p
-
-
-REGISTRY["egd:on"] = _endgame_deny()
-
-
-# PM_SWEEP — SHIPPED v2.31.130 (2026-07-13, user-derived). Partner mode,
-# every bidder-side boss-hold-back rule (bidder_5j_t3_off_t1lo,
-# bidder_boss_partner_save, bidder_boss_weak_partner_save) is skipped
-# whenever the DEFENDING team's score is >=110 (one made bid from
-# winning at 120) — lead the boss now instead of saving it for tempo.
-# Tested at both >=110 and >=115 thresholds: rig-neutral both ways
-# (50.01-50.02%, z<0.1, primary 20k + held-out 30k) — shipped for
-# AI-logic trust (v2.31.30 precedent), 110 kept as champion (broader,
-# superset of 115). Meaningful re-test = disabling it below.
-def _off_pm_sweep_lead():
-    p = Policy()
-    p.name = "off:pm_sweep_lead"
-    p.ai_flags = {'pm_sweep_lead': False}
-    return p
-
-
-REGISTRY["off:pm_sweep_lead"] = _off_pm_sweep_lead()
-
-
-# off2:beat_bidlead promoted to champion v2.31.66 (default-ON; rig-NEUTRAL
-# +0.01pt z=+0.05 primary 20k, v2.31.30 trust-fix precedent). Meaningful
-# test now = off:off2_beat_off_bidlead (auto from CARD_RULES, reverts to
-# strict 2nd-man-low). The broader off2:beat_anyopp (any-opp lead, not just
-# bidder) also tested rig-NEUTRAL (+0.01pt z=+0.03) and is kept as a
-# forward-variant opt-in challenger.
-def _off2_beat_anyopp():
-    p = Policy()
-    p.name = "off2:beat_anyopp"
-    p.ai_flags = {'off2_beat_off_anyopp': True}
-    return p
-
-
-REGISTRY["off2:beat_anyopp"]  = _off2_beat_anyopp()
-
-
-# BIDDER_5J_T3_OFF_T1LO — SHIPPED v2.31.112 (2026-06-15).
-# Bidder trick 1, ≤3 trump (5+J+≤1 low), partner drew ≥3 cards.
-# Leading 5 (boss) forces weak/moderate partner to follow trump on an
-# already-won trick. Leading lowest offsuit first preserves partner's
-# trump for a later ruff. Targeted rig (5k deals/category):
-#   partner drew 3: +12.3% make rate z=+8.7
-#   partner drew 4+: +9.6% make rate z=+7.9
-#   partner drew 0-2: ≤+2% not sig → gated out
-# Global rig: +0.12pt / +0.21pt (positive, diluted by rarity).
-# t1lo = lead lowest offsuit (SHIPPED, now default F); t1hi = dead-end.
-# Ablation challenger: set bidder_5j_t3_off_t1lo=False to revert.
-def _5j3_t1lo():
-    # challenger form still useful as an explicit opt-in regression test
-    p = Policy()
-    p.name = "card:5j3-t1lo"
-    p.ai_flags = {'bidder_5j_t3_off_t1lo': True}
-    return p
-
-def _5j3_t1hi():
-    # dead-end: must also disable now-default t1lo
-    p = Policy()
-    p.name = "card:5j3-t1hi"
-    p.ai_flags = {'bidder_5j_t3_off_t1lo': False, 'bidder_5j_t3_off_t1hi': True}
-    return p
-
-def _5j3_ablate():
-    # ablation: revert shipped t1lo rule to measure regression
-    p = Policy()
-    p.name = "card:5j3-ablate"
-    p.ai_flags = {'bidder_5j_t3_off_t1lo': False}
-    return p
-
-REGISTRY["card:5j3-t1lo"]    = _5j3_t1lo()
-REGISTRY["card:5j3-t1hi"]    = _5j3_t1hi()
-REGISTRY["card:5j3-ablate"]  = _5j3_ablate()
-
-
-# OPEN20-WITH-5 (candidate challengers; derived from jack2112 bid mining).
-# jack2112 opens 20 in a clean auction (hb=0) 37x in early game when holding
-# the 5 of trump — champion bids 15. Two variants:
-#
-#   open20:has5      — fires on ANY has5 hand (5+T1 through 5+T5). The broad
-#                      form. Matches all 37 jack2112 cluster-A hands.
-#
-#   open20:has5-t3   — fires ONLY on has5 AND trump_count >= 3. The filtered
-#                      form. Targets the solid 20-bid hands (5+T3 or better)
-#                      and excludes the bare 5+T2 hands that may win only 15.
-#
-# Both are partner-mode only. Cutthroat is NOT applicable — the 5M-sim showed
-# cutthroat-force-upbid15-with-5 catastrophic (+6.43pt set-rate, no-ship);
-# the open-auction analogue likely carries the same 3-defender penalty.
-# Gate: enable_open20 fires inside bidding.decide_bid when bid==15, hb==0,
-# player!=dealer, and has5.
-#
-# Rig results (2026-06-14, partner-mode symmetric A-vs-B):
-#   open20:has5    primary 20k: +0.77pt z=+2.18 / held-out 30k: +1.23pt z=+4.25
-#   open20:has5-t3 primary 20k: +0.74pt z=+2.09 / held-out 30k: +1.09pt z=+3.79
-# Both replicated; broad version (has5 alone) slightly stronger.
-# NO SHIP (backlog). Signal modest (~+1pt vs UPBID15's +5.4pt). Lone 5+T2
-# hands make 20 unreliably in practice; the rig EV doesn't overcome the
-# human-frustration cost of watching the AI get set on bare-5 opens.
-# Comeback equity neutral (ns) on both variants.
-class Open20Has5(Policy):
-    """open20:has5 — open at 20 in clean auction when has5, AI would bid 15."""
-    name = "open20:has5"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_open20=True)
-
-
-class Open20Has5T3(Policy):
-    """open20:has5-t3 — open at 20 in clean auction when has5 AND T>=3."""
-    name = "open20:has5-t3"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        fb = bidding.find_best_trump_suit(hand)
-        enable = fb['has5'] and fb['trumpCount'] >= 3
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_open20=enable)
-
-
-REGISTRY["open20:has5"]    = Open20Has5()
-REGISTRY["open20:has5-t3"] = Open20Has5T3()
-
-
-# OVERBID25-PB15 (candidate challenger; derived from jack2112 bid mining).
-# Cluster C (10x early-game): partner bid 15, opponent at hb=20, jack holds
-# the 5 of trump and bids 25 — champion passes. Combined hand strength:
-# partner's 15-bid hand + jack's 5 (guaranteed 10pt) = ~25pt potential.
-# Partner-mode only; cutthroat has no partner_bid concept.
-#
-# Rig results (2026-06-14, partner-mode symmetric A-vs-B):
-#   overbid25:pb15-has5  primary 20k: -2.30pt z=-9.20 / held-out 30k: -2.42pt z=-11.83
-#   Comeback equity: -2.75pt primary / -3.35pt held-out. Both SIGNIFICANT NEGATIVE.
-# NO SHIP. Jack's 10 instances have specific game-context reasons that don't
-# generalize. Blindly overbidding to 25 against an opp who already bid 20
-# (strong hand) with only 5+pb15 support loses ~2.4pt. The opp's 20-bid
-# strength means they can take enough tricks to set the 25 bid reliably.
-class Overbid25Pb15(Policy):
-    """overbid25:pb15-has5 — bid 25 at hb=20 when partner bid 15 and has5."""
-    name = "overbid25:pb15-has5"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_overbid25_pb15=True)
-
-
-REGISTRY["overbid25:pb15-has5"] = Overbid25Pb15()
-
-
-# BIDDER-LOWTRUMP-DUMP #38 (opt-in; champion default off). User-reported
-# round: bidder N held only the lowest remaining trump (2♥) on trick 3
-# of a 20-bid round, opps had A♥ available, leading 2♥ was a guaranteed
-# loss. Rule: when bidder is leading and my best trump is BELOW the
-# highest unplayed trump (= an opp could over-trump), lead my highest
-# offsuit instead. Saves my dead trump for forced-follow later AND
-# gives the offsuit a real chance to steal a trick.
-# bidder_lowtrump_dump promoted to champion v2.31.62 (default-ON; rig
-# +0.50pt z=+2.00 primary 20k / +0.38pt z=+1.85 held-out 30k). The
-# meaningful test now = off:bidder_lowtrump_dump (auto from CARD_RULES).
-
-
-# DEFENDER-TAKE-JAH-LATE #37 (opt-in; champion default off — TESTED
-# rig-NEUTRAL 2026-05-21: 50.08% z=+0.33 unconditional, comeback
-# +0.05 z=+0.13 @ 20k). Defender 2nd-man on a late trick (>=4) when
-# the bidder led TRUMP at a rank a top-3 (5/J/A♥) can renege: TAKE
-# the trick with the lowest top-3 trump instead of reneging. Idea
-# was sound (user-derived from a real round-T4 screenshot where
-# reneging J♥ cost a 40pt swing), but the conjunction of conditions
-# is too narrow — fires rarely, and when it does, +EV and -EV cases
-# roughly cancel (saving J♥ is +EV when 5♥ is in opp's hand, -EV when
-# 5♥ is in kitty/already-played). Kept opt-in for forward reference;
-# do NOT ship.
-# take_t4_2nd promoted to champion v2.31.57 (default-ON). Meaningful
-# test now = off:take_t4_2nd (auto from CARD_RULES, reverts to strict
-# 2nd-man-low at trick 4+).
-
-
-# pso:guard removed — it IS the champion now (SHIPPED v2.31.51, default-ON;
-# rig consistently +0.08/+0.09 unconditional & +0.10/+0.12 comeback, both
-# samples, z<1 n.s. — shipped as a non-negative trust fix per v2.31.30
-# precedent). Meaningful test = off:partner_signal_overtake_guard (auto
-# from CARD_RULES). user-reported: North played A♥ over partner's winning
-# 8♥ though a possible East J♥ beats A♥ regardless.
-
-
-# dre:bidace_eg / pob:save removed — both ARE the champion now (SHIPPED
-# v2.31.46, default-ON; rig-NEUTRAL 50.00%/50.00% z≈0 both samples,
-# shipped for intuitive play / AI-logic trust per v2.31.30 precedent +
-# user-confirmed j_trump_dump_void deduction). Meaningful tests are the
-# auto off:def_ruff_be_eg / off:partner_off_boss_save from CARD_RULES.
-# NOTE: j_trump_dump_void (the sound "follower J-on-5-lead → trump-void"
-# deduction) is baked into round_runner._update_known_voids (harness
-# deduction layer, NOT an ai_flag) — it only ever adds PROVABLY-true
-# voids, so it is not ablation-gated.
-
-
-# dca:jlate removed — it IS the champion now (SHIPPED v2.31.45, default-ON;
-# rig-neutral, shipped for intuitive play / AI-logic trust). The meaningful
-# test is off:defender_cash_ah_jlate (auto from CARD_RULES, ablates back to
-# the strict 5-AND-J-provably-gone gate of v2.31.43).
-
-
-class BidTighten5JT4(Policy):
-    """DATA-DRIVEN (5M v2.31.27 re-run): category 5_J_T4 (has5 ∧ hasJ ∧ 4
-    trump ∧ no A♥ ∧ no A-trump) refreshed round-EV says open 20 (EV+19.50)
-    not 25 (EV+18.91). decide_bid currently opens 25. Surgical: only when
-    OPENER (chb==0, pb==0) and the hand is EXACTLY that category and base
-    decide_bid returned 25 → return 20 instead. 5_J_T5 (5 trump) stays 25
-    (its rec did NOT flip), hence count==4 not >=4. Everything else untouched."""
-    name = "bid:5jt4_25to20"
-
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb)
-        if (b == 25 and s is not None and chb == 0 and pb == 0
-                and bidding.has_five(hand, s) and bidding.has_jack(hand, s)
-                and not bidding.has_ace_hearts(hand)
-                and not bidding.has_ace_trump(hand, s)
-                and bidding.count_trumps(hand, s) == 4):
-            return 20, s
-        return b, s
-
-
-REGISTRY["bid:5jt4_25to20"] = BidTighten5JT4()
-
-
-# SPOILER (opt-in; champion default off). When an opponent holds a bid that
-# — given how often bids overmake — likely carries them to 120, seize the
-# contract with the minimum overbid even without a hand to justify it
-# (drops the desperation we_need>30 gate; the 105-105 / near-game-point
-# case). ONLY meaningful in a GAME-context harness (needs live scores).
-class Spoiler(Policy):
-    name = "spoiler"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_spoiler=True)
-
-
-REGISTRY["spoiler"] = Spoiler()
-
-
-# RANDOMIZED AUTO-15 PASS (opt-in; champion default prob 0.0 = current nd,
-# bit-identical). The auto-15 on residual (5M-oracle-pass) hands is +EV
-# but deterministic → predictable/exploitable and human-frustrating. These
-# variants pass that residual open with probability p (mixed strategy).
-# The rig measures the EV cost of each dial so the user can choose the
-# setting with eyes open (cost is informational, NOT a ship gate — this
-# is a deliberate enjoyment/unpredictability-over-stats choice).
-class RndPass(Policy):
-    def __init__(self, p):
-        self.p = p
-        self.name = f"rnd:p{int(p*100):02d}"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  loose_open_pass_prob=self.p)
-
-
-for _p in (0.25, 0.50, 0.75):
-    _rp = RndPass(_p)
-    REGISTRY[_rp.name] = _rp
-
-
-# RANDOMIZED DESPERATION 25-SACRIFICE (opt-in; champion default 0.0 =
-# bit-identical). The hand-blind overbid to 25 (deny opp's game-point 20)
-# is exploitable + frustrating. These variants pass it with probability p
-# ONLY when the hand is crap for 25 (cannot even make 20 → pure
-# sacrifice); 20-overbids and real (can20_60) hands stay deterministic.
-# Rig measures the EV cost of each dial (informational, not a gate —
-# enjoyment/unpredictability-over-stats).
-class RndDesp25(Policy):
-    def __init__(self, p):
-        self.p = p
-        self.name = f"d25:p{int(p*100):02d}"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  desp_overbid25_pass_prob=self.p)
-
-
-for _p in (0.25, 0.50, 0.75):
-    _rd = RndDesp25(_p)
-    REGISTRY[_rd.name] = _rd
-
-
-# NOTE: a desp:callbluff challenger (pass instead of the desperation
-# sacrifice-overbid when holding "strong defensive trump") was built and
-# REMOVED — fatally flawed: the bid is made BEFORE trump selection, so the
-# AI cannot know its trump strength (the opponent picks the suit). The
-# only always-trump card is A♥; everything else (5/J/high-trump in our own
-# best suit) is irrelevant once the opponent chooses a different trump.
-# Any real call-the-bluff must be SCORE/odds-driven (or A♥-only), not
-# based on our hand's trump — and the all-AI rig cannot model a human who
-# deliberately bluff-bids at game point. Parked pending user direction.
-
-
-# ENDGAME POINT-BUDGET DENY (opt-in; champion default off). Bidder-side:
-# when opponent is at game point (oppNeed<=10 to 120) a normal made bid
-# still loses (defenders score), so play every trick must-win / never
-# concede. ONLY meaningful in a GAME-context harness (needs team_scores);
-# round-context evaluator passes team_scores=None → this is a no-op there.
-_ed = Policy()
-_ed.name = "endgame_deny"
-_ed.ai_flags = {'endgame_deny': True}
-REGISTRY["endgame_deny"] = _ed
-
-
-# BIDDER LEAD LOW TRUMP (H-A; opt-in, champion default off). When the
-# bidder is leading and the champion would lead a trump, lead the LOWEST
-# trump instead of the highest (conserve boss-class high trump for
-# later). Implemented at the TOP of the bidder-leading trump branch in
-# improved_ai.py so it intercepts BOTH champion lead-high paths
-# (len(trumps)>=3 return max, and >=1 return highest_trump). Reachable
-# in all non-void / non-narrow-endgame bidder-leading cases (the
-# bidder_after_void_lead site already leads low when opps are out).
-# RESULT (2026-05-17): TESTED, NO-SHIP. Reachability proven (5153
-# decision changes / 1500 games). Screen 30k deals: win 49.41%,
-# z=-2.91 SIGNIFICANTLY NEGATIVE (no held-out run — direction wrong).
-# The expert-divergence hypothesis does NOT replicate in simulation;
-# leading lowest trump as bidder is net-negative. Champion correctly
-# leads its highest trump. Do NOT re-test without a new mechanism.
-_bllt = Policy()
-_bllt.name = "bidder_lead_low_trump"
-_bllt.ai_flags = {'bidder_lead_low_trump': True}
-REGISTRY["bidder_lead_low_trump"] = _bllt
-
-
-# BIDDER LOW-TRUMP OFFSUIT (opt-in; champion default off). Bidder leading
-# with <=2 trump past trick 1: if cashing its (boss) top trump promotes a
-# >=Q-class trump a defender is estimated to hold, lead offsuit instead
-# (keep tempo, let partner ruff, deny the boss-up). Round-context rule.
-# bidder_lowtrump_offsuit (B narrow + A broad) REMOVED — both proven
-# structurally dead: the insertion site after bidder_trump_save_lead is
-# never reached (0/1500 games) because bidder_after_void_lead returns
-# first. The user's low-trump-lead idea must be tested by ablating/
-# altering bidder_after_void_lead (already in CARD_RULES as
-# off:bidder_after_void_lead), not via a new bolt-on rule.
-
-
-# NOTE: the old mw:strict / mw:est opt-in challengers were removed — strict
-# min-win is now SHIPPED (champion default-ON, v2.31.27). The meaningful
-# test is now the ablation `off:minwin_after_void` (auto-created from
-# CARD_RULES above), which reverts to pre-2.31.27 max-trump. The est
-# variant was proven mildly negative and is not in the champion at all.
-
-
-# LOOSER OPEN — SHIPPED v2.31.36 (champion default-ON via
-# bidding.decide_bid enable_loose_open=True). Rig-confirmed +3.52pt
-# held-out (z=17.2, 120k disjoint, replicated); data-derived from expert
-# aggression (bid-wins/game 2.45 vs robr 1.39 at the SAME ~23% set rate).
-# The old opt-in open:t3/t4/ah/at/loose challengers are GONE — open:loose
-# IS the champion now, and t3/t4/ah/at are strict subsets of it (adding
-# them on top of loose-champion is a no-op). The meaningful regression
-# test is the ablation `no-loose-open` below (reverts to pre-2.31.36).
-class NoLooseOpen(Policy):
-    name = "no-loose-open"
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_loose_open=False)
-
-
-REGISTRY["no-loose-open"] = NoLooseOpen()
-
-
-# SEAT-AWARE OPEN (opt-in; champion default off). Forward-variant ON TOP
-# of the shipped loose-champion. Question (user): does bid-order position
-# matter? loose fires identically regardless of seat. This adds EXTRA
-# late-position aggression: when loose-champion STILL passes a clean open
-# (hand failed loose: <3 trump, no A♥, no A-trump) and the player is LATE
-# in bid order (>=2 earlier players already passed → strong evidence
-# partner+opps are weak, so the forced-bagged dealer likely holds junk),
-# open 15 anyway on a residual weak hand.
-#   open:seat2  late & >=2 trump
-#   open:seat1  late & >=1 trump (very aggressive)
-# bid-order position of p = (p - dealer - 1) mod 4 (0 = first to act,
-# dealer never reaches here — it is force-bagged at 15).
-class SeatOpen(Policy):
-    def __init__(self, min_trump):
-        self.min_trump = min_trump
-        self.name = f"open:seat{min_trump}"
-
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb)
-        if b != 0:
-            return b, s                  # champion (incl. loose) bids
-        if chb != 0 or pb > 0:
-            return b, s                  # not a clean open spot
-        we_need = 120 - ts
-        if we_need <= 15 and os <= 85:   # cruise / ahead-protection
-            return b, s
-        bidorder = (pi - dl - 1) % 4
-        if bidorder < 2:                 # early position — status quo (loose)
-            return b, s
-        fb = bidding.find_best_trump_suit(hand)
-        suit, tc = fb['suit'], fb['trumpCount']
-        return (15, suit) if tc >= self.min_trump else (b, s)
-
-
-for _mt in (1, 2):
-    REGISTRY[f"open:seat{_mt}"] = SeatOpen(_mt)
-
-
-# EARLY-POSITION OPEN (opt-in; champion default off). User insight: the
-# real value of an aggressive open is largely a DENIAL effect — a P1 15
-# sets the floor BEFORE opponents act, so they can only bid 20+ (riskier,
-# more sets) or pass (concede the contract). That blocking value is
-# HIGHEST from early position (mirror-opposite of open:seat). When
-# loose-champion STILL passes a clean open (hand failed loose) and the
-# player is EARLY in bid order (bidorder < 2 — first or second to act,
-# i.e. P1/P2), open 15 anyway on a residual weak hand to deny opponents
-# the cheap 15. open:early2 = early & >=2 trump; open:early1 = early &
-# >=1 trump. Tests whether the extra-open edge concentrates early
-# (denial-driven) vs late (open:seat, info-driven) vs neither.
-class EarlyOpen(Policy):
-    def __init__(self, min_trump):
-        self.min_trump = min_trump
-        self.name = f"open:early{min_trump}"
-
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb)
-        if b != 0:
-            return b, s                  # champion (incl. loose) bids
-        if chb != 0 or pb > 0:
-            return b, s                  # not a clean open spot
-        we_need = 120 - ts
-        if we_need <= 15 and os <= 85:   # cruise / ahead-protection
-            return b, s
-        bidorder = (pi - dl - 1) % 4
-        if bidorder >= 2:                # late position — status quo (loose)
-            return b, s
-        fb = bidding.find_best_trump_suit(hand)
-        suit, tc = fb['suit'], fb['trumpCount']
-        return (15, suit) if tc >= self.min_trump else (b, s)
-
-
-for _mt in (1, 2):
-    REGISTRY[f"open:early{_mt}"] = EarlyOpen(_mt)
-
-
-# UNCONDITIONAL OPEN (opt-in; champion default off). The likely ENDPOINT:
-# loose-champion + seat1 (late, confirmed +1.05) + early (untested) would
-# union to "in a clean open outside cruise, ALWAYS bid 15" — drop the
-# trump/honor condition entirely. This is the expert's LITERAL stated
-# heuristic ("almost always bid at least 15"). Test the endpoint directly
-# so we ship the final rule ONCE instead of loose→seat1→union in 3 hops.
-class AlwaysOpen(Policy):
-    name = "open:always"
-
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb)
-        if b != 0:
-            return b, s
-        if chb != 0 or pb > 0:
-            return b, s
-        if (120 - ts) <= 15 and os <= 85:   # cruise / ahead-protection
-            return b, s
-        return 15, bidding.find_best_trump_suit(hand)['suit']
-
-
-REGISTRY["open:always"] = AlwaysOpen()
-
-
-# EARLY-GAME OPEN (opt-in; champion default off). THE EXPERT'S ACTUAL
-# STATED RULE (jack2112, messaged 2026-05-17): "early in the game he will
-# always bid 15; he evaluates more in later game as the score develops."
-# So aggression is conditioned on GAME PHASE BY SCORE — NOT hand-quality
-# (loose), NOT bid-order (seat/early — that is late-in-the-AUCTION, a
-# different 'late'), NOT all-game-unconditional (open:always, which the
-# expert explicitly is NOT). Rule: in a clean open outside the cruise
-# regime, if the game is EARLY (neither team's score has developed past
-# the threshold) → open 15 unconditionally; once scores develop → fall
-# straight back to champion (loose + cruise + desperation + spoiler =
-# the 'evaluate as the score develops' logic). Graduated thresholds on
-# max(team,opp) score — the rig picks where early-aggression stops
-# paying:  open:eg40 (<40), open:eg60 (<60), open:eg80 (<80).
-class EarlyGameOpen(Policy):
-    def __init__(self, thresh):
-        self.thresh = thresh
-        self.name = f"open:eg{thresh}"
-
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb)
-        if b != 0:
-            return b, s                  # champion (incl. loose) bids
-        if chb != 0 or pb > 0:
-            return b, s                  # not a clean open spot
-        if (120 - ts) <= 15 and os <= 85:   # cruise / ahead-protection
-            return b, s
-        if max(ts, os) >= self.thresh:   # scores developed → champion judges
-            return b, s
-        return 15, bidding.find_best_trump_suit(hand)['suit']  # early → always 15
-
-
-for _t in (40, 60, 80):
-    REGISTRY[f"open:eg{_t}"] = EarlyGameOpen(_t)
-
-
-# DESPERATION-GUARDED OPEN (opt-in; champion default off). User insight
-# (2026-05-17), verified in code: the -2.11pt comeback drag of
-# open:always is NOT an inherent cost of aggression — it is a LEAK. When
-# desperation is active (they_need<=15 & we_need>0 == opp>=105 & we
-# behind), the desperation block OWNS that regime: with opp_has_dealer it
-# returns 20-fight / pass; but in the not-opp_has_dealer weak-hand case
-# it FALLS THROUGH to the (baked) loose-open, which bids 15 on junk and
-# deepens the loss. Fix = let desperation own that regime: gate the open
-# with `not desperation`. Champion is called with loose OFF, then the
-# open is re-applied here WITH the desperation guard (and the existing
-# cruise guard), so the leak is removed at the source.
-#   open:ndloose  minimal: shipped loose condition + desperation guard
-#                 (pure leak-fix of the SHIPPED rule, hand cond kept)
-#   open:nd       maximal: UNCONDITIONAL clean-open + desperation guard
-#                 (= open:always with the comeback leak removed)
-class DespGuardedOpen(Policy):
-    def __init__(self, unconditional):
-        self.unconditional = unconditional
-        self.name = "open:nd" if unconditional else "open:ndloose"
-
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        # champion WITHOUT baked loose — so desperation/standard decide
-        # first; loose's in-desperation leak cannot fire at the source.
-        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_loose_open=False)
-        if b != 0:
-            return b, s                       # champion (incl. desp) bids
-        if chb != 0 or pb > 0:
-            return b, s                       # not a clean open spot
-        we_need, they_need = 120 - ts, 120 - os
-        if we_need <= 15 and os <= 85:        # cruise / ahead-protection
-            return b, s
-        if they_need <= 15 and we_need > 0:   # DESPERATION owns this regime
-            return b, s                       # → defer (no junk 15 leak)
-        fb = bidding.find_best_trump_suit(hand)
-        suit, tc = fb['suit'], fb['trumpCount']
-        if self.unconditional:
-            return 15, suit
-        hasAH = bidding.has_ace_hearts(hand)
-        hasAT = bidding.has_ace_trump(hand, suit)
-        return (15, suit) if (tc >= 3 or hasAH or hasAT) else (b, s)
-
-
-REGISTRY["open:ndloose"] = DespGuardedOpen(False)
-REGISTRY["open:nd"]      = DespGuardedOpen(True)
-
-
-# ─────────────────────────────────────────────────────────────────────────
-# CT-GAMEPOINT-BAIT15 — bait-the-AI exploit challenger
-# ─────────────────────────────────────────────────────────────────────────
-# Hypothesis: the human exploit of opening 15 on garbage at own game-point
-# (score >= 105) forces the AI into a mandatory desperation overbid to 20
-# on any hand — the AI cannot refuse because the plain champion code at
-# bidding.py line 197 returns 20 unconditionally when (opp_bid_15 AND
-# they_can_win_15). The human then defends against a coerced, probably-
-# doomed 20-bid. This challenger measures the EXPLOIT SEVERITY: does a
-# seat that always opens 15 on garbage when it is at game-point (we_need
-# <= 15 and no bid yet) beat the champion?
-#
-# Implementation: when cutthroat AND we_need <= 15 AND current_high_bid
-# == 0, open 15 on the best-suit regardless of hand strength. Otherwise
-# fall through to champion decide_bid. In the sim, team_scores == the
-# individual player's score (cutthroat: no partner), so we_need =
-# 120 - team_scores measures how far THAT SEAT is from winning.
-#
-# C1+C2 coalition defaults ON (same as all other cutthroat challengers —
-# required for the re-test to match the current champion baseline).
-# dealer_score kwarg threaded through to champion decide_bid.
-class CutthroatGamepointBait15(Policy):
-    name = "ct-gamepoint-bait15"
-
-    def __init__(self):
-        super().__init__(cutthroat=True,
-                         ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                   'cutthroat_c2_dont_overtake': True})
-
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb, dealer_score=-1):
-        we_need = 120 - ts
-        if we_need <= 15 and chb == 0:
-            # At game point with no prior bid: open 15 on garbage to bait
-            # the AI into a forced-20 overbid via the desperation block.
-            fb = bidding.find_best_trump_suit(hand)
-            return 15, fb['suit']
-        # Otherwise use champion-cutthroat bidding (all defaults apply).
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  cutthroat=True,
-                                  cutthroat_surgical_tight_20=True,
-                                  cutthroat_allow_5ahat_25=True,
-                                  cutthroat_opp_has_dealer_always=True,
-                                  cutthroat_bag_threatening_dealer=True,
-                                  dealer_score=dealer_score)
-
-
-REGISTRY["ct-gamepoint-bait15"] = CutthroatGamepointBait15()
-
-
-# ─────────────────────────────────────────────────────────────────────────
-# CT-DESP-FIX-GATE-FORCED-20 — fix for the desperation forced-20 exploit
-# ─────────────────────────────────────────────────────────────────────────
-# Hypothesis: gating the forced-20 overbid on can20_60 (the standard
-# hand-quality gate) neutralizes the human bait-15 exploit without
-# harming the non-exploit case. When an opp bids 15 at game-point but
-# the defending AI's hand genuinely justifies 20, it still overbids.
-# When the hand is junk (can20_60 == False), it passes and defends the
-# garbage 15-bid instead of being coerced into a doomed 20.
-#
-# Partner mode bit-identical: the flag is forced False in the `else`
-# branch of bidding.decide_bid for non-cutthroat callers.
-# C1+C2 coalition defaults ON (same as champion-cutthroat baseline).
-# dealer_score kwarg threaded through.
-class CutthroatDespFixGateForced20(Policy):
-    name = "ct-desp-fix-gate-forced-20"
-
-    def __init__(self):
-        super().__init__(cutthroat=True,
-                         cutthroat_desp_fix_gate_forced_20=True,
-                         ai_flags={'cutthroat_c1_take_from_bidder': True,
-                                   'cutthroat_c2_dont_overtake': True})
-
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb, dealer_score=-1):
-        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  cutthroat=True,
-                                  cutthroat_surgical_tight_20=True,
-                                  cutthroat_allow_5ahat_25=True,
-                                  cutthroat_opp_has_dealer_always=True,
-                                  cutthroat_bag_threatening_dealer=True,
-                                  cutthroat_desp_fix_gate_forced_20=True,
-                                  dealer_score=dealer_score)
-
-
-REGISTRY["ct-desp-fix-gate-forced-20"] = CutthroatDespFixGateForced20()
-
-
-# ─────────────────────────────────────────────────────────────────────────
-# OPEN-15 MINIMUM TRUMP FLOOR — PARTNER MODE CHALLENGERS
-# ─────────────────────────────────────────────────────────────────────────
-# OPEN-15 (v2.31.37, open:nd) unconditionally opens 15 on any clean opening
-# auction in partner mode, regardless of hand strength. The current champion
-# Policy() is bit-identical to open:nd (confirmed: open:nd vs champion =
-# exactly 50.00%, z=0.00 at 20k deals). Concern: open:nd fires on genuinely
-# weak hands like pure-low tc=2 (no 5/J/AH/AT/K/Q of trump).
-#
-# DB analysis (bidding_sim_v2.db, 15-bid subcategories, no 5/J/AH):
-#
-#   sub-category          n          make%    EV     verdict
-#   ──────────────────── ────────   ──────   ─────  ───────
-#   K-or-better  tc=2    220,284    68.6%   +5.59   +EV
-#   K-or-better  tc=3+   194,625    74.7%   +7.41   +EV
-#   Q-only       tc=2    197,246    66.0%   +4.81   +EV
-#   Q-only       tc=3+   149,635    70.9%   +6.28   +EV (aggregated)
-#   AT-only      tc=2    124,576    68.3%   +5.48   +EV
-#   AT-only      tc=3+    91,342    73.0%   +6.90   +EV (aggregated)
-#   pure-low     tc=2    639,454    60.3%   +3.08   +EV  ← WORST CASE
-#   pure-low     tc=3+   235,244    64.8%   +4.45   +EV
-#
-# NAÏVE EV FINDING: every sub-category is positive EV at 15-bid, including
-# the worst case (pure-low tc=2: 60.3% make-rate, +3.08 EV). Break-even is
-# 50%. There is no EV-negative sub-category in the data. A simple per-hand
-# EV analysis says "no floor needed."
-#
-# HOWEVER, the rig told a different story. Because the quality gate causes
-# pure-low hands to PASS instead of opening, the contract shifts to the
-# DEALER (forced-bag at 15). The dealer's hand quality is random (averages
-# 63.5% make-rate vs the pure-low opener's 60.3%). More importantly, in
-# many open-15 scenarios the dealer IS on the opposing team. Suppressing
-# the pure-low open denies a weak contract from our team and bags the
-# dealer (opposing-team bidder) instead — a positive-EV exchange that
-# the per-hand analysis misses because it ignores game dynamics.
-#
-# Three challenger gates tested (each built on the DespGuardedOpen base
-# identical to the champion, so the delta isolates ONLY the quality gate):
-#
-#   open:min-qt  — gate on hasQT (Q of trump) or better. Suppresses 17.6%
-#                  of open:nd clean-open decisions (pure-low tc>=2 hands).
-#   open:min-kt  — gate on hasKT (K of trump) or better. Suppresses 23.7%
-#                  of open:nd clean-open decisions (also blocks Q-only).
-#   open:3trump  — gate on trumpCount >= 3. Suppresses 24.2%.
-#
-# RIG RESULTS (partner mode, symmetric A-vs-B vs Policy() champion):
-# NOTE: positive Δ = challenger wins MORE games than champion.
-#
-#   challenger    primary 20k          held-out 30k        direction
-#   ──────────── ──────────────────── ──────────────────  ─────────
-#   open:min-qt  +0.64pt z=+2.56 SIG  +0.50pt z=+2.43 SIG  REPLICATED
-#   open:min-kt  +0.71pt z=+2.84 SIG  +0.64pt z=+3.13 SIG  REPLICATED
-#   open:3trump  +0.46pt z=+1.83 n.s. (no held-out needed)  NEUTRAL
-#   open:nd      +0.00pt z=0.00 (self-test confirm: bit-identical to champ)
-#
-# INTERPRETATION: open:min-kt is the DOMINANT floor: more restrictive than
-# min-qt (suppresses Q-only opens as well), and held-out z=+3.13 is the
-# strongest signal. open:min-qt is also significant but weaker. open:3trump
-# does not clear z=2. The honor-based gate (K or better) is the sweet spot:
-# it targets the specific hands where the dealer-bag-dynamics are most
-# favorable.
-#
-# NOTE ON DIRECTION: "challenger wins MORE" means the quality-gated version
-# is BETTER than the open:nd champion. This is counter-intuitive given per-
-# hand EV analysis — pure-low hands individually make 60% — but makes sense
-# at the game level: passing pure-low forces the dealer to bag with a random
-# (slightly stronger on average) hand, and in roughly half those situations
-# the dealer is an opponent, converting a weak own-contract to an opponent-
-# bag opportunity. The game-level EV swamps the per-hand raw make-rate.
-class OpenMinQT(Policy):
-    """open:min-qt — OPEN-15 only fires if hand has Q of trump or higher.
-    Rig vs champion: primary 20k +0.64pt z=+2.56 SIGNIFICANT /
-    held-out 30k +0.50pt z=+2.43 SIGNIFICANT (replicated)."""
-    name = "open:min-qt"
-
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        # Get base decision without loose open
-        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_loose_open=False)
-        if b != 0:
-            return b, s                       # standard bidding already acts
-        if chb != 0 or pb > 0:
-            return b, s                       # not a clean open spot
-        we_need, they_need = 120 - ts, 120 - os
-        if we_need <= 15 and os <= 85:        # cruise / ahead-protection
-            return b, s
-        if they_need <= 15 and we_need > 0:   # desperation owns this regime
-            return b, s
-        fb = bidding.find_best_trump_suit(hand)
-        suit, tc = fb['suit'], fb['trumpCount']
-        # Gate: must have Q of trump or better (K, AT, AH, J, 5 already
-        # handled by standard bidding). Use has_card to check Q and K.
-        hasQT = bidding.has_card(hand, 'Q', suit)
-        hasKT = bidding.has_card(hand, 'K', suit)
-        hasAT = bidding.has_ace_trump(hand, suit)
-        hasAH = bidding.has_ace_hearts(hand)
-        if hasQT or hasKT or hasAT or hasAH:
-            return 15, suit
-        return b, s
-
-
-class OpenMinKT(Policy):
-    """open:min-kt — OPEN-15 only fires if hand has K of trump or higher.
-    DOMINANT floor: rig vs champion: primary 20k +0.71pt z=+2.84 SIGNIFICANT /
-    held-out 30k +0.64pt z=+3.13 SIGNIFICANT (replicated, comeback +0.69pt
-    z=+2.02 SIGNIFICANT). Strongest signal of the three floor variants tested.
-    Suppress 23.7% of open:nd clean-open decisions (pure-low + Q-only hands)."""
-    name = "open:min-kt"
-
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_loose_open=False)
-        if b != 0:
-            return b, s
-        if chb != 0 or pb > 0:
-            return b, s
-        we_need, they_need = 120 - ts, 120 - os
-        if we_need <= 15 and os <= 85:
-            return b, s
-        if they_need <= 15 and we_need > 0:
-            return b, s
-        fb = bidding.find_best_trump_suit(hand)
-        suit, tc = fb['suit'], fb['trumpCount']
-        # Gate: must have K of trump or better
-        hasKT = bidding.has_card(hand, 'K', suit)
-        hasAT = bidding.has_ace_trump(hand, suit)
-        hasAH = bidding.has_ace_hearts(hand)
-        if hasKT or hasAT or hasAH:
-            return 15, suit
-        return b, s
-
-
-class Open3Trump(Policy):
-    """open:3trump — OPEN-15 only fires if trumpCount >= 3.
-    Rig vs champion: primary 20k +0.46pt z=+1.83 NOT significant.
-    Suppresses 24.2% of open:nd clean-open decisions. Does not clear z=2
-    ship gate; depth gate less powerful than honor gate (open:min-kt)."""
-    name = "open:3trump"
-
-    def decide_bid(self, hand, chb, pi, dl, ts, os, pb):
-        b, s = bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
-                                  enable_loose_open=False)
-        if b != 0:
-            return b, s
-        if chb != 0 or pb > 0:
-            return b, s
-        we_need, they_need = 120 - ts, 120 - os
-        if we_need <= 15 and os <= 85:
-            return b, s
-        if they_need <= 15 and we_need > 0:
-            return b, s
-        fb = bidding.find_best_trump_suit(hand)
-        suit, tc = fb['suit'], fb['trumpCount']
-        # Gate: must have at least 3 trump cards
-        if tc >= 3:
-            return 15, suit
-        return b, s
-
-
-REGISTRY["open:min-qt"] = OpenMinQT()
-REGISTRY["open:min-kt"] = OpenMinKT()
-REGISTRY["open:3trump"] = Open3Trump()
+              'ct_defender_lead_boss_always': True,
+              'void_est_zero': True})
+
+REGISTRY["est-v1"]   = Policy(ai_flags={'est_table': 'v1'})
+REGISTRY["est-full"] = Policy(ai_flags={'est_table': 'full'})
+REGISTRY["est-low"]  = Policy(ai_flags={'est_table': 'low'})
+
+# APP-MIRROR cutthroat champion (2026-11-14): champion-cutthroat plus the
+# card-play rules shipped in the app that the rig lacked (CT-HOLDUP v2.31.100/149,
+# CT-2ND-MAN-RENEGE-VS-BIDDER v2.31.136, CT-2ND-MAN-BOSS-RENEGE v2.31.135,
+# CT-SETLOCKED-SAVE-LAST-TRUMP v2.31.103) and the v2.31.150 trump-estimate table.
+_APP_CT_FLAGS = {'cutthroat_c1_take_from_bidder': True,
+                 'cutthroat_c2_dont_overtake': True,
+                 'ct_defender_lead_boss_always': True,
+                 'ct_2nd_man_boss_renege': True,
+                 'ct_holdup': True,
+                 'ct_renege_vs_bidder': True,
+                 'est_table': 'full'}
+REGISTRY["ct-app"] = Policy(cutthroat=True, ct_setlocked_save_last_trump=True,
+                            ai_flags=dict(_APP_CT_FLAGS), name="ct-app")
+# ablations / challengers relative to ct-app
+REGISTRY["ct-app-noholdup"] = Policy(cutthroat=True, ct_setlocked_save_last_trump=True,
+    ai_flags={**_APP_CT_FLAGS, 'ct_holdup': False}, name="ct-app-noholdup")
+REGISTRY["ct-app-oldest"] = Policy(cutthroat=True, ct_setlocked_save_last_trump=True,
+    ai_flags={**{k: v for k, v in _APP_CT_FLAGS.items() if k != 'est_table'}}, name="ct-app-oldest")
+REGISTRY["ct-app-voidzero"] = Policy(cutthroat=True, ct_setlocked_save_last_trump=True,
+    ai_flags={**_APP_CT_FLAGS, 'void_est_zero': True}, name="ct-app-voidzero")
+
+REGISTRY["estp-15"] = Policy(ai_flags={"est_prob": 0.15})
+REGISTRY["estp-25"] = Policy(ai_flags={"est_prob": 0.25})
+REGISTRY["estp-35"] = Policy(ai_flags={"est_prob": 0.35})
+REGISTRY["estp-50"] = Policy(ai_flags={"est_prob": 0.5})
+
+# ct-app ablations (2026-11-14 audit): each turns exactly one shipped rule OFF.
+for _k in ('ct_renege_vs_bidder', 'ct_2nd_man_boss_renege', 'cutthroat_c1_take_from_bidder',
+           'cutthroat_c2_dont_overtake', 'ct_defender_lead_boss_always'):
+    REGISTRY["ctabl-" + _k] = Policy(cutthroat=True, ct_setlocked_save_last_trump=True,
+        ai_flags={**_APP_CT_FLAGS, _k: False}, name="ctabl-" + _k)
+REGISTRY["ctabl-setlocked"] = Policy(cutthroat=True, ct_setlocked_save_last_trump=False,
+    ai_flags=dict(_APP_CT_FLAGS), name="ctabl-setlocked")
+REGISTRY["ctc2-trump-only"] = Policy(cutthroat=True, ct_setlocked_save_last_trump=True, ai_flags={**_APP_CT_FLAGS, "c2_trump_only": True}, name="ctc2-trump-only")
+REGISTRY["ctc2-off-made"] = Policy(cutthroat=True, ct_setlocked_save_last_trump=True, ai_flags={**_APP_CT_FLAGS, "c2_off_made": True}, name="ctc2-off-made")
+REGISTRY["ctc2-near1"] = Policy(cutthroat=True, ct_setlocked_save_last_trump=True, ai_flags={**_APP_CT_FLAGS, "c2_near_set": 1}, name="ctc2-near1")
+REGISTRY["ctc2-near2"] = Policy(cutthroat=True, ct_setlocked_save_last_trump=True, ai_flags={**_APP_CT_FLAGS, "c2_near_set": 2}, name="ctc2-near2")
+REGISTRY["ctc2-near3"] = Policy(cutthroat=True, ct_setlocked_save_last_trump=True, ai_flags={**_APP_CT_FLAGS, "c2_near_set": 3}, name="ctc2-near3")
+
+for _m in (20, 40):
+    REGISTRY[f"ctc2-near1-lead{_m}"] = Policy(cutthroat=True, ct_setlocked_save_last_trump=True,
+        ai_flags={**_APP_CT_FLAGS, "c2_near_set": 1, "c2_off_lead": _m}, name=f"ctc2-near1-lead{_m}")
+    REGISTRY[f"ctc2-lead{_m}"] = Policy(cutthroat=True, ct_setlocked_save_last_trump=True,
+        ai_flags={**_APP_CT_FLAGS, "c2_off_lead": _m}, name=f"ctc2-lead{_m}")
+REGISTRY["ctc2-none-b3over"] = Policy(cutthroat=True, ct_setlocked_save_last_trump=True,
+    ai_flags={**_APP_CT_FLAGS, "cutthroat_c2_dont_overtake": False, "cutthroat_b3_take_over_fellow": True},
+    name="ctc2-none-b3over")

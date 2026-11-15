@@ -36,7 +36,17 @@ def _update_known_voids(trick: List[Tuple[int, Card]],
 
     if led_is_trump:
         led_rank = get_trump_rank(led_card, trump)
+        best_so_far = -1   # highest trump on the table before this seat played
         for (p, card) in trick:
+            _r = get_trump_rank(card, trump)
+            # lose_floor (SOUND deduction, audited 0 exceptions / 58k plays in
+            # audit_lowest_trump.py): a follower whose trump did NOT beat what was
+            # already on the table played its LOWEST trump, so every trump it still
+            # holds ranks strictly above the card it played.
+            if p != trick_leader and 0 <= _r < best_so_far:
+                known_voids[p]['lose_floor'] = max(known_voids[p].get('lose_floor', 0), _r + 1)
+            if _r > best_so_far:
+                best_so_far = _r
             if get_trump_rank(card, trump) >= 0:
                 # j_trump_dump_void (sound deduction for THIS engine): the AI
                 # follows a trump lead with its LOWEST trump (it never
