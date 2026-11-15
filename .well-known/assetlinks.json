@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.mingya45s.app",
+      "sha256_cert_fingerprints": ["45:C5:4E:C1:5E:F6:45:D7:85:14:51:BA:D4:91:C0:0E:AD:74:09:29:DF:04:88:47:6E:5D:4C:9F:BC:4C:C7:D4"]
+    }
+  }
+]
