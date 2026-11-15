@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="felt" cx="50%" cy="38%" r="80%">
+      <stop offset="0" stop-color="#1f7a3f"/><stop offset="0.6" stop-color="#13572a"/><stop offset="1" stop-color="#093a1a"/>
+    </radialGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#ece6d6"/>
+    </linearGradient>
+    <filter id="sh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#000" flood-opacity="0.45"/></filter>
+    <g id="face">
+      <rect x="-72" y="-200" width="144" height="200" rx="14" fill="url(#card)" stroke="#8a6421" stroke-width="3" filter="url(#sh)"/>
+    </g>
+  </defs>
+  <rect width="512" height="512" fill="url(#felt)"/>
+  <circle cx="256" cy="256" r="236" fill="none" stroke="#c9a24a" stroke-width="6" opacity="0.55"/>
+  <g transform="translate(256 256) scale(1.22) translate(-256 -300)" font-family="Georgia, 'Times New Roman', serif" font-weight="700" text-anchor="middle">
+    <!-- 5 of spades -->
+    <g transform="translate(256 392) rotate(-26)">
+      <use href="#face"/>
+      <text x="-50" y="-166" font-size="38" fill="#111">5</text>
+      <text x="-50" y="-134" font-size="34" fill="#111" font-family="'Segoe UI Symbol',Arial,sans-serif">♠</text>
+      <text x="6" y="-62" font-size="96" fill="#111" font-family="'Segoe UI Symbol',Arial,sans-serif">♠</text>
+    </g>
+    <!-- Jack of spades -->
+    <g transform="translate(256 392) rotate(0)">
+      <use href="#face"/>
+      <text x="-50" y="-166" font-size="38" fill="#111">J</text>
+      <text x="-50" y="-134" font-size="34" fill="#111" font-family="'Segoe UI Symbol',Arial,sans-serif">♠</text>
+      <text x="0" y="-62" font-size="96" fill="#111" font-family="'Segoe UI Symbol',Arial,sans-serif">♠</text>
+    </g>
+    <!-- Ace of hearts -->
+    <g transform="translate(256 392) rotate(26)">
+      <use href="#face"/>
+      <text x="-50" y="-166" font-size="38" fill="#c8102e">A</text>
+      <text x="-50" y="-134" font-size="34" fill="#c8102e" font-family="'Segoe UI Symbol',Arial,sans-serif">♥</text>
+      <text x="-6" y="-62" font-size="96" fill="#c8102e" font-family="'Segoe UI Symbol',Arial,sans-serif">♥</text>
+    </g>
+  </g>
+</svg>
