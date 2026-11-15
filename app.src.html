@@ -3484,7 +3484,30 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.154';
+const VERSION = '2.31.155';
+
+// v2.31.155: Account section for the Preferences modal (Privacy Policy link +
+// Log out). Play requires an in-app privacy policy link; the Card Room lobby
+// had no logout.
+function AccountSection({ accent, text, border }) {
+  const doLogout = () => {
+    if (window.confirm('Log out? You will need to sign in again.')) {
+      ['userId', 'playerName', 'playerAvatar', '45s_username', '45s_userId', '45s_avatar'].forEach(k => localStorage.removeItem(k));
+      window.location.reload();
+    }
+  };
+  return (
+    <div style={{ marginBottom: '20px' }}>
+      <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1.5px', color: accent, textTransform: 'uppercase', marginBottom: '10px', opacity: 0.8 }}>Account</div>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <a href="https://www.mingya45s.com/privacy.html" target="_blank" rel="noopener noreferrer"
+          style={{ flex: 1, minWidth: '120px', textAlign: 'center', padding: '10px', borderRadius: '6px', border: '1px solid ' + border, color: text, textDecoration: 'none', fontSize: '13px' }}>Privacy Policy</a>
+        <button onClick={doLogout}
+          style={{ flex: 1, minWidth: '120px', padding: '10px', borderRadius: '6px', border: '1px solid #c0392b', background: 'rgba(192,57,43,0.15)', color: '#ff8a80', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>Log out</button>
+      </div>
+    </div>
+  );
+}
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7721,6 +7744,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.155', date: 'Nov 2026', changes: ['Preferences (gear) now has an Account section with a Log out button and a link to the Privacy Policy.'] },
     { version: '2.31.154', date: 'Nov 2026', changes: ['Email is now required at registration, and existing players without one are asked once to add it. It is used only for game-update emails and is never shared.'] },
     { version: '2.31.153', date: 'Nov 2026', changes: ['Added a friendly No internet connection notice when the device is offline (the game needs a network to play).'] },
     { version: '2.31.152', date: 'Nov 2026', changes: ['App install support: the game can now be installed to your home screen as an app, with an icon, and the AI game loads without a connection. (Groundwork for the Android app.)'] },
@@ -12204,6 +12228,7 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                     </div>
                   </div>);
                 })()}
+                <AccountSection accent="#00e5ff" text="#00e5ff" border="rgba(0,229,255,0.3)" />
               </div>
               <div style={{ display: 'flex', gap: '10px', padding: '12px 16px', borderTop: '1px solid rgba(0,229,255,0.15)' }}>
                 <button onClick={() => setShowPreferences(false)} className="cp-modal-btn-ghost" style={{ flex: 1 }}>Cancel</button>
@@ -12281,6 +12306,8 @@ function LobbyScreen({ userId, playerName, playerAvatar, onJoinGame, activeTheme
                   </div>
                 </div>);
               })()}
+
+              <AccountSection accent="rgba(201,162,74,0.9)" text="#e8e4d9" border="rgba(201,162,74,0.35)" />
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '4px' }}>
                 <button onClick={() => setShowPreferences(false)} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.07)', color: 'rgba(232,228,217,0.7)', border: '1px solid rgba(201,162,74,0.25)', borderRadius: '6px', cursor: 'pointer', fontFamily: "'Cinzel', serif", fontWeight: 'bold' }}>Cancel</button>
