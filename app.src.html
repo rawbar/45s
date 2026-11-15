@@ -3480,7 +3480,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.150';
+const VERSION = '2.31.151';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -5954,6 +5954,19 @@ function _ctSetLocked(playerTricks, highTrumpPlayer, bidWinner, highBid, trickNu
   return (pts + maxRemaining) < highBid;
 }
 
+// v2.31.151: C2 (don't overtake a fellow defender) only pays when a set is
+// nearly certain. Slack = most points the bidder could still reach minus bid,
+// counting only LATER tricks (bidder already lost the current one when C2
+// fires). C2 stays on only for 0 <= slack < 5. Rig (10k deals x2 seeds):
+// removing C2 +1.4/+1.6, this near-set form +1.1/+1.3.
+function _ctC2NearSet(playerTricks, highTrumpPlayer, bidWinner, highBid, trickNum) {
+  if (!Array.isArray(playerTricks)) return false;
+  const pts = _ctBidderRoundPts(playerTricks, highTrumpPlayer, bidWinner);
+  const bonusMax = (highTrumpPlayer === -1 || highTrumpPlayer === null || highTrumpPlayer === undefined) ? 5 : 0;
+  const slack = pts + 5 * (4 - trickNum) + bonusMax - highBid;
+  return slack >= 0 && slack < 5;
+}
+
 function _ctMadeLocked(playerTricks, highTrumpPlayer, bidWinner, highBid) {
   if (!Array.isArray(playerTricks)) return false;
   return _ctBidderRoundPts(playerTricks, highTrumpPlayer, bidWinner) >= highBid;
@@ -6055,7 +6068,8 @@ function chooseCardToPlay(hand, trumpSuit, trick, leader, player, bidWinner, hig
   const _ctFellowDefenderWinning = cutthroat && !isLeadingTrick && trick.length > 0
     && _currentWinnerSeat !== bidWinner && _currentWinnerSeat !== player
     && player !== bidWinner
-    && !_ctOppAtGamePoint;
+    && !_ctOppAtGamePoint
+    && _ctC2NearSet(playerTricks, highTrumpPlayer, bidWinner, highBid, trickNum);
 
   // v2.31.100: CT-HOLDUP (B+1 hold-up on bidder offsuit lead). Cutthroat,
   // I'm seat (B+1) — clockwise-after bidder, plays 2nd. Bidder led offsuit.
@@ -7173,7 +7187,8 @@ if (trick.length > 0) {
     // v2.31.98: SKIP C2 when any opp is at game-point (>=110) — denying
     // their trick at all costs trumps the don't-overtake-defender rule.
     if (currentWinner !== bidWinner && currentWinner !== player &&
-        _bidderHasPlayed && !_setLk && !_ctOppAtGamePoint) {
+        _bidderHasPlayed && !_setLk && !_ctOppAtGamePoint &&
+        _ctC2NearSet(playerTricks, highTrumpPlayer, bidWinner, highBid, trickNum)) {
       console.log(`🤝 CUTTHROAT C2: P${player + 1} (defender) not overtaking defender P${currentWinner + 1} — cheap-low`);
       return playable.reduce((lowest, card) => {
         const r1 = isTrump(lowest) ? getTrumpRank(lowest, trumpSuit) + 200 : getOffSuitRank(lowest);
@@ -7702,6 +7717,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.151', date: 'Nov 2026', changes: ['Cutthroat AI: defenders now overtake a fellow defender unless a set of the bidder is nearly certain (previously they held back almost always). Simulation: about +1.2 points per round for the defender, significant on two seed sets.'] },
     { version: '2.31.150', date: 'Nov 2026', changes: ['AI trump counting: the AI now estimates how much trump each player holds from simulation data on what a draw actually produces (a player who drew 3 cards holds about 3 trump, not 2; one who drew 0-1 holds 4-5). Partner-mode simulation: about +0.25 points win rate on 200k games, significant on two independent seed sets.'] },
     { version: '2.31.149', date: 'Nov 2026', changes: ['Cutthroat AI: when the bidder led offsuit, the defender seated right after the bidder would hold back instead of trumping, because it assumed a later defender still had trump even if that defender had already shown they were out. A defender known to be out of trump is no longer counted.'] },
     { version: '2.31.148', date: 'Nov 2026', changes: ['Badge tracking fixes. Suite Selector could never be awarded (the check looked for H/D/C/S keys but progress was saved under suit symbols); it now unlocks for anyone who already made bids in all four suits. Trump Hoarder, Trump Drainer, Razor\'s Edge, Dead in the Water, Carrying the Team, Sniper, Setter\'s Touch, Final Stand, Reverse Sweep, Survivor, Hat Trick, Dominant and Never Say Die were only counted when YOU played the last card of the trick/round, so rounds finished by an AI player were skipped. Both paths now share the same tracking. Trump Hoarder also now counts when your team wins the round even if the bid was set.'] },
