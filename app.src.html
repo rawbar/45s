@@ -3484,7 +3484,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.153';
+const VERSION = '2.31.154';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7721,6 +7721,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.154', date: 'Nov 2026', changes: ['Email is now required at registration, and existing players without one are asked once to add it. It is used only for game-update emails and is never shared.'] },
     { version: '2.31.153', date: 'Nov 2026', changes: ['Added a friendly No internet connection notice when the device is offline (the game needs a network to play).'] },
     { version: '2.31.152', date: 'Nov 2026', changes: ['App install support: the game can now be installed to your home screen as an app, with an icon, and the AI game loads without a connection. (Groundwork for the Android app.)'] },
     { version: '2.31.151', date: 'Nov 2026', changes: ['Cutthroat AI: defenders now overtake a fellow defender unless a set of the bidder is nearly certain (previously they held back almost always). Simulation: about +1.2 points per round for the defender, significant on two seed sets.'] },
@@ -9012,10 +9013,11 @@ function LoginScreen({ onLogin }) {
         }
       }
 
-      // Validate email if provided
+      // v2.31.154: email is required (used for game-update emails)
       const emailTrimmed = email.trim().toLowerCase();
-      if (emailTrimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
-        setError('Invalid email address');
+      if (!emailTrimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
+        setError(emailTrimmed ? 'Invalid email address' : 'Email address is required');
+        try { await usernameRef.remove(); } catch (_) {}
         setLoading(false);
         return;
       }
@@ -9598,7 +9600,7 @@ function LoginScreen({ onLogin }) {
           </div>
         )}
 
-        {/* Email (registration only, optional) */}
+        {/* Email (registration only, required) */}
         {mode === 'register' && (
           <div style={{ marginBottom: (isIrish || isArabian) ? '14px' : '16px' }}>
             <label className={isCyberpunk ? 'cp-login-label' : ''} style={(isIrish || isArabian) ? {
@@ -9623,7 +9625,7 @@ function LoginScreen({ onLogin }) {
                 marginLeft: '6px'
               } : {
                 fontWeight: 'normal', color: '#888', fontSize: '12px'
-              }}>(optional)</span>
+              }}>(required)</span>
             </label>
             <input
               type="email"
@@ -14755,12 +14757,12 @@ function MultiplayerApp() {
 
   const handleEmailPromptSave = async () => {
     const trimmed = emailPromptValue.trim().toLowerCase();
-    if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setEmailPromptError('Please enter a valid email address');
       return;
     }
     await database.ref(`users/${userId}`).update({
-      email: trimmed || null,
+      email: trimmed,
       emailPromptShown: true
     });
     setShowEmailPrompt(false);
@@ -14834,7 +14836,7 @@ function MultiplayerApp() {
                 Stay in the Loop
               </h2>
               <p style={{ color: '#555', fontSize: '14px', marginBottom: '20px', lineHeight: '1.5' }}>
-                Add your email to receive game updates, new features, and the occasional survey.
+                Add your email to receive game updates.
                 Your email is never shared.
               </p>
               <input
