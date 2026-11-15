@@ -3484,7 +3484,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.152';
+const VERSION = '2.31.153';
 const DEBUG = true; // Set to false for production
 
 // ─── Theme System ─────────────────────────────────────────────────────────────
@@ -7721,6 +7721,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.153', date: 'Nov 2026', changes: ['Added a friendly No internet connection notice when the device is offline (the game needs a network to play).'] },
     { version: '2.31.152', date: 'Nov 2026', changes: ['App install support: the game can now be installed to your home screen as an app, with an icon, and the AI game loads without a connection. (Groundwork for the Android app.)'] },
     { version: '2.31.151', date: 'Nov 2026', changes: ['Cutthroat AI: defenders now overtake a fellow defender unless a set of the bidder is nearly certain (previously they held back almost always). Simulation: about +1.2 points per round for the defender, significant on two seed sets.'] },
     { version: '2.31.150', date: 'Nov 2026', changes: ['AI trump counting: the AI now estimates how much trump each player holds from simulation data on what a draw actually produces (a player who drew 3 cards holds about 3 trump, not 2; one who drew 0-1 holds 4-5). Partner-mode simulation: about +0.25 points win rate on 200k games, significant on two independent seed sets.'] },
@@ -20257,6 +20258,22 @@ function MultiplayerGameTable({ gameId, userId, playerName, mySeat, mySeatIndex,
 
 ReactDOM.createRoot(document.getElementById('root')).render(<MultiplayerApp />);
   </script>
+<script>(function(){
+  var el=null;
+  function show(){
+    if(el)return;
+    el=document.createElement("div");
+    el.setAttribute("role","alert");
+    el.style.cssText="position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(5,31,12,.96);color:#fff;font-family:Inter,system-ui,sans-serif;text-align:center";
+    el.innerHTML='<div style="max-width:340px"><div style="font-size:44px;margin-bottom:12px">&#128246;</div><div style="font-size:20px;font-weight:700;margin-bottom:10px;color:#e0c070">No internet connection</div><div style="font-size:15px;line-height:1.5;opacity:.9">A network connection is required to play.</div></div>';
+    document.body.appendChild(el);
+  }
+  function hide(){ if(el){el.remove();el=null;} }
+  function check(){ if(navigator.onLine===false)show(); else hide(); }
+  window.addEventListener("offline",check);
+  window.addEventListener("online",check);
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",check);else check();
+})();</script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}</script>
 </body>
 </html>
