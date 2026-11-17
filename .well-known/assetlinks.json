@@ -4,7 +4,10 @@
     "target": {
       "namespace": "android_app",
       "package_name": "com.mingya45s.app",
-      "sha256_cert_fingerprints": ["45:C5:4E:C1:5E:F6:45:D7:85:14:51:BA:D4:91:C0:0E:AD:74:09:29:DF:04:88:47:6E:5D:4C:9F:BC:4C:C7:D4"]
+      "sha256_cert_fingerprints": [
+        "88:70:B6:07:12:E0:2F:FD:E0:5F:0D:7F:12:39:80:7E:33:92:8E:2F:78:C6:2F:C4:D1:52:97:A6:8A:2A:82:60",
+        "45:C5:4E:C1:5E:F6:45:D7:85:14:51:BA:D4:91:C0:0E:AD:74:09:29:DF:04:88:47:6E:5D:4C:9F:BC:4C:C7:D4"
+      ]
     }
   }
 ]
