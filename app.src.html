@@ -3484,7 +3484,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.155';
+const VERSION = '2.31.156';
 
 // v2.31.155: Account section for the Preferences modal (Privacy Policy link +
 // Log out). Play requires an in-app privacy policy link; the Card Room lobby
@@ -5344,6 +5344,15 @@ function decideBid(hand, currentHighBid, playerIndex, dealer, teamScores, oppSco
     if (oppBidIs25) {
       console.log(`🚨 Opponent bid 25 - letting them have it, try to set`);
       return { bid: 0, suit: null };
+    }
+
+    // RULE 3.5 (partner mode only): our own 15 wins the game. When we are
+    // also within 15 of 120 (e.g. 115-115) and the opp dealer would otherwise
+    // be bagged, passing hands them a free game-winning 15 and forfeits our
+    // own win. Bid 15 on any hand; the dealer must overbid and make 20+.
+    if (!cutthroat && oppHasDealer && currentHighBid === 0 && weNeed <= 15) {
+      console.log(`🚨 We need ${weNeed} - our 15 wins, bidding 15 instead of bagging the dealer`);
+      return { bid: 15, suit };
     }
 
     // RULE 4: Opponent has dealer - bag strategy
@@ -7744,6 +7753,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.156', date: 'Nov 2026', changes: ['Partner games: when the opposing team has the dealer and both teams are within 15 of winning (e.g. 115-115), the AI now opens with a 15 instead of passing to bag the dealer. Our own made 15 wins the game, and passing handed the dealer a free game-winning bagged 15.'] },
     { version: '2.31.155', date: 'Nov 2026', changes: ['Preferences (gear) now has an Account section with a Log out button and a link to the Privacy Policy.'] },
     { version: '2.31.154', date: 'Nov 2026', changes: ['Email is now required at registration, and existing players without one are asked once to add it. It is used only for game-update emails and is never shared.'] },
     { version: '2.31.153', date: 'Nov 2026', changes: ['Added a friendly No internet connection notice when the device is offline (the game needs a network to play).'] },
