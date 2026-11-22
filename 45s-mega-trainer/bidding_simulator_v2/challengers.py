@@ -2294,3 +2294,17 @@ for _m in (20, 40):
 REGISTRY["ctc2-none-b3over"] = Policy(cutthroat=True, ct_setlocked_save_last_trump=True,
     ai_flags={**_APP_CT_FLAGS, "cutthroat_c2_dont_overtake": False, "cutthroat_b3_take_over_fellow": True},
     name="ctc2-none-b3over")
+
+
+# DESP-BID15-WE-WIN (shipped to JS v2.31.156 before rig; this is the
+# after-the-fact measurement). Partner mode: opp has dealer, nobody has bid,
+# we are within 15 of 120 -> bid 15 on any hand instead of bagging the dealer.
+class DespBid15WeWin(Policy):
+    name = "desp-bid15-we-win"
+    def decide_bid(self, hand, chb, pi, dl, ts, os, pb, dealer_score=-1):
+        return bidding.decide_bid(hand, chb, pi, dl, ts, os, pb,
+                                  desp_bid15_we_win=True,
+                                  dealer_score=dealer_score)
+
+
+REGISTRY["desp-bid15-we-win"] = DespBid15WeWin()

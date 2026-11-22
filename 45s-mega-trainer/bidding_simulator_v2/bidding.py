@@ -112,7 +112,8 @@ def decide_bid(hand: List[Card],
                 upbid15_weneed_threshold: int = 15,
                 dealer_score: int = -1,
                 enable_open20: bool = False,
-                enable_overbid25_pb15: bool = False) -> Tuple[int, Optional[Suit]]:
+                enable_overbid25_pb15: bool = False,
+                desp_bid15_we_win: bool = False) -> Tuple[int, Optional[Suit]]:
     """Defaults reproduce LIVE index.html v2.31.24+ decideBid: desp_they_need
     =15, desp_we_need_floor=0 → `they_need<=15 and we_need>0`. This is the
     DATA-DERIVED, held-out-validated trigger (commit d19be47: 12k deals/cell
@@ -220,6 +221,11 @@ def decide_bid(hand: List[Card],
             return 25, suit
         if opp_bid_25:
             return 0, None
+        # RULE 3.5 (v2.31.156 candidate): our own 15 wins the game -> bid 15
+        # instead of passing to bag the dealer. Partner mode only.
+        if (desp_bid15_we_win and not cutthroat and opp_has_dealer
+                and current_high_bid == 0 and we_need <= 15):
+            return 15, suit
         if opp_has_dealer and current_high_bid == 0:
             # RULE 4 — bag-the-dealer with hand-strength threshold for "can
             # we make X to survive?" Calibrated against partner-mode 1.1M
