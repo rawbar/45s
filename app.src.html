@@ -3484,7 +3484,7 @@
   <div id="root"></div>
   <script type="text/babel">
 const { useState, useCallback, useRef, useEffect } = React;
-const VERSION = '2.31.156';
+const VERSION = '2.31.157';
 
 // v2.31.155: Account section for the Preferences modal (Privacy Policy link +
 // Log out). Play requires an in-app privacy policy link; the Card Room lobby
@@ -6833,6 +6833,20 @@ if (isDefender && isLeading) {
     });
   }
   
+  // DEFENDER BOSS-FIRST ENDGAME (v2.31.157, partner mode): with only trump left
+  // (2+) on trick 4 or 5 and the boss trump in hand, lead the boss first. Leading
+  // the lowest trump let a bidder's mid trump (e.g. K) win the trick, then the
+  // boss took the last one; boss-first takes both. Never worse with two cards
+  // left. Rig: neutral win rate (+0.04pt z=0.40 / +0.04pt z=0.33), shipped for
+  // intuitive play.
+  if (!cutthroat && trickNum >= 3 && trumps.length >= 2) {
+    const _bossFirst = trumps.find(c => isCardBoss(c, cardsPlayed, trumpSuit));
+    if (_bossFirst) {
+      console.log(`🎯 DEFENDER BOSS-FIRST: P${player + 1} only trump left, leading boss ${_bossFirst.id} before ${trumps.length - 1} lower trump`);
+      return _bossFirst;
+    }
+  }
+
   // If forced to lead trump, lead LOWEST trump (don't waste high cards)
   if (trumps.length > 0) {
     return trumps.reduce((lowest, card) => {
@@ -7753,6 +7767,7 @@ function WhatsNewModal({ isOpen, onClose }) {
   const isArabian = currentThemeId === 'arabian';
 
   const versionHistory = [
+    { version: '2.31.157', date: 'Nov 2026', changes: ['AI defenders left with only trump on trick 4 or 5 now lead their top trump (e.g. the Jack) first instead of the lowest trump, so it can no longer lose the trick to a King held by the bidding team and win only the last one.'] },
     { version: '2.31.156', date: 'Nov 2026', changes: ['Partner games: when the opposing team has the dealer and both teams are within 15 of winning (e.g. 115-115), the AI now opens with a 15 instead of passing to bag the dealer. Our own made 15 wins the game, and passing handed the dealer a free game-winning bagged 15.'] },
     { version: '2.31.155', date: 'Nov 2026', changes: ['Preferences (gear) now has an Account section with a Log out button and a link to the Privacy Policy.'] },
     { version: '2.31.154', date: 'Nov 2026', changes: ['Email is now required at registration, and existing players without one are asked once to add it. It is used only for game-update emails and is never shared.'] },
