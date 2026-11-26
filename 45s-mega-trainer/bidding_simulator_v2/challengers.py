@@ -2308,3 +2308,15 @@ class DespBid15WeWin(Policy):
 
 
 REGISTRY["desp-bid15-we-win"] = DespBid15WeWin()
+
+
+# DEFENDER-BOSS-FIRST-ENDGAME (candidate for JS v2.31.157). Partner mode,
+# defender leading with only trump left (>=2), trick 4+, holding the boss:
+# lead the boss first instead of the lowest trump.
+def _dbfe():
+    p = Policy()
+    p.name = "card:defender-boss-first-endgame"
+    p.ai_flags = {'defender_boss_first_endgame': True}
+    return p
+
+REGISTRY["card:defender-boss-first-endgame"] = _dbfe()

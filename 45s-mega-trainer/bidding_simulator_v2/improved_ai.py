@@ -1171,6 +1171,12 @@ class ImprovedAI:
                 return min(trumps, key=lambda c: _tr(c, trump))
             if non_trumps:
                 return min(non_trumps, key=get_offsuit_rank)
+            if (trumps and Fon('defender_boss_first_endgame')
+                    and not self.flags.get('cutthroat')
+                    and trick_num >= 4 and len(trumps) >= 2):
+                _bs = [c for c in trumps if is_card_boss(c, cards_played, trump)]
+                if _bs:
+                    return _bs[0]
             if trumps:
                 return min(trumps, key=lambda c: _tr(c, trump))
 
